@@ -10,7 +10,7 @@ async function getRegisterableTournaments() {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("tournaments")
-    .select("id, slug, name, start_date, is_placeholder, divisions(id, name, sort_order)")
+    .select("id, slug, name, start_date, is_placeholder, status, divisions(id, name, sort_order)")
     .order("start_date", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -18,7 +18,9 @@ async function getRegisterableTournaments() {
 
 export default async function RegisterPage() {
   const tournaments = await getRegisterableTournaments();
-  const registerable = tournaments.filter((t) => !t.is_placeholder);
+  // Only real, not-yet-played tournaments are registerable — a placeholder
+  // never is, and neither is one that's already happened.
+  const registerable = tournaments.filter((t) => !t.is_placeholder && t.status === "upcoming");
 
   return (
     <div className="space-y-4">
@@ -33,7 +35,7 @@ export default async function RegisterPage() {
             <Link href="/tournaments" className="underline text-afa-navy">
               Tournaments
             </Link>{" "}
-            for last year&rsquo;s lineup as a reference.
+            for the season lineup.
           </p>
         </div>
       ) : (

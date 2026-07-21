@@ -91,7 +91,8 @@ lib/
   content/rules.js                 Plain-text rules content — edit by hand
 supabase/
   schema.sql                       Full schema + RLS policies + grants
-  seed-placeholder.sql             2023 season data, loaded as placeholder
+  seed-2026-season.sql              Real, confirmed 2026 season (all 11
+                                     tournaments, JD-confirmed 2026-07-21)
 vercel.json                        Daily cron config
 ```
 
@@ -328,5 +329,5 @@ itself is always dynamic (never cached).
 - Admin panel for "who gets notified of what" — the moment any outbound
   comms are wanted, that's the feature to build; nothing sends today.
 - A UI for changing the scorekeeper PIN (API exists, no button yet).
-- Real 2026 tournament dates and the official rules doc (both pending from
-  Joey — the site currently shows clearly-labeled 2023 data as a reference).
+- The official rules doc from Joey (the site shows a general placeholder
+  summary — real 2026 tournament dates are in as of 2026-07-21).

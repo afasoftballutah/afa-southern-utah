@@ -34,7 +34,7 @@ export default async function ScorekeeperPage() {
       <h1 className="text-xl font-bold text-afa-navy">Scorekeeper</h1>
       {tournaments.length === 0 ? (
         <p className="text-afa-ink/70 text-sm">
-          No real tournaments yet — the 2023 placeholder season doesn&rsquo;t get brackets.
+          No tournaments on file yet.
         </p>
       ) : (
         <div>
