@@ -25,7 +25,10 @@ export const viewport = {
 
 function NavLink({ href, children }) {
   return (
-    <Link href={href} className="px-3 py-2 text-sm font-semibold text-white hover:text-white/70">
+    <Link
+      href={href}
+      className="px-2 sm:px-3 py-2 text-sm font-semibold text-white hover:text-white/70"
+    >
       {children}
     </Link>
   );
@@ -38,19 +41,19 @@ export default function RootLayout({ children }) {
         {/* Masthead — navy ground, eagle at left, name in white. Thin red
             bar underneath is the one place red is decoration, not action. */}
         <header className="bg-afa-navy border-b-2 border-afa-red">
-          <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3 gap-3">
-            <Link href="/" className="flex items-center gap-3 min-w-0">
-              <img src="/afa-logo.png" alt="" width={36} height={36} className="shrink-0" />
-              <span className="text-white font-black text-lg tracking-tight truncate">
+          <div className="max-w-4xl mx-auto flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
+            <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
+              <img src="/afa-logo.png" alt="" width={32} height={32} className="shrink-0" />
+              <span className="text-white font-black text-base sm:text-lg leading-tight tracking-tight">
                 AFA Southern Utah
               </span>
             </Link>
-            <nav className="flex items-center flex-wrap">
+            <nav className="flex items-center shrink-0">
               <NavLink href="/tournaments">Tournaments</NavLink>
               <NavLink href="/rules">Rules</NavLink>
               <Link
                 href="/register"
-                className="ml-2 px-3 py-2 text-sm font-bold text-white bg-afa-red rounded"
+                className="ml-1 sm:ml-2 px-2 sm:px-3 py-2 text-sm font-bold text-white bg-afa-red rounded"
               >
                 Register
               </Link>

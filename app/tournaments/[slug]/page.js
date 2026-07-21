@@ -108,7 +108,7 @@ export default async function TournamentDetailPage({ params }) {
       <div>
         <h2 className="text-lg font-bold text-afa-navy mb-3">Results</h2>
         {noResults ? (
-          <p className="text-afa-ink/70 text-sm">Nothing on the calendar yet — check back.</p>
+          <p className="text-afa-ink/70 text-sm">No results yet — check back after the next tournament.</p>
         ) : (
           <div className="space-y-4">
             {tournament.divisions.map((division) =>

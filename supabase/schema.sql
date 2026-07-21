@@ -114,11 +114,79 @@ create table if not exists public.roster_members (
 );
 comment on table public.roster_members is 'PRIVATE. PII + signatures, one row per player/coach. No Data API exposure, no RLS policies — service_role only. signing_token gates the personal remote-sign link.';
 
+-- ============================================================
+-- brackets — PUBLIC READ. One row per division once generated. No PII —
+-- format/sizing metadata only. Writes are service_role only, gated in
+-- application code by the scorekeeper PIN (see lib/scorekeeper-auth.js) —
+-- there is no per-user Postgres role for this, the PIN check happens in
+-- the API route before any service_role write is issued.
+-- ============================================================
+create table if not exists public.brackets (
+  id uuid primary key default gen_random_uuid(),
+  division_id uuid not null references public.divisions(id) on delete cascade unique,
+  format text not null default 'double_elim', -- double_elim | double_elim_consolation (latter not yet implemented — see README)
+  team_count integer not null,
+  bracket_size integer not null, -- team_count padded up to the next power of 2
+  generated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+comment on table public.brackets is 'Public bracket metadata. No PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
+
+-- ============================================================
+-- games — PUBLIC READ. The bracket IS the schedule. Team names only (same
+-- public-safe pattern as placements) — never joined to registrations for
+-- public consumption. Writes are service_role only, gated by the
+-- scorekeeper PIN in application code.
+-- ============================================================
+create table if not exists public.games (
+  id uuid primary key default gen_random_uuid(),
+  division_id uuid not null references public.divisions(id) on delete cascade,
+  bracket_side text not null check (bracket_side in ('winners', 'losers', 'final')),
+  round integer not null,
+  slot integer not null,
+  team1_name text,
+  team2_name text,
+  -- Self-referential feed: when the feeder game finalizes, this slot's team
+  -- name is filled in automatically (winner or loser of that game). Nullable
+  -- because round-1 winners-bracket slots get their team names directly at
+  -- generation time instead.
+  team1_source_game_id uuid references public.games(id),
+  team1_source_result text check (team1_source_result in ('winner', 'loser')),
+  team2_source_game_id uuid references public.games(id),
+  team2_source_result text check (team2_source_result in ('winner', 'loser')),
+  is_bye boolean not null default false, -- auto-resolved walkover at generation time, not a human-entered score
+  field text,
+  scheduled_time timestamptz,
+  team1_score integer,
+  team2_score integer,
+  winner_slot text check (winner_slot in ('team1', 'team2')),
+  status text not null default 'pending', -- pending | final | cancelled (cancelled = the GF2 "if necessary" game, when not needed)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (division_id, bracket_side, round, slot)
+);
+comment on table public.games is 'Public bracket/schedule data. Team names only, no PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
+
+-- ============================================================
+-- settings — PRIVATE. Key/value store, currently just the scorekeeper PIN
+-- hash. No Data API exposure, no RLS policies — service_role only, same as
+-- registrations/roster_members.
+-- ============================================================
+create table if not exists public.settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+comment on table public.settings is 'PRIVATE. Scorekeeper PIN hash lives here. No Data API exposure, no RLS policies — service_role only.';
+
 alter table public.tournaments enable row level security;
 alter table public.divisions enable row level security;
 alter table public.placements enable row level security;
 alter table public.registrations enable row level security;
 alter table public.roster_members enable row level security;
+alter table public.brackets enable row level security;
+alter table public.games enable row level security;
+alter table public.settings enable row level security;
 
 -- Public read policies — anon (and authenticated) may SELECT only. No INSERT/UPDATE/DELETE policy exists
 -- for anyone but service_role, which bypasses RLS by design.
@@ -131,9 +199,15 @@ create policy "public read divisions" on public.divisions for select using (true
 drop policy if exists "public read placements" on public.placements;
 create policy "public read placements" on public.placements for select using (true);
 
--- registrations, roster_members: deliberately zero policies. RLS is enabled with no grants, so
--- anon/authenticated get nothing at all. Only service_role (server-side only, never shipped to
--- the browser) can touch either table.
+drop policy if exists "public read brackets" on public.brackets;
+create policy "public read brackets" on public.brackets for select using (true);
+
+drop policy if exists "public read games" on public.games;
+create policy "public read games" on public.games for select using (true);
+
+-- registrations, roster_members, settings: deliberately zero policies. RLS is enabled with no
+-- grants, so anon/authenticated get nothing at all. Only service_role (server-side only, never
+-- shipped to the browser) can touch these tables.
 
 -- Helpful indexes
 create index if not exists idx_divisions_tournament on public.divisions(tournament_id);
@@ -142,3 +216,6 @@ create index if not exists idx_registrations_tournament on public.registrations(
 create index if not exists idx_registrations_division on public.registrations(division_id);
 create index if not exists idx_roster_members_registration on public.roster_members(registration_id);
 create index if not exists idx_roster_members_signing_token on public.roster_members(signing_token);
+create index if not exists idx_games_division on public.games(division_id);
+create index if not exists idx_games_team1_source on public.games(team1_source_game_id);
+create index if not exists idx_games_team2_source on public.games(team2_source_game_id);

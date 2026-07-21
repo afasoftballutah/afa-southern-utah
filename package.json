@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
+    "bcryptjs": "^3.0.3",
     "next": "16.2.10",
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",

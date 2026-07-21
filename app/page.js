@@ -36,7 +36,7 @@ export default async function Home() {
         {lastResults ? (
           <ResultsGallery tournament={lastResults} />
         ) : (
-          <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
+          <p className="text-afa-ink/70">No results yet — check back after the next tournament.</p>
         )}
       </section>
 
@@ -55,22 +55,29 @@ export default async function Home() {
 }
 
 function PosterHero({ tournament, placeholder }) {
+  // Placeholder (reference-only) hero sits deliberately smaller and quieter
+  // than a real confirmed event would — it's a "here's what one looks like,"
+  // not the main event (Lacy, cosmetic fix 2026-07-21).
+  const posterWidth = placeholder ? "max-w-xs" : "max-w-md";
+  const titleSize = placeholder ? "text-xl" : "text-3xl";
+  const dlSize = placeholder ? "text-xs" : "text-sm";
+
   return (
     <div className="space-y-3">
       {tournament.poster_url && (
-        <div className="poster-frame max-w-md mx-auto">
+        <div className={`poster-frame ${posterWidth} mx-auto`}>
           <img src={tournament.poster_url} alt={`${tournament.name} poster`} loading="eager" />
         </div>
       )}
       <div className="text-center">
-        <h1 className="font-display text-3xl text-afa-navy">{tournament.name}</h1>
+        <h1 className={`font-display ${titleSize} text-afa-navy`}>{tournament.name}</h1>
         {placeholder && (
-          <p className="text-sm text-afa-ink/60 mt-1">
+          <p className="text-xs text-afa-ink/60 mt-1">
             Shown for reference — last year&rsquo;s poster, not a live date.
           </p>
         )}
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm max-w-md mx-auto">
+      <dl className={`grid grid-cols-2 gap-x-4 gap-y-1 ${dlSize} ${posterWidth} mx-auto`}>
         <dt className="font-semibold">Dates</dt>
         <dd>{formatDateRange(tournament.start_date, tournament.end_date)}</dd>
         <dt className="font-semibold">Venue</dt>
@@ -106,7 +113,7 @@ function ResultsGallery({ tournament }) {
     <div className="space-y-4">
       <p className="font-semibold text-afa-navy">{tournament.name}</p>
       {divisionsWithPlacements.length === 0 ? (
-        <p className="text-afa-ink/70 text-sm">Nothing on the calendar yet — check back.</p>
+        <p className="text-afa-ink/70 text-sm">No results yet — check back after the next tournament.</p>
       ) : (
         divisionsWithPlacements.map((division) => (
           <div key={division.id} className="chalk-panel">
