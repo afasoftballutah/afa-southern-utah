@@ -11,17 +11,18 @@ import {
   slotDisplay,
 } from "@/lib/bracket/tree";
 
-// Desktop and mobile pixel constants for the tree geometry. Mobile columns
-// are wide on purpose — a phone panning sideways should land roughly one
-// round at a time, not a jumble of half-columns (spec: "cells sized so one
-// full round is visible per screen-width") — untouched by the 7/21 scale
-// pass, which is a desktop/fill-width ruling (HELD: phone pan unchanged).
-// Desktop cellW widened and sideGap halved per Lacy's 7/21 scale-fix ruling
-// (name column gets width budget before truncating; the winners/losers gap
-// was taller than the brackets themselves). numberW is the small gutter for
-// the muted "G7" game-number label the paper convention adds to every cell.
-const DESKTOP = { cellW: 240, cellH: 44, rowH: 58, colGap: 36, topPad: 22, sideGap: 24, finalGap: 44, numberW: 18 };
-const MOBILE = { cellW: 210, cellH: 48, rowH: 64, colGap: 24, topPad: 20, sideGap: 20, finalGap: 28, numberW: 16 };
+// Pixel geometry for the tree. The two team rows of a match are a TIGHT
+// pair (a few px apart, reading as one slot), so cellH is just tall enough
+// for two ~13px lines. rowH is the vertical step between sibling matches and
+// leaves room under each pair for the field/time line. colGap is the fixed
+// gutter between round columns; the connector verticals sit at its midpoint
+// so every elbow lines up in the same column (a clean nested bracket). numberW
+// is the small left gutter for the muted "G7" game-number label so it never
+// eats into the name column's width budget (sizing contract #1: name col
+// 180-220px, team text >=13px, NO transform:scale on screen — that was the
+// marooning bug; scale survives only in the print wrapper below).
+const DESKTOP = { cellW: 208, cellH: 40, rowH: 60, colGap: 40, topPad: 24, sideGap: 18, finalGap: 40, numberW: 22 };
+const MOBILE = { cellW: 196, cellH: 42, rowH: 66, colGap: 32, topPad: 22, sideGap: 16, finalGap: 30, numberW: 20 };
 
 function scaled(c, scale) {
   const out = {};
@@ -29,7 +30,12 @@ function scaled(c, scale) {
   return out;
 }
 
-function elbow(x1, y1, x2, y2) {
+// One full elbow feeder path: from a match's right edge (x1,y1), a horizontal
+// run to the fixed mid-gutter, a vertical to the child's center line, then one
+// horizontal into the child's left edge (x2,y2). Square corners, one stroke.
+// Two siblings feeding the same child share midX, so their verticals land in
+// the same gutter column and read as a single bracket join.
+function elbowPath(x1, y1, x2, y2) {
   const midX = (x1 + x2) / 2;
   return `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
 }
@@ -49,30 +55,32 @@ function formatFieldTime(game) {
 }
 
 /**
- * One match cell — game number + team pair + score, no card/box (except
- * the If-Necessary decider while it's still dashed-unknown).
+ * One match cell — a TIGHT two-row team pair (spec: rows sit adjacent, read as
+ * one slot pair, not two floating lines). No card/box except the If-Necessary
+ * decider while it's still dashed-unknown.
  *
- * THE PAPER CONVENTION (JD ruling 7/21): every game carries its number
- * (small, muted, in its own gutter left of the name column — doesn't eat
- * into the name column's width budget). Every unfilled slot shows its
- * provenance placeholder ("W2"/"L3"/"awaiting team") in muted ink exactly
- * where the real name will land, via slotDisplay — replaced in place once
- * known. Field + time render under every game from generation (whatever
- * the DB already has for that slot), not gated on the game being pending —
- * the schedule doesn't wait on who won.
+ * The pair box is exactly cellH tall and is top-anchored at `y`, so the
+ * connector always attaches at its true vertical center (y + cellH/2) — the
+ * field/time line flows BELOW the pair and never shifts that center.
+ *
+ * THE PAPER CONVENTION (JD ruling 7/21): every game carries its number (small,
+ * muted, in its own left gutter). Every unfilled slot shows its provenance
+ * placeholder ("W2"/"L3"/"awaiting team") in muted ink exactly where the real
+ * name will land, via slotDisplay. Field + time render under every game from
+ * generation, not gated on the game being pending.
  */
 function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, numberW }) {
   if (!game) return null;
   const pending = game.status === "pending";
-  // Solid afa-muted, not an opacity modifier — sizing contract #4.
-  const box = dashed ? "border border-dashed border-afa-muted rounded px-1.5" : "";
+  const box = dashed ? "border border-dashed border-afa-muted rounded px-1" : "";
   const gameNumber = numberByGameId?.get(game.id);
+  const fieldTime = formatFieldTime(game);
 
-  let body;
+  let pair;
   if (game.is_bye) {
     const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
-    body = (
-      <div className="flex flex-col justify-center h-full">
+    pair = (
+      <div className="flex flex-col justify-center" style={{ height: h }}>
         <span className={`font-bold truncate ${fontClass}`}>{name}</span>
       </div>
     );
@@ -81,10 +89,10 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
       { ...slotDisplay(game, "team1", numberByGameId), score: game.team1_score, won: game.winner_slot === "team1" },
       { ...slotDisplay(game, "team2", numberByGameId), score: game.team2_score, won: game.winner_slot === "team2" },
     ];
-    body = (
-      <div className="flex flex-col justify-center h-full gap-0.5">
+    pair = (
+      <div className="flex flex-col justify-center" style={{ height: h, gap: 3 }}>
         {rows.map((r, i) => (
-          <div key={i} className="flex items-baseline gap-2 min-w-0">
+          <div key={i} className="flex items-baseline gap-2 min-w-0 leading-tight">
             <span
               className={`truncate flex-1 min-w-0 ${fontClass} ${
                 r.won ? "font-bold" : r.resolved ? "font-normal" : "font-normal text-afa-muted"
@@ -101,29 +109,27 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
     );
   }
 
-  // Field + time are predetermined per game slot and render on every game
-  // from generation — not gated on pending/resolved status.
-  const fieldTime = formatFieldTime(game);
-
   return (
     <div
-      className={`absolute bg-afa-cream ${box}`}
-      style={{ left: x - numberW, top: y, width: w + numberW, minHeight: h }}
+      className="absolute"
+      style={{ left: x - numberW, top: y, width: w + numberW }}
       title={
         game.is_bye
           ? undefined
           : `${slotDisplay(game, "team1", numberByGameId).text} vs ${slotDisplay(game, "team2", numberByGameId).text}`
       }
     >
-      <div className="flex h-full items-stretch gap-1">
+      <div className="flex items-start gap-1">
         {gameNumber != null && (
-          <div className="shrink-0 pt-0.5" aria-hidden="true">
+          <div className="shrink-0" style={{ width: numberW - 2, paddingTop: 2 }} aria-hidden="true">
             <span className="text-[9px] leading-none text-afa-muted tabular-nums">G{gameNumber}</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {body}
-          {fieldTime && <div className="text-[0.7em] text-afa-muted truncate mt-0.5">{fieldTime}</div>}
+          {/* bg-afa-cream masks any connector hairline that passes behind the
+              text; the cream is the page background, so it stays invisible. */}
+          <div className={`bg-afa-cream ${box}`}>{pair}</div>
+          {fieldTime && <div className="text-[0.7em] text-afa-muted truncate mt-0.5 bg-afa-cream">{fieldTime}</div>}
         </div>
       </div>
     </div>
@@ -131,42 +137,31 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
 }
 
 /**
- * Draws one bracket_group ('main' or 'consolation') as a tree: winners on
- * top, losers below, Grand Final + If-Necessary at the far right joining
- * both, champion cell past that. Pure layout from round/slot counts — see
- * lib/bracket/tree.js for why the halving/passthrough math needs no
- * knowledge of bracket size or seeding.
+ * Draws one bracket_group ('main' or 'consolation') as a tree: winners on top,
+ * losers below, Grand Final + If-Necessary at the far right joining both,
+ * champion cell past that. Pure layout from round/slot counts — see
+ * lib/bracket/tree.js for why the halving/passthrough math needs no knowledge
+ * of bracket size or seeding.
  *
- * SIZING CONTRACT (REPLACES scale-to-fit — Challonge study 7/21; scale-to-
- * fit was the marooning bug that shrank tiny 10px content into dead
- * whitespace, twice). There is exactly ONE way this renders on screen, at
- * every viewport width, mobile or desktop: fixed pixel-size cells (DESKTOP/
- * MOBILE constants above), no transform:scale, horizontal scroll if the
- * tree is wider than its container. At this league's sizes (8-16 teams,
- * ~5 columns) that usually means no scroll at all on a laptop. `screenBody`
- * below is that one render, always visible on screen regardless of `fit`.
+ * CONNECTOR STRUCTURE (JD ruling 7/21 vs the Challonge reference): the lines
+ * must DRAW the bracket. Every feeder is a full elbow path (right edge ->
+ * mid-gutter -> vertical join to its sibling -> into the child's left edge),
+ * continuous 1px NAVY hairlines with square corners, no stubs, no orphans. The
+ * two siblings of every child share one gutter column so the elbows nest and
+ * the tree shape is legible from across the room. The Final joins short and
+ * direct on a single shared vertical (sizing contract #4: no staircase orphans).
  *
- * `fit` controls one thing only, additively: whether a SECOND, print-only
- * variant also renders (`hidden print:block`, never shown on screen) that
- * scales the tree to fill the printed page — sizing contract's one
- * exception (#3). Print is still measured/scaled by the same ResizeObserver
- * approach as before; it just no longer leaks into the on-screen view.
+ * SIZING CONTRACT (REPLACES scale-to-fit; that was the marooning bug, twice):
+ * exactly ONE on-screen render at every viewport width — fixed pixel cells, no
+ * transform:scale, horizontal scroll if wider than the container. `fit` adds a
+ * SECOND, print-only scaled-to-page variant (`hidden print:block`); it never
+ * changes what's on screen.
  */
 export default function TreeCanvas({ games, scale = 1, isMobile = false, showRoundStrip = false, fit = false }) {
   const scrollRef = useRef(null);
   const base = isMobile ? MOBILE : DESKTOP;
   const C = useMemo(() => scaled(base, scale), [base, scale]);
-  // >=13px at laptop width is a floor independent of the fit-to-90%-width
-  // transform below (which typically enlarges it further for a bracket this
-  // size) — mobile untouched per HELD (phone pan mechanics stay as they are).
   const fontClass = isMobile ? "text-[12px]" : "text-[13px]";
-  // THE PAPER CONVENTION: every game's number is derived once from its
-  // structural position (bracket_side/round/slot), stable across status —
-  // see lib/bracket/tree.js assignGameNumbers. Computed from the full,
-  // unfiltered group (byes and a would-be-cancelled If-Necessary game keep
-  // their number even though splitSides may drop the latter from `games`
-  // passed to layout below — numbers are assigned here, before any of that
-  // filtering, exactly like a paper bracket printed before anyone plays).
   const numberByGameId = useMemo(() => assignGameNumbers(games), [games]);
 
   const layout = useMemo(() => {
@@ -174,10 +169,9 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     const centersW = computeCenters(winners);
     const centersL = computeCenters(losers);
 
-    // Every match cell's outer box extends numberW to the LEFT of its "x"
-    // (the game-number gutter — see MatchCell) — round 1's column needs a
-    // left pad of exactly that much or its gutter renders at a negative
-    // coordinate and gets clipped by the fit wrapper's overflow:hidden.
+    // Every match box extends numberW to the LEFT of its "x" (the game-number
+    // gutter) — round 1's column needs a left pad of exactly that much or its
+    // gutter renders at a negative coordinate and gets clipped.
     const leftPad = C.numberW;
     const xForCol = (idx) => leftPad + idx * (C.cellW + C.colGap);
     const cellCenterY = (topY) => topY + C.cellH / 2;
@@ -188,7 +182,7 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     const totalMainH = losers.length ? winnersH + C.sideGap + losersH : winnersH;
 
     const cells = []; // { game, x, y, key }
-    const connectors = []; // [x1,y1,x2,y2]
+    const connectors = []; // svg path `d` strings — continuous elbows
     const roundStops = []; // { x, label }
     const posByKey = new Map(); // `${side}-${round}-${slot}` -> { x, y, centerY }
 
@@ -208,19 +202,13 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           r.games.forEach((g) => {
             const ratio = r.games.length / prev.games.length;
             const cur = posByKey.get(`${sideName}-${r.round}-${g.slot}`);
-            if (ratio === 1) {
-              const p = prev.games.find((x2) => x2.slot === g.slot);
+            const feeders = ratio === 1 ? [g.slot] : [g.slot * 2, g.slot * 2 + 1];
+            feeders.forEach((slot) => {
+              const p = prev.games.find((x2) => x2.slot === slot);
               if (!p) return;
               const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
-              connectors.push([pp.x + C.cellW, pp.centerY, cur.x, cur.centerY]);
-            } else {
-              [g.slot * 2, g.slot * 2 + 1].forEach((slot) => {
-                const p = prev.games.find((x2) => x2.slot === slot);
-                if (!p) return;
-                const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
-                connectors.push([pp.x + C.cellW, pp.centerY, cur.x, cur.centerY]);
-              });
-            }
+              connectors.push(elbowPath(pp.x + C.cellW, pp.centerY, cur.x, cur.centerY));
+            });
           });
         }
       });
@@ -242,16 +230,21 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
       const x = finalX0;
       const y = finalCenterY - C.cellH / 2;
       finalCells.push({ game: gf1, x, y });
-      // Connect from the last winners round and the last losers round.
-      if (winners.length) {
-        const lastW = winners[winners.length - 1].games[0];
-        const p = posByKey.get(`winners-${winners[winners.length - 1].round}-${lastW.slot}`);
-        if (p) connectors.push([p.x + C.cellW, p.centerY, x, finalCenterY]);
-      }
-      if (losers.length) {
-        const lastL = losers[losers.length - 1].games[0];
-        const p = posByKey.get(`losers-${losers[losers.length - 1].round}-${lastL.slot}`);
-        if (p) connectors.push([p.x + C.cellW, p.centerY, x, finalCenterY]);
+      // Winners champ and losers champ meet on ONE shared vertical just left
+      // of the Grand Final, then a single horizontal runs into it — short and
+      // direct, no staircase (sizing contract #4).
+      const joinX = finalX0 - C.finalGap / 2;
+      const wLast = winners.length ? winners[winners.length - 1].games[0] : null;
+      const lLast = losers.length ? losers[losers.length - 1].games[0] : null;
+      const wp = wLast ? posByKey.get(`winners-${winners[winners.length - 1].round}-${wLast.slot}`) : null;
+      const lp = lLast ? posByKey.get(`losers-${losers[losers.length - 1].round}-${lLast.slot}`) : null;
+      if (wp && lp) {
+        connectors.push(`M ${wp.x + C.cellW} ${wp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
+        connectors.push(`M ${lp.x + C.cellW} ${lp.centerY} H ${joinX} V ${finalCenterY}`);
+      } else if (wp) {
+        connectors.push(`M ${wp.x + C.cellW} ${wp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
+      } else if (lp) {
+        connectors.push(`M ${lp.x + C.cellW} ${lp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
       }
     }
     let lastFinalRightX = gf1 ? finalX0 + C.cellW : finalX0;
@@ -259,20 +252,20 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
       const x = finalX0 + C.cellW + C.colGap;
       const y = finalCenterY - C.cellH / 2;
       finalCells.push({ game: gf2, x, y, dashed: isGf2Dashed(gf1) });
-      connectors.push([finalX0 + C.cellW, finalCenterY, x, finalCenterY]);
+      connectors.push(`M ${finalX0 + C.cellW} ${finalCenterY} H ${x}`);
       lastFinalRightX = x + C.cellW;
     }
     roundStops.push({ x: finalX0, label: "GF" });
 
     const championX = lastFinalRightX + C.finalGap;
     const { championName } = computeChampion(games);
-    connectors.push([lastFinalRightX, finalCenterY, championX, finalCenterY]);
+    connectors.push(`M ${lastFinalRightX} ${finalCenterY} H ${championX}`);
 
     const totalWidth = championX + C.cellW * 1.4 + 24;
     const totalHeight = Math.max(totalMainH, finalCenterY * 2) + 12;
 
-    // Tiny muted section captions (scale-fix #4) — sit inside each side's
-    // own topPad gap, never adding extra height of their own.
+    // Tiny muted section captions — sit inside each side's own topPad gap,
+    // never adding extra height of their own.
     const capH = isMobile ? 10 : 11;
     const captions = [];
     if (winners.length) captions.push({ x: 0, y: Math.max(0, C.topPad * 0.15), label: "Winners" });
@@ -286,16 +279,10 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     scrollRef.current?.scrollTo({ left: Math.max(0, x - 12), behavior: "smooth" });
   }
 
-  // PRINT-ONLY fit-to-page: measure the full-bleed wrapper and scale the
-  // tree so it fills ~90% of that width. This used to also govern the
-  // on-screen desktop view — that was the marooning bug (sizing contract
-  // 7/21 #3 confines scale-to-page to print alone; #1/#2 require the
-  // on-screen view to be fixed-size + scroll, see screenBody below).
-  // Clamped to a sane range so a 2-team bracket doesn't blow up to
-  // absurd type and a huge one doesn't shrink past legibility.
-  // setFitScale only ever runs inside the ResizeObserver's own callback
-  // (an external-system subscription), never synchronously in the effect
-  // body, so this doesn't fight React's set-state-in-effect guidance.
+  // PRINT-ONLY fit-to-page: measure the full-bleed wrapper and scale the tree
+  // so it fills ~90% of that width. Confined to print (sizing contract #3);
+  // the on-screen view stays fixed-size + scroll. setFitScale only runs inside
+  // the ResizeObserver callback, never synchronously in the effect body.
   const fitWrapRef = useRef(null);
   const [fitScale, setFitScale] = useState(1);
   useLayoutEffect(() => {
@@ -315,8 +302,8 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
   const canvasBody = (
     <>
       <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
-        {layout.connectors.map(([x1, y1, x2, y2], i) => (
-          <path key={i} d={elbow(x1, y1, x2, y2)} stroke="var(--afa-muted)" strokeWidth={1} fill="none" />
+        {layout.connectors.map((d, i) => (
+          <path key={i} d={d} stroke="var(--afa-navy)" strokeWidth={1} fill="none" shapeRendering="crispEdges" />
         ))}
       </svg>
       {layout.captions.map((c, i) => (
@@ -346,10 +333,9 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     </>
   );
 
-  // The ONE on-screen render, every viewport width, no transform:scale —
-  // fixed pixel-size cells (DESKTOP/MOBILE constants), horizontal scroll
-  // if wider than the container. Hidden in print; print gets its own
-  // scaled variant below when `fit` is set.
+  // The ONE on-screen render, every viewport width, no transform:scale — fixed
+  // pixel cells, horizontal scroll if wider than the container. Hidden in
+  // print; print gets its own scaled variant below when `fit` is set.
   const screenBody = (
     <div className="print:hidden">
       {showRoundStrip && (
@@ -374,11 +360,10 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
   return (
     <>
       {screenBody}
-      {/* Print-only scaled-to-page variant (sizing contract #3) — never
-          shown on screen (`hidden print:block`), so it can never maroon
-          the on-screen tree the way the old always-on fit render did.
-          Breaks out of the page's max-w content column to full viewport
-          width first — there has to be real room to scale into. */}
+      {/* Print-only scaled-to-page variant (sizing contract #3) — never shown
+          on screen (`hidden print:block`), so it can't maroon the on-screen
+          tree the way the old always-on fit render did. Breaks out to full
+          viewport width first so there's real room to scale into. */}
       <div className="hidden print:block relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 sm:px-10 print:w-full print:left-0 print:right-0 print:mx-0 print:px-0">
         <div ref={fitWrapRef} style={{ width: "100%", height: layout.totalHeight * fitScale, overflow: "hidden" }}>
           <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight, transform: `scale(${fitScale})`, transformOrigin: "top left" }}>
