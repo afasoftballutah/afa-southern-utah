@@ -249,11 +249,16 @@ running the tournament, not per-user accounts).
 - **Changing the PIN**: once signed in, `POST /api/scorekeeper/change-pin`
   with the current PIN + a new 4-8 digit PIN. No UI button for this yet
   (API only) — add one if Joey wants to rotate it without asking JD/Marcus.
-  **The initial PIN was generated randomly and is not written anywhere in
-  this repo** — it was reported once, out of band, in the build handoff.
-  If it's lost, generate a new hash and update the `settings` row directly
-  via the Supabase SQL runner (see `lib/scorekeeper-auth.js`'s `setPin`
-  for the exact hashing call).
+  **The PIN currently live is a bootstrap/interim value set during build
+  and security verification — not written anywhere in this repo, reported
+  once out of band. Setting the league's real operational PIN is a go-live
+  step for JD/the directors, not a leftover test value** — call
+  `change-pin` with the interim PIN (ask Marcus/Nadia for it) and a new
+  PIN of the director's choosing before relying on this for a real
+  tournament. If the interim PIN is lost before that happens, generate a
+  new hash and update the `settings` row directly via the Supabase SQL
+  runner (see `lib/scorekeeper-auth.js`'s `setPin` for the exact hashing
+  call).
 - **Bracket builder + score entry**: `/scorekeeper/division/[divisionId]`
   — generate the bracket, edit slots while draft, enter scores (big number
   inputs), reassign field/time on any game anytime. Team names for the
