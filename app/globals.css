@@ -115,3 +115,19 @@ button {
   height: auto;
   object-fit: contain;
 }
+
+/* ============================================================
+ * Public bracket TREE — read-only renderer (Lacy spec, 2026-07-21).
+ * Print view is always the desktop tree: black hairlines, full bleed,
+ * no nav/footer/toggle. Screen behavior (which tab is showing) is
+ * handled by Tailwind's hidden/print:block pairing in the components.
+ * ============================================================ */
+@media print {
+  .bracket-connectors path {
+    stroke: #000 !important;
+    opacity: 1 !important;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+}

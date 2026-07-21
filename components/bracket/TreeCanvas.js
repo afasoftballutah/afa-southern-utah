@@ -1,0 +1,300 @@
+"use client";
+
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  splitSides,
+  computeCenters,
+  maxCenter,
+  computeChampion,
+  isGf2Dashed,
+  slotText,
+} from "@/lib/bracket/tree";
+
+// Desktop and mobile pixel constants for the tree geometry. Mobile columns
+// are wide on purpose — a phone panning sideways should land roughly one
+// round at a time, not a jumble of half-columns (spec: "cells sized so one
+// full round is visible per screen-width").
+const DESKTOP = { cellW: 184, cellH: 44, rowH: 58, colGap: 36, topPad: 22, sideGap: 48, finalGap: 44 };
+const MOBILE = { cellW: 210, cellH: 48, rowH: 64, colGap: 24, topPad: 20, sideGap: 40, finalGap: 28 };
+
+function scaled(c, scale) {
+  const out = {};
+  for (const k in c) out[k] = c[k] * scale;
+  return out;
+}
+
+function elbow(x1, y1, x2, y2) {
+  const midX = (x1 + x2) / 2;
+  return `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
+}
+
+function formatFieldTime(game) {
+  const parts = [];
+  if (game.scheduled_time) {
+    const d = new Date(game.scheduled_time);
+    parts.push(
+      d.toLocaleDateString("en-US", { weekday: "short" }) +
+        " " +
+        d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    );
+  }
+  if (game.field) parts.push(game.field);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+/** One match cell — team + score, two lines, no card/box (except the
+ * If-Necessary decider while it's still dashed-unknown). */
+function MatchCell({ game, x, y, w, h, fontClass, dashed }) {
+  if (!game) return null;
+  const pending = game.status === "pending";
+  const box = dashed ? "border border-dashed border-afa-navy/50 rounded px-1.5" : "";
+
+  let body;
+  if (game.is_bye) {
+    const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
+    body = (
+      <div className="flex flex-col justify-center h-full">
+        <span className={`font-bold truncate ${fontClass}`}>{name}</span>
+      </div>
+    );
+  } else {
+    const rows = [
+      { name: slotText(game.team1_name, game.team1_is_open_entry), score: game.team1_score, won: game.winner_slot === "team1" },
+      { name: slotText(game.team2_name, game.team2_is_open_entry), score: game.team2_score, won: game.winner_slot === "team2" },
+    ];
+    body = (
+      <div className="flex flex-col justify-center h-full gap-0.5">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-baseline justify-between gap-2">
+            <span className={`truncate ${r.won ? "font-bold" : "font-normal"} ${fontClass}`}>{r.name}</span>
+            <span className="tabular-nums text-afa-ink/60 text-[0.85em]">
+              {!pending && r.score != null ? r.score : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const fieldTime = pending ? formatFieldTime(game) : null;
+
+  return (
+    <div
+      className={`absolute bg-afa-cream ${box}`}
+      style={{ left: x, top: y, width: w, minHeight: h }}
+      title={
+        game.is_bye
+          ? undefined
+          : `${slotText(game.team1_name, game.team1_is_open_entry)} vs ${slotText(game.team2_name, game.team2_is_open_entry)}`
+      }
+    >
+      {body}
+      {fieldTime && <div className="text-[0.7em] text-afa-ink/50 truncate mt-0.5">{fieldTime}</div>}
+    </div>
+  );
+}
+
+/**
+ * Draws one bracket_group ('main' or 'consolation') as a tree: winners on
+ * top, losers below, Grand Final + If-Necessary at the far right joining
+ * both, champion cell past that. Pure layout from round/slot counts — see
+ * lib/bracket/tree.js for why the halving/passthrough math needs no
+ * knowledge of bracket size or seeding.
+ *
+ * Two rendering modes, per spec's phone-vs-desktop split:
+ *   - fit=true  (desktop/print): the whole tree must be visible with no
+ *     interaction — no horizontal scroll. It's measured against its
+ *     container and scaled down (CSS transform) to fit, never scaled up
+ *     past 1:1. The container breaks out of the page's max-w content
+ *     column to full viewport width first, so there's real room to fit
+ *     into before any shrinking is needed.
+ *   - fit=false (phone): unchanged — natural pixel size, horizontal pan
+ *     via native scroll, the round-indicator strip jumps by scrolling.
+ */
+export default function TreeCanvas({ games, scale = 1, isMobile = false, showRoundStrip = false, fit = false }) {
+  const scrollRef = useRef(null);
+  const base = isMobile ? MOBILE : DESKTOP;
+  const C = useMemo(() => scaled(base, scale), [base, scale]);
+  const fontClass = isMobile ? "text-[12px]" : "text-xs";
+
+  const layout = useMemo(() => {
+    const { winners, losers, final } = splitSides(games);
+    const centersW = computeCenters(winners);
+    const centersL = computeCenters(losers);
+
+    const xForCol = (idx) => idx * (C.cellW + C.colGap);
+    const cellCenterY = (topY) => topY + C.cellH / 2;
+
+    const winnersH = C.topPad * 2 + maxCenter(winners, centersW) * C.rowH + C.cellH;
+    const losersH = losers.length ? C.topPad * 2 + maxCenter(losers, centersL) * C.rowH + C.cellH : 0;
+    const losersYOffset = winnersH + (losers.length ? C.sideGap : 0);
+    const totalMainH = losers.length ? winnersH + C.sideGap + losersH : winnersH;
+
+    const cells = []; // { game, x, y, key }
+    const connectors = []; // [x1,y1,x2,y2]
+    const roundStops = []; // { x, label }
+    const posByKey = new Map(); // `${side}-${round}-${slot}` -> { x, y, centerY }
+
+    function layoutSide(rounds, centers, yOffset, sideName) {
+      rounds.forEach((r, idx) => {
+        const x = xForCol(idx);
+        if (sideName === "winners") roundStops.push({ x, label: `R${idx + 1}` });
+        r.games.forEach((g) => {
+          const center = centers.get(`${r.round}-${g.slot}`) ?? 0;
+          const y = C.topPad + center * C.rowH + yOffset;
+          const key = `${sideName}-${r.round}-${g.slot}`;
+          posByKey.set(key, { x, y, centerY: cellCenterY(y) });
+          cells.push({ game: g, x, y, key });
+        });
+        if (idx > 0) {
+          const prev = rounds[idx - 1];
+          r.games.forEach((g) => {
+            const ratio = r.games.length / prev.games.length;
+            const cur = posByKey.get(`${sideName}-${r.round}-${g.slot}`);
+            if (ratio === 1) {
+              const p = prev.games.find((x2) => x2.slot === g.slot);
+              if (!p) return;
+              const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
+              connectors.push([pp.x + C.cellW, pp.centerY, cur.x, cur.centerY]);
+            } else {
+              [g.slot * 2, g.slot * 2 + 1].forEach((slot) => {
+                const p = prev.games.find((x2) => x2.slot === slot);
+                if (!p) return;
+                const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
+                connectors.push([pp.x + C.cellW, pp.centerY, cur.x, cur.centerY]);
+              });
+            }
+          });
+        }
+      });
+    }
+
+    layoutSide(winners, centersW, 0, "winners");
+    layoutSide(losers, centersL, losersYOffset, "losers");
+
+    // Final block: sits to the right of whichever side reaches furthest,
+    // vertically centered on the combined winners+losers block.
+    const winnersRightX = winners.length ? xForCol(winners.length - 1) + C.cellW : 0;
+    const losersRightX = losers.length ? xForCol(losers.length - 1) + C.cellW : 0;
+    const finalX0 = Math.max(winnersRightX, losersRightX) + C.finalGap;
+    const finalCenterY = totalMainH / 2;
+
+    const [gf1, gf2] = final;
+    const finalCells = [];
+    if (gf1) {
+      const x = finalX0;
+      const y = finalCenterY - C.cellH / 2;
+      finalCells.push({ game: gf1, x, y });
+      // Connect from the last winners round and the last losers round.
+      if (winners.length) {
+        const lastW = winners[winners.length - 1].games[0];
+        const p = posByKey.get(`winners-${winners[winners.length - 1].round}-${lastW.slot}`);
+        if (p) connectors.push([p.x + C.cellW, p.centerY, x, finalCenterY]);
+      }
+      if (losers.length) {
+        const lastL = losers[losers.length - 1].games[0];
+        const p = posByKey.get(`losers-${losers[losers.length - 1].round}-${lastL.slot}`);
+        if (p) connectors.push([p.x + C.cellW, p.centerY, x, finalCenterY]);
+      }
+    }
+    let lastFinalRightX = gf1 ? finalX0 + C.cellW : finalX0;
+    if (gf2) {
+      const x = finalX0 + C.cellW + C.colGap;
+      const y = finalCenterY - C.cellH / 2;
+      finalCells.push({ game: gf2, x, y, dashed: isGf2Dashed(gf1) });
+      connectors.push([finalX0 + C.cellW, finalCenterY, x, finalCenterY]);
+      lastFinalRightX = x + C.cellW;
+    }
+    roundStops.push({ x: finalX0, label: "GF" });
+
+    const championX = lastFinalRightX + C.finalGap;
+    const { championName } = computeChampion(games);
+    connectors.push([lastFinalRightX, finalCenterY, championX, finalCenterY]);
+
+    const totalWidth = championX + C.cellW * 1.4 + 24;
+    const totalHeight = Math.max(totalMainH, finalCenterY * 2) + 12;
+
+    return { cells, connectors, finalCells, championX, championY: finalCenterY, championName, totalWidth, totalHeight, roundStops };
+  }, [games, C]);
+
+  function jumpTo(x) {
+    scrollRef.current?.scrollTo({ left: Math.max(0, x - 12), behavior: "smooth" });
+  }
+
+  // Fit-to-width (desktop/print): measure the full-bleed wrapper and scale
+  // the tree down so the whole thing is visible with no scroll. Never
+  // scales up past 1:1 — a small bracket just sits with room to spare.
+  // setFitScale only ever runs inside the ResizeObserver's own callback
+  // (an external-system subscription), never synchronously in the effect
+  // body, so this doesn't fight React's set-state-in-effect guidance.
+  const fitWrapRef = useRef(null);
+  const [fitScale, setFitScale] = useState(1);
+  useLayoutEffect(() => {
+    if (!fit || !fitWrapRef.current) return undefined;
+    const el = fitWrapRef.current;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width;
+      if (w) setFitScale(Math.min(1, w / layout.totalWidth));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fit, layout.totalWidth]);
+
+  const canvasBody = (
+    <>
+      <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
+        {layout.connectors.map(([x1, y1, x2, y2], i) => (
+          <path key={i} d={elbow(x1, y1, x2, y2)} stroke="var(--afa-navy)" strokeWidth={1} fill="none" opacity={0.5} />
+        ))}
+      </svg>
+      {layout.cells.map(({ game, x, y, key }) => (
+        <MatchCell key={key} game={game} x={x} y={y} w={C.cellW} h={C.cellH} fontClass={fontClass} />
+      ))}
+      {layout.finalCells.map(({ game, x, y, dashed }) => (
+        <MatchCell key={game.id} game={game} x={x} y={y} w={C.cellW} h={C.cellH} fontClass={fontClass} dashed={dashed} />
+      ))}
+      {/* Champion cell — the tree's one appearance of the Anton display face. */}
+      <div
+        className="absolute flex items-center"
+        style={{ left: layout.championX, top: layout.championY - C.cellH / 2, width: C.cellW * 1.4, minHeight: C.cellH }}
+      >
+        <span className={`font-display text-afa-navy truncate ${isMobile ? "text-base" : "text-lg"}`}>
+          {layout.championName || "—"}
+        </span>
+      </div>
+    </>
+  );
+
+  if (fit) {
+    // Break out of the page's max-w content column to full viewport width —
+    // there has to be real room to scale into before any shrinking happens.
+    return (
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 sm:px-10 print:w-full print:left-0 print:right-0 print:mx-0 print:px-0">
+        <div ref={fitWrapRef} style={{ width: "100%", height: layout.totalHeight * fitScale, overflow: "hidden" }}>
+          <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight, transform: `scale(${fitScale})`, transformOrigin: "top left" }}>
+            {canvasBody}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {showRoundStrip && (
+        <div className="flex gap-3 text-[11px] font-semibold text-afa-navy/70 mb-2 px-1 print:hidden">
+          {layout.roundStops.map((s, i) => (
+            <button key={i} type="button" onClick={() => jumpTo(s.x)} className="hover:text-afa-navy underline decoration-dotted">
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
+          {canvasBody}
+        </div>
+      </div>
+    </div>
+  );
+}

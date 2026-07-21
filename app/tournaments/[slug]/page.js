@@ -4,6 +4,7 @@ import {
   formatDateRange,
   formatFee,
 } from "@/lib/data";
+import BracketTree from "@/components/bracket/BracketTree";
 
 export const revalidate = 30;
 
@@ -19,6 +20,7 @@ export default async function TournamentDetailPage({ params }) {
   if (!tournament) notFound();
 
   const noResults = (tournament.divisions ?? []).every((d) => (d.placements ?? []).length === 0);
+  const bracketDivisions = (tournament.divisions ?? []).filter((d) => (d.brackets ?? []).length > 0);
 
   return (
     <div className="space-y-6">
@@ -137,6 +139,23 @@ export default async function TournamentDetailPage({ params }) {
           </div>
         )}
       </div>
+
+      {bracketDivisions.length > 0 && (
+        <>
+          <div className="chalk-line" />
+          <div>
+            <h2 className="text-lg font-bold text-afa-navy mb-3">Bracket</h2>
+            <div className="space-y-8">
+              {bracketDivisions.map((division) => (
+                <div key={division.id}>
+                  <p className="font-semibold text-afa-navy mb-2">{division.name}</p>
+                  <BracketTree division={division} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

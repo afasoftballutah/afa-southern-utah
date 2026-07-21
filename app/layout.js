@@ -40,7 +40,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col bg-afa-cream text-afa-ink antialiased">
         {/* Masthead — navy ground, eagle at left, name in white. Thin red
             bar underneath is the one place red is decoration, not action. */}
-        <header className="bg-afa-navy border-b-2 border-afa-red">
+        <header className="bg-afa-navy border-b-2 border-afa-red print:hidden">
           <div className="max-w-4xl mx-auto flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
             <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
               <img src="/afa-logo.png" alt="" width={32} height={32} className="shrink-0" />
@@ -63,7 +63,7 @@ export default function RootLayout({ children }) {
 
         <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">{children}</main>
 
-        <footer className="bg-afa-navy text-white text-sm">
+        <footer className="bg-afa-navy text-white text-sm print:hidden">
           <div className="max-w-4xl mx-auto px-4 py-6 space-y-2">
             <p>American Fastpitch Association &mdash; Southern Utah Slow Pitch Division.</p>
             <p className="text-white/80">
