@@ -347,7 +347,12 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           ))}
         </div>
       )}
-      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
+      {/* Full-bleed breakout: the scroll band spans the full viewport width so
+          a laptop sees the whole tree instead of it being trapped (and clipped)
+          inside the page's max-w-4xl content column. Horizontal scroll still
+          kicks in on genuinely narrow screens when the tree outgrows the
+          viewport (sizing contract #2). Layout geometry is untouched. */}
+      <div ref={scrollRef} className="overflow-x-auto relative left-1/2 right-1/2 -mx-[50vw] w-screen px-4 sm:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
         <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
           {canvasBody}
         </div>
