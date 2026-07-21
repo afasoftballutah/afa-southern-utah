@@ -53,10 +53,14 @@ function getStoredViewServer() {
  * Print always shows the tree (see globals.css print rules), regardless
  * of which tab is active on screen.
  *
- * Desktop tree is the "whole tree, no scroll" view — TreeCanvas scales it
- * to fit a full-bleed container. Phone keeps the original horizontal-pan
- * behavior untouched (Lacy's capture, 2026-07-21: horizontal scroll is
- * phone-only, never desktop).
+ * Sizing contract (Lacy's 7/21 ruling, REPLACES the earlier "whole tree,
+ * no scroll" desktop behavior — that scale-to-fit transform was the
+ * marooning bug, twice): fixed-size cells at every viewport width, desktop
+ * included. Horizontal scroll if the tree is wider than the container —
+ * desktop and phone alike, the standard everywhere brackets are drawn.
+ * `fit={!isMobile}` still tells TreeCanvas to render an ADDITIONAL
+ * print-only scaled-to-page variant for desktop-context divisions (sizing
+ * contract's one exception); it no longer changes what's shown on screen.
  */
 export default function BracketTree({ division }) {
   const mainGames = gamesForGroup(division.games ?? [], "main");
@@ -106,7 +110,7 @@ export default function BracketTree({ division }) {
         <TreeCanvas games={mainGames} scale={1} isMobile={isMobile} showRoundStrip={isMobile} fit={!isMobile} />
         {consolationGames.length > 0 && (
           <div className="mt-10">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-afa-navy/45 mb-2">Consolation</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-afa-muted mb-2">Consolation</p>
             <TreeCanvas games={consolationGames} scale={0.82} isMobile={isMobile} showRoundStrip={false} fit={!isMobile} />
           </div>
         )}

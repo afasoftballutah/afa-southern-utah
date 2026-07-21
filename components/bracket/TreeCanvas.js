@@ -64,7 +64,8 @@ function formatFieldTime(game) {
 function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, numberW }) {
   if (!game) return null;
   const pending = game.status === "pending";
-  const box = dashed ? "border border-dashed border-afa-navy/50 rounded px-1.5" : "";
+  // Solid afa-muted, not an opacity modifier — sizing contract #4.
+  const box = dashed ? "border border-dashed border-afa-muted rounded px-1.5" : "";
   const gameNumber = numberByGameId?.get(game.id);
 
   let body;
@@ -86,7 +87,7 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
           <div key={i} className="flex items-baseline gap-2 min-w-0">
             <span
               className={`truncate flex-1 min-w-0 ${fontClass} ${
-                r.won ? "font-bold" : r.resolved ? "font-normal" : "font-normal text-afa-navy/45"
+                r.won ? "font-bold" : r.resolved ? "font-normal" : "font-normal text-afa-muted"
               }`}
             >
               {r.text}
@@ -117,12 +118,12 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
       <div className="flex h-full items-stretch gap-1">
         {gameNumber != null && (
           <div className="shrink-0 pt-0.5" aria-hidden="true">
-            <span className="text-[9px] leading-none text-afa-navy/40 tabular-nums">G{gameNumber}</span>
+            <span className="text-[9px] leading-none text-afa-muted tabular-nums">G{gameNumber}</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
           {body}
-          {fieldTime && <div className="text-[0.7em] text-afa-ink/50 truncate mt-0.5">{fieldTime}</div>}
+          {fieldTime && <div className="text-[0.7em] text-afa-muted truncate mt-0.5">{fieldTime}</div>}
         </div>
       </div>
     </div>
@@ -136,16 +137,20 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, number
  * lib/bracket/tree.js for why the halving/passthrough math needs no
  * knowledge of bracket size or seeding.
  *
- * Two rendering modes, per spec's phone-vs-desktop split:
- *   - fit=true  (desktop/print): the whole tree must be visible with no
- *     interaction — no horizontal scroll. It's measured against its
- *     container and scaled (CSS transform) so the tree fills ~90% of the
- *     full-bleed width (Lacy's 7/21 scale ruling — scales UP for a small
- *     bracket like the demo, not just down for a huge one). The container
- *     breaks out of the page's max-w content column to full viewport width
- *     first, so there's real room to fill.
- *   - fit=false (phone): unchanged — natural pixel size, horizontal pan
- *     via native scroll, the round-indicator strip jumps by scrolling.
+ * SIZING CONTRACT (REPLACES scale-to-fit — Challonge study 7/21; scale-to-
+ * fit was the marooning bug that shrank tiny 10px content into dead
+ * whitespace, twice). There is exactly ONE way this renders on screen, at
+ * every viewport width, mobile or desktop: fixed pixel-size cells (DESKTOP/
+ * MOBILE constants above), no transform:scale, horizontal scroll if the
+ * tree is wider than its container. At this league's sizes (8-16 teams,
+ * ~5 columns) that usually means no scroll at all on a laptop. `screenBody`
+ * below is that one render, always visible on screen regardless of `fit`.
+ *
+ * `fit` controls one thing only, additively: whether a SECOND, print-only
+ * variant also renders (`hidden print:block`, never shown on screen) that
+ * scales the tree to fill the printed page — sizing contract's one
+ * exception (#3). Print is still measured/scaled by the same ResizeObserver
+ * approach as before; it just no longer leaks into the on-screen view.
  */
 export default function TreeCanvas({ games, scale = 1, isMobile = false, showRoundStrip = false, fit = false }) {
   const scrollRef = useRef(null);
@@ -281,12 +286,12 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     scrollRef.current?.scrollTo({ left: Math.max(0, x - 12), behavior: "smooth" });
   }
 
-  // Fit-to-width (desktop/print): measure the full-bleed wrapper and scale
-  // the tree — up OR down — so it fills ~90% of that width (Lacy's 7/21
-  // scale ruling: "layout scales up until the tree uses ~90% of the
-  // full-bleed zone", replacing the old "never scale past 1:1" behavior
-  // that left a small bracket like the demo tiny with empty space around
-  // it). Clamped to a sane range so a 2-team bracket doesn't blow up to
+  // PRINT-ONLY fit-to-page: measure the full-bleed wrapper and scale the
+  // tree so it fills ~90% of that width. This used to also govern the
+  // on-screen desktop view — that was the marooning bug (sizing contract
+  // 7/21 #3 confines scale-to-page to print alone; #1/#2 require the
+  // on-screen view to be fixed-size + scroll, see screenBody below).
+  // Clamped to a sane range so a 2-team bracket doesn't blow up to
   // absurd type and a huge one doesn't shrink past legibility.
   // setFitScale only ever runs inside the ResizeObserver's own callback
   // (an external-system subscription), never synchronously in the effect
@@ -311,13 +316,13 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     <>
       <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
         {layout.connectors.map(([x1, y1, x2, y2], i) => (
-          <path key={i} d={elbow(x1, y1, x2, y2)} stroke="var(--afa-navy)" strokeWidth={1} fill="none" opacity={0.5} />
+          <path key={i} d={elbow(x1, y1, x2, y2)} stroke="var(--afa-muted)" strokeWidth={1} fill="none" />
         ))}
       </svg>
       {layout.captions.map((c, i) => (
         <div
           key={i}
-          className="absolute text-[9px] font-semibold uppercase tracking-wide text-afa-navy/45 pointer-events-none"
+          className="absolute text-[9px] font-semibold uppercase tracking-wide text-afa-muted pointer-events-none"
           style={{ left: c.x, top: c.y }}
         >
           {c.label}
@@ -341,22 +346,12 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     </>
   );
 
-  if (fit) {
-    // Break out of the page's max-w content column to full viewport width —
-    // there has to be real room to scale into before any shrinking happens.
-    return (
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 sm:px-10 print:w-full print:left-0 print:right-0 print:mx-0 print:px-0">
-        <div ref={fitWrapRef} style={{ width: "100%", height: layout.totalHeight * fitScale, overflow: "hidden" }}>
-          <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight, transform: `scale(${fitScale})`, transformOrigin: "top left" }}>
-            {canvasBody}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
+  // The ONE on-screen render, every viewport width, no transform:scale —
+  // fixed pixel-size cells (DESKTOP/MOBILE constants), horizontal scroll
+  // if wider than the container. Hidden in print; print gets its own
+  // scaled variant below when `fit` is set.
+  const screenBody = (
+    <div className="print:hidden">
       {showRoundStrip && (
         <div className="flex gap-3 text-[11px] font-semibold text-afa-navy/70 mb-2 px-1 print:hidden">
           {layout.roundStops.map((s, i) => (
@@ -372,5 +367,25 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
         </div>
       </div>
     </div>
+  );
+
+  if (!fit) return screenBody;
+
+  return (
+    <>
+      {screenBody}
+      {/* Print-only scaled-to-page variant (sizing contract #3) — never
+          shown on screen (`hidden print:block`), so it can never maroon
+          the on-screen tree the way the old always-on fit render did.
+          Breaks out of the page's max-w content column to full viewport
+          width first — there has to be real room to scale into. */}
+      <div className="hidden print:block relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 sm:px-10 print:w-full print:left-0 print:right-0 print:mx-0 print:px-0">
+        <div ref={fitWrapRef} style={{ width: "100%", height: layout.totalHeight * fitScale, overflow: "hidden" }}>
+          <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight, transform: `scale(${fitScale})`, transformOrigin: "top left" }}>
+            {canvasBody}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

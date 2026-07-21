@@ -5,6 +5,15 @@
   --afa-red: #c8102e;
   --afa-cream: #fdfaf3;
   --afa-ink: #16233d;
+  /* Solid muted value — the flattened result of afa-ink at ~45% over
+     afa-cream, the same visual weight ListView's text-afa-ink/40-50
+     opacity classes already produce. Bracket-tree sizing pass (7/21):
+     connector lines and placeholder/muted text use this SOLID color
+     instead of an opacity modifier — opacity apologizes, this doesn't,
+     and it prints the same weight every time regardless of what's
+     behind it (an opacity value over a non-cream background, e.g. a
+     dashed box fill, reads lighter than intended). */
+  --afa-muted: #8c93a3;
 }
 
 @theme inline {
@@ -12,6 +21,7 @@
   --color-afa-red: var(--afa-red);
   --color-afa-cream: var(--afa-cream);
   --color-afa-ink: var(--afa-ink);
+  --color-afa-muted: var(--afa-muted);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-display: var(--font-display-face), Arial, Helvetica, sans-serif;
 }
