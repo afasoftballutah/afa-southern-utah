@@ -24,7 +24,7 @@ export async function PATCH(request, { params }) {
   const supabase = getServiceClient();
   const { data: game, error: findError } = await supabase
     .from("games")
-    .select("id, division_id")
+    .select("id, division_id, bracket_group")
     .eq("id", id)
     .maybeSingle();
   if (findError || !game) return Response.json({ error: "Game not found" }, { status: 404 });
@@ -34,7 +34,10 @@ export async function PATCH(request, { params }) {
   if ("scheduledTime" in body) patch.scheduled_time = body.scheduledTime || null;
 
   if ("team1Name" in body || "team2Name" in body) {
-    const draft = await isBracketDraft(game.division_id);
+    // Gated per bracket_group, not the whole division — a still-draft
+    // consolation bracket stays hand-editable even after the main bracket
+    // (or vice versa) has locked; they're independent brackets.
+    const draft = await isBracketDraft(game.division_id, game.bracket_group);
     if (!draft) {
       return Response.json(
         { error: "Bracket is locked — team slots can't be edited once a real game has a score." },

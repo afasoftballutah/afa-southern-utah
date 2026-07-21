@@ -123,14 +123,16 @@ comment on table public.roster_members is 'PRIVATE. PII + signatures, one row pe
 -- ============================================================
 create table if not exists public.brackets (
   id uuid primary key default gen_random_uuid(),
-  division_id uuid not null references public.divisions(id) on delete cascade unique,
-  format text not null default 'double_elim', -- double_elim | double_elim_consolation (latter not yet implemented — see README)
-  team_count integer not null,
+  division_id uuid not null references public.divisions(id) on delete cascade,
+  bracket_group text not null default 'main' check (bracket_group in ('main', 'consolation')),
+  format text not null default 'double_elim', -- double_elim | double_elim_consolation
+  team_count integer not null, -- for 'consolation': the max possible entrant count (main team_count - 1)
   bracket_size integer not null, -- team_count padded up to the next power of 2
   generated_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (division_id, bracket_group)
 );
-comment on table public.brackets is 'Public bracket metadata. No PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
+comment on table public.brackets is 'Public bracket metadata. No PII. Safe for anon read. Writes gated by scorekeeper PIN in application code. Two rows per division when format=double_elim_consolation (main + consolation).';
 
 -- ============================================================
 -- games — PUBLIC READ. The bracket IS the schedule. Team names only (same
@@ -141,6 +143,7 @@ comment on table public.brackets is 'Public bracket metadata. No PII. Safe for a
 create table if not exists public.games (
   id uuid primary key default gen_random_uuid(),
   division_id uuid not null references public.divisions(id) on delete cascade,
+  bracket_group text not null default 'main' check (bracket_group in ('main', 'consolation')),
   bracket_side text not null check (bracket_side in ('winners', 'losers', 'final')),
   round integer not null,
   slot integer not null,
@@ -149,21 +152,35 @@ create table if not exists public.games (
   -- Self-referential feed: when the feeder game finalizes, this slot's team
   -- name is filled in automatically (winner or loser of that game). Nullable
   -- because round-1 winners-bracket slots get their team names directly at
-  -- generation time instead.
+  -- generation time instead (main bracket: a real registered team, or a
+  -- permanent bye; consolation bracket: a permanent bye, or "open" — see
+  -- team1_is_open_entry below).
   team1_source_game_id uuid references public.games(id),
   team1_source_result text check (team1_source_result in ('winner', 'loser')),
   team2_source_game_id uuid references public.games(id),
   team2_source_result text check (team2_source_result in ('winner', 'loser')),
-  is_bye boolean not null default false, -- auto-resolved walkover at generation time, not a human-entered score
+  -- Consolation-bracket winners-round-1 slots only. A team enters the
+  -- consolation bracket once it's eliminated (2nd loss) from the MAIN
+  -- bracket, starting fresh at 0 losses (JD's ruling, 2026-07-21) — but
+  -- WHICH team lands in which slot isn't known until that actually
+  -- happens live, so these slots start with team*_name null and get
+  -- filled in as eliminations occur (FIFO by elimination order), rather
+  -- than at generation time like every other slot. A null name with this
+  -- flag false is a permanent bye instead (never gets a team) — the two
+  -- look identical otherwise, hence a flag per slot, not per row: one
+  -- match can pair one open slot against one bye.
+  team1_is_open_entry boolean not null default false,
+  team2_is_open_entry boolean not null default false,
+  is_bye boolean not null default false, -- auto-resolved walkover, not a human-entered score
   field text,
   scheduled_time timestamptz,
   team1_score integer,
   team2_score integer,
   winner_slot text check (winner_slot in ('team1', 'team2')),
-  status text not null default 'pending', -- pending | final | cancelled (cancelled = the GF2 "if necessary" game, when not needed)
+  status text not null default 'pending', -- pending | final | cancelled (cancelled = an unneeded "if necessary" game)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (division_id, bracket_side, round, slot)
+  unique (division_id, bracket_group, bracket_side, round, slot)
 );
 comment on table public.games is 'Public bracket/schedule data. Team names only, no PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
 

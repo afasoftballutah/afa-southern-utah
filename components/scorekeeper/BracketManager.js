@@ -6,12 +6,21 @@ import PlacementsUpload from "./PlacementsUpload";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
-function roundLabel(side, round, totalRoundsForSide) {
+function roundLabel(side, round) {
   if (side === "final") return round === 1 ? "Grand Final" : "If Necessary";
   return `Round ${round}`;
 }
 
-export default function BracketManager({ divisionId, bracket, games, teamNames, draft, completion }) {
+export default function BracketManager({
+  divisionId,
+  mainBracket,
+  consolationBracket,
+  games,
+  teamNames,
+  mainDraft,
+  consolationDraft,
+  completion,
+}) {
   const router = useRouter();
   const [format, setFormat] = useState("double_elim");
   const [busy, setBusy] = useState(false);
@@ -37,13 +46,15 @@ export default function BracketManager({ divisionId, bracket, games, teamNames, 
   }
 
   async function regenerate() {
-    if (!window.confirm("Regenerate the bracket from current registrations? This replaces every unplayed game.")) {
-      return;
-    }
+    const msg =
+      consolationBracket || format === "double_elim_consolation"
+        ? "Regenerate both the championship and consolation brackets from current registrations? This replaces every unplayed game in both."
+        : "Regenerate the bracket from current registrations? This replaces every unplayed game.";
+    if (!window.confirm(msg)) return;
     await generate();
   }
 
-  if (!bracket) {
+  if (!mainBracket) {
     return (
       <div className="chalk-panel space-y-3">
         <p className="text-sm text-afa-ink/70">
@@ -57,16 +68,17 @@ export default function BracketManager({ divisionId, bracket, games, teamNames, 
             onChange={(e) => setFormat(e.target.value)}
           >
             <option value="double_elim">Double Elimination</option>
-            <option value="double_elim_consolation">
-              Double Elimination + Consolation (not available yet)
-            </option>
+            <option value="double_elim_consolation">Double Elimination + Consolation</option>
           </select>
         </label>
         {format === "double_elim_consolation" && (
           <p className="text-xs text-afa-ink/60">
-            This variant isn&rsquo;t built yet — generating will use standard double
-            elimination instead. Every slot is editable by hand afterward if you need
-            to add consolation games manually.
+            A team drops into the consolation bracket the moment it&rsquo;s
+            eliminated from the championship bracket (its 2nd loss there),
+            starting fresh at 0 losses. The consolation bracket is its own
+            full double elimination, same shape as the championship one.
+            This is the typical default — every slot in both brackets stays
+            hand-editable if a tournament needs something different.
           </p>
         )}
         {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
@@ -85,29 +97,64 @@ export default function BracketManager({ divisionId, bracket, games, teamNames, 
     );
   }
 
-  const bySide = { winners: [], losers: [], final: [] };
-  for (const g of games) bySide[g.bracket_side]?.push(g);
+  const mainGames = games.filter((g) => g.bracket_group === "main");
+  const consolationGames = games.filter((g) => g.bracket_group === "consolation");
+  const anyDraft = mainDraft || (consolationBracket ? consolationDraft : false);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2">
-        <p className={"text-sm font-bold " + (draft ? "text-afa-navy" : "text-afa-ink/70")}>
-          {draft ? "DRAFT — every slot is editable" : "LOCKED — shape is set, only results flow now"}
-        </p>
-        {draft && (
+      {anyDraft && (
+        <div className="flex justify-end">
           <button type="button" onClick={regenerate} disabled={busy} className="text-afa-navy underline text-sm font-semibold">
             Regenerate
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
 
       {completion.complete && <PlacementsUpload divisionId={divisionId} completion={completion} />}
 
+      <BracketSection
+        label="Championship Bracket"
+        games={mainGames}
+        draft={mainDraft}
+        teamNames={teamNames}
+        onChanged={() => router.refresh()}
+      />
+
+      {consolationBracket && (
+        <>
+          <div className="chalk-line" />
+          <BracketSection
+            label="Consolation Bracket"
+            games={consolationGames}
+            draft={consolationDraft}
+            teamNames={teamNames}
+            onChanged={() => router.refresh()}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function BracketSection({ label, games, draft, teamNames, onChanged }) {
+  const bySide = { winners: [], losers: [], final: [] };
+  for (const g of games) bySide[g.bracket_side]?.push(g);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-bold text-afa-navy">{label}</h2>
+        <p className={"text-xs font-bold " + (draft ? "text-afa-navy" : "text-afa-ink/60")}>
+          {draft ? "DRAFT — every slot editable" : "LOCKED"}
+        </p>
+      </div>
+
       {["winners", "losers", "final"].map((side) =>
         bySide[side].length === 0 ? null : (
           <div key={side} className="space-y-3">
-            <h2 className="font-bold text-afa-navy">{SIDE_LABELS[side]}</h2>
+            <h3 className="text-sm font-bold text-afa-navy">{SIDE_LABELS[side]}</h3>
             <div>
               {Object.entries(groupByRound(bySide[side])).map(([round, roundGames], i) => (
                 <div key={round}>
@@ -117,7 +164,7 @@ export default function BracketManager({ divisionId, bracket, games, teamNames, 
                   </p>
                   <div className="space-y-2">
                     {roundGames.map((g) => (
-                      <GameRow key={g.id} game={g} teamNames={teamNames} draft={draft} onChanged={() => router.refresh()} />
+                      <GameRow key={g.id} game={g} teamNames={teamNames} draft={draft} onChanged={onChanged} />
                     ))}
                   </div>
                 </div>
@@ -136,6 +183,11 @@ function groupByRound(list) {
     (out[g.round] ??= []).push(g);
   }
   return out;
+}
+
+function slotLabel(name, isOpenEntry) {
+  if (name) return name;
+  return isOpenEntry ? "awaiting eliminated team" : "TBD";
 }
 
 function GameRow({ game, teamNames, draft, onChanged }) {
@@ -215,7 +267,7 @@ function GameRow({ game, teamNames, draft, onChanged }) {
   const label =
     game.status === "cancelled"
       ? "Not needed"
-      : `${game.team1_name || "TBD"} vs ${game.team2_name || "TBD"}`;
+      : `${slotLabel(game.team1_name, game.team1_is_open_entry)} vs ${slotLabel(game.team2_name, game.team2_is_open_entry)}`;
 
   return (
     <div className="border border-afa-navy/10 rounded p-3 space-y-2">

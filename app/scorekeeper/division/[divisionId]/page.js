@@ -19,11 +19,7 @@ async function loadDivisionData(divisionId) {
     .maybeSingle();
   if (error || !division) return null;
 
-  const { data: bracket } = await supabase
-    .from("brackets")
-    .select("*")
-    .eq("division_id", divisionId)
-    .maybeSingle();
+  const { data: brackets } = await supabase.from("brackets").select("*").eq("division_id", divisionId);
 
   const { data: games } = await supabase
     .from("games")
@@ -42,15 +38,21 @@ async function loadDivisionData(divisionId) {
     .eq("division_id", divisionId)
     .order("submitted_at", { ascending: true });
 
-  const draft = bracket ? await isBracketDraft(divisionId) : true;
-  const completion = bracket ? await getDivisionCompletion(divisionId) : { complete: false };
+  const mainBracket = brackets?.find((b) => b.bracket_group === "main") ?? null;
+  const consolationBracket = brackets?.find((b) => b.bracket_group === "consolation") ?? null;
+
+  const mainDraft = mainBracket ? await isBracketDraft(divisionId, "main") : true;
+  const consolationDraft = consolationBracket ? await isBracketDraft(divisionId, "consolation") : true;
+  const completion = mainBracket ? await getDivisionCompletion(divisionId) : { complete: false };
 
   return {
     division,
-    bracket,
+    mainBracket,
+    consolationBracket,
     games: games ?? [],
     teamNames: (registrations ?? []).map((r) => r.team_name),
-    draft,
+    mainDraft,
+    consolationDraft,
     completion,
   };
 }
@@ -77,10 +79,12 @@ export default async function ScorekeeperDivisionPage({ params }) {
       </div>
       <BracketManager
         divisionId={divisionId}
-        bracket={data.bracket}
+        mainBracket={data.mainBracket}
+        consolationBracket={data.consolationBracket}
         games={data.games}
         teamNames={data.teamNames}
-        draft={data.draft}
+        mainDraft={data.mainDraft}
+        consolationDraft={data.consolationDraft}
         completion={data.completion}
       />
     </div>

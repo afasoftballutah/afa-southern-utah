@@ -205,20 +205,75 @@ regeneration are refused (409) — only scores and field/time reassignment
 flow through from then on. Byes finalizing at generation time do **not**
 count as locking the bracket; only a human-entered result does.
 
-### Interpretation call — the "dropdown (consolation)" format variant
+### Double Elimination + Consolation (JD's ruling, 2026-07-21)
 
-The spec calls for a format dropdown offering standard double elimination
-plus "the dropdown (consolation) variant." The consolation bracket's exact
-shape (how many placement games, how it's seeded, whether it's single or
-double elimination itself) isn't specified precisely enough to build
-correctly without guessing at league-specific convention. The format
-dropdown exists in the bracket-builder UI as instructed, but selecting the
-consolation option currently falls back to standard double elimination with
-an inline note explaining that. **Question for JD/Joey:** what should the
-consolation bracket actually look like for early losers? Once answered,
-`lib/bracket/structure.js` is the only file that needs a second code path —
-the DB schema, propagation, and UI already treat `format` as a stored,
-future-relevant field.
+The typical default (JD noted actual play "will vary" — this is the
+default shape, every slot stays hand-editable for anything unusual):
+
+- A team enters the consolation bracket the instant it's **eliminated**
+  from the championship (main) bracket — its 2nd loss there.
+- It **starts fresh at 0 losses** in the consolation bracket.
+- The consolation bracket is itself a **full double elimination**, same
+  shape as the championship bracket, playing down to its own consolation
+  champion. It has no further consequence — a team eliminated from the
+  consolation bracket doesn't feed a third bracket.
+
+**Why this needed more than a second topology in `structure.js`** (the
+original KI-025 note undersold the scope, worth being upfront about):
+the consolation bracket's *entrants* aren't known at generation time the
+way the main bracket's are from registrations — who's in it, and in what
+order, depends on real eliminations happening live as the tournament is
+actually played. So generation only creates the consolation bracket's
+*shape*, sized for the maximum possible entrant count (main `team_count -
+1` — everyone except the eventual champion), with every real winners-
+round-1 slot marked "open" (`team1_is_open_entry` / `team2_is_open_entry`
+on `games`, one flag per slot rather than per row, since one match can
+pair one open slot against one permanent bye — they're otherwise
+indistinguishable, a real bug the unit tests caught). `lib/bracket/
+propagate.js`'s `isEliminatingLoss()` identifies, purely from a game's
+structural position (any losers-bracket loss; the grand final's game one
+only if the winners-side team won outright; game two, whichever result),
+whether its loser is being eliminated from the bracket it's IN — used
+both to trigger a main-bracket elimination into the consolation bracket,
+and correctly NOT to trigger anything further for a consolation-bracket
+elimination. The just-eliminated team fills the next open slot in FIFO
+order (whichever game the scorekeeper happens to finalize first fills the
+earliest slot) via `assignConsolationEntrant()`, which then re-resolves
+that match exactly like any other — if the other slot was a bye, the
+new arrival auto-advances immediately, cascading onward the same way byes
+always have.
+
+A second real bug the unit tests caught along the way: the grand-final
+"if necessary" cancellation rule was only wired into the live-score
+pathway, not the bye-cascade pathway — harmless for the main bracket
+(a bye reaching all the way to its own grand final essentially never
+happens at realistic team counts) but very reachable for a small
+consolation bracket, where GF1 resolving via bye is common. Fixed by
+routing every path a game can reach 'final' through one `onGameFinalized`
+step (`propagate.js`), so the rule and the consolation-entry trigger both
+fire exactly once, regardless of pathway.
+
+**Bracket groups.** Both `games` and `brackets` carry a `bracket_group`
+column (`'main'` | `'consolation'`) — two independent brackets per
+division when this format is used, each with its own draft/lock state
+(`isBracketDraft(divisionId, bracketGroup)`), so a still-in-progress
+consolation bracket stays editable even after the championship bracket
+locks. `getDivisionCompletion()` (the champion/runner-up used for
+placements) only ever looks at `bracket_group='main'` — the consolation
+bracket's own champion isn't recorded anywhere else; it's visible in the
+scorekeeper UI's Consolation Bracket section, not fed into `placements`.
+
+**Tested the same way as the main bracket**, plus the new dynamics: 2-32
+teams, deterministic (team1 always wins) and 325 randomized trials
+(13 team counts × 25 trials, random winners each match, random play
+order), verifying every non-champion team enters the consolation bracket
+exactly once, the consolation bracket itself always resolves to a single
+champion, and the GF2/GF1 rule holds under both bye-cascade and live-score
+paths. Then re-verified end to end against the real database: generated a
+5-team consolation-format bracket, played the whole thing out via the
+actual API routes, and watched all four eliminated teams flow into the
+consolation bracket in the right order, including a bye-vs-open pairing
+and the consolation bracket's own GF2 decider.
 
 ## Scorekeeper door (stage two)
 
@@ -336,14 +391,13 @@ Vercel CLI logged into the league's account.
 
 **Built:** Home, Tournaments, Rules, Register (digitized waiver, per-person
 signed PDF, no outbound comms), the bracket builder (generate/edit/lock,
-byes, GF2 decider), the scorekeeper door (PIN auth, score entry, field/time
-reassignment, champion/runner-up + photos). All public pages served from
-the Vercel CDN with ISR (`revalidate = 30` seconds); the scorekeeper tool
-itself is always dynamic (never cached).
+byes, GF2 decider, the Double Elimination + Consolation format), the
+scorekeeper door (PIN auth, score entry, field/time reassignment,
+champion/runner-up + photos). All public pages served from the Vercel CDN
+with ISR (`revalidate = 30` seconds); the scorekeeper tool itself is
+always dynamic (never cached).
 
 **Deferred:**
-- The "dropdown (consolation)" bracket format — see the interpretation
-  call above; needs a topology answer from JD/Joey first.
 - Payments (registration form is structured so this can drop in without a
   redo).
 - Admin panel for "who gets notified of what" — the moment any outbound
