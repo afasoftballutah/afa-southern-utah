@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  getUpcomingTournament,
+  getHeroTournament,
   getLastCompletedTournamentResults,
   formatDateRange,
   formatFee,
@@ -9,39 +9,43 @@ import {
 export const revalidate = 30;
 
 export default async function Home() {
-  const [upcoming, lastResults] = await Promise.all([
-    getUpcomingTournament(),
+  const [{ tournament, confirmed }, lastResults] = await Promise.all([
+    getHeroTournament(),
     getLastCompletedTournamentResults(),
   ]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <section>
-        {upcoming ? (
-          <UpcomingCard tournament={upcoming} />
-        ) : (
-          <NoUpcomingCard />
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-xl font-black text-afa-navy mb-3">
-          Last Tournament&rsquo;s Results
-        </h2>
-        {lastResults ? (
-          <ResultsCard tournament={lastResults} />
-        ) : (
-          <p className="text-afa-ink/70">
-            No results on file yet. Once a tournament wraps up, champions and
-            runners-up show up here.
+        {!confirmed && (
+          <p className="mb-3 font-semibold text-afa-navy">
+            2026 schedule coming soon — check back.
           </p>
         )}
+        {tournament ? (
+          <PosterHero tournament={tournament} placeholder={!confirmed} />
+        ) : (
+          <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
+        )}
       </section>
 
-      <section className="text-center py-6">
+      <div className="chalk-line" />
+
+      <section>
+        <h2 className="text-xl font-bold text-afa-navy mb-3">Last Results</h2>
+        {lastResults ? (
+          <ResultsGallery tournament={lastResults} />
+        ) : (
+          <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
+        )}
+      </section>
+
+      <div className="chalk-line" />
+
+      <section className="text-center py-4">
         <Link
           href="/register"
-          className="inline-block bg-afa-red text-white font-bold text-lg px-8 py-4 rounded-lg shadow"
+          className="inline-block bg-afa-red text-white font-bold text-lg px-8 py-4 rounded-lg"
         >
           Register a Team
         </Link>
@@ -50,99 +54,83 @@ export default async function Home() {
   );
 }
 
-function UpcomingCard({ tournament }) {
+function PosterHero({ tournament, placeholder }) {
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden border border-afa-navy/10">
+    <div className="space-y-3">
       {tournament.poster_url && (
-        // Plain <img>, not next/image — keeps the free-tier story simple:
-        // no dependency on Vercel's image-transform quota, ever.
-        <img
-          src={tournament.poster_url}
-          alt={`${tournament.name} poster`}
-          className="w-full h-auto"
-          loading="eager"
-        />
+        <div className="poster-frame max-w-md mx-auto">
+          <img src={tournament.poster_url} alt={`${tournament.name} poster`} loading="eager" />
+        </div>
       )}
-      <div className="p-4 space-y-2">
-        <h1 className="text-2xl font-black text-afa-navy">
-          {tournament.name}
-        </h1>
-        {tournament.is_placeholder && (
-          <p className="inline-block bg-yellow-100 text-yellow-900 text-xs font-bold px-2 py-1 rounded">
-            PLACEHOLDER DATA — 2026 schedule pending from the director
+      <div className="text-center">
+        <h1 className="font-display text-3xl text-afa-navy">{tournament.name}</h1>
+        {placeholder && (
+          <p className="text-sm text-afa-ink/60 mt-1">
+            Shown for reference — last year&rsquo;s poster, not a live date.
           </p>
         )}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-          <dt className="font-semibold">Dates</dt>
-          <dd>{formatDateRange(tournament.start_date, tournament.end_date)}</dd>
-          <dt className="font-semibold">Venue</dt>
-          <dd>{tournament.venue_name}</dd>
-          {tournament.entry_fee_cents != null && (
-            <>
-              <dt className="font-semibold">Entry Fee</dt>
-              <dd>{formatFee(tournament.entry_fee_cents)}</dd>
-            </>
-          )}
-          {tournament.game_guarantee && (
-            <>
-              <dt className="font-semibold">Game Guarantee</dt>
-              <dd>{tournament.game_guarantee}</dd>
-            </>
-          )}
-          {tournament.divisions_offered && (
-            <>
-              <dt className="font-semibold">Divisions</dt>
-              <dd>{tournament.divisions_offered}</dd>
-            </>
-          )}
-        </dl>
       </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm max-w-md mx-auto">
+        <dt className="font-semibold">Dates</dt>
+        <dd>{formatDateRange(tournament.start_date, tournament.end_date)}</dd>
+        <dt className="font-semibold">Venue</dt>
+        <dd>{tournament.venue_name}</dd>
+        {tournament.entry_fee_cents != null && (
+          <>
+            <dt className="font-semibold">Entry Fee</dt>
+            <dd>{formatFee(tournament.entry_fee_cents)}</dd>
+          </>
+        )}
+        {tournament.game_guarantee && (
+          <>
+            <dt className="font-semibold">Game Guarantee</dt>
+            <dd>{tournament.game_guarantee}</dd>
+          </>
+        )}
+        {tournament.divisions_offered && (
+          <>
+            <dt className="font-semibold">Divisions</dt>
+            <dd>{tournament.divisions_offered}</dd>
+          </>
+        )}
+      </dl>
     </div>
   );
 }
 
-function NoUpcomingCard() {
-  return (
-    <div className="bg-white rounded-lg shadow border border-afa-navy/10 p-6 text-center space-y-3">
-      <h1 className="text-xl font-black text-afa-navy">
-        2026 schedule coming soon
-      </h1>
-      <p className="text-afa-ink/80">
-        The next tournament isn&rsquo;t posted yet. Check{" "}
-        <Link href="/tournaments" className="underline font-semibold">
-          Tournaments
-        </Link>{" "}
-        for last year&rsquo;s lineup as a reference for what&rsquo;s coming.
-      </p>
-    </div>
-  );
-}
-
-function ResultsCard({ tournament }) {
+function ResultsGallery({ tournament }) {
   const divisionsWithPlacements = (tournament.divisions ?? []).filter(
     (d) => (d.placements ?? []).length > 0
   );
   return (
-    <div className="bg-white rounded-lg shadow border border-afa-navy/10 p-4 space-y-4">
-      <h3 className="font-bold text-afa-navy">{tournament.name}</h3>
+    <div className="space-y-4">
+      <p className="font-semibold text-afa-navy">{tournament.name}</p>
       {divisionsWithPlacements.length === 0 ? (
-        <p className="text-afa-ink/70 text-sm">
-          Results haven&rsquo;t been posted for this event yet.
-        </p>
+        <p className="text-afa-ink/70 text-sm">Nothing on the calendar yet — check back.</p>
       ) : (
         divisionsWithPlacements.map((division) => (
-          <div key={division.id} className="border-t border-afa-navy/10 pt-3">
-            <p className="font-semibold text-sm text-afa-navy">
-              {division.name}
-            </p>
-            <ul className="text-sm mt-1 space-y-1">
-              {division.placements.map((p) => (
-                <li key={p.id}>
-                  {p.place === "champion" ? "Champion" : "Runner-Up"}:{" "}
-                  <span className="font-semibold">{p.team_name}</span>
-                </li>
-              ))}
-            </ul>
+          <div key={division.id} className="chalk-panel">
+            <p className="font-semibold text-sm text-afa-navy mb-2">{division.name}</p>
+            <div className="grid grid-cols-2 gap-4">
+              {["champion", "runner_up"].map((place) => {
+                const p = division.placements.find((x) => x.place === place);
+                if (!p) return null;
+                return (
+                  <figure key={place} className="text-center">
+                    {p.photo_url && (
+                      <img
+                        src={p.photo_url}
+                        alt={`${p.team_name}`}
+                        className="w-full h-auto rounded"
+                      />
+                    )}
+                    <figcaption className="text-sm mt-1">
+                      {place === "champion" ? "Champion" : "Runner-Up"} — {p.team_name}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
           </div>
         ))
       )}

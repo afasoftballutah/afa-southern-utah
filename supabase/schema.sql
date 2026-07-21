@@ -79,21 +79,46 @@ create table if not exists public.registrations (
   manager_city text,
   manager_state text,
   manager_zip text,
-  manager_signature_png text not null, -- base64 data URL captured on-screen at submission
-  players jsonb not null default '[]', -- [{name, birth_date, address}]
-  coaches jsonb not null default '[]', -- [{name, email, phone}]
+  manager_signature_png text not null, -- base64 data URL captured on-screen at submission — the manager is present and signs immediately, same as the paper form's Manager block
   release_text_version text not null default 'waiver-2026-v1',
-  pdf_storage_path text, -- path in the private 'waivers' bucket, set after PDF generation
-  submitted_at timestamptz not null default now(),
-  email_status text not null default 'pending', -- pending | sent | failed
-  email_error text
+  pdf_storage_path text, -- path in the private 'waivers' bucket, regenerated as each roster member signs
+  submitted_at timestamptz not null default now()
 );
-comment on table public.registrations is 'PRIVATE. PII + signatures. No Data API exposure, no RLS policies — service_role only.';
+comment on table public.registrations is 'PRIVATE. PII + signatures. No Data API exposure, no RLS policies — service_role only. No outbound email exists anywhere in this codebase (JD ruling 2026-07-21) — do not add a send here without a new explicit ruling.';
+
+-- ============================================================
+-- roster_members — PRIVATE. One row per player/coach on a registration.
+-- Each gets its own signing_token (a random UUID — unguessable, not
+-- enumerable, never listed publicly) that serves as a personal remote
+-- signing link: /register/sign/{signing_token}. Knowledge of the token
+-- is the credential, the same trust model DocuSign-style e-sign links use.
+-- The manager shares the link herself (text, in person, whatever) — this
+-- app never sends it anywhere. Locked exactly like `registrations`: RLS
+-- on, zero policies, no anon/authenticated grant. The one API route that
+-- reads by token (app/api/register/sign/route.js) uses service_role and
+-- looks up by exact token match only — there is no list/enumerate path.
+-- ============================================================
+create table if not exists public.roster_members (
+  id uuid primary key default gen_random_uuid(),
+  registration_id uuid not null references public.registrations(id) on delete cascade,
+  role text not null check (role in ('player', 'coach')),
+  name text not null,
+  birth_date date, -- players only
+  address text, -- players only
+  email text, -- coaches only
+  phone text, -- coaches only
+  signing_token uuid not null default gen_random_uuid() unique,
+  signature_png text, -- null until they sign
+  signed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+comment on table public.roster_members is 'PRIVATE. PII + signatures, one row per player/coach. No Data API exposure, no RLS policies — service_role only. signing_token gates the personal remote-sign link.';
 
 alter table public.tournaments enable row level security;
 alter table public.divisions enable row level security;
 alter table public.placements enable row level security;
 alter table public.registrations enable row level security;
+alter table public.roster_members enable row level security;
 
 -- Public read policies — anon (and authenticated) may SELECT only. No INSERT/UPDATE/DELETE policy exists
 -- for anyone but service_role, which bypasses RLS by design.
@@ -106,11 +131,14 @@ create policy "public read divisions" on public.divisions for select using (true
 drop policy if exists "public read placements" on public.placements;
 create policy "public read placements" on public.placements for select using (true);
 
--- registrations: deliberately zero policies. RLS is enabled with no grants, so anon/authenticated
--- get nothing at all. Only service_role (server-side only, never shipped to the browser) can touch it.
+-- registrations, roster_members: deliberately zero policies. RLS is enabled with no grants, so
+-- anon/authenticated get nothing at all. Only service_role (server-side only, never shipped to
+-- the browser) can touch either table.
 
 -- Helpful indexes
 create index if not exists idx_divisions_tournament on public.divisions(tournament_id);
 create index if not exists idx_placements_division on public.placements(division_id);
 create index if not exists idx_registrations_tournament on public.registrations(tournament_id);
 create index if not exists idx_registrations_division on public.registrations(division_id);
+create index if not exists idx_roster_members_registration on public.roster_members(registration_id);
+create index if not exists idx_roster_members_signing_token on public.roster_members(signing_token);

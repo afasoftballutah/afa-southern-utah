@@ -22,18 +22,18 @@ export default async function RegisterPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-black text-afa-navy">Register a Team</h1>
+      <h1 className="text-2xl font-bold text-afa-navy">Register a Team</h1>
       {registerable.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-afa-navy/10 p-6 text-center space-y-2">
+        <div className="chalk-panel text-center space-y-2 py-6">
           <p className="font-semibold text-afa-navy">
-            Registration opens once the next tournament is posted.
+            Nothing on the calendar yet — check back.
           </p>
           <p className="text-sm text-afa-ink/70">
-            Check back soon, or contact a tournament director from the{" "}
-            <Link href="/tournaments" className="underline">
+            Registration opens once the next tournament is posted. See{" "}
+            <Link href="/tournaments" className="underline text-afa-navy">
               Tournaments
             </Link>{" "}
-            page.
+            for last year&rsquo;s lineup as a reference.
           </p>
         </div>
       ) : (

@@ -13,7 +13,8 @@ export default function RegistrationForm({ tournaments }) {
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
-  const [emailStatus, setEmailStatus] = useState(null);
+  const [signers, setSigners] = useState([]);
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
   const [tournamentId, setTournamentId] = useState(tournaments[0]?.id ?? "");
   const tournament = useMemo(
@@ -92,7 +93,7 @@ export default function RegistrationForm({ tournaments }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Registration failed");
-      setEmailStatus(json.emailStatus ?? "unknown");
+      setSigners(json.signers ?? []);
       setSubmitState("done");
     } catch (err) {
       setSubmitState("error");
@@ -100,26 +101,45 @@ export default function RegistrationForm({ tournaments }) {
     }
   }
 
+  function copyLink(link, i) {
+    navigator.clipboard?.writeText(link);
+    setCopiedIndex(i);
+    setTimeout(() => setCopiedIndex((cur) => (cur === i ? null : cur)), 1500);
+  }
+
   if (submitState === "done") {
     return (
-      <div className="bg-white rounded-lg shadow border border-afa-navy/10 p-6 text-center space-y-3">
-        <h2 className="text-xl font-black text-afa-navy">
-          Registration received
-        </h2>
+      <div className="chalk-panel p-6 space-y-4">
+        <h2 className="text-xl font-black text-afa-navy">Registration saved</h2>
         <p className="text-afa-ink/80">
-          {teamName} is registered for {tournament?.name}.
+          {teamName} is on the books for {tournament?.name}.
         </p>
-        {emailStatus === "sent" ? (
-          <p className="text-sm text-afa-ink/70">
-            A copy of the signed form was emailed to the tournament director.
+        <div className="chalk-line" />
+        <div>
+          <p className="font-semibold text-sm mb-2">
+            Send each of these to the person by name — nothing goes out
+            automatically. Once they open their link and sign, they&rsquo;re done.
           </p>
-        ) : (
-          <p className="text-sm text-afa-ink/70">
-            Your registration is saved. We couldn&rsquo;t confirm the email copy
-            sent to the director — the league will follow up if anything is
-            missing.
-          </p>
-        )}
+          <ul className="space-y-2">
+            {signers.map((s, i) => (
+              <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                <span>
+                  {s.name}{" "}
+                  <span className="text-afa-ink/50">
+                    ({s.role === "coach" ? "coach" : "player"})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyLink(s.signLink, i)}
+                  className="text-afa-navy underline font-semibold shrink-0"
+                >
+                  {copiedIndex === i ? "Copied" : "Copy link"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }
@@ -144,7 +164,7 @@ export default function RegistrationForm({ tournaments }) {
         ))}
       </ol>
 
-      <div className="bg-white rounded-lg shadow border border-afa-navy/10 p-4 space-y-4">
+      <div className="form-panel p-4 space-y-4">
         {step === 0 && (
           <div className="space-y-4">
             <Field label="Tournament">
@@ -275,7 +295,9 @@ export default function RegistrationForm({ tournaments }) {
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">
-              Add each player on the roster. At least one is required.
+              Add each player on the roster. At least one is required. Each
+              player signs their own copy later, on their own link — you&rsquo;re
+              just listing them here.
             </p>
             {players.map((p, i) => (
               <div key={i} className="border border-afa-navy/10 rounded p-3 space-y-2">
@@ -284,7 +306,7 @@ export default function RegistrationForm({ tournaments }) {
                   {players.length > MIN_PLAYERS && (
                     <button
                       type="button"
-                      className="text-xs text-afa-red font-semibold"
+                      className="text-xs text-afa-navy underline font-semibold"
                       onClick={() =>
                         setPlayers((prev) => prev.filter((_, idx) => idx !== i))
                       }
@@ -322,7 +344,7 @@ export default function RegistrationForm({ tournaments }) {
             {players.length < MAX_PLAYERS && (
               <button
                 type="button"
-                className="w-full border-2 border-dashed border-afa-navy/30 rounded py-3 text-afa-navy font-semibold"
+                className="w-full py-3 text-afa-navy underline font-semibold"
                 onClick={() => setPlayers((prev) => [...prev, emptyPlayer()])}
               >
                 + Add Player
@@ -340,7 +362,7 @@ export default function RegistrationForm({ tournaments }) {
                   <p className="font-semibold text-sm">Coach {i + 1}</p>
                   <button
                     type="button"
-                    className="text-xs text-afa-red font-semibold"
+                    className="text-xs text-afa-navy underline font-semibold"
                     onClick={() => setCoaches((prev) => prev.filter((_, idx) => idx !== i))}
                   >
                     Remove
@@ -374,7 +396,7 @@ export default function RegistrationForm({ tournaments }) {
             {coaches.length < MAX_COACHES && (
               <button
                 type="button"
-                className="w-full border-2 border-dashed border-afa-navy/30 rounded py-3 text-afa-navy font-semibold"
+                className="w-full py-3 text-afa-navy underline font-semibold"
                 onClick={() => setCoaches((prev) => [...prev, emptyCoach()])}
               >
                 + Add Coach
@@ -396,21 +418,19 @@ export default function RegistrationForm({ tournaments }) {
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               I have read this release and waiver of liability and I agree to
-              it on behalf of the team named above.
+              it as the team&rsquo;s manager.
             </label>
             <p className="text-xs text-afa-ink/60">
-              By submitting, the manager&rsquo;s signature below stands as the
-              team&rsquo;s authorized signature for this roster and release,
-              covering every player and coach listed.
+              This is your own signature as manager. Every player and coach
+              signs their own copy separately, on their own link, after you
+              submit.
             </p>
             <div>
-              <p className="font-semibold text-sm mb-1">
-                Manager&rsquo;s Signature
-              </p>
+              <p className="font-semibold text-sm mb-1">Manager&rsquo;s Signature</p>
               <SignaturePad onChange={setSignature} />
             </div>
             {submitState === "error" && (
-              <p className="text-afa-red text-sm font-semibold">{submitError}</p>
+              <p className="text-afa-ink text-sm font-bold underline">{submitError}</p>
             )}
             <button
               type="button"
@@ -429,7 +449,7 @@ export default function RegistrationForm({ tournaments }) {
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
-          className="px-4 py-2 font-semibold text-afa-navy disabled:opacity-30"
+          className="px-4 py-2 font-semibold text-afa-navy underline disabled:opacity-30"
         >
           Back
         </button>
@@ -438,7 +458,7 @@ export default function RegistrationForm({ tournaments }) {
             type="button"
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
             disabled={!canProceed()}
-            className="px-4 py-2 bg-afa-navy text-white font-semibold rounded disabled:opacity-30"
+            className="px-4 py-2 text-afa-navy underline font-semibold disabled:opacity-30"
           >
             Next
           </button>

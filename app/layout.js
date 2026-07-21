@@ -1,5 +1,15 @@
+import { Anton } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+
+// ONE display face, used only for tournament names (Lacy, 2026-07-21) —
+// everything else in the site stays plain. Self-hosted at build time by
+// next/font — no runtime dependency on Google's CDN.
+const displayFace = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display-face",
+});
 
 export const metadata = {
   title: "AFA Southern Utah Slow-Pitch",
@@ -15,10 +25,7 @@ export const viewport = {
 
 function NavLink({ href, children }) {
   return (
-    <Link
-      href={href}
-      className="px-3 py-2 text-sm font-semibold text-white hover:text-afa-cream"
-    >
+    <Link href={href} className="px-3 py-2 text-sm font-semibold text-white hover:text-white/70">
       {children}
     </Link>
   );
@@ -26,38 +33,42 @@ function NavLink({ href, children }) {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`h-full ${displayFace.variable}`}>
       <body className="min-h-full flex flex-col bg-afa-cream text-afa-ink antialiased">
-        <header className="bg-afa-navy border-b-4 border-afa-red">
-          <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
-            <Link href="/" className="text-white font-black text-lg tracking-tight">
-              AFA <span className="text-afa-red">Southern Utah</span>
+        {/* Masthead — navy ground, eagle at left, name in white. Thin red
+            bar underneath is the one place red is decoration, not action. */}
+        <header className="bg-afa-navy border-b-2 border-afa-red">
+          <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3 gap-3">
+            <Link href="/" className="flex items-center gap-3 min-w-0">
+              <img src="/afa-logo.png" alt="" width={36} height={36} className="shrink-0" />
+              <span className="text-white font-black text-lg tracking-tight truncate">
+                AFA Southern Utah
+              </span>
             </Link>
-            <nav className="flex flex-wrap">
+            <nav className="flex items-center flex-wrap">
               <NavLink href="/tournaments">Tournaments</NavLink>
               <NavLink href="/rules">Rules</NavLink>
-              <NavLink href="/register">Register</NavLink>
+              <Link
+                href="/register"
+                className="ml-2 px-3 py-2 text-sm font-bold text-white bg-afa-red rounded"
+              >
+                Register
+              </Link>
             </nav>
           </div>
         </header>
 
-        <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">
-          {children}
-        </main>
+        <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">{children}</main>
 
         <footer className="bg-afa-navy text-white text-sm">
           <div className="max-w-4xl mx-auto px-4 py-6 space-y-2">
-            <p>
-              American Fastpitch Association &mdash; Southern Utah Slow Pitch
-              Division.
+            <p>American Fastpitch Association &mdash; Southern Utah Slow Pitch Division.</p>
+            <p className="text-white/80">
+              We collect names and contact info to run the league. Nothing is sold.
             </p>
             <p className="text-white/80">
-              We collect names and contact info to run the league and
-              register teams for tournaments. Nothing is sold.
-            </p>
-            <p className="text-white/80">
-              Registering a team requires reading and signing the official
-              AFA liability release. See{" "}
+              Registering a team means reading and signing the official AFA
+              release. See{" "}
               <Link href="/register" className="underline">
                 Register
               </Link>{" "}

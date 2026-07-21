@@ -13,6 +13,7 @@
   --color-afa-cream: var(--afa-cream);
   --color-afa-ink: var(--afa-ink);
   --font-sans: Arial, Helvetica, sans-serif;
+  --font-display: var(--font-display-face), Arial, Helvetica, sans-serif;
 }
 
 html {
@@ -35,4 +36,82 @@ textarea {
 
 button {
   min-height: 44px;
+}
+
+/* ============================================================
+ * Identity system (Lacy, 2026-07-21) — one display face for
+ * tournament names, chalk-line dividers instead of card borders,
+ * red reserved for the Register/Sign action only.
+ * ============================================================ */
+
+/* Tournament names only. Heavy condensed caps, sports-program style.
+   Everything else in the site stays plain — the whole type budget. */
+.font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+/* Section dividers — a slightly imperfect white-on-tan rule, like a
+   baseline dragged in dirt. Replaces generic card borders. */
+.chalk-line {
+  height: 3px;
+  border: none;
+  margin: 1.25rem 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.95) 0px,
+    rgba(255, 255, 255, 0.95) 7px,
+    rgba(255, 255, 255, 0.55) 7px,
+    rgba(255, 255, 255, 0.55) 10px,
+    rgba(255, 255, 255, 0.8) 10px,
+    rgba(255, 255, 255, 0.8) 15px,
+    transparent 15px,
+    transparent 19px
+  );
+  opacity: 0.9;
+  filter: blur(0.3px);
+}
+
+/* Read-only content blocks (results, release text, confirmations) sit
+   between chalk lines instead of inside a bordered card. */
+.chalk-panel {
+  border-top: 3px solid transparent;
+  border-image: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.95) 0px,
+      rgba(255, 255, 255, 0.95) 7px,
+      rgba(255, 255, 255, 0.55) 7px,
+      rgba(255, 255, 255, 0.55) 10px,
+      rgba(255, 255, 255, 0.8) 10px,
+      rgba(255, 255, 255, 0.8) 15px,
+      transparent 15px,
+      transparent 19px
+    )
+    1;
+  padding-top: 1.25rem;
+}
+
+/* Functional input surfaces (the registration wizard) keep a plain
+   contained look — this is a tool, not display content, so it's exempt
+   from the chalk-line-only rule. */
+.form-panel {
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(30, 58, 110, 0.12);
+}
+
+/* The season poster, presented like a flyer pinned to a board: thin
+   border, slight shadow, never cropped, never screened behind text. */
+.poster-frame {
+  border: 1px solid rgba(30, 58, 110, 0.25);
+  box-shadow: 0 6px 16px rgba(22, 35, 61, 0.18);
+  background: white;
+  padding: 0.5rem;
+}
+.poster-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }

@@ -9,41 +9,37 @@ export default async function TournamentsPage() {
   const tournaments = await getSeasonList();
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-black text-afa-navy">Tournaments</h1>
+    <div className="space-y-2">
+      <h1 className="text-2xl font-bold text-afa-navy">Tournaments</h1>
       {tournaments.length === 0 ? (
-        <p className="text-afa-ink/70">No tournaments on file yet.</p>
+        <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
       ) : (
-        <ul className="space-y-3">
-          {tournaments.map((t) => (
-            <li key={t.id}>
-              <Link
-                href={`/tournaments/${t.slug}`}
-                className="block bg-white rounded-lg shadow border border-afa-navy/10 p-4 hover:border-afa-red"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="font-bold text-afa-navy">{t.name}</h2>
+        <div>
+          {tournaments.map((t, i) => (
+            <div key={t.id}>
+              {i > 0 && <div className="chalk-line" />}
+              <Link href={`/tournaments/${t.slug}`} className="block py-2 group">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-xl text-afa-navy group-hover:underline">
+                    {t.name}
+                  </h2>
                   {t.is_placeholder && (
-                    <span className="text-xs font-bold bg-yellow-100 text-yellow-900 px-2 py-1 rounded">
-                      PLACEHOLDER
+                    <span className="text-xs font-bold text-afa-ink/50 shrink-0">
+                      placeholder
                     </span>
                   )}
                 </div>
                 <p className="text-sm text-afa-ink/80 mt-1">
-                  {formatDateRange(t.start_date, t.end_date)} &middot;{" "}
-                  {t.venue_name}
-                  {t.entry_fee_cents != null &&
-                    ` · ${formatFee(t.entry_fee_cents)}`}
+                  {formatDateRange(t.start_date, t.end_date)} &middot; {t.venue_name}
+                  {t.entry_fee_cents != null && ` · ${formatFee(t.entry_fee_cents)}`}
                 </p>
                 {t.divisions_offered && (
-                  <p className="text-sm text-afa-ink/60 mt-1">
-                    {t.divisions_offered}
-                  </p>
+                  <p className="text-sm text-afa-ink/60 mt-1">{t.divisions_offered}</p>
                 )}
               </Link>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

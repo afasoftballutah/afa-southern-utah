@@ -1,9 +1,19 @@
 import { getServiceClient } from "@/lib/supabase";
-import { buildWaiverPdf } from "@/lib/pdf/build-waiver-pdf";
-import { sendRegistrationEmail } from "@/lib/email/send-registration-email";
+import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
 
-export const runtime = "nodejs"; // pdf-lib + nodemailer need the Node runtime, not Edge
+// NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
+// saves the registration, creates one roster_members row per player/coach
+// with its own signing_token, and generates the PDF snapshot. It never
+// emails, texts, or otherwise sends anything to anyone. There is no
+// nodemailer/email dependency in this project at all — it was removed, not
+// just left unconfigured, so there is no code path capable of sending mail.
+// The manager is shown each roster member's personal signing link on the
+// confirmation screen and shares them herself, however she likes. "Who
+// should be notified of what" is a future admin-panel feature — not built
+// here, and nothing sends in the meantime.
+
+export const runtime = "nodejs"; // pdf-lib needs the Node runtime, not Edge
 
 function bad(message, status = 400) {
   return Response.json({ error: message }, { status });
@@ -26,7 +36,7 @@ export async function POST(request) {
     manager,
     players,
     coaches,
-    signaturePng,
+    signaturePng, // manager's signature — captured live, she's present submitting
   } = body ?? {};
 
   if (!tournamentId || !divisionId) return bad("Missing tournament or division");
@@ -37,17 +47,14 @@ export async function POST(request) {
 
   const supabase = getServiceClient();
 
-  // Look up division/tournament names for the PDF + email (server-side, trusted read)
   const { data: division, error: divError } = await supabase
     .from("divisions")
-    .select("id, name, tournament_id, tournaments(name)")
+    .select("id, tournament_id")
     .eq("id", divisionId)
     .maybeSingle();
   if (divError || !division || division.tournament_id !== tournamentId) {
     return bad("Tournament/division not found", 404);
   }
-
-  const submittedAt = new Date().toISOString();
 
   const { data: inserted, error: insertError } = await supabase
     .from("registrations")
@@ -66,11 +73,7 @@ export async function POST(request) {
       manager_state: manager.state ?? null,
       manager_zip: manager.zip ?? null,
       manager_signature_png: signaturePng,
-      players,
-      coaches: coaches ?? [],
       release_text_version: RELEASE_TEXT_VERSION,
-      submitted_at: submittedAt,
-      email_status: "pending",
     })
     .select("id")
     .single();
@@ -82,59 +85,51 @@ export async function POST(request) {
 
   const registrationId = inserted.id;
 
-  // Build the signed PDF and store it privately. Failure here does not
-  // undo the DB row — the registration is already safely on file even if
-  // the PDF or email step has a problem.
-  let pdfBytes = null;
+  const rosterRows = [
+    ...players
+      .filter((p) => p.name?.trim())
+      .map((p) => ({
+        registration_id: registrationId,
+        role: "player",
+        name: p.name.trim(),
+        birth_date: p.birthDate || null,
+        address: p.address || null,
+      })),
+    ...(coaches ?? [])
+      .filter((c) => c.name?.trim())
+      .map((c) => ({
+        registration_id: registrationId,
+        role: "coach",
+        name: c.name.trim(),
+        email: c.email || null,
+        phone: c.phone || null,
+      })),
+  ];
+
+  const { data: insertedRoster, error: rosterError } = await supabase
+    .from("roster_members")
+    .insert(rosterRows)
+    .select("id, role, name, signing_token");
+
+  if (rosterError) {
+    console.error("roster_members insert failed", rosterError);
+    return bad("Could not save the roster — please try again", 500);
+  }
+
   try {
-    pdfBytes = await buildWaiverPdf({
-      teamName: teamName.trim(),
-      class: className,
-      divisionName: division.name,
-      afaMembershipNumber,
-      manager,
-      players,
-      coaches: coaches ?? [],
-      signaturePng,
-      submittedAt,
-    });
-
-    const path = `${registrationId}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("waivers")
-      .upload(path, Buffer.from(pdfBytes), { contentType: "application/pdf", upsert: true });
-
-    if (uploadError) {
-      console.error("waiver upload failed", uploadError);
-    } else {
-      await supabase.from("registrations").update({ pdf_storage_path: path }).eq("id", registrationId);
-    }
+    await regenerateAndStoreWaiverPdf(registrationId);
   } catch (err) {
-    console.error("PDF generation failed", err);
+    // The registration and roster are already saved even if the PDF snapshot
+    // fails — it regenerates on the next signature anyway. Log and move on.
+    console.error("initial PDF snapshot failed", err);
   }
 
-  let emailStatus = "failed";
-  if (pdfBytes) {
-    const result = await sendRegistrationEmail({
-      pdfBytes,
-      registration: {
-        teamName: teamName.trim(),
-        tournamentName: division.tournaments?.name ?? "",
-        divisionName: division.name,
-        manager,
-      },
-    });
-    emailStatus = result.ok ? "sent" : "failed";
-    await supabase
-      .from("registrations")
-      .update({ email_status: emailStatus, email_error: result.ok ? null : result.error })
-      .eq("id", registrationId);
-  } else {
-    await supabase
-      .from("registrations")
-      .update({ email_status: "failed", email_error: "PDF generation failed" })
-      .eq("id", registrationId);
-  }
+  const origin = new URL(request.url).origin;
+  const signers = insertedRoster.map((r) => ({
+    name: r.name,
+    role: r.role,
+    signLink: `${origin}/register/sign/${r.signing_token}`,
+  }));
 
-  return Response.json({ ok: true, registrationId, emailStatus });
+  return Response.json({ ok: true, registrationId, signers });
 }
