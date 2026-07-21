@@ -106,7 +106,7 @@ export default function BracketTree({ division }) {
         <TreeCanvas games={mainGames} scale={1} isMobile={isMobile} showRoundStrip={isMobile} fit={!isMobile} />
         {consolationGames.length > 0 && (
           <div className="mt-10">
-            <p className="text-xs font-semibold text-afa-navy/60 mb-2">Consolation Bracket</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-afa-navy/45 mb-2">Consolation</p>
             <TreeCanvas games={consolationGames} scale={0.82} isMobile={isMobile} showRoundStrip={false} fit={!isMobile} />
           </div>
         )}
