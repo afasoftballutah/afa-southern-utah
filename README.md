@@ -231,6 +231,21 @@ running the tournament, not per-user accounts).
   hash in `settings`, then sets an HMAC-signed cookie (`lib/scorekeeper-
   auth.js`) — stateless, no session table, 12-hour expiry. Every
   scorekeeper write route calls `requireScorekeeperSession()` first.
+- **Brute-force protection** (`lib/scorekeeper-throttle.js`, Catmull's
+  finding 2026-07-21): 15 rapid wrong-PIN guesses used to all return 401
+  with no backoff — a short PIN is brute-forceable in minutes otherwise.
+  Now backed by a Postgres table + a `for update`-locking function
+  (`check_and_record_scorekeeper_attempt` in `schema.sql`) so the counters
+  are correct even under Vercel's auto-scaled parallel invocations — plain
+  in-memory counters would reset per instance and stop nothing. Two scopes:
+  per-IP (5 fails / 15 min triggers escalating lockout: 1, 5, 15, 60, 240
+  minutes) and a `global` scope with the same schedule, which catches a
+  distributed attack spread across many IPs — there's one shared PIN, not
+  per-user accounts, so an account-wide backstop is the correct second
+  layer. The PIN itself stays short and simple (directors are
+  non-technical, per spec) — the throttle is the actual defense, not PIN
+  length. `/api/scorekeeper/change-pin` gets the same protection (same
+  bcrypt-compare attack surface).
 - **Changing the PIN**: once signed in, `POST /api/scorekeeper/change-pin`
   with the current PIN + a new 4-8 digit PIN. No UI button for this yet
   (API only) — add one if Joey wants to rotate it without asking JD/Marcus.

@@ -1,7 +1,15 @@
 import { cookies } from "next/headers";
 import { verifyPin, makeSessionCookieValue, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/scorekeeper-auth";
+import { checkLocked, recordAttempt } from "@/lib/scorekeeper-throttle";
 
 export const runtime = "nodejs";
+
+function lockedResponse(lock) {
+  return Response.json(
+    { error: "Too many wrong PINs — try again later." },
+    { status: 429, headers: { "Retry-After": String(lock.retry_after_seconds) } }
+  );
+}
 
 export async function POST(request) {
   let body;
@@ -13,8 +21,18 @@ export async function POST(request) {
   const { pin } = body ?? {};
   if (!pin) return Response.json({ error: "PIN required" }, { status: 400 });
 
+  // Gate before the bcrypt compare — cheaper, and a locked-out caller never
+  // gets a timing signal from the compare at all.
+  const existingLock = await checkLocked(request);
+  if (existingLock) return lockedResponse(existingLock);
+
   const ok = await verifyPin(pin);
-  if (!ok) return Response.json({ error: "Wrong PIN" }, { status: 401 });
+  const newLock = await recordAttempt(request, ok);
+
+  if (!ok) {
+    if (newLock) return lockedResponse(newLock);
+    return Response.json({ error: "Wrong PIN" }, { status: 401 });
+  }
 
   const store = await cookies();
   store.set(SESSION_COOKIE_NAME, makeSessionCookieValue(), {

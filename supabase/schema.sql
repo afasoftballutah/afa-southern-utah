@@ -219,3 +219,120 @@ create index if not exists idx_roster_members_signing_token on public.roster_mem
 create index if not exists idx_games_division on public.games(division_id);
 create index if not exists idx_games_team1_source on public.games(team1_source_game_id);
 create index if not exists idx_games_team2_source on public.games(team2_source_game_id);
+
+-- ============================================================
+-- scorekeeper_auth_throttle — PRIVATE. Brute-force protection state for
+-- /api/scorekeeper/auth (Catmull, 2026-07-21: 15 rapid wrong-PIN guesses
+-- all returned 401 with no backoff — a 4-6 digit PIN is brute-forceable in
+-- minutes to hours otherwise). One row per throttle "scope": either
+-- `ip:<address>` (per-IP) or the literal string `global` (account-wide,
+-- catches a distributed attack spread across many IPs — there's only one
+-- shared PIN, not per-user accounts, so a global lock is the correct
+-- backstop). RLS on, zero policies, no grants — same lockdown as
+-- `settings`. Only ever touched by check_and_record_scorekeeper_attempt(),
+-- which serializes concurrent attempts on the same scope with `for update`
+-- so parallel Vercel invocations can't race the counter (Catmull's other
+-- finding: Vercel auto-scales, so per-instance in-memory throttling would
+-- have done nothing against parallel guessing).
+-- ============================================================
+create table if not exists public.scorekeeper_auth_throttle (
+  scope text primary key,
+  fail_count integer not null default 0,
+  last_fail_at timestamptz,
+  locked_until timestamptz,
+  lockout_count integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+comment on table public.scorekeeper_auth_throttle is 'PRIVATE. Brute-force throttle state for the scorekeeper PIN. No Data API exposure, no RLS policies — service_role only, via the check_and_record_scorekeeper_attempt() function.';
+
+alter table public.scorekeeper_auth_throttle enable row level security;
+-- Deliberately zero policies and no grants — see comment above.
+
+-- Atomically checks whether a scope is currently locked out and, if not,
+-- records this attempt's result — incrementing the failure count (reset if
+-- the last failure fell outside the rolling window) and applying an
+-- escalating lockout once the threshold is crossed. `for update` locks the
+-- row for the duration of the transaction, so concurrent requests against
+-- the same scope are serialized rather than racing a lost update.
+create or replace function public.check_and_record_scorekeeper_attempt(
+  p_scope text,
+  p_success boolean,
+  p_window_seconds integer default 900,
+  p_threshold integer default 5,
+  p_lockout_minutes integer[] default array[1, 5, 15, 60, 240]
+) returns table(is_locked boolean, locked_until timestamptz, retry_after_seconds integer)
+language plpgsql
+as $$
+declare
+  row_rec public.scorekeeper_auth_throttle%rowtype;
+  now_ts timestamptz := now();
+  new_fail_count integer;
+  new_lockout_minutes integer;
+  new_locked_until timestamptz;
+begin
+  insert into public.scorekeeper_auth_throttle (scope) values (p_scope)
+    on conflict (scope) do nothing;
+
+  select * into row_rec from public.scorekeeper_auth_throttle where scope = p_scope for update;
+
+  if row_rec.locked_until is not null and row_rec.locked_until > now_ts then
+    return query select true, row_rec.locked_until,
+      ceil(extract(epoch from (row_rec.locked_until - now_ts)))::integer;
+    return;
+  end if;
+
+  if p_success then
+    update public.scorekeeper_auth_throttle
+      set fail_count = 0, locked_until = null, lockout_count = 0, last_fail_at = null, updated_at = now_ts
+      where scope = p_scope;
+    return query select false, null::timestamptz, null::integer;
+    return;
+  end if;
+
+  if row_rec.last_fail_at is null or row_rec.last_fail_at < now_ts - make_interval(secs => p_window_seconds) then
+    new_fail_count := 1;
+  else
+    new_fail_count := row_rec.fail_count + 1;
+  end if;
+
+  if new_fail_count >= p_threshold then
+    new_lockout_minutes := p_lockout_minutes[least(row_rec.lockout_count + 1, array_length(p_lockout_minutes, 1))];
+    new_locked_until := now_ts + make_interval(mins => new_lockout_minutes);
+    update public.scorekeeper_auth_throttle
+      set fail_count = 0, last_fail_at = now_ts, locked_until = new_locked_until,
+          lockout_count = row_rec.lockout_count + 1, updated_at = now_ts
+      where scope = p_scope;
+    return query select true, new_locked_until, (new_lockout_minutes * 60);
+  else
+    update public.scorekeeper_auth_throttle
+      set fail_count = new_fail_count, last_fail_at = now_ts, updated_at = now_ts
+      where scope = p_scope;
+    return query select false, null::timestamptz, null::integer;
+  end if;
+end;
+$$;
+
+-- Read-only lock check — used to gate the request BEFORE running bcrypt
+-- (saves the ~0.35s compare cost during an active lockout, and means a
+-- locked-out caller never gets a timing signal from the compare at all).
+create or replace function public.is_scorekeeper_locked(p_scope text)
+returns table(is_locked boolean, locked_until timestamptz, retry_after_seconds integer)
+language plpgsql
+as $$
+declare
+  row_rec public.scorekeeper_auth_throttle%rowtype;
+  now_ts timestamptz := now();
+begin
+  select * into row_rec from public.scorekeeper_auth_throttle where scope = p_scope;
+  if row_rec.locked_until is not null and row_rec.locked_until > now_ts then
+    return query select true, row_rec.locked_until,
+      ceil(extract(epoch from (row_rec.locked_until - now_ts)))::integer;
+  else
+    return query select false, null::timestamptz, null::integer;
+  end if;
+end;
+$$;
+
+-- service_role only — anon/authenticated never get to call these directly.
+grant execute on function public.check_and_record_scorekeeper_attempt(text, boolean, integer, integer, integer[]) to service_role;
+grant execute on function public.is_scorekeeper_locked(text) to service_role;
