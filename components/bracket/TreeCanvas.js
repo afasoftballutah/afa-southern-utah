@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import {
   splitSides,
   computeCenters,
@@ -12,17 +12,30 @@ import {
   formatFieldTime,
 } from "@/lib/bracket/tree";
 
-// Pixel geometry for the tree. Each match is a UNIFORM solid block (cellW x
-// cellH) holding two stacked team rows with a divider and a score strip on the
-// right edge. rowH is the vertical step between sibling blocks; the empty gap
-// (rowH - cellH) stays at most half a box height so the ladder reads dense, not
-// airy (spec: "PACKED TIGHT"). The field/time line rides in that gap under each
-// box. colGap is the fixed gutter between round columns; connector verticals sit
-// at its midpoint and the game number rides there too (spec: "GAME NUMBERS RIDE
-// THE ELBOWS"). Sizing contract: team text >=13px, NO transform:scale on screen
-// (that was the marooning bug); scale survives only in the print wrapper below.
-const DESKTOP = { cellW: 206, cellH: 40, rowH: 60, colGap: 40, topPad: 22, sideGap: 16, finalGap: 40, scoreW: 30 };
-const MOBILE = { cellW: 196, cellH: 44, rowH: 66, colGap: 32, topPad: 20, sideGap: 14, finalGap: 30, scoreW: 28 };
+// ONE GRID (aesthetic pass, JD 7/21). The whole bracket renders from a single
+// coordinate system: columns = rounds (fixed cellW + fixed colGap), rows = slot
+// units (center * rowH). Every box position AND every connector endpoint derive
+// from the SAME posByKey coordinates — no independent positioning math, which is
+// what read as "stacked layers."
+//
+// A match box now OWNS its field/time caption: the caption is a band inside the
+// bordered box, not a floating line under it. The box's TRUE center — what an
+// elbow targets — is the two-team pair's center (the top teamPairH of the box),
+// NOT the box+caption midpoint. That kills the "boxes ride high of their elbows"
+// drift. pairCenterY is used for BOTH connector endpoints and for centering a
+// child on its feeders, so the geometry stays internally exact.
+//
+// headerH is the Anton round-header band that sits over each column, per band.
+// Sizing contract: team text >=13px, NO transform:scale on screen (that was the
+// marooning bug); scale survives only in the print wrapper at the bottom.
+const DESKTOP = {
+  cellW: 210, teamRowH: 20, teamPairH: 40, captionH: 15, boxH: 55, rowH: 70,
+  colGap: 26, topPad: 10, headerH: 24, sideGap: 34, finalGap: 34, scoreW: 28,
+};
+const MOBILE = {
+  cellW: 198, teamRowH: 22, teamPairH: 44, captionH: 15, boxH: 59, rowH: 76,
+  colGap: 22, topPad: 8, headerH: 22, sideGap: 28, finalGap: 26, scoreW: 26,
+};
 
 function scaled(c, scale) {
   const out = {};
@@ -31,40 +44,49 @@ function scaled(c, scale) {
 }
 
 // One full elbow feeder path: box right edge -> horizontal to the fixed
-// mid-gutter -> vertical to the child's center line -> horizontal into the
+// mid-gutter -> vertical to the child's pair-center line -> horizontal into the
 // child's left edge. Square corners, one navy stroke. Two siblings feeding one
-// child share midX, so their verticals land in the same gutter column and read
-// as a single bracket join.
+// child share midX, so their verticals land in the same gutter column and mirror
+// each other around the child's centerline (SYMMETRY LAW).
 function elbowPath(x1, y1, x2, y2) {
   const midX = (x1 + x2) / 2;
   return `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
 }
 
 /**
- * One match cell — a SOLID FILLED BLOCK (spec amendment 7/21, Challonge
- * structure in AFA color): white fill on the cream ground, 1px navy border,
- * ~3px corners, a thin interior divider between the two stacked team rows, and
- * a narrow divided score strip on the right edge. Uniform size everywhere so
- * edges align into clean columns; long names ellipsize inside. The If-Necessary
- * decider uses a dashed border while still unknown.
+ * One match cell — a SOLID FILLED BLOCK dressed as a program ticket (aesthetic
+ * pass): white fill on the cream ground, a thin 2px NAVY TOP RULE, 1px navy on
+ * the other three sides, ~3px corners. The two stacked team rows sit in the top
+ * teamPairH band with a hairline divider and a narrow score strip on the right;
+ * the field/time caption owns the band beneath them, inside the same border. The
+ * If-Necessary decider draws dashed while still unknown.
  *
  * Winner reads by weight (bold). Pending game leaves the score strip empty (no
- * 0-0 lies). W/L provenance placeholders live in the team rows in muted ink
- * (paper convention); the game NUMBER rides the connector, not the box (drawn
- * in canvasBody). Field/time renders in small muted type under the box.
+ * 0-0 lies). W/L provenance placeholders live in the team rows in muted ink; the
+ * game NUMBER rides the connector, drawn in canvasBody, not here.
  */
-function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, scoreW }) {
+function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide }) {
   if (!game) return null;
   const pending = game.status === "pending";
-  const borderClass = dashed ? "border border-dashed border-afa-navy" : "border border-afa-navy";
   const fieldTime = formatFieldTime(game);
+  const { teamPairH, boxH, scoreW } = box;
 
-  let inner;
+  const boxStyle = {
+    height: boxH,
+    boxSizing: "border-box",
+    borderStyle: dashed ? "dashed" : "solid",
+    borderColor: "var(--afa-navy)",
+    borderTopWidth: 2,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+  };
+
+  let teamBlock;
   if (game.is_bye) {
-    // Bye: the advancing team only, no fake opponent row, no divider.
     const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
-    inner = (
-      <div className="flex items-center h-full px-1.5">
+    teamBlock = (
+      <div className="flex items-center px-2" style={{ height: teamPairH }}>
         <span className={`font-bold truncate ${fontClass}`}>{name}</span>
       </div>
     );
@@ -73,11 +95,11 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, scoreW
       { ...slotDisplay(game, "team1", numberByGameId), score: game.team1_score, won: game.winner_slot === "team1" },
       { ...slotDisplay(game, "team2", numberByGameId), score: game.team2_score, won: game.winner_slot === "team2" },
     ];
-    inner = (
-      <div className="flex h-full">
+    teamBlock = (
+      <div className="flex" style={{ height: teamPairH }}>
         <div className="flex-1 min-w-0 flex flex-col">
           {rows.map((r, i) => (
-            <div key={i} className={`flex-1 flex items-center px-1.5 min-w-0 ${i === 0 ? "border-b border-afa-navy/25" : ""}`}>
+            <div key={i} className={`flex-1 flex items-center px-2 min-w-0 ${i === 0 ? "border-b border-afa-navy/25" : ""}`}>
               <span
                 className={`truncate ${fontClass} ${
                   r.won ? "font-bold" : r.resolved ? "font-normal" : "font-normal text-afa-muted"
@@ -111,27 +133,24 @@ function MatchCell({ game, x, y, w, h, fontClass, dashed, numberByGameId, scoreW
           : `${slotDisplay(game, "team1", numberByGameId).text} vs ${slotDisplay(game, "team2", numberByGameId).text}`
       }
     >
-      <div className={`bg-white rounded-[3px] overflow-hidden ${borderClass}`} style={{ height: h }}>
-        {inner}
+      <div className="bg-white rounded-[3px] overflow-hidden flex flex-col bracket-box" style={boxStyle}>
+        {teamBlock}
+        {/* Field/time caption — inside the box, full string, never truncated. */}
+        <div className="flex items-center px-2 border-t border-afa-navy/15 bg-afa-cream/40" style={{ height: `calc(100% - ${teamPairH}px)` }}>
+          <span className={`${wide ? "text-[11px]" : "text-[10px]"} leading-none text-afa-muted whitespace-nowrap`}>
+            {fieldTime || " "}
+          </span>
+        </div>
       </div>
-      {fieldTime && <div className="text-[10px] leading-tight text-afa-muted truncate mt-0.5">{fieldTime}</div>}
     </div>
   );
 }
 
 /**
- * Draws one bracket_group ('main' or 'consolation') as a boxed tree: winners on
- * top, losers below, Grand Final + If-Necessary at the far right joining both,
- * champion cell past that. Pure layout from round/slot counts — see
- * lib/bracket/tree.js for why the halving/passthrough math needs no knowledge of
- * bracket size or seeding.
- *
- * Match cells are uniform filled blocks packed tight (spec amendment 7/21). The
- * navy 1px elbow connectors run box-edge to box-edge; siblings share one gutter
- * vertical so the elbows nest and the tree shape is legible from across the
- * room. The Grand Final joins both champions on a single shared vertical, short
- * and direct (no staircase orphans). Game numbers ride the connector midpoints,
- * not the boxes.
+ * Draws one bracket_group ('main' or 'consolation') as a single-grid boxed tree:
+ * winners on top, losers below (separated by the site's chalk-line), Grand Final
+ * as a designed moment at the far right, champion cell past it. Round headers in
+ * the Anton display face sit over each column.
  *
  * SIZING CONTRACT: exactly ONE on-screen render at every viewport width — fixed
  * pixel blocks, no transform:scale, horizontal scroll if wider than the
@@ -142,6 +161,8 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
   const base = isMobile ? MOBILE : DESKTOP;
   const C = useMemo(() => scaled(base, scale), [base, scale]);
   const fontClass = isMobile ? "text-[12px]" : "text-[13px]";
+  const wideCaption = scale >= 1 && !isMobile;
+  const boxProps = { teamPairH: C.teamPairH, boxH: C.boxH, scoreW: C.scoreW };
   const numberByGameId = useMemo(() => assignGameNumbers(games), [games]);
 
   const layout = useMemo(() => {
@@ -151,36 +172,49 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
 
     const leftPad = 2;
     const xForCol = (idx) => leftPad + idx * (C.cellW + C.colGap);
-    const cellCenterY = (topY) => topY + C.cellH / 2;
+    const pairCenterY = (topY) => topY + C.teamPairH / 2;
 
-    const winnersH = C.topPad * 2 + maxCenter(winners, centersW) * C.rowH + C.cellH;
-    const losersH = losers.length ? C.topPad * 2 + maxCenter(losers, centersL) * C.rowH + C.cellH : 0;
-    const losersYOffset = winnersH + (losers.length ? C.sideGap : 0);
-    const totalMainH = losers.length ? winnersH + C.sideGap + losersH : winnersH;
+    // Per-band vertical layout. Each band carries its own Anton header row on
+    // top (headerH), then topPad, then the boxes.
+    const winnersTop = 0;
+    const winnersBoxTop = winnersTop + C.headerH + C.topPad;
+    const winnersBlockH = C.headerH + C.topPad + maxCenter(winners, centersW) * C.rowH + C.boxH + C.topPad;
+    const losersTop = losers.length ? winnersTop + winnersBlockH + C.sideGap : winnersTop + winnersBlockH;
+    const losersBoxTop = losersTop + C.headerH + C.topPad;
+    const losersBlockH = losers.length ? C.headerH + C.topPad + maxCenter(losers, centersL) * C.rowH + C.boxH + C.topPad : 0;
+    const totalMainH = losers.length ? losersTop + losersBlockH : winnersTop + winnersBlockH;
 
-    const cells = []; // { game, x, y, key }
-    const connectors = []; // svg path `d` strings — continuous elbows
-    const gameLabels = []; // { n, lx, cy } — game number riding the outgoing elbow
-    const roundStops = []; // { x, label }
-    const posByKey = new Map(); // `${side}-${round}-${slot}` -> { x, y, centerY }
+    const cells = [];
+    const connectors = [];
+    const gameLabels = []; // { n, cx, cy } — number riding the outgoing elbow
+    const roundHeaders = []; // { x, w, label }
+    const roundStops = []; // { x, label } for the mobile jump strip
+    const posByKey = new Map();
 
-    const addLabel = (g, x, centerY) => {
+    const addLabel = (g, boxRight, cy) => {
       const n = numberByGameId.get(g.id);
-      if (n != null) gameLabels.push({ n, lx: x + C.cellW, cy: centerY });
+      if (n != null) gameLabels.push({ n, cx: boxRight + C.colGap / 2, cy });
     };
 
-    function layoutSide(rounds, centers, yOffset, sideName) {
+    function layoutSide(rounds, centers, boxTop, sideName) {
+      const n = rounds.length;
+      const headerY = boxTop - C.topPad - C.headerH + 2;
       rounds.forEach((r, idx) => {
         const x = xForCol(idx);
-        if (sideName === "winners") roundStops.push({ x, label: `R${idx + 1}` });
+        // Round header over this column, sitting in this band's own header row.
+        let label;
+        if (sideName === "winners") label = idx === n - 1 && n > 1 ? "SEMIS" : `ROUND ${idx + 1}`;
+        else label = `ELIMINATION ${idx + 1}`;
+        roundHeaders.push({ x, y: headerY, w: C.cellW, label });
+        if (sideName === "winners") roundStops.push({ x, label: idx === n - 1 && n > 1 ? "SF" : `R${idx + 1}` });
         r.games.forEach((g) => {
           const center = centers.get(`${r.round}-${g.slot}`) ?? 0;
-          const y = C.topPad + center * C.rowH + yOffset;
+          const y = boxTop + center * C.rowH;
           const key = `${sideName}-${r.round}-${g.slot}`;
-          const cy = cellCenterY(y);
-          posByKey.set(key, { x, y, centerY: cy });
+          const pcY = pairCenterY(y);
+          posByKey.set(key, { x, y, pcY });
           cells.push({ game: g, x, y, key });
-          addLabel(g, x, cy);
+          addLabel(g, x + C.cellW, pcY);
         });
         if (idx > 0) {
           const prev = rounds[idx - 1];
@@ -192,81 +226,108 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
               const p = prev.games.find((x2) => x2.slot === slot);
               if (!p) return;
               const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
-              connectors.push(elbowPath(pp.x + C.cellW, pp.centerY, cur.x, cur.centerY));
+              connectors.push(elbowPath(pp.x + C.cellW, pp.pcY, cur.x, cur.pcY));
             });
           });
         }
       });
     }
 
-    layoutSide(winners, centersW, 0, "winners");
-    layoutSide(losers, centersL, losersYOffset, "losers");
+    layoutSide(winners, centersW, winnersBoxTop, "winners");
+    layoutSide(losers, centersL, losersBoxTop, "losers");
 
-    // Final block: to the right of whichever side reaches furthest, vertically
-    // centered on the combined winners+losers block.
+    // Chalk-line divider between winners and losers (the identity element).
+    const dividers = [];
+    if (losers.length) dividers.push({ y: winnersTop + winnersBlockH + C.sideGap / 2 });
+
+    // The Final — a designed convergence (the one exempt join). Box ~1.4x wide,
+    // vertically centered on the combined winners+losers block. Winners champ and
+    // losers champ meet on ONE shared vertical just left of it, short and direct.
     const winnersRightX = winners.length ? xForCol(winners.length - 1) + C.cellW : 0;
     const losersRightX = losers.length ? xForCol(losers.length - 1) + C.cellW : 0;
     const finalX0 = Math.max(winnersRightX, losersRightX) + C.finalGap;
+    const finalW = C.cellW * 1.4;
     const finalCenterY = totalMainH / 2;
 
     const [gf1, gf2] = final;
     const finalCells = [];
     if (gf1) {
       const x = finalX0;
-      const y = finalCenterY - C.cellH / 2;
-      finalCells.push({ game: gf1, x, y });
-      addLabel(gf1, x, finalCenterY);
-      // Winners champ and losers champ meet on ONE shared vertical just left of
-      // the Grand Final, then a single horizontal runs in — short and direct.
+      const y = finalCenterY - C.teamPairH / 2;
+      finalCells.push({ game: gf1, x, y, w: finalW });
+      addLabel(gf1, x + finalW, finalCenterY);
+      // CHAMPIONSHIP sits directly above the Final box — the designed moment.
+      roundHeaders.push({ x, y: y - C.headerH + 2, w: finalW, label: "CHAMPIONSHIP" });
       const joinX = finalX0 - C.finalGap / 2;
       const wLast = winners.length ? winners[winners.length - 1].games[0] : null;
       const lLast = losers.length ? losers[losers.length - 1].games[0] : null;
       const wp = wLast ? posByKey.get(`winners-${winners[winners.length - 1].round}-${wLast.slot}`) : null;
       const lp = lLast ? posByKey.get(`losers-${losers[losers.length - 1].round}-${lLast.slot}`) : null;
       if (wp && lp) {
-        connectors.push(`M ${wp.x + C.cellW} ${wp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
-        connectors.push(`M ${lp.x + C.cellW} ${lp.centerY} H ${joinX} V ${finalCenterY}`);
+        connectors.push(`M ${wp.x + C.cellW} ${wp.pcY} H ${joinX} V ${finalCenterY} H ${x}`);
+        connectors.push(`M ${lp.x + C.cellW} ${lp.pcY} H ${joinX} V ${finalCenterY}`);
       } else if (wp) {
-        connectors.push(`M ${wp.x + C.cellW} ${wp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
+        connectors.push(`M ${wp.x + C.cellW} ${wp.pcY} H ${joinX} V ${finalCenterY} H ${x}`);
       } else if (lp) {
-        connectors.push(`M ${lp.x + C.cellW} ${lp.centerY} H ${joinX} V ${finalCenterY} H ${x}`);
+        connectors.push(`M ${lp.x + C.cellW} ${lp.pcY} H ${joinX} V ${finalCenterY} H ${x}`);
       }
     }
-    let lastFinalRightX = gf1 ? finalX0 + C.cellW : finalX0;
+    let lastFinalRightX = gf1 ? finalX0 + finalW : finalX0;
     if (gf2) {
-      const x = finalX0 + C.cellW + C.colGap;
-      const y = finalCenterY - C.cellH / 2;
-      finalCells.push({ game: gf2, x, y, dashed: isGf2Dashed(gf1) });
-      addLabel(gf2, x, finalCenterY);
-      connectors.push(`M ${finalX0 + C.cellW} ${finalCenterY} H ${x}`);
+      const x = finalX0 + finalW + C.colGap;
+      const y = finalCenterY - C.teamPairH / 2;
+      finalCells.push({ game: gf2, x, y, w: C.cellW, dashed: isGf2Dashed(gf1) });
+      addLabel(gf2, x + C.cellW, finalCenterY);
+      connectors.push(`M ${finalX0 + finalW} ${finalCenterY} H ${x}`);
       lastFinalRightX = x + C.cellW;
     }
-    roundStops.push({ x: finalX0, label: "GF" });
 
     const championX = lastFinalRightX + C.finalGap;
+    const championW = C.cellW * 1.4;
     const { championName } = computeChampion(games);
     connectors.push(`M ${lastFinalRightX} ${finalCenterY} H ${championX}`);
 
-    const totalWidth = championX + C.cellW * 1.4 + 24;
+    // Faint AFA mark behind the Final/champion zone — the one place art enters,
+    // filling the double-elim void. Excluded from print.
+    const markSize = C.cellW * 1.1;
+    const watermark = gf1
+      ? { x: finalX0 - C.finalGap / 2, y: finalCenterY - markSize / 2, size: markSize }
+      : null;
+
+    const totalWidth = championX + championW + 24;
     const totalHeight = Math.max(totalMainH, finalCenterY * 2) + 12;
 
-    // Tiny muted section captions — sit inside each side's own topPad gap.
-    const capH = isMobile ? 10 : 11;
-    const captions = [];
-    if (winners.length) captions.push({ x: leftPad, y: Math.max(0, C.topPad * 0.15), label: "Winners" });
-    if (losers.length) captions.push({ x: leftPad, y: losersYOffset + Math.max(0, C.topPad * 0.15), label: "Losers" });
-    if (gf1 || gf2) captions.push({ x: finalX0, y: Math.max(0, finalCenterY - C.cellH / 2 - capH), label: "Final" });
-
-    return { cells, connectors, gameLabels, finalCells, championX, championY: finalCenterY, championName, totalWidth, totalHeight, roundStops, captions };
-  }, [games, C, isMobile, numberByGameId]);
+    return {
+      cells, connectors, gameLabels, finalCells, finalW,
+      championX, championW, championY: finalCenterY, championName,
+      totalWidth, totalHeight, roundHeaders, roundStops, dividers, watermark, leftPad,
+    };
+  }, [games, C, numberByGameId]);
 
   function jumpTo(x) {
     scrollRef.current?.scrollTo({ left: Math.max(0, x - 12), behavior: "smooth" });
   }
 
-  // PRINT-ONLY fit-to-page. Confined to print (sizing contract #3); the
-  // on-screen view stays fixed-size + scroll. setFitScale only runs inside the
-  // ResizeObserver callback, never synchronously in the effect body.
+  // Right-edge scroll shadow — only shows when the tree is genuinely wider than
+  // the scroll port and there's more to the right.
+  const [showRightShadow, setShowRightShadow] = useState(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 4;
+      setShowRightShadow(more);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [layout.totalWidth]);
+
+  // PRINT-ONLY fit-to-page (sizing contract #3).
   const fitWrapRef = useRef(null);
   const [fitScale, setFitScale] = useState(1);
   useLayoutEffect(() => {
@@ -283,55 +344,67 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     return () => ro.disconnect();
   }, [fit, layout.totalWidth]);
 
+  const headerFont = isMobile ? "text-[11px]" : "text-[13px]";
+
   const canvasBody = (
     <>
+      {/* Faint AFA mark behind the Final/champion zone. Hidden in print. */}
+      {layout.watermark && (
+        <img
+          src="/afa-logo.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute pointer-events-none select-none print:hidden"
+          style={{ left: layout.watermark.x, top: layout.watermark.y, width: layout.watermark.size, height: "auto", opacity: 0.07 }}
+        />
+      )}
       <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
         {layout.connectors.map((d, i) => (
           <path key={i} d={d} stroke="var(--afa-navy)" strokeWidth={1} fill="none" shapeRendering="crispEdges" />
         ))}
       </svg>
-      {/* Game numbers ride the connector midpoint in the gutter to each box's
-          right, above the outgoing line (spec: "GAME NUMBERS RIDE THE ELBOWS"). */}
+      {/* Chalk-line dividers between winners / losers. */}
+      {layout.dividers.map((dv, i) => (
+        <div key={i} className="chalk-line absolute" style={{ top: dv.y, left: layout.leftPad, width: layout.totalWidth - layout.leftPad - 24, margin: 0 }} />
+      ))}
+      {/* Anton round headers over each column, small caps. */}
+      {layout.roundHeaders.map((h, i) => (
+        <div
+          key={i}
+          className={`absolute font-display text-afa-navy tracking-wide text-center pointer-events-none bracket-header ${headerFont}`}
+          style={{ left: h.x, top: h.y, width: h.w }}
+        >
+          {h.label}
+        </div>
+      ))}
+      {/* Game numbers ride the outgoing elbow midpoint — one consistent offset. */}
       {layout.gameLabels.map((g, i) => (
         <div
           key={i}
           className="absolute text-[9px] leading-none text-afa-muted tabular-nums text-center pointer-events-none"
-          style={{ left: g.lx, top: g.cy - 12, width: C.colGap }}
+          style={{ left: g.cx - 12, top: g.cy - 11, width: 24 }}
         >
           G{g.n}
         </div>
       ))}
-      {layout.captions.map((c, i) => (
-        <div
-          key={i}
-          className="absolute text-[9px] font-semibold uppercase tracking-wide text-afa-muted pointer-events-none"
-          style={{ left: c.x, top: c.y }}
-        >
-          {c.label}
-        </div>
-      ))}
       {layout.cells.map(({ game, x, y, key }) => (
-        <MatchCell key={key} game={game} x={x} y={y} w={C.cellW} h={C.cellH} fontClass={fontClass} numberByGameId={numberByGameId} scoreW={C.scoreW} />
+        <MatchCell key={key} game={game} x={x} y={y} w={C.cellW} box={boxProps} fontClass={fontClass} numberByGameId={numberByGameId} wide={wideCaption} />
       ))}
-      {layout.finalCells.map(({ game, x, y, dashed }) => (
-        <MatchCell key={game.id} game={game} x={x} y={y} w={C.cellW} h={C.cellH} fontClass={fontClass} dashed={dashed} numberByGameId={numberByGameId} scoreW={C.scoreW} />
+      {layout.finalCells.map(({ game, x, y, w, dashed }) => (
+        <MatchCell key={game.id} game={game} x={x} y={y} w={w} box={boxProps} fontClass={fontClass} dashed={dashed} numberByGameId={numberByGameId} wide={wideCaption} />
       ))}
       {/* Champion cell — the tree's one appearance of the Anton display face. */}
       <div
         className="absolute flex items-center"
-        style={{ left: layout.championX, top: layout.championY - C.cellH / 2, width: C.cellW * 1.4, minHeight: C.cellH }}
+        style={{ left: layout.championX, top: layout.championY - C.teamPairH / 2, width: layout.championW, minHeight: C.teamPairH }}
       >
-        <span className={`font-display text-afa-navy truncate ${isMobile ? "text-base" : "text-lg"}`}>
+        <span className={`font-display text-afa-navy truncate ${isMobile ? "text-lg" : "text-xl"}`}>
           {layout.championName || "—"}
         </span>
       </div>
     </>
   );
 
-  // The ONE on-screen render. Full-bleed breakout so the scroll band spans the
-  // full viewport width — otherwise the tree is trapped (and clipped) inside the
-  // page's max-w content column. Horizontal scroll still engages on genuinely
-  // narrow screens. Hidden in print; print gets its own scaled variant below.
   const screenBody = (
     <div className="print:hidden">
       {showRoundStrip && (
@@ -343,10 +416,19 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           ))}
         </div>
       )}
-      <div ref={scrollRef} className="overflow-x-auto relative left-1/2 right-1/2 -mx-[50vw] w-screen px-4 sm:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
-        <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
-          {canvasBody}
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+        <div ref={scrollRef} className="overflow-x-auto px-4 sm:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
+            {canvasBody}
+          </div>
         </div>
+        {/* Scroll shadow at the clipped right edge. */}
+        {showRightShadow && (
+          <div
+            className="absolute top-0 right-0 h-full w-8 pointer-events-none print:hidden"
+            style={{ background: "linear-gradient(to left, rgba(22,35,61,0.14), transparent)" }}
+          />
+        )}
       </div>
     </div>
   );
@@ -356,9 +438,7 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
   return (
     <>
       {screenBody}
-      {/* Print-only scaled-to-page variant (sizing contract #3) — never shown on
-          screen (`hidden print:block`). Breaks out to full viewport width first
-          so there's real room to scale into. */}
+      {/* Print-only scaled-to-page variant (sizing contract #3). */}
       <div className="hidden print:block relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 sm:px-10 print:w-full print:left-0 print:right-0 print:mx-0 print:px-0">
         <div ref={fitWrapRef} style={{ width: "100%", height: layout.totalHeight * fitScale, overflow: "hidden" }}>
           <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight, transform: `scale(${fitScale})`, transformOrigin: "top left" }}>

@@ -109,8 +109,10 @@ export default function BracketTree({ division }) {
       <div className={`${view === "bracket" ? "block" : "hidden"} print:block`}>
         <TreeCanvas games={mainGames} scale={1} isMobile={isMobile} showRoundStrip={isMobile} fit={!isMobile} />
         {consolationGames.length > 0 && (
-          <div className="mt-10">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-afa-muted mb-2">Consolation</p>
+          <div className="mt-8">
+            {/* Site chalk-line separates the consolation tree from the losers bracket above. */}
+            <div className="chalk-line" />
+            <p className="font-display text-afa-navy text-sm mb-2 mt-4">Consolation</p>
             <TreeCanvas games={consolationGames} scale={0.82} isMobile={isMobile} showRoundStrip={false} fit={!isMobile} />
           </div>
         )}

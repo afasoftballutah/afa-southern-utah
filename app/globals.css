@@ -140,4 +140,20 @@ button {
   .overflow-x-auto {
     overflow: visible !important;
   }
+  /* Clean black-and-white: box rules, round headers, and the winners/losers
+     chalk divider all print as black hairlines. The AFA mark watermark is
+     already print:hidden in the component. */
+  .bracket-box {
+    border-color: #000 !important;
+  }
+  .bracket-header {
+    color: #000 !important;
+  }
+  .chalk-line {
+    background-image: none !important;
+    background: #000 !important;
+    height: 1px !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
 }
