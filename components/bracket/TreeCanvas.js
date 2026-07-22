@@ -9,6 +9,7 @@ import {
   isGf2Dashed,
   assignGameNumbers,
   slotDisplay,
+  formatFieldTime,
 } from "@/lib/bracket/tree";
 
 // Pixel geometry for the tree. Each match is a UNIFORM solid block (cellW x
@@ -37,20 +38,6 @@ function scaled(c, scale) {
 function elbowPath(x1, y1, x2, y2) {
   const midX = (x1 + x2) / 2;
   return `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
-}
-
-function formatFieldTime(game) {
-  const parts = [];
-  if (game.scheduled_time) {
-    const d = new Date(game.scheduled_time);
-    parts.push(
-      d.toLocaleDateString("en-US", { weekday: "short" }) +
-        " " +
-        d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    );
-  }
-  if (game.field) parts.push(game.field);
-  return parts.length ? parts.join(" · ") : null;
 }
 
 /**
