@@ -28,14 +28,22 @@ import {
 // headerH is the Anton round-header band that sits over each column, per band.
 // Sizing contract: team text >=13px, NO transform:scale on screen (that was the
 // marooning bug); scale survives only in the print wrapper at the bottom.
+// Sizing contract floors (apply at EVERY viewport, mobile included): the name
+// column is cellW - scoreW and must land in 180-220px, team text stays >=13px.
+// colGap is the tightened gutter (law 10, ~25% off the earlier 40px air).
 const DESKTOP = {
-  cellW: 210, teamRowH: 20, teamPairH: 40, captionH: 15, boxH: 55, rowH: 70,
-  colGap: 26, topPad: 10, headerH: 24, sideGap: 34, finalGap: 34, scoreW: 28,
+  cellW: 214, teamRowH: 20, teamPairH: 40, captionH: 15, boxH: 55, rowH: 70,
+  colGap: 20, topPad: 10, headerH: 24, sideGap: 34, finalGap: 30, scoreW: 28,
 };
 const MOBILE = {
-  cellW: 198, teamRowH: 22, teamPairH: 44, captionH: 15, boxH: 59, rowH: 76,
-  colGap: 22, topPad: 8, headerH: 22, sideGap: 28, finalGap: 26, scoreW: 26,
+  cellW: 212, teamRowH: 22, teamPairH: 44, captionH: 15, boxH: 59, rowH: 76,
+  colGap: 16, topPad: 8, headerH: 22, sideGap: 28, finalGap: 24, scoreW: 26,
 };
+
+// The Final is a designed moment, not a wider Round 1 cell: 1.4x in width AND
+// height AND type (spec dress #8). Kept as one factor so the box, its type, and
+// its vertical centering all scale together.
+const FINAL_SCALE = 1.4;
 
 function scaled(c, scale) {
   const out = {};
@@ -160,9 +168,12 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
   const scrollRef = useRef(null);
   const base = isMobile ? MOBILE : DESKTOP;
   const C = useMemo(() => scaled(base, scale), [base, scale]);
-  const fontClass = isMobile ? "text-[12px]" : "text-[13px]";
+  const fontClass = "text-[13px]"; // sizing-contract floor at every viewport
   const wideCaption = scale >= 1 && !isMobile;
   const boxProps = { teamPairH: C.teamPairH, boxH: C.boxH, scoreW: C.scoreW };
+  // The Final's own larger cell + type — the designed championship moment.
+  const finalBox = { teamPairH: C.teamPairH * FINAL_SCALE, boxH: C.boxH * FINAL_SCALE, scoreW: C.scoreW * 1.15 };
+  const finalFont = isMobile ? "text-[15px]" : "text-[17px]";
   const numberByGameId = useMemo(() => assignGameNumbers(games), [games]);
 
   const layout = useMemo(() => {
@@ -246,18 +257,19 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     const winnersRightX = winners.length ? xForCol(winners.length - 1) + C.cellW : 0;
     const losersRightX = losers.length ? xForCol(losers.length - 1) + C.cellW : 0;
     const finalX0 = Math.max(winnersRightX, losersRightX) + C.finalGap;
-    const finalW = C.cellW * 1.4;
+    const finalW = C.cellW * FINAL_SCALE;
+    const finalPairH = C.teamPairH * FINAL_SCALE; // taller Final cell
     const finalCenterY = totalMainH / 2;
 
     const [gf1, gf2] = final;
     const finalCells = [];
     if (gf1) {
       const x = finalX0;
-      const y = finalCenterY - C.teamPairH / 2;
+      const y = finalCenterY - finalPairH / 2;
       finalCells.push({ game: gf1, x, y, w: finalW });
       addLabel(gf1, x + finalW, finalCenterY);
-      // CHAMPIONSHIP sits directly above the Final box — the designed moment.
-      roundHeaders.push({ x, y: y - C.headerH + 2, w: finalW, label: "CHAMPIONSHIP" });
+      // CHAMPIONSHIP sits directly above the taller Final box — the designed moment.
+      roundHeaders.push({ x, y: y - C.headerH + 2, w: finalW, label: "CHAMPIONSHIP", big: true });
       const joinX = finalX0 - C.finalGap / 2;
       const wLast = winners.length ? winners[winners.length - 1].games[0] : null;
       const lLast = losers.length ? losers[losers.length - 1].games[0] : null;
@@ -275,7 +287,7 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     let lastFinalRightX = gf1 ? finalX0 + finalW : finalX0;
     if (gf2) {
       const x = finalX0 + finalW + C.colGap;
-      const y = finalCenterY - C.teamPairH / 2;
+      const y = finalCenterY - finalPairH / 2;
       finalCells.push({ game: gf2, x, y, w: C.cellW, dashed: isGf2Dashed(gf1) });
       addLabel(gf2, x + C.cellW, finalCenterY);
       connectors.push(`M ${finalX0 + finalW} ${finalCenterY} H ${x}`);
@@ -283,15 +295,21 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     }
 
     const championX = lastFinalRightX + C.finalGap;
-    const championW = C.cellW * 1.4;
+    const championW = C.cellW * FINAL_SCALE;
     const { championName } = computeChampion(games);
     connectors.push(`M ${lastFinalRightX} ${finalCenterY} H ${championX}`);
 
-    // Faint AFA mark behind the Final/champion zone — the one place art enters,
-    // filling the double-elim void. Excluded from print.
-    const markSize = C.cellW * 1.1;
+    // Faint AFA mark — the one place art enters. The winners bracket is shorter
+    // than the losers bracket, so the horizontal span between the winners SEMIS
+    // and the FINAL is a structural void. The mark fills THAT void: it is sized
+    // to the void width and centered in it, on the LOWEST z, so its body sits in
+    // open space and no opaque box cuts it, while it reads as the backdrop of the
+    // Final/champion zone it sits beside. finalCenterY aligns it with the Final.
+    const voidLeft = winnersRightX || 0;
+    const markSize = Math.max(finalX0 - voidLeft, C.cellW * 1.2);
+    const markCx = (voidLeft + finalX0) / 2;
     const watermark = gf1
-      ? { x: finalX0 - C.finalGap / 2, y: finalCenterY - markSize / 2, size: markSize }
+      ? { x: markCx - markSize / 2, y: finalCenterY - markSize / 2, size: markSize }
       : null;
 
     const totalWidth = championX + championW + 24;
@@ -321,9 +339,14 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     update();
     el.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+    // ResizeObserver catches the hidden -> visible flip (the SSR list default
+    // becomes the bracket after hydration) where a plain mount measure reads 0.
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
     return () => {
       el.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      ro.disconnect();
     };
   }, [layout.totalWidth]);
 
@@ -355,7 +378,7 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           alt=""
           aria-hidden="true"
           className="absolute pointer-events-none select-none print:hidden"
-          style={{ left: layout.watermark.x, top: layout.watermark.y, width: layout.watermark.size, height: "auto", opacity: 0.07 }}
+          style={{ left: layout.watermark.x, top: layout.watermark.y, width: layout.watermark.size, height: "auto", opacity: 0.07, zIndex: 0 }}
         />
       )}
       <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
@@ -391,14 +414,15 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
         <MatchCell key={key} game={game} x={x} y={y} w={C.cellW} box={boxProps} fontClass={fontClass} numberByGameId={numberByGameId} wide={wideCaption} />
       ))}
       {layout.finalCells.map(({ game, x, y, w, dashed }) => (
-        <MatchCell key={game.id} game={game} x={x} y={y} w={w} box={boxProps} fontClass={fontClass} dashed={dashed} numberByGameId={numberByGameId} wide={wideCaption} />
+        <MatchCell key={game.id} game={game} x={x} y={y} w={w} box={finalBox} fontClass={finalFont} dashed={dashed} numberByGameId={numberByGameId} wide />
       ))}
-      {/* Champion cell — the tree's one appearance of the Anton display face. */}
+      {/* Champion cell — the tree's one appearance of the Anton display face,
+          scaled up to match the Final's designed-moment weight. */}
       <div
         className="absolute flex items-center"
-        style={{ left: layout.championX, top: layout.championY - C.teamPairH / 2, width: layout.championW, minHeight: C.teamPairH }}
+        style={{ left: layout.championX, top: layout.championY - (C.teamPairH * FINAL_SCALE) / 2, width: layout.championW, minHeight: C.teamPairH * FINAL_SCALE }}
       >
-        <span className={`font-display text-afa-navy truncate ${isMobile ? "text-lg" : "text-xl"}`}>
+        <span className={`font-display text-afa-navy truncate ${isMobile ? "text-xl" : "text-2xl"}`}>
           {layout.championName || "—"}
         </span>
       </div>
@@ -422,11 +446,12 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
             {canvasBody}
           </div>
         </div>
-        {/* Scroll shadow at the clipped right edge. */}
+        {/* Scroll shadow at the clipped right edge — signals there's more tree
+            (e.g. the champion cell) past the viewport when the bracket overflows. */}
         {showRightShadow && (
           <div
-            className="absolute top-0 right-0 h-full w-8 pointer-events-none print:hidden"
-            style={{ background: "linear-gradient(to left, rgba(22,35,61,0.14), transparent)" }}
+            className="absolute top-0 right-0 h-full w-14 pointer-events-none print:hidden"
+            style={{ background: "linear-gradient(to left, rgba(22,35,61,0.30), rgba(22,35,61,0.10) 45%, transparent)" }}
           />
         )}
       </div>
