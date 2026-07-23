@@ -30,6 +30,11 @@ create table if not exists public.tournaments (
   -- now — same shape, so they can graduate to full tournaments later with no redo.
   region text not null default 'southern_utah'
     check (region in ('southern_utah', 'northern_utah', 'series')),
+  -- notes added 2026-07-23: short plain-text operational lines that have no
+  -- dedicated column (e.g. "$10/game ump fees", "6-team minimum per
+  -- division"). Nullable — most tournaments have none. Rendered as plain
+  -- text under the facts list on the event page.
+  notes text,
   created_at timestamptz not null default now()
 );
 comment on table public.tournaments is 'Public schedule data. No PII. Safe for anon read.';

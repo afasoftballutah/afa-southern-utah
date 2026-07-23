@@ -88,6 +88,17 @@ export default async function TournamentDetailPage({ params }) {
         )}
       </dl>
 
+      {tournament.notes && (
+        <div className="text-sm text-afa-ink/80 space-y-1">
+          {tournament.notes.split(". ").map((line, i, arr) => {
+            const text = line.trim();
+            if (!text) return null;
+            const withDot = i < arr.length - 1 && !text.endsWith(".") ? `${text}.` : text;
+            return <p key={i}>{withDot}</p>;
+          })}
+        </div>
+      )}
+
       {Array.isArray(tournament.contacts) && tournament.contacts.length > 0 && (
         <>
           <div className="chalk-line" />
