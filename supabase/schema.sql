@@ -40,6 +40,26 @@ create table if not exists public.tournaments (
 comment on table public.tournaments is 'Public schedule data. No PII. Safe for anon read.';
 
 -- ============================================================
+-- classes — PUBLIC READ, director-write (via scorekeeper door, a later
+-- step). League-level skill classes (Rec/E/D/Open/...). Added 2026-07-23,
+-- spec: afa-divisions-spec.md, "Build order" step 1. Directors add classes
+-- themselves later (insert a row, no code change); this migration seeds
+-- the four the league already runs. Aliases (e.g. Open's Championship/
+-- Champ/Uppers) resolve to ONE class row, never create a second.
+-- ============================================================
+create table if not exists public.classes (
+  id uuid primary key default gen_random_uuid(),
+  name text unique not null,
+  aliases text[] not null default '{}',
+  sort_order integer not null default 0,
+  hr_limit integer, -- nullable — league hasn't ruled its own HR limits yet
+  bands_note text,
+  rules_notes text,
+  created_at timestamptz not null default now()
+);
+comment on table public.classes is 'Public league-level skill classes (Rec/E/D/Open/...). No PII. Safe for anon read. Director-write via the scorekeeper door (future step) — no code change to add a class, just a row.';
+
+-- ============================================================
 -- divisions — PUBLIC READ. No PII.
 -- ============================================================
 create table if not exists public.divisions (
@@ -49,6 +69,14 @@ create table if not exists public.divisions (
   bracket_type text not null default 'double_elim', -- double_elim | double_elim_consolation
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
+  -- Division model — gender x class (added 2026-07-23, spec:
+  -- afa-divisions-spec.md). All nullable, additive only; existing rows stay
+  -- valid untouched. The rendered name is `display_name ?? "{Gender}
+  -- {Class}"`. `name` stays as-is until the migration is verified in
+  -- production use, then becomes generated/derived — not this step.
+  gender text check (gender in ('mens', 'womens', 'coed')),
+  class_id uuid references public.classes(id),
+  display_name text,
   unique (tournament_id, name)
 );
 comment on table public.divisions is 'Public division list per tournament. No PII. Safe for anon read.';
@@ -207,6 +235,7 @@ create table if not exists public.settings (
 comment on table public.settings is 'PRIVATE. Scorekeeper PIN hash lives here. No Data API exposure, no RLS policies — service_role only.';
 
 alter table public.tournaments enable row level security;
+alter table public.classes enable row level security;
 alter table public.divisions enable row level security;
 alter table public.placements enable row level security;
 alter table public.registrations enable row level security;
@@ -219,6 +248,20 @@ alter table public.settings enable row level security;
 -- for anyone but service_role, which bypasses RLS by design.
 drop policy if exists "public read tournaments" on public.tournaments;
 create policy "public read tournaments" on public.tournaments for select using (true);
+
+drop policy if exists "public read classes" on public.classes;
+create policy "public read classes" on public.classes for select using (true);
+
+-- Explicit grants — this project's Data API posture is "auto-expose new
+-- tables OFF", which means new tables get NO role grants at all by
+-- default, not even service_role. classes is a new table (2026-07-23);
+-- its grants are stated here explicitly, matching the SELECT-to-
+-- anon/authenticated, ALL-to-service_role pattern already live on
+-- tournaments/divisions/etc (those grants exist on the live DB but were
+-- never written into this file — a pre-existing gap, reported, not
+-- fixed here since it's out of this dispatch's scope).
+grant select on public.classes to anon, authenticated;
+grant all on public.classes to service_role;
 
 drop policy if exists "public read divisions" on public.divisions;
 create policy "public read divisions" on public.divisions for select using (true);
@@ -238,6 +281,7 @@ create policy "public read games" on public.games for select using (true);
 
 -- Helpful indexes
 create index if not exists idx_divisions_tournament on public.divisions(tournament_id);
+create index if not exists idx_divisions_class on public.divisions(class_id);
 create index if not exists idx_placements_division on public.placements(division_id);
 create index if not exists idx_registrations_tournament on public.registrations(tournament_id);
 create index if not exists idx_registrations_division on public.registrations(division_id);
@@ -246,6 +290,19 @@ create index if not exists idx_roster_members_signing_token on public.roster_mem
 create index if not exists idx_games_division on public.games(division_id);
 create index if not exists idx_games_team1_source on public.games(team1_source_game_id);
 create index if not exists idx_games_team2_source on public.games(team2_source_game_id);
+
+-- Seed the four classes the league already runs (2026-07-23). Open/
+-- Championship/Champ/Uppers are the same class by the league's own usage
+-- (JD ruling 2026-07-23) — aliases resolve them to one row, not four.
+-- Directors add classes beyond this themselves later, via the scorekeeper
+-- door. No hr_limit values — the league hasn't ruled its own numbers.
+insert into public.classes (name, aliases, sort_order)
+values
+  ('Rec', '{}', 10),
+  ('E', '{}', 20),
+  ('D', '{}', 30),
+  ('Open', '{Championship,Champ,Uppers}', 40)
+on conflict (name) do nothing;
 
 -- ============================================================
 -- scorekeeper_auth_throttle — PRIVATE. Brute-force protection state for
