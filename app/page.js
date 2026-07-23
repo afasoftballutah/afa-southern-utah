@@ -8,6 +8,10 @@ import {
 
 export const revalidate = 30;
 
+// Home is a hub, not a poster frame (JD ruling 2026-07-23, from the Navarro
+// pattern): the mascot owns the top as the identity moment, and under him
+// sit obvious task-shaped doors — next tournament, schedules, rules,
+// register. Per-event posters live on each tournament's own page.
 export default async function Home() {
   const [{ tournament, confirmed }, lastResults] = await Promise.all([
     getHeroTournament(),
@@ -16,17 +20,68 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
-      <section>
-        {!confirmed && (
-          <p className="mb-3 font-semibold text-afa-navy">
-            2026 schedule coming soon — check back.
-          </p>
-        )}
+      {/* The mascot — front page, always. Cropped to the eagle, name/facts
+          never over the art. */}
+      <section className="max-w-md mx-auto">
+        <div className="overflow-hidden rounded-lg">
+          <img
+            src="/afa-mascot.jpg"
+            alt=""
+            aria-hidden="true"
+            loading="eager"
+            className="w-full h-52 sm:h-72 object-cover object-top"
+          />
+        </div>
+      </section>
+
+      {/* Obvious places to go. The next tournament is the featured door. */}
+      <section className="max-w-md mx-auto space-y-3">
         {tournament ? (
-          <PosterHero tournament={tournament} placeholder={!confirmed} />
+          <Link
+            href={`/tournaments/${tournament.slug}`}
+            className="block bg-afa-navy text-white rounded-lg p-4 hover:opacity-95"
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-white/70">
+              {confirmed ? "Next Tournament" : "Most Recent"}
+            </p>
+            <p className="font-display text-2xl mt-1">{tournament.name}</p>
+            <p className="text-sm text-white/90 mt-1">
+              {formatDateRange(tournament.start_date, tournament.end_date)} &middot;{" "}
+              {tournament.venue_name}
+              {tournament.entry_fee_cents != null &&
+                ` · ${formatFee(tournament.entry_fee_cents)}`}
+              {tournament.game_guarantee && ` · ${tournament.game_guarantee}`}
+            </p>
+          </Link>
         ) : (
-          <EmptyHero />
+          <div className="block bg-afa-navy/10 text-afa-ink rounded-lg p-4">
+            <p className="text-sm">Nothing on the calendar yet — check back.</p>
+          </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/tournaments"
+            className="block bg-white border border-afa-navy/20 rounded-lg p-4 text-center hover:border-afa-navy/50"
+          >
+            <p className="font-bold text-afa-navy">Schedules</p>
+            <p className="text-xs text-afa-ink/60 mt-1">All regions, all dates</p>
+          </Link>
+          <Link
+            href="/rules"
+            className="block bg-white border border-afa-navy/20 rounded-lg p-4 text-center hover:border-afa-navy/50"
+          >
+            <p className="font-bold text-afa-navy">Rules</p>
+            <p className="text-xs text-afa-ink/60 mt-1">How we play</p>
+          </Link>
+        </div>
+
+        <Link
+          href="/register"
+          className="block bg-afa-red text-white font-bold text-lg rounded-lg p-4 text-center"
+        >
+          Register a Team
+        </Link>
       </section>
 
       <div className="chalk-line" />
@@ -36,90 +91,11 @@ export default async function Home() {
         {lastResults ? (
           <ResultsGallery tournament={lastResults} />
         ) : (
-          <p className="text-afa-ink/70">No results yet — check back after the next tournament.</p>
-        )}
-      </section>
-
-      <div className="chalk-line" />
-
-      <section className="text-center py-4">
-        <Link
-          href="/register"
-          className="inline-block bg-afa-red text-white font-bold text-lg px-8 py-4 rounded-lg"
-        >
-          Register a Team
-        </Link>
-      </section>
-    </div>
-  );
-}
-
-// The mascot eagle owns the hero only where there's real empty space — no
-// poster to step aside for. It never sits behind a real poster (posters ARE
-// the visual identity — existing law) and never appears on Register.
-function EmptyHero() {
-  return (
-    <div className="text-center space-y-3">
-      <div className="mx-auto max-w-[220px] overflow-hidden rounded-lg">
-        <img
-          src="/afa-mascot.jpg"
-          alt=""
-          aria-hidden="true"
-          className="w-full h-56 object-cover object-top"
-        />
-      </div>
-      <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
-    </div>
-  );
-}
-
-function PosterHero({ tournament, placeholder }) {
-  // Placeholder (reference-only) hero sits deliberately smaller and quieter
-  // than a real confirmed event would — it's a "here's what one looks like,"
-  // not the main event (Lacy, cosmetic fix 2026-07-21).
-  const posterWidth = placeholder ? "max-w-xs" : "max-w-md";
-  const titleSize = placeholder ? "text-xl" : "text-3xl";
-  const dlSize = placeholder ? "text-xs" : "text-sm";
-
-  return (
-    <div className="space-y-3">
-      {tournament.poster_url && (
-        <div className={`poster-frame ${posterWidth} mx-auto`}>
-          <img src={tournament.poster_url} alt={`${tournament.name} poster`} loading="eager" />
-        </div>
-      )}
-      <div className="text-center">
-        <h1 className={`font-display ${titleSize} text-afa-navy`}>{tournament.name}</h1>
-        {placeholder && (
-          <p className="text-xs text-afa-ink/60 mt-1">
-            Shown for reference — last year&rsquo;s poster, not a live date.
+          <p className="text-afa-ink/70">
+            No results yet — check back after the next tournament.
           </p>
         )}
-      </div>
-      <dl className={`grid grid-cols-2 gap-x-4 gap-y-1 ${dlSize} ${posterWidth} mx-auto`}>
-        <dt className="font-semibold">Dates</dt>
-        <dd>{formatDateRange(tournament.start_date, tournament.end_date)}</dd>
-        <dt className="font-semibold">Venue</dt>
-        <dd>{tournament.venue_name}</dd>
-        {tournament.entry_fee_cents != null && (
-          <>
-            <dt className="font-semibold">Entry Fee</dt>
-            <dd>{formatFee(tournament.entry_fee_cents)}</dd>
-          </>
-        )}
-        {tournament.game_guarantee && (
-          <>
-            <dt className="font-semibold">Game Guarantee</dt>
-            <dd>{tournament.game_guarantee}</dd>
-          </>
-        )}
-        {tournament.divisions_offered && (
-          <>
-            <dt className="font-semibold">Divisions</dt>
-            <dd>{tournament.divisions_offered}</dd>
-          </>
-        )}
-      </dl>
+      </section>
     </div>
   );
 }
