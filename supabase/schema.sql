@@ -252,16 +252,44 @@ create policy "public read tournaments" on public.tournaments for select using (
 drop policy if exists "public read classes" on public.classes;
 create policy "public read classes" on public.classes for select using (true);
 
--- Explicit grants — this project's Data API posture is "auto-expose new
--- tables OFF", which means new tables get NO role grants at all by
--- default, not even service_role. classes is a new table (2026-07-23);
--- its grants are stated here explicitly, matching the SELECT-to-
--- anon/authenticated, ALL-to-service_role pattern already live on
--- tournaments/divisions/etc (those grants exist on the live DB but were
--- never written into this file — a pre-existing gap, reported, not
--- fixed here since it's out of this dispatch's scope).
+-- ============================================================
+-- Grants — the complete, verified map (2026-07-23). This project's Data
+-- API posture is "auto-expose new tables OFF": new tables get NO role
+-- grants at all by default, not even service_role — every grant must be
+-- explicit, and any new table needs its lines added here.
+--
+-- Verified against information_schema.role_table_grants on the live DB
+-- 2026-07-23, AFTER a hardening pass: Supabase default-privilege residue
+-- had left anon/authenticated holding TRUNCATE, TRIGGER, and REFERENCES
+-- on every table INCLUDING the private PII ones. TRUNCATE is not gated
+-- by RLS. Not reachable through PostgREST today, but the privilege had
+-- no reason to exist — revoked on all current tables AND from default
+-- privileges so future tables don't regrow it:
+--   revoke truncate, trigger, references on all tables in schema public
+--     from anon, authenticated;
+--   alter default privileges in schema public revoke truncate, trigger,
+--     references on tables from anon, authenticated;
+--
+-- The resulting law: anon/authenticated = SELECT on the six public
+-- tables below, NOTHING on registrations/roster_members/settings/
+-- scorekeeper_auth_throttle. service_role = ALL on everything
+-- (server-side only, never shipped to a browser).
+grant select on public.tournaments to anon, authenticated;
+grant select on public.divisions to anon, authenticated;
+grant select on public.placements to anon, authenticated;
+grant select on public.brackets to anon, authenticated;
+grant select on public.games to anon, authenticated;
 grant select on public.classes to anon, authenticated;
+grant all on public.tournaments to service_role;
+grant all on public.divisions to service_role;
+grant all on public.placements to service_role;
+grant all on public.brackets to service_role;
+grant all on public.games to service_role;
 grant all on public.classes to service_role;
+grant all on public.registrations to service_role;
+grant all on public.roster_members to service_role;
+grant all on public.settings to service_role;
+grant all on public.scorekeeper_auth_throttle to service_role;
 
 drop policy if exists "public read divisions" on public.divisions;
 create policy "public read divisions" on public.divisions for select using (true);
