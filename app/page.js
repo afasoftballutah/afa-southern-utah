@@ -25,7 +25,7 @@ export default async function Home() {
         {tournament ? (
           <PosterHero tournament={tournament} placeholder={!confirmed} />
         ) : (
-          <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
+          <EmptyHero />
         )}
       </section>
 
@@ -50,6 +50,25 @@ export default async function Home() {
           Register a Team
         </Link>
       </section>
+    </div>
+  );
+}
+
+// The mascot eagle owns the hero only where there's real empty space — no
+// poster to step aside for. It never sits behind a real poster (posters ARE
+// the visual identity — existing law) and never appears on Register.
+function EmptyHero() {
+  return (
+    <div className="text-center space-y-3">
+      <div className="mx-auto max-w-[220px] overflow-hidden rounded-lg">
+        <img
+          src="/afa-mascot.jpg"
+          alt=""
+          aria-hidden="true"
+          className="w-full h-56 object-cover object-top"
+        />
+      </div>
+      <p className="text-afa-ink/70">Nothing on the calendar yet — check back.</p>
     </div>
   );
 }

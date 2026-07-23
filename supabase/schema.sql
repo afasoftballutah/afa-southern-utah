@@ -25,6 +25,11 @@ create table if not exists public.tournaments (
   contacts jsonb not null default '[]', -- [{name, phone}]
   is_placeholder boolean not null default false,
   status text not null default 'upcoming', -- upcoming | complete
+  -- region added 2026-07-23 (JD ruling): southern_utah is home base (registration,
+  -- brackets, scorekeeper). northern_utah and series are published-schedule-only for
+  -- now — same shape, so they can graduate to full tournaments later with no redo.
+  region text not null default 'southern_utah'
+    check (region in ('southern_utah', 'northern_utah', 'series')),
   created_at timestamptz not null default now()
 );
 comment on table public.tournaments is 'Public schedule data. No PII. Safe for anon read.';
