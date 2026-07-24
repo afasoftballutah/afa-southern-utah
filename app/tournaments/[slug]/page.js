@@ -116,29 +116,30 @@ export default async function TournamentDetailPage({ params }) {
       </div>
 
       {/* Action row — facts that act (afa-product-plan.md, "Action links").
-          Built from the existing Door component (Card + Link) so these read
-          as the same tappable-card family as the division doors below;
-          three-up at grid-cols-3 is what keeps them visually "small". */}
+          Each fact has ONE text home on this page (JD ruling 2026-07-23,
+          "facts once" — the poster is art, exempt): dates live under the
+          name above; the VENUE's one home is the Directions card sub;
+          phone numbers' one home is the Contacts block at the bottom, so
+          Calendar and Text carry no repeating sub. */}
       <div className={`grid gap-2 ${actionCount === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-        <Door href={directionsHref} title="Directions" sub={tournament.venue_name} />
-        <Door href={calendarHref} title="Calendar" sub={dateRange} />
+        <Door
+          href={directionsHref}
+          title="Directions"
+          sub={`${tournament.venue_name}${tournament.venue_address ? `, ${tournament.venue_address}` : ""}`}
+        />
+        <Door href={calendarHref} title="Calendar" sub="Add to your phone" />
         {firstContactSms && (
           <Door
             href={firstContactSms}
             title={`Text ${firstContact.name.split(" ")[0]}`}
-            sub={firstContact.phone}
+            sub="Tournament director"
           />
         )}
       </div>
 
+      {/* Facts said nowhere else: money and the guarantee. Dates, venue,
+          and divisions have their single homes elsewhere on the page. */}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <dt className="font-semibold">Dates</dt>
-        <dd>{dateRange}</dd>
-        <dt className="font-semibold">Venue</dt>
-        <dd>
-          {tournament.venue_name}
-          {tournament.venue_address ? `, ${tournament.venue_address}` : ""}
-        </dd>
         {tournament.entry_fee_cents != null && (
           <>
             <dt className="font-semibold">Entry Fee</dt>
@@ -155,12 +156,6 @@ export default async function TournamentDetailPage({ params }) {
           <>
             <dt className="font-semibold">Game Guarantee</dt>
             <dd>{tournament.game_guarantee}</dd>
-          </>
-        )}
-        {tournament.divisions_offered && (
-          <>
-            <dt className="font-semibold">Divisions</dt>
-            <dd>{tournament.divisions_offered}</dd>
           </>
         )}
         {tournament.fb_album_url && (
@@ -194,6 +189,17 @@ export default async function TournamentDetailPage({ params }) {
       {dividedGroups.length > 0 && (
         <>
           <div className="chalk-line" />
+          {/* The divisions offered (Rec/E/D/Open…) — vocabulary law: these
+              are the DIVISIONS; Men's/Women's/Coed are groups. Chips are
+              this fact's one home on the page. */}
+          {tournament.divisions_offered && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-semibold text-afa-navy mr-1">Divisions:</span>
+              {tournament.divisions_offered.split(",").map((d) => (
+                <Chip key={d.trim()}>{d.trim()}</Chip>
+              ))}
+            </div>
+          )}
           <div className="space-y-4">
             {dividedGroups.map((group) => (
               <div key={group.label}>
