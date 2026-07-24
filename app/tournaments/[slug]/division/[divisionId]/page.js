@@ -93,6 +93,49 @@ function PoolPlaySection({ poolGames }) {
   );
 }
 
+// Bracket stages (Gold/Silver) are CHILDREN of their division, not peers
+// (JD ruling 2026-07-24): Coed E doesn't sit beside Gold and Silver — it
+// BECOMES them, and which one your team lands in is decided by where you
+// finish in your pool. So a parent shows them as the next step; a child
+// shows its siblings as a toggle, so you can flip brackets without
+// backing out.
+function BracketStages({ slug, stages, currentId, poolPlayFeeds }) {
+  if (stages.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h2 className="text-lg font-bold text-afa-navy">Brackets</h2>
+      {poolPlayFeeds && (
+        <p className="text-sm text-afa-ink/70">
+          Which bracket your team plays in is set by where you finish in your pool.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {stages.map((s) => {
+          const name = s.display_name ?? s.name;
+          const isCurrent = s.id === currentId;
+          return isCurrent ? (
+            <span
+              key={s.id}
+              aria-current="page"
+              className="rounded border border-afa-navy bg-afa-navy px-4 py-2 text-sm font-bold text-white min-h-11 flex items-center"
+            >
+              {name}
+            </span>
+          ) : (
+            <Link
+              key={s.id}
+              href={`/tournaments/${slug}/division/${s.id}`}
+              className="rounded border border-afa-navy/25 bg-white px-4 py-2 text-sm font-bold text-afa-navy hover:border-afa-navy/60 min-h-11 flex items-center"
+            >
+              {name}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export async function generateMetadata({ params }) {
   const { divisionId } = await params;
   const division = await getDivisionById(divisionId);
@@ -114,17 +157,35 @@ export default async function DivisionPage({ params }) {
   const poolGames = division.pool_games ?? [];
   const hasPoolGames = poolGames.length > 0;
 
+  // Bracket stages: this division's children, or — when this IS a child —
+  // its siblings, so the toggle works from inside either bracket.
+  const allDivisions = tournament.divisions ?? [];
+  const parentId = division.parent_division_id ?? division.id;
+  const stages = allDivisions
+    .filter((d) => d.parent_division_id === parentId)
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const parent = division.parent_division_id
+    ? allDivisions.find((d) => d.id === division.parent_division_id)
+    : null;
+  const parentName = parent ? (parent.display_name ?? parent.name) : null;
+
   return (
     <div className="space-y-6">
       <Link
-        href={`/tournaments/${slug}`}
+        href={
+          parent
+            ? `/tournaments/${slug}/division/${parent.id}`
+            : `/tournaments/${slug}`
+        }
         className="text-sm text-afa-navy underline min-h-11 inline-flex items-center"
       >
-        ← {tournament.name}
+        ← {parentName ?? tournament.name}
       </Link>
 
       <div className="text-center">
-        <h1 className="font-display text-2xl text-afa-navy">{renderedName}</h1>
+        <h1 className="font-display text-2xl text-afa-navy">
+          {parentName ? `${parentName} · ${renderedName}` : renderedName}
+        </h1>
         <p className="text-sm text-afa-ink/70">
           {tournament.name}
           {division.day_label && ` · ${division.day_label}`}
@@ -132,6 +193,13 @@ export default async function DivisionPage({ params }) {
       </div>
 
       {hasPoolGames && <PoolPlaySection poolGames={poolGames} />}
+
+      <BracketStages
+        slug={slug}
+        stages={stages}
+        currentId={division.id}
+        poolPlayFeeds={hasPoolGames}
+      />
 
       {hasPlacements && (
         <div className="chalk-panel mb-6">

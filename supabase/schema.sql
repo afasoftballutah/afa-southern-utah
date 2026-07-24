@@ -96,6 +96,13 @@ create table if not exists public.divisions (
   -- this group plays, director-entered text, rendered verbatim on the
   -- group card. Nullable — most divisions have none yet.
   day_label text,
+  -- parent_division_id added 2026-07-24 (JD ruling): bracket STAGES (e.g.
+  -- Coed E's Gold and Silver) are children of the division they come out
+  -- of, not peers of it — a division becomes its stages after pool play.
+  -- Only parent-less divisions get a lobby card; children render inside
+  -- the parent's page as bracket toggles. Each child keeps its own
+  -- bracket row, so the bracket engine is unaffected.
+  parent_division_id uuid references public.divisions(id) on delete cascade,
   -- day_date added 2026-07-23 (dispatch-brief-5): the real date behind
   -- day_label. day_label stays the display verbatim text; day_date is the
   -- machine truth the calendar route and per-event .ics links key off.

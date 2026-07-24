@@ -5,6 +5,7 @@ import {
   formatDateRange,
   formatFee,
   isRealPoster,
+  isGroupName,
 } from "@/lib/data";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
@@ -80,16 +81,26 @@ export default async function TournamentDetailPage({ params }) {
   // Women's/Coed) until real gender x division rows exist (dispatch-brief-4;
   // afa-product-plan.md "central insight"). Ordered by sort_order then name
   // — JD ruling 2026-07-23: Women's, Men's, Coed (sort_order 10/20/30).
-  const groupCards = [...divisions].sort((a, b) => {
-    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-    return (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name);
-  });
+  // Only top-level divisions get a card. Bracket stages (Coed E's Gold and
+  // Silver) are CHILDREN — they're what a division becomes after pool play,
+  // not peers of it (JD ruling 2026-07-24). They surface inside their
+  // parent's page, never as more cards here.
+  const groupCards = divisions
+    .filter((d) => !d.parent_division_id)
+    .sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name);
+    });
   // The tournament's divisions offered (Rec/E/D/Open…) — vocabulary law:
   // these are the DIVISIONS; Men's/Women's/Coed are groups. Same set on
   // every group card today (divisions spec not yet per-group).
-  const divisionChips = tournament.divisions_offered
+  // Chips are the DIVISIONS (Rec/E/D/Open...). Entries that are really
+  // group names are dropped — the card title already says the group, and
+  // repeating it as a chip is the double-speak JD killed on the list page.
+  const divisionChips = (tournament.divisions_offered
     ? tournament.divisions_offered.split(",").map((d) => d.trim()).filter(Boolean)
-    : [];
+    : []
+  ).filter((d) => !isGroupName(d));
 
   const contacts = Array.isArray(tournament.contacts) ? tournament.contacts : [];
 
@@ -202,10 +213,7 @@ export default async function TournamentDetailPage({ params }) {
 
           {numberRows.length > 0 && (
             <>
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
-                The numbers
-              </h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-1">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-3">
                 {numberRows.map(([label, value]) => (
                   <Fragment key={label}>
                     <span className="font-semibold">{label}</span>

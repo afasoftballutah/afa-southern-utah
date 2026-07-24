@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
-import { formatDateRange, formatFee, isRealPoster } from "@/lib/data";
+import { formatDateRange, formatFee, isRealPoster, isGroupName } from "@/lib/data";
 
 const STORAGE_KEY = "afa-tournaments-view";
 
@@ -195,17 +195,6 @@ function TournamentRowCard({ t, showRegionChip }) {
     );
   }
   return <Card>{row}</Card>;
-}
-
-// A divisions_offered entry that's actually a group name (Men's/Women's/
-// Coed), not a division (Rec/E/D/Open...) — case-insensitive, apostrophe
-// forms normalized. dispatch-brief-6, TASK D, "No double-speak".
-function isGroupName(entry) {
-  const normalized = entry
-    .trim()
-    .toLowerCase()
-    .replace(/[‘’]/g, "'");
-  return ["mens", "men's", "womens", "women's", "coed"].includes(normalized);
 }
 
 function TournamentRow({ t, linked, showRegionChip }) {
