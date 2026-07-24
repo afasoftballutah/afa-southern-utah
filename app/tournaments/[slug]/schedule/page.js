@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import Chip from "@/components/ui/Chip";
+import Matchup from "@/components/ui/Matchup";
 
 export const revalidate = 30;
 
@@ -59,38 +60,20 @@ function groupByField(rows) {
 function GameRow({ row }) {
   // Reuse formatFieldTime (lib/bracket/tree.js) for the weekday+time string
   // in the league's Mountain zone — pass no `field` key so it returns just
-  // the date/time half, since the field is already this section's heading.
+  // the date/time half. The field itself is NOT repeated here (facts-once)
+  // since it's already this section's heading.
   const timeLabel = formatFieldTime({ scheduled_time: row.scheduledTime });
-  const team1 = row.team1 ?? "TBD";
-  const team2 = row.team2 ?? "TBD";
-  const isTie = row.isFinal && row.score1 === row.score2;
-  const team1Won = row.isFinal && !isTie && row.score1 > row.score2;
-  const team2Won = row.isFinal && !isTie && row.score2 > row.score1;
+  const caption = [timeLabel, row.divisionName, row.label].filter(Boolean).join(" · ");
 
   return (
-    <div className="py-2 text-sm">
-      <p>
-        {timeLabel && <span className="font-semibold text-afa-navy">{timeLabel}</span>}
-        <span className="text-afa-ink/60"> · {row.divisionName} · {row.label}</span>
-      </p>
-      <p>
-        {row.isFinal ? (
-          <>
-            <span className={team1Won ? "font-semibold" : ""}>
-              {team1} {row.score1}
-            </span>
-            {", "}
-            <span className={team2Won ? "font-semibold" : ""}>
-              {team2} {row.score2}
-            </span>
-          </>
-        ) : (
-          <>
-            {team1} vs {team2}
-          </>
-        )}
-      </p>
-    </div>
+    <Matchup
+      caption={caption}
+      team1={row.team1}
+      team2={row.team2}
+      score1={row.score1}
+      score2={row.score2}
+      isFinal={row.isFinal}
+    />
   );
 }
 
@@ -128,7 +111,7 @@ export default async function SchedulePage({ params }) {
                   {group.games.length} game{group.games.length === 1 ? "" : "s"}
                 </Chip>
               </div>
-              <div className="divide-y divide-afa-navy/10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {group.games.map((g) => (
                   <GameRow key={g.id} row={g} />
                 ))}

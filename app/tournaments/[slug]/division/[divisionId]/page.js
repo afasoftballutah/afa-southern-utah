@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getDivisionById } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import Card from "@/components/ui/Card";
+import Matchup from "@/components/ui/Matchup";
 import { formatFieldTime } from "@/lib/bracket/tree";
 
 export const revalidate = 30;
@@ -24,46 +25,6 @@ function poolStandings(games) {
     teams.get(g.team2_name)[team1Won ? "l" : "w"] += 1;
   }
   return [...teams.values()].sort((a, b) => b.w - a.w || a.name.localeCompare(b.name));
-}
-
-// Matchup card — the bracket tree's vocabulary (afa-bracket-tree-spec.md):
-// two team rows stacked tight as one unit, score in a narrow right column,
-// winner reads by weight, unplayed shows no score (no 0-0 lies). Pool play
-// reuses that language instead of inventing a second one (dispatch-brief-8).
-function MatchupCard({ game }) {
-  const fieldTime = formatFieldTime(game);
-  const isFinal = game.status === "final";
-  const isTie = isFinal && game.team1_score === game.team2_score;
-  const team1Won = isFinal && !isTie && game.team1_score > game.team2_score;
-  const team2Won = isFinal && !isTie && game.team2_score > game.team1_score;
-
-  return (
-    <div className="rounded-lg border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white p-3">
-      {fieldTime && (
-        <p className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-          {fieldTime}
-        </p>
-      )}
-      <div className="divide-y divide-afa-navy/10 mt-2">
-        <div className="flex items-center justify-between gap-2 py-1.5">
-          <span className={`text-sm min-w-0 truncate ${team1Won ? "font-semibold" : ""}`}>
-            {game.team1_name}
-          </span>
-          <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team1Won ? "font-semibold" : ""}`}>
-            {isFinal ? game.team1_score : ""}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-2 py-1.5">
-          <span className={`text-sm min-w-0 truncate ${team2Won ? "font-semibold" : ""}`}>
-            {game.team2_name}
-          </span>
-          <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team2Won ? "font-semibold" : ""}`}>
-            {isFinal ? game.team2_score : ""}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function PoolPlaySection({ poolGames }) {
@@ -111,7 +72,15 @@ function PoolPlaySection({ poolGames }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {games.map((g) => (
-                <MatchupCard key={g.id} game={g} />
+                <Matchup
+                  key={g.id}
+                  caption={formatFieldTime(g)}
+                  team1={g.team1_name}
+                  team2={g.team2_name}
+                  score1={g.team1_score}
+                  score2={g.team2_score}
+                  isFinal={g.status === "final"}
+                />
               ))}
             </div>
           </div>
