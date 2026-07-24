@@ -43,8 +43,18 @@ export default function RootLayout({ children }) {
         <header className="bg-afa-navy border-b-2 border-afa-red print:hidden">
           <div className="max-w-4xl mx-auto flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
             <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
-              <img src="/afa-logo.png" alt="" width={32} height={32} className="shrink-0" />
-              <span className="text-white font-black text-base sm:text-lg leading-tight tracking-tight">
+              {/* Logo glow (JD ruling, dispatch-brief-3): the mark is
+                  blue-on-blue against the navy masthead. A halo that hugs
+                  the PNG's own alpha footprint, never a box/panel behind
+                  it. */}
+              <img
+                src="/afa-logo.png"
+                alt=""
+                width={32}
+                height={32}
+                className="shrink-0 [filter:drop-shadow(0_0_2px_rgba(253,250,243,0.95))_drop-shadow(0_0_6px_rgba(253,250,243,0.5))]"
+              />
+              <span className="text-white font-black whitespace-nowrap text-sm sm:text-lg leading-tight tracking-tight">
                 AFA Southern Utah
               </span>
             </Link>

@@ -69,7 +69,7 @@ export default async function Home() {
 
       <div className="chalk-line" />
 
-      <section>
+      <section className="max-w-md mx-auto">
         <h2 className="text-xl font-bold text-afa-navy mb-3">Last Results</h2>
         {lastResults ? (
           <ResultsGallery tournament={lastResults} />
