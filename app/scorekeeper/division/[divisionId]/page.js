@@ -6,6 +6,7 @@ import { getDivisionCompletion } from "@/lib/bracket/status";
 import { isBracketDraft } from "@/lib/bracket/propagate";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
+import PoolPlayManager from "@/components/scorekeeper/PoolPlayManager";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scorekeeper — Division" };
@@ -20,6 +21,15 @@ async function loadDivisionData(divisionId) {
   if (error || !division) return null;
 
   const { data: brackets } = await supabase.from("brackets").select("*").eq("division_id", divisionId);
+
+  // Pool play (dispatch-brief-7) — separate, self-contained stage from the
+  // bracket engine. Public-read table, same anon client.
+  const { data: poolGames } = await supabase
+    .from("pool_games")
+    .select("*")
+    .eq("division_id", divisionId)
+    .order("pool", { ascending: true })
+    .order("scheduled_time", { ascending: true });
 
   const { data: games } = await supabase
     .from("games")
@@ -50,6 +60,7 @@ async function loadDivisionData(divisionId) {
     mainBracket,
     consolationBracket,
     games: games ?? [],
+    poolGames: poolGames ?? [],
     teamNames: (registrations ?? []).map((r) => r.team_name),
     mainDraft,
     consolationDraft,
@@ -77,6 +88,9 @@ export default async function ScorekeeperDivisionPage({ params }) {
         <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
         <h1 className="text-xl font-bold text-afa-navy">{data.division.name}</h1>
       </div>
+      {data.poolGames.length > 0 && (
+        <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
+      )}
       <BracketManager
         divisionId={divisionId}
         mainBracket={data.mainBracket}

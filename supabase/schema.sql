@@ -249,6 +249,28 @@ create table if not exists public.games (
 comment on table public.games is 'Public bracket/schedule data. Team names only, no PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
 
 -- ============================================================
+-- pool_games — PUBLIC READ. Added 2026-07-23 (dispatch-brief-7, Coed E
+-- Heatstroker pool play). A separate, self-contained stage from the
+-- bracket engine (brackets/games/BracketTree) — that engine is untouched.
+-- Team lists and standings DERIVE from these rows; ties in standings are
+-- broken by the director at seeding, not computed.
+-- ============================================================
+create table if not exists public.pool_games (
+  id uuid primary key default gen_random_uuid(),
+  division_id uuid not null references public.divisions(id) on delete cascade,
+  pool text not null,                -- 'A'..'F'
+  scheduled_time timestamptz,        -- absolute instant; display in America/Denver
+  field text,                        -- 'Field 1'..'Field 7'
+  team1_name text not null,
+  team2_name text not null,
+  team1_score integer,
+  team2_score integer,
+  status text not null default 'scheduled' check (status in ('scheduled','final')),
+  created_at timestamptz not null default now()
+);
+comment on table public.pool_games is 'Pool games are a separate stage from the bracket engine. Team lists and standings DERIVE from these rows; ties in standings are broken by the director at seeding, not computed. Public read, no PII.';
+
+-- ============================================================
 -- settings — PRIVATE. Key/value store, currently just the scorekeeper PIN
 -- hash. No Data API exposure, no RLS policies — service_role only, same as
 -- registrations/roster_members.
@@ -268,6 +290,7 @@ alter table public.registrations enable row level security;
 alter table public.roster_members enable row level security;
 alter table public.brackets enable row level security;
 alter table public.games enable row level security;
+alter table public.pool_games enable row level security;
 alter table public.settings enable row level security;
 
 -- Public read policies — anon (and authenticated) may SELECT only. No INSERT/UPDATE/DELETE policy exists
@@ -306,12 +329,14 @@ grant select on public.placements to anon, authenticated;
 grant select on public.brackets to anon, authenticated;
 grant select on public.games to anon, authenticated;
 grant select on public.classes to anon, authenticated;
+grant select on public.pool_games to anon, authenticated;
 grant all on public.tournaments to service_role;
 grant all on public.divisions to service_role;
 grant all on public.placements to service_role;
 grant all on public.brackets to service_role;
 grant all on public.games to service_role;
 grant all on public.classes to service_role;
+grant all on public.pool_games to service_role;
 grant all on public.registrations to service_role;
 grant all on public.roster_members to service_role;
 grant all on public.settings to service_role;
@@ -329,6 +354,9 @@ create policy "public read brackets" on public.brackets for select using (true);
 drop policy if exists "public read games" on public.games;
 create policy "public read games" on public.games for select using (true);
 
+drop policy if exists "public read pool_games" on public.pool_games;
+create policy "public read pool_games" on public.pool_games for select using (true);
+
 -- registrations, roster_members, settings: deliberately zero policies. RLS is enabled with no
 -- grants, so anon/authenticated get nothing at all. Only service_role (server-side only, never
 -- shipped to the browser) can touch these tables.
@@ -344,6 +372,7 @@ create index if not exists idx_roster_members_signing_token on public.roster_mem
 create index if not exists idx_games_division on public.games(division_id);
 create index if not exists idx_games_team1_source on public.games(team1_source_game_id);
 create index if not exists idx_games_team2_source on public.games(team2_source_game_id);
+create index if not exists idx_pool_games_division on public.pool_games(division_id);
 
 -- Seed the four classes the league already runs (2026-07-23). Open/
 -- Championship/Champ/Uppers are the same class by the league's own usage
