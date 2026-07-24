@@ -197,11 +197,42 @@ function TournamentRowCard({ t, showRegionChip }) {
   return <Card>{row}</Card>;
 }
 
+// A divisions_offered entry that's actually a group name (Men's/Women's/
+// Coed), not a division (Rec/E/D/Open...) — case-insensitive, apostrophe
+// forms normalized. dispatch-brief-6, TASK D, "No double-speak".
+function isGroupName(entry) {
+  const normalized = entry
+    .trim()
+    .toLowerCase()
+    .replace(/[‘’]/g, "'");
+  return ["mens", "men's", "womens", "women's", "coed"].includes(normalized);
+}
+
 function TournamentRow({ t, linked, showRegionChip }) {
   const hasRealPoster = isRealPoster(t);
-  const divisionChips = t.divisions_offered
+  const rawDivisionChips = t.divisions_offered
     ? t.divisions_offered.split(",").map((d) => d.trim()).filter(Boolean)
     : [];
+  // Groups line (dispatch-brief-6, TASK D, JD ruling) — the tournament's
+  // division rows (today: Men's/Women's/Coed) as a quiet small-caps label,
+  // not chips. Chips below stay the divisions (Rec/E/D/Open...).
+  const groupNames = (t.divisions ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((d) => d.display_name ?? d.name);
+
+  // No double-speak: chips render only entries that AREN'T group names.
+  // If nothing survives, the group line above already carries that
+  // information — no chips row — UNLESS there are no division rows
+  // either, in which case fall back to the unfiltered list so the card
+  // never loses information entirely.
+  const filteredDivisionChips = rawDivisionChips.filter((d) => !isGroupName(d));
+  const divisionChips =
+    filteredDivisionChips.length > 0
+      ? filteredDivisionChips
+      : groupNames.length > 0
+        ? []
+        : rawDivisionChips;
 
   // Facts line (JD ruling, dispatch-brief-3): date · venue · fee · GG.
   const factsParts = [formatDateRange(t.start_date, t.end_date), t.venue_name];
@@ -225,6 +256,11 @@ function TournamentRow({ t, linked, showRegionChip }) {
           </div>
         </div>
         <p className="text-sm text-afa-ink/80 mt-1">{factsParts.join(" · ")}</p>
+        {groupNames.length > 0 && (
+          <p className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-1.5">
+            {groupNames.join(" · ")}
+          </p>
+        )}
         {divisionChips.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {divisionChips.map((d) => (

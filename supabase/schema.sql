@@ -32,12 +32,27 @@ create table if not exists public.tournaments (
     check (region in ('southern_utah', 'northern_utah', 'series')),
   -- notes added 2026-07-23: short plain-text operational lines that have no
   -- dedicated column (e.g. "$10/game ump fees", "6-team minimum per
-  -- division"). Nullable — most tournaments have none. Rendered as plain
-  -- text under the facts list on the event page.
+  -- division"). Nullable — most tournaments have none. Superseded for
+  -- Specifics-card rendering by ump_fee_cents/division_notes/special_rules
+  -- below (dispatch-brief-6); column stays for rows that haven't migrated.
   notes text,
+  -- ump_fee_cents/division_notes/special_rules added 2026-07-23
+  -- (dispatch-brief-6, TASK C, additive): the Specifics card's structured
+  -- replacement for the free-text `notes` column above. ump_fee_cents
+  -- joins entry_fee_cents/deposit_cents/game_guarantee as "the standard
+  -- grid every tournament has" (numbers grid, cents like the other fee
+  -- columns). division_notes = division policy sentences (team minimums,
+  -- combining rules, conditional divisions). special_rules = event-specific
+  -- rules (e.g. equalizer policy). All nullable, additive only.
+  ump_fee_cents integer,
+  division_notes text,
+  special_rules text,
   created_at timestamptz not null default now()
 );
 comment on table public.tournaments is 'Public schedule data. No PII. Safe for anon read.';
+comment on column public.tournaments.ump_fee_cents is 'Per-game umpire fee, in cents. Part of the standard numbers grid (entry/deposit/guarantee/ump fee) on the Specifics card. Nullable — most tournaments have none set yet.';
+comment on column public.tournaments.division_notes is 'Division policy sentences (team minimums, combining rules, conditional divisions). Rendered as its own Specifics sub-section. Nullable.';
+comment on column public.tournaments.special_rules is 'Event-specific rules (e.g. equalizer policy). Rendered as its own Specifics sub-section. Nullable.';
 
 -- ============================================================
 -- classes — PUBLIC READ, director-write (via scorekeeper door, a later

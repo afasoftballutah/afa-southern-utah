@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import {
   getTournamentBySlug,
@@ -10,7 +11,6 @@ import Poster from "@/components/ui/Poster";
 import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
-import BracketTree from "@/components/bracket/BracketTree";
 
 export const revalidate = 30;
 
@@ -18,10 +18,6 @@ export async function generateMetadata({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
   return { title: tournament ? `${tournament.name} — AFA Southern Utah` : "Tournament" };
-}
-
-function hasBracketContent(division) {
-  return (division.brackets ?? []).length > 0;
 }
 
 // Strip non-digits, prepend +1 for a plain 10-digit US number — action
@@ -41,31 +37,31 @@ function telHref(phone) {
 // "3GG"/"4GG" read out as words; any other value (a guarantee shape the
 // league hasn't standardized on) renders verbatim.
 function formatGuarantee(gg) {
-  if (gg === "3GG") return "3-game guarantee";
-  if (gg === "4GG") return "4-game guarantee";
+  if (gg === "3GG") return "3 games";
+  if (gg === "4GG") return "4 games";
   return gg;
 }
 
-// The Specifics card's money lines — entry/deposit/guarantee, each its own
-// line (dispatch-brief-5; was one joined line, formatMoneyLine, before).
-// A missing part is simply omitted, not left blank.
-function formatMoneyParts(tournament) {
-  const parts = [];
-  if (tournament.entry_fee_cents != null) parts.push(`${formatFee(tournament.entry_fee_cents)} entry`);
-  if (tournament.deposit_cents != null) parts.push(`${formatFee(tournament.deposit_cents)} deposit`);
-  if (tournament.game_guarantee) parts.push(formatGuarantee(tournament.game_guarantee));
-  return parts;
+// Specifics "The numbers" grid — label/value pairs, only what's present
+// (dispatch-brief-6, TASK B.4 — replaces the earlier joined money line).
+function buildNumberRows(tournament) {
+  const rows = [];
+  if (tournament.entry_fee_cents != null) rows.push(["Entry fee", formatFee(tournament.entry_fee_cents)]);
+  if (tournament.deposit_cents != null) rows.push(["Deposit", formatFee(tournament.deposit_cents)]);
+  if (tournament.ump_fee_cents != null) rows.push(["Ump fees", `${formatFee(tournament.ump_fee_cents)} per game`]);
+  if (tournament.game_guarantee) rows.push(["Guarantee", formatGuarantee(tournament.game_guarantee)]);
+  return rows;
 }
 
-// Notes split into sentences (unchanged split logic), returned as plain
-// lines for the Specifics card rather than rendered here directly.
-function formatNotesLines(notes) {
-  if (!notes) return [];
-  return notes
+// Sentence split (unchanged split logic) — shared by division_notes and
+// special_rules, each rendered as its own Specifics sub-section.
+function splitSentences(text) {
+  if (!text) return [];
+  return text
     .split(". ")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((text, i, arr) => (i < arr.length - 1 && !text.endsWith(".") ? `${text}.` : text));
+    .map((line, i, arr) => (i < arr.length - 1 && !line.endsWith(".") ? `${line}.` : line));
 }
 
 function calendarHrefForDivision(slug, dayDate) {
@@ -102,9 +98,11 @@ export default async function TournamentDetailPage({ params }) {
   )}`;
   const dateRange = formatDateRange(tournament.start_date, tournament.end_date);
 
-  const moneyParts = formatMoneyParts(tournament);
-  const noteLines = formatNotesLines(tournament.notes);
-  const hasSpecifics = moneyParts.length > 0 || noteLines.length > 0;
+  const numberRows = buildNumberRows(tournament);
+  const divisionNotesLines = splitSentences(tournament.division_notes);
+  const specialRulesLines = splitSentences(tournament.special_rules);
+  const hasSpecifics =
+    numberRows.length > 0 || divisionNotesLines.length > 0 || specialRulesLines.length > 0;
 
   return (
     <div className="space-y-6">
@@ -155,7 +153,10 @@ export default async function TournamentDetailPage({ params }) {
             return (
               <Card key={division.id} className="hover:border-afa-navy/50">
                 <div className="flex items-center gap-3">
-                  <Link href={`#division-${division.id}`} className="group flex-1 min-h-11">
+                  <Link
+                    href={`/tournaments/${tournament.slug}/division/${division.id}`}
+                    className="group flex-1 min-h-11"
+                  >
                     <p className="font-display text-lg text-afa-navy group-hover:underline">
                       {division.display_name ?? division.name}
                     </p>
@@ -192,64 +193,56 @@ export default async function TournamentDetailPage({ params }) {
         </div>
       )}
 
-      {/* Specifics — the one home for money facts and operational fine
-          print (dispatch-brief-5). Omitted entirely if every part is
-          empty. */}
+      {/* Specifics — organized, on-brand (dispatch-brief-6, JD ruling):
+          three sub-sections instead of one free-floating notes column.
+          Omitted entirely if every part is empty. */}
       {hasSpecifics && (
         <Card>
-          <h2 className="font-bold text-afa-navy mb-2">Specifics</h2>
-          <div className="text-sm space-y-1">
-            {moneyParts.map((part, i) => (
-              <p key={`money-${i}`}>{part}</p>
-            ))}
-            {noteLines.map((line, i) => (
-              <p key={`note-${i}`}>{line}</p>
-            ))}
-          </div>
+          <h2 className="font-display text-lg text-afa-navy">Specifics</h2>
+
+          {numberRows.length > 0 && (
+            <>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+                The numbers
+              </h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-1">
+                {numberRows.map(([label, value]) => (
+                  <Fragment key={label}>
+                    <span className="font-semibold">{label}</span>
+                    <span>{value}</span>
+                  </Fragment>
+                ))}
+              </div>
+            </>
+          )}
+
+          {divisionNotesLines.length > 0 && (
+            <>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+                Divisions
+              </h3>
+              <div className="text-sm space-y-1">
+                {divisionNotesLines.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </>
+          )}
+
+          {specialRulesLines.length > 0 && (
+            <>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+                Tournament rules
+              </h3>
+              <div className="text-sm space-y-1">
+                {specialRulesLines.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </>
+          )}
         </Card>
       )}
-
-      {divisions.map((division) => {
-        const renderedName = division.display_name ?? division.name;
-        const placements = division.placements ?? [];
-        const hasPlacements = placements.length > 0;
-        const hasBracket = hasBracketContent(division);
-        return (
-          <div key={division.id} id={`division-${division.id}`} className="scroll-mt-20">
-            <div className="chalk-line" />
-            <h3 className="font-semibold text-lg text-afa-navy mb-3">{renderedName}</h3>
-
-            {hasPlacements && (
-              <div className="chalk-panel mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  {["champion", "runner_up"].map((place) => {
-                    const p = placements.find((x) => x.place === place);
-                    if (!p) return null;
-                    return (
-                      <figure key={place} className="text-center">
-                        {p.photo_url && (
-                          <img src={p.photo_url} alt={p.team_name} className="w-full h-auto rounded" />
-                        )}
-                        <figcaption className="text-sm mt-1">
-                          {place === "champion" ? "Champion" : "Runner-Up"} — {p.team_name}
-                        </figcaption>
-                      </figure>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {hasBracket && <BracketTree division={division} />}
-
-            {!hasPlacements && !hasBracket && (
-              <p className="text-afa-ink/70 text-sm">
-                No results yet — check back after the bracket is set.
-              </p>
-            )}
-          </div>
-        );
-      })}
 
       {tournament.fb_album_url && (
         <>
@@ -273,34 +266,32 @@ export default async function TournamentDetailPage({ params }) {
           <div className="chalk-line" />
           <div>
             <h2 className="text-lg font-bold text-afa-navy mb-2">Contacts</h2>
-            <ul className="text-sm space-y-1">
-              {contacts.map((c, i) => {
-                const sms = smsHref(c.phone);
-                const tel = telHref(c.phone);
-                return (
-                  <li key={i} className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{c.name}</span>
-                    {sms && tel && (
-                      <>
-                        <a
-                          href={sms}
-                          className="min-h-11 flex items-center text-afa-navy underline"
-                        >
-                          Text
-                        </a>
-                        <span className="text-afa-muted">|</span>
-                        <a
-                          href={tel}
-                          className="min-h-11 flex items-center text-afa-navy underline"
-                        >
-                          Call
-                        </a>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <Card>
+              <div className="space-y-2">
+                {contacts.map((c, i) => {
+                  const sms = smsHref(c.phone);
+                  const tel = telHref(c.phone);
+                  const buttonClass =
+                    "rounded border border-afa-navy/25 bg-white px-3 py-2 text-sm font-bold text-afa-navy hover:border-afa-navy/60 min-h-11 flex items-center";
+                  return (
+                    <div key={i} className="flex items-center gap-3 flex-wrap">
+                      <span className="font-bold text-afa-navy min-w-fit">{c.name}</span>
+                      {c.phone && <span className="text-sm text-afa-ink/70">{c.phone}</span>}
+                      {sms && tel && (
+                        <div className="ml-auto flex items-center gap-2">
+                          <a href={sms} className={buttonClass}>
+                            Text
+                          </a>
+                          <a href={tel} className={buttonClass}>
+                            Call
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
           </div>
         </>
       )}
