@@ -81,10 +81,16 @@ create table if not exists public.divisions (
   -- this group plays, director-entered text, rendered verbatim on the
   -- group card. Nullable — most divisions have none yet.
   day_label text,
+  -- day_date added 2026-07-23 (dispatch-brief-5): the real date behind
+  -- day_label. day_label stays the display verbatim text; day_date is the
+  -- machine truth the calendar route and per-event .ics links key off.
+  -- Nullable — most divisions have none yet.
+  day_date date,
   unique (tournament_id, name)
 );
 comment on table public.divisions is 'Public division list per tournament. No PII. Safe for anon read.';
 comment on column public.divisions.day_label is 'Director-entered day text (e.g. "Sat, Aug 22"), rendered verbatim on the group card. Nullable — most divisions have none yet.';
+comment on column public.divisions.day_date is 'The real date behind day_label — machine truth for per-event calendar links/splitting. Nullable — most divisions have none yet; day_label is display, day_date is the date to compute from.';
 
 -- ============================================================
 -- placements — PUBLIC READ. Champion/runner-up + photo. No PII (team name only).
