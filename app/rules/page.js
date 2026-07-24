@@ -3,21 +3,19 @@ import Card from "@/components/ui/Card";
 
 export const metadata = { title: "Rules — AFA Southern Utah" };
 
+// The painterly-eagle watermark came off this page 2026-07-24, for two
+// reasons both specific to it: the source is a JPEG carrying its own grey
+// background, so at 6% opacity it rendered as a rectangular tint block
+// rather than an eagle; and the page is now twenty white cards, which
+// leaves no clean field for texture — the tint only showed in the gaps
+// between cards, reading as an artifact. If the eagle belongs here it
+// needs a transparent cut-out PNG. The watermark behind the bracket's
+// Final zone is a different asset and is unaffected.
 export default function RulesPage() {
   return (
-    <div className="space-y-4 relative">
-      {/* Painterly eagle, faint — texture under the one static reading page,
-          never a hero, never full opacity (Design direction, 2026-07-23). */}
-      {/* Centered like a seal, not cornered like an accident (JD, 7/24). */}
-      <img
-        src="/afa-eagle-painterly.jpg"
-        alt=""
-        aria-hidden="true"
-        className="absolute top-6 left-1/2 -translate-x-1/2 w-64 sm:w-80 h-auto pointer-events-none select-none print:hidden"
-        style={{ opacity: 0.06 }}
-      />
-      <h1 className="text-2xl font-bold text-afa-navy relative">Rules</h1>
-      <p className="text-sm text-afa-ink/70 relative">
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold text-afa-navy">Rules</h1>
+      <p className="text-sm text-afa-ink/70">
         {RULES_SOURCE.title} ({RULES_SOURCE.year}) —{" "}
         <a
           href={RULES_SOURCE.url}
@@ -28,10 +26,10 @@ export default function RulesPage() {
           View the original PDF
         </a>
       </p>
-      <p className="text-sm text-afa-ink/70 relative">
+      <p className="text-sm text-afa-ink/70">
         Tournament-specific rules are listed on each tournament page.
       </p>
-      <div className="space-y-3 relative">
+      <div className="space-y-3">
         {RULES_SECTIONS.map((section, i) => (
           <Card key={i} variant="default">
             <details className="group">
