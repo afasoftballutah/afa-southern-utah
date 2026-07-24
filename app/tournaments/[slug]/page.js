@@ -59,7 +59,10 @@ function groupDivisions(divisions) {
     label: GENDER_LABEL[g],
     divisions: byGender.get(g),
   }));
-  if (ungrouped.length > 0) groups.push({ label: "Divisions", divisions: ungrouped });
+  // Vocabulary law: Men's/Women's/Coed are GROUPS, "divisions" means
+  // Rec/E/D/Open (whose one home is the chips row). These doors lead to
+  // brackets and results, so that's the section's name.
+  if (ungrouped.length > 0) groups.push({ label: "Brackets & Results", divisions: ungrouped });
   return groups;
 }
 
