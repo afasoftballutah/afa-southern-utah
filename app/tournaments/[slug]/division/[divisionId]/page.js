@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDivisionById } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
+import Card from "@/components/ui/Card";
 import { formatFieldTime } from "@/lib/bracket/tree";
 
 export const revalidate = 30;
@@ -25,6 +26,46 @@ function poolStandings(games) {
   return [...teams.values()].sort((a, b) => b.w - a.w || a.name.localeCompare(b.name));
 }
 
+// Matchup card — the bracket tree's vocabulary (afa-bracket-tree-spec.md):
+// two team rows stacked tight as one unit, score in a narrow right column,
+// winner reads by weight, unplayed shows no score (no 0-0 lies). Pool play
+// reuses that language instead of inventing a second one (dispatch-brief-8).
+function MatchupCard({ game }) {
+  const fieldTime = formatFieldTime(game);
+  const isFinal = game.status === "final";
+  const isTie = isFinal && game.team1_score === game.team2_score;
+  const team1Won = isFinal && !isTie && game.team1_score > game.team2_score;
+  const team2Won = isFinal && !isTie && game.team2_score > game.team1_score;
+
+  return (
+    <div className="rounded-lg border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white p-3">
+      {fieldTime && (
+        <p className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+          {fieldTime}
+        </p>
+      )}
+      <div className="divide-y divide-afa-navy/10 mt-2">
+        <div className="flex items-center justify-between gap-2 py-1.5">
+          <span className={`text-sm min-w-0 truncate ${team1Won ? "font-semibold" : ""}`}>
+            {game.team1_name}
+          </span>
+          <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team1Won ? "font-semibold" : ""}`}>
+            {isFinal ? game.team1_score : ""}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2 py-1.5">
+          <span className={`text-sm min-w-0 truncate ${team2Won ? "font-semibold" : ""}`}>
+            {game.team2_name}
+          </span>
+          <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team2Won ? "font-semibold" : ""}`}>
+            {isFinal ? game.team2_score : ""}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PoolPlaySection({ poolGames }) {
   if (!poolGames || poolGames.length === 0) return null;
 
@@ -43,48 +84,35 @@ function PoolPlaySection({ poolGames }) {
               Pool {letter}
             </h3>
 
-            <table className="w-full text-sm divide-y divide-afa-navy/10">
-              <thead>
-                <tr className="text-left divide-y divide-afa-navy/10">
-                  <th className="font-semibold py-1">Team</th>
-                  <th className="font-semibold py-1 text-right w-10">W</th>
-                  <th className="font-semibold py-1 text-right w-10">L</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-afa-navy/10">
-                {standings.map((t) => (
-                  <tr key={t.name}>
-                    <td className="py-1">{t.name}</td>
-                    <td className="py-1 text-right">{t.w}</td>
-                    <td className="py-1 text-right">{t.l}</td>
+            <Card>
+              <table className="w-full text-sm divide-y divide-afa-navy/10">
+                <thead>
+                  <tr className="text-left divide-y divide-afa-navy/10">
+                    <th className="font-semibold py-1">Team</th>
+                    <th className="font-semibold py-1 text-right w-8 text-[11px] uppercase tracking-wide text-afa-muted">
+                      W
+                    </th>
+                    <th className="font-semibold py-1 text-right w-8 text-[11px] uppercase tracking-wide text-afa-muted">
+                      L
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-afa-navy/10">
+                  {standings.map((t) => (
+                    <tr key={t.name}>
+                      <td className="py-1">{t.name}</td>
+                      <td className="py-1 text-right w-8">{t.w}</td>
+                      <td className="py-1 text-right w-8">{t.l}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
 
-            <div className="space-y-1">
-              {games.map((g) => {
-                const fieldTime = formatFieldTime(g);
-                const isFinal = g.status === "final";
-                const team1Won = isFinal && g.team1_score > g.team2_score;
-                return (
-                  <p key={g.id} className="text-sm">
-                    {fieldTime && `${fieldTime} — `}
-                    {isFinal ? (
-                      <>
-                        <span className={team1Won ? "font-semibold" : ""}>{g.team1_name}</span>{" "}
-                        {g.team1_score},{" "}
-                        <span className={!team1Won ? "font-semibold" : ""}>{g.team2_name}</span>{" "}
-                        {g.team2_score}
-                      </>
-                    ) : (
-                      <>
-                        {g.team1_name} vs {g.team2_name}
-                      </>
-                    )}
-                  </p>
-                );
-              })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {games.map((g) => (
+                <MatchupCard key={g.id} game={g} />
+              ))}
             </div>
           </div>
         );
