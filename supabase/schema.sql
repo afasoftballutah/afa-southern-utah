@@ -77,9 +77,14 @@ create table if not exists public.divisions (
   gender text check (gender in ('mens', 'womens', 'coed')),
   class_id uuid references public.classes(id),
   display_name text,
+  -- day_label added 2026-07-23 (lobby redesign, dispatch-brief-4): the day
+  -- this group plays, director-entered text, rendered verbatim on the
+  -- group card. Nullable — most divisions have none yet.
+  day_label text,
   unique (tournament_id, name)
 );
 comment on table public.divisions is 'Public division list per tournament. No PII. Safe for anon read.';
+comment on column public.divisions.day_label is 'Director-entered day text (e.g. "Sat, Aug 22"), rendered verbatim on the group card. Nullable — most divisions have none yet.';
 
 -- ============================================================
 -- placements — PUBLIC READ. Champion/runner-up + photo. No PII (team name only).

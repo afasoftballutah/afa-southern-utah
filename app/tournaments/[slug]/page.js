@@ -12,58 +12,12 @@ import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import BracketTree from "@/components/bracket/BracketTree";
 
-// Division doors get the font-display treatment (Anton allow-list:
-// tournament names, region/month headers, division door titles —
-// dispatch-brief-3 Hard Boundaries). A local variant rather than editing
-// the shared Door component, which stays plain everywhere else it's used
-// (Home's Schedules/Rules doors are not on that allow-list).
-function DivisionDoor({ href, title, sub }) {
-  return (
-    <Link href={href} className="block min-h-11">
-      <Card className="h-full hover:border-afa-navy/50">
-        <p className="font-display text-afa-navy">{title}</p>
-        {sub && <p className="text-xs text-afa-ink/60 mt-1">{sub}</p>}
-      </Card>
-    </Link>
-  );
-}
-
 export const revalidate = 30;
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
   return { title: tournament ? `${tournament.name} — AFA Southern Utah` : "Tournament" };
-}
-
-// Group headers, Men's/Women's/Coed in that order when gender is set;
-// anything without a gender falls under one "Divisions" group (data
-// reality, dispatch-brief-3 — every existing row is unparsed today, so
-// this collapses to a single "Divisions" group until gender/class_id get
-// populated in a later phase).
-const GENDER_LABEL = { mens: "Men's", womens: "Women's", coed: "Coed" };
-const GENDER_ORDER = ["mens", "womens", "coed"];
-
-function groupDivisions(divisions) {
-  const byGender = new Map();
-  const ungrouped = [];
-  for (const d of divisions) {
-    if (d.gender && GENDER_LABEL[d.gender]) {
-      if (!byGender.has(d.gender)) byGender.set(d.gender, []);
-      byGender.get(d.gender).push(d);
-    } else {
-      ungrouped.push(d);
-    }
-  }
-  const groups = GENDER_ORDER.filter((g) => byGender.has(g)).map((g) => ({
-    label: GENDER_LABEL[g],
-    divisions: byGender.get(g),
-  }));
-  // Vocabulary law: Men's/Women's/Coed are GROUPS, "divisions" means
-  // Rec/E/D/Open (whose one home is the chips row). These doors lead to
-  // brackets and results, so that's the section's name.
-  if (ungrouped.length > 0) groups.push({ label: "Brackets & Results", divisions: ungrouped });
-  return groups;
 }
 
 function hasBracketContent(division) {
@@ -78,13 +32,46 @@ function smsHref(phone) {
   return `sms:${digits.length === 10 ? "+1" : "+"}${digits}`;
 }
 
+// The money line — one quiet fact line replacing the old <dl> entirely
+// (dispatch-brief-4). Built from entry_fee_cents/deposit_cents/
+// game_guarantee only; a missing part (and its separator) is omitted
+// rather than left blank. "3GG"/"4GG" read out as words; any other value
+// (a guarantee shape the league hasn't standardized on) renders verbatim.
+function formatGuarantee(gg) {
+  if (gg === "3GG") return "3-game guarantee";
+  if (gg === "4GG") return "4-game guarantee";
+  return gg;
+}
+
+function formatMoneyLine(tournament) {
+  const parts = [];
+  if (tournament.entry_fee_cents != null) parts.push(`${formatFee(tournament.entry_fee_cents)} entry`);
+  if (tournament.deposit_cents != null) parts.push(`${formatFee(tournament.deposit_cents)} deposit`);
+  if (tournament.game_guarantee) parts.push(formatGuarantee(tournament.game_guarantee));
+  return parts.join(" · ");
+}
+
 export default async function TournamentDetailPage({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
   const divisions = tournament.divisions ?? [];
-  const dividedGroups = groupDivisions(divisions);
+
+  // THE GRID's cards — the existing division rows ARE the groups (Men's/
+  // Women's/Coed) until real gender x division rows exist (dispatch-brief-4;
+  // afa-product-plan.md "central insight"). Ordered by sort_order then name.
+  const groupCards = [...divisions].sort((a, b) => {
+    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+    return (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name);
+  });
+  // The tournament's divisions offered (Rec/E/D/Open…) — vocabulary law:
+  // these are the DIVISIONS; Men's/Women's/Coed are groups. Same set on
+  // every group card today (divisions spec not yet per-group).
+  const divisionChips = tournament.divisions_offered
+    ? tournament.divisions_offered.split(",").map((d) => d.trim()).filter(Boolean)
+    : [];
+
   const contacts = Array.isArray(tournament.contacts) ? tournament.contacts : [];
   const firstContact = contacts[0] ?? null;
   const firstContactSms = firstContact ? smsHref(firstContact.phone) : null;
@@ -94,6 +81,7 @@ export default async function TournamentDetailPage({ params }) {
   )}`;
   const calendarHref = `/tournaments/${tournament.slug}/calendar.ics`;
   const dateRange = formatDateRange(tournament.start_date, tournament.end_date);
+  const moneyLine = formatMoneyLine(tournament);
 
   const actionCount = firstContactSms ? 3 : 2;
 
@@ -111,11 +99,7 @@ export default async function TournamentDetailPage({ params }) {
           {tournament.status === "complete" && <Chip variant="muted">Final</Chip>}
         </div>
         <p className="text-sm text-afa-ink/70 mt-1">{dateRange}</p>
-        {tournament.is_placeholder && (
-          <p className="text-sm text-afa-ink/60 mt-1">
-            Shown for reference — last year&rsquo;s poster, not a live date.
-          </p>
-        )}
+        {moneyLine && <p className="text-sm text-afa-ink/80 mt-1">{moneyLine}</p>}
       </div>
 
       {/* Action row — facts that act (afa-product-plan.md, "Action links").
@@ -140,46 +124,41 @@ export default async function TournamentDetailPage({ params }) {
         )}
       </div>
 
-      {/* Facts said nowhere else: money and the guarantee. Dates, venue,
-          and divisions have their single homes elsewhere on the page. */}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        {tournament.entry_fee_cents != null && (
-          <>
-            <dt className="font-semibold">Entry Fee</dt>
-            <dd>{formatFee(tournament.entry_fee_cents)}</dd>
-          </>
-        )}
-        {tournament.deposit_cents != null && (
-          <>
-            <dt className="font-semibold">Deposit</dt>
-            <dd>{formatFee(tournament.deposit_cents)}</dd>
-          </>
-        )}
-        {tournament.game_guarantee && (
-          <>
-            <dt className="font-semibold">Game Guarantee</dt>
-            <dd>{tournament.game_guarantee}</dd>
-          </>
-        )}
-        {tournament.fb_album_url && (
-          <>
-            <dt className="font-semibold">Photos</dt>
-            <dd>
-              <a
-                href={tournament.fb_album_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-afa-navy"
-              >
-                Facebook album
-              </a>
-            </dd>
-          </>
-        )}
-      </dl>
+      {/* THE GRID — one card per group, carrying its day and its divisions
+          (afa-product-plan.md "central insight"; dispatch-brief-4). Replaces
+          BOTH the old "Divisions:" chip row and the "Brackets & Results"
+          doors section. The whole card is the tap target down to that
+          group's section below; the chips inside are structure, not links,
+          until real gender x division rows exist. */}
+      {groupCards.length > 0 && (
+        <div className="space-y-3">
+          {groupCards.map((division) => (
+            <Link key={division.id} href={`#division-${division.id}`} className="block">
+              <Card className="hover:border-afa-navy/50">
+                <div className="flex items-center justify-between">
+                  <p className="font-display text-lg text-afa-navy">
+                    {division.display_name ?? division.name}
+                  </p>
+                  {division.day_label && <Chip variant="muted">{division.day_label}</Chip>}
+                </div>
+                {divisionChips.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {divisionChips.map((d) => (
+                      <Chip key={d}>{d}</Chip>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
 
+      {/* Fine print — everything left with no other home on the page. The
+          Open* asterisk in the chips above finds its answer in the first
+          line here. */}
       {tournament.notes && (
-        <div className="text-sm text-afa-ink/80 space-y-1">
+        <div className="text-xs text-afa-ink/60 space-y-0.5">
           {tournament.notes.split(". ").map((line, i, arr) => {
             const text = line.trim();
             if (!text) return null;
@@ -187,40 +166,6 @@ export default async function TournamentDetailPage({ params }) {
             return <p key={i}>{withDot}</p>;
           })}
         </div>
-      )}
-
-      {dividedGroups.length > 0 && (
-        <>
-          <div className="chalk-line" />
-          {/* The divisions offered (Rec/E/D/Open…) — vocabulary law: these
-              are the DIVISIONS; Men's/Women's/Coed are groups. Chips are
-              this fact's one home on the page. */}
-          {tournament.divisions_offered && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-sm font-semibold text-afa-navy mr-1">Divisions:</span>
-              {tournament.divisions_offered.split(",").map((d) => (
-                <Chip key={d.trim()}>{d.trim()}</Chip>
-              ))}
-            </div>
-          )}
-          <div className="space-y-4">
-            {dividedGroups.map((group) => (
-              <div key={group.label}>
-                <h2 className="font-display text-lg text-afa-navy/80 mb-2">{group.label}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {group.divisions.map((division) => (
-                    <DivisionDoor
-                      key={division.id}
-                      href={`#division-${division.id}`}
-                      title={division.display_name ?? division.name}
-                      sub={hasBracketContent(division) ? "Bracket & results" : "Coming with the bracket"}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
       )}
 
       {divisions.map((division) => {
