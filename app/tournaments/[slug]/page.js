@@ -288,12 +288,21 @@ export default async function TournamentDetailPage({ params }) {
                   const tel = telHref(c.phone);
                   const buttonClass =
                     "rounded border border-afa-navy/25 bg-white px-3 py-2 text-sm font-bold text-afa-navy hover:border-afa-navy/60 min-h-11 flex items-center";
+                  // Name over number as a two-line block, buttons centered
+                  // against it (JD, 2026-07-24). Name and number on one line
+                  // made row height depend on name length — Joey's wrapped,
+                  // Frank's didn't, and the two rows stopped rhyming. Stacked,
+                  // every contact row is the same shape regardless of name.
                   return (
-                    <div key={i} className="flex items-center gap-3 flex-wrap">
-                      <span className="font-bold text-afa-navy min-w-fit">{c.name}</span>
-                      {c.phone && <span className="text-sm text-afa-ink/70">{c.phone}</span>}
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-afa-navy truncate">{c.name}</p>
+                        {c.phone && (
+                          <p className="text-sm text-afa-ink/70">{c.phone}</p>
+                        )}
+                      </div>
                       {sms && tel && (
-                        <div className="ml-auto flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <a href={sms} className={buttonClass}>
                             Text
                           </a>
