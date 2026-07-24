@@ -5,6 +5,9 @@ import {
   formatDateRange,
   formatFee,
 } from "@/lib/data";
+import Card from "@/components/ui/Card";
+import Door from "@/components/ui/Door";
+import Poster from "@/components/ui/Poster";
 
 export const revalidate = 30;
 
@@ -19,39 +22,31 @@ export default async function Home() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* The mascot — front page, always. Cropped to the eagle, name/facts
-          never over the art. */}
+          never over the art. Same rounded-lg/border treatment Poster uses
+          for its default eagle, so the two read as one family. */}
       <section className="max-w-md mx-auto">
-        <div className="overflow-hidden rounded-lg">
-          <img
-            src="/afa-mascot.jpg"
-            alt=""
-            aria-hidden="true"
-            loading="eager"
-            className="w-full h-52 sm:h-72 object-cover object-top"
-          />
-        </div>
+        <Poster posterUrl={null} className="h-52 sm:h-72" />
       </section>
 
       {/* Obvious places to go. The next tournament is the featured door. */}
       <section className="max-w-md mx-auto space-y-3">
         {tournament ? (
-          <Link
-            href={`/tournaments/${tournament.slug}`}
-            className="block bg-afa-navy text-white rounded-lg p-4 hover:opacity-95"
-          >
-            <p className="text-xs font-bold uppercase tracking-wide text-white/70">
-              {confirmed ? "Next Tournament" : "Most Recent"}
-            </p>
-            <p className="font-display text-2xl mt-1">{tournament.name}</p>
-            <p className="text-sm text-white/90 mt-1">
-              {formatDateRange(tournament.start_date, tournament.end_date)} &middot;{" "}
-              {tournament.venue_name}
-              {tournament.entry_fee_cents != null &&
-                ` · ${formatFee(tournament.entry_fee_cents)}`}
-              {tournament.game_guarantee && ` · ${tournament.game_guarantee}`}
-            </p>
+          <Link href={`/tournaments/${tournament.slug}`} className="block hover:opacity-95">
+            <Card variant="navy">
+              <p className="text-xs font-bold uppercase tracking-wide text-white/70">
+                {confirmed ? "Next Tournament" : "Most Recent"}
+              </p>
+              <p className="font-display text-2xl mt-1">{tournament.name}</p>
+              <p className="text-sm text-white/90 mt-1">
+                {formatDateRange(tournament.start_date, tournament.end_date)} &middot;{" "}
+                {tournament.venue_name}
+                {tournament.entry_fee_cents != null &&
+                  ` · ${formatFee(tournament.entry_fee_cents)}`}
+                {tournament.game_guarantee && ` · ${tournament.game_guarantee}`}
+              </p>
+            </Card>
           </Link>
         ) : (
           <div className="block bg-afa-navy/10 text-afa-ink rounded-lg p-4">
@@ -60,20 +55,8 @@ export default async function Home() {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            href="/tournaments"
-            className="block bg-white border border-afa-navy/20 rounded-lg p-4 text-center hover:border-afa-navy/50"
-          >
-            <p className="font-bold text-afa-navy">Schedules</p>
-            <p className="text-xs text-afa-ink/60 mt-1">All regions, all dates</p>
-          </Link>
-          <Link
-            href="/rules"
-            className="block bg-white border border-afa-navy/20 rounded-lg p-4 text-center hover:border-afa-navy/50"
-          >
-            <p className="font-bold text-afa-navy">Rules</p>
-            <p className="text-xs text-afa-ink/60 mt-1">How we play</p>
-          </Link>
+          <Door href="/tournaments" title="Schedules" sub="All regions, all dates" />
+          <Door href="/rules" title="Rules" sub="How we play" />
         </div>
 
         <Link
