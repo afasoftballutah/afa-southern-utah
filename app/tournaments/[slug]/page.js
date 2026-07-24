@@ -140,12 +140,19 @@ export default async function TournamentDetailPage({ params }) {
           Directions only (JD ruling 2026-07-23): Text moved to Contacts at
           the bottom, away from accidental thumbs; Calendar moved onto the
           group cards below (one Door per group's day, not one whole-
-          tournament Door here). */}
-      <div>
+          tournament Door here). Schedule joins it as a second Door
+          (dispatch-brief-11) — the full field-by-field list, a door away
+          from the venue itself. */}
+      <div className="grid grid-cols-2 gap-2">
         <Door
           href={directionsHref}
           title="Directions"
           sub={`${tournament.venue_name}${tournament.venue_address ? `, ${tournament.venue_address}` : ""}`}
+        />
+        <Door
+          href={`/tournaments/${slug}/schedule`}
+          title="Schedule"
+          sub="Every game, by field"
         />
       </div>
 
