@@ -54,7 +54,10 @@ export default function RootLayout({ children }) {
                 height={32}
                 className="shrink-0 [filter:drop-shadow(0_0_2px_rgba(253,250,243,0.95))_drop-shadow(0_0_6px_rgba(253,250,243,0.5))]"
               />
-              <span className="text-white font-black whitespace-nowrap text-sm sm:text-lg leading-tight tracking-tight">
+              {/* At phone width the glowing mark IS the identity — the
+                  wordmark yields so the nav never collides (390px can't
+                  hold both; measured 2026-07-23). Full name from sm: up. */}
+              <span className="hidden sm:inline text-white font-black whitespace-nowrap sm:text-lg leading-tight tracking-tight">
                 AFA Southern Utah
               </span>
             </Link>
