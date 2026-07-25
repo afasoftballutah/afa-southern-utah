@@ -99,7 +99,12 @@ function groupByTime(games) {
 // Pool play (dispatch-brief-7) — separate, self-contained stage from the
 // bracket engine (BracketManager untouched). Patterned on BracketManager's
 // fetch/submit style: no optimistic magic, save, refetch, render.
-export default function PoolPlayManager({ divisionId, poolGames }) {
+// readOnly — pool play is FINAL once the director confirms the bracket
+// (redesign spec 1). Scores stay visible and stay readable; what goes away
+// is the ability to change them. Reopening is one tap away on the page
+// above, because a wrong score has to be fixable at a ballpark at
+// midnight.
+export default function PoolPlayManager({ divisionId, poolGames, readOnly = false }) {
   const [selectedTeam, setSelectedTeam] = useState("");
 
   if (!poolGames || poolGames.length === 0) return null;
@@ -168,7 +173,7 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
           </h3>
           <div className="divide-y divide-afa-navy/10">
             {group.games.map((g) => (
-              <PoolGameRow key={g.id} game={g} />
+              <PoolGameRow key={g.id} game={g} readOnly={readOnly} />
             ))}
           </div>
         </div>
@@ -177,7 +182,7 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   );
 }
 
-function PoolGameRow({ game }) {
+function PoolGameRow({ game, readOnly = false }) {
   const router = useRouter();
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
@@ -265,7 +270,8 @@ function PoolGameRow({ game }) {
             className="w-14 shrink-0 rounded border border-afa-navy/30 px-0.5 text-center text-base"
             value={score1}
             onChange={(e) => setScore1(e.target.value)}
-            disabled={busy}
+            disabled={busy || readOnly}
+            readOnly={readOnly}
           />
           <span className="shrink-0 text-afa-ink/40">–</span>
           <input
@@ -275,7 +281,8 @@ function PoolGameRow({ game }) {
             className="w-14 shrink-0 rounded border border-afa-navy/30 px-0.5 text-center text-base"
             value={score2}
             onChange={(e) => setScore2(e.target.value)}
-            disabled={busy}
+            disabled={busy || readOnly}
+            readOnly={readOnly}
           />
         </div>
         <span
@@ -284,7 +291,7 @@ function PoolGameRow({ game }) {
           {game.team2_name}
         </span>
       </div>
-      <div className="mt-1 flex items-center justify-end gap-2">
+      <div className={`mt-1 flex items-center justify-end gap-2${readOnly ? " hidden" : ""}`}>
         <button
           type="button"
           disabled={busy || score1 === "" || score2 === ""}

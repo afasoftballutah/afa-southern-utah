@@ -9,18 +9,32 @@ import BracketManager from "@/components/scorekeeper/BracketManager";
 import BracketScores from "@/components/scorekeeper/BracketScores";
 import PoolPlayManager from "@/components/scorekeeper/PoolPlayManager";
 import SeedBrackets from "@/components/scorekeeper/SeedBrackets";
+import StageView from "@/components/scorekeeper/StageView";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scorekeeper — Division" };
 
 async function loadDivisionData(divisionId) {
   const supabase = getPublicClient();
+  // `*` rather than a field list so bracket_confirmed_at rides along when
+  // the migration has been applied and is simply absent when it has not.
+  // An un-migrated database and an unconfirmed division then behave
+  // identically, which is what lets this ship before the migration runs.
   const { data: division, error } = await supabase
     .from("divisions")
-    .select("id, name, tournament_id, tournaments(name, slug)")
+    .select("*, tournaments(name, slug)")
     .eq("id", divisionId)
     .maybeSingle();
   if (error || !division) return null;
+
+  // The bracket stages this division owns (Gold/Silver/Bronze), with their
+  // games, so the scorekeeper can show the bracket without leaving the
+  // page it scores pool play on.
+  const { data: children } = await supabase
+    .from("divisions")
+    .select("id, name, sort_order, games(*)")
+    .eq("parent_division_id", divisionId)
+    .order("sort_order", { ascending: true });
 
   const { data: brackets } = await supabase.from("brackets").select("*").eq("division_id", divisionId);
 
@@ -59,6 +73,8 @@ async function loadDivisionData(divisionId) {
 
   return {
     division,
+    stages: (children ?? []).filter((c) => (c.games ?? []).length > 0),
+    confirmedAt: division.bracket_confirmed_at ?? null,
     mainBracket,
     consolationBracket,
     games: games ?? [],
@@ -108,10 +124,13 @@ export default async function ScorekeeperDivisionPage({ params }) {
         <h1 className="text-xl font-bold text-afa-navy">{data.division.name}</h1>
       </div>
       {data.poolGames.length > 0 && (
-        <>
-          <SeedBrackets divisionId={divisionId} tournamentSlug={data.division.tournaments?.slug} />
-          <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
-        </>
+        <StageView
+          divisionId={divisionId}
+          tournamentSlug={data.division.tournaments?.slug}
+          poolGames={data.poolGames}
+          stages={data.stages}
+          confirmedAt={data.confirmedAt}
+        />
       )}
       {transcribed && <BracketScores games={data.games} />}
       {(data.mainBracket || generatable) && (
