@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const POOL_LETTERS = ["A", "B", "C", "D", "E", "F"];
+// Pool letters are DERIVED from the games, never hardcoded (2026-07-24).
+// A hardcoded A–F list silently hid pools G/H/I when the league reorganized
+// from 6 pools to 9 on the morning of a tournament — invisible publicly and
+// unscoreable in the director's door. Whatever pools exist in the data are
+// the pools that render, sorted naturally.
+function poolLetters(byPool) {
+  return Object.keys(byPool).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
 
 // Pool play (dispatch-brief-7) — separate, self-contained stage from the
 // bracket engine (BracketManager untouched). Patterned on BracketManager's
@@ -17,7 +26,7 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   return (
     <div className="chalk-panel space-y-4">
       <h2 className="font-bold text-afa-navy">Pool Play</h2>
-      {POOL_LETTERS.filter((letter) => byPool[letter]?.length).map((letter) => (
+      {poolLetters(byPool).map((letter) => (
         <div key={letter} className="space-y-2">
           <h3 className="text-sm font-bold text-afa-navy">Pool {letter}</h3>
           <div className="space-y-2">

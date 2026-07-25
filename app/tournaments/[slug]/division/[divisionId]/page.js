@@ -8,7 +8,16 @@ import { formatFieldTime } from "@/lib/bracket/tree";
 
 export const revalidate = 30;
 
-const POOL_LETTERS = ["A", "B", "C", "D", "E", "F"];
+// Pool letters are DERIVED from the games, never hardcoded (2026-07-24).
+// A hardcoded A–F list silently hid pools G/H/I when the league reorganized
+// from 6 pools to 9 on the morning of a tournament — invisible publicly and
+// unscoreable in the director's door. Whatever pools exist in the data are
+// the pools that render, sorted naturally.
+function poolLetters(byPool) {
+  return Object.keys(byPool).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
 
 // Pool play (dispatch-brief-7) — a separate, self-contained stage from the
 // bracket engine (untouched). Standings and the game list both DERIVE from
@@ -36,7 +45,7 @@ function PoolPlaySection({ poolGames }) {
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-afa-navy">Pool Play</h2>
-      {POOL_LETTERS.filter((letter) => byPool[letter]?.length).map((letter) => {
+      {poolLetters(byPool).map((letter) => {
         const games = byPool[letter];
         const standings = poolStandings(games);
         return (
