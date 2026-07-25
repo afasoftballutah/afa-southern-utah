@@ -4,9 +4,25 @@ import { getDivisionById } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import Card from "@/components/ui/Card";
 import Matchup from "@/components/ui/Matchup";
+import TeamFinder from "@/components/TeamFinder";
 import { formatFieldTime } from "@/lib/bracket/tree";
 
 export const revalidate = 30;
+
+// Bracket slots hold PROVENANCE placeholders, not real team names, until
+// pool play fills them in — "Winner of Game 5" or a seed reference like
+// "[A #1]" (the live data brackets the seed; the letter+number form
+// without brackets is included too, belt and suspenders). Neither belongs
+// in the team picker (dispatch-brief-14).
+const SEED_PLACEHOLDER = /^\[?[A-I] #\d+\]?$/;
+const PROVENANCE_PREFIX = /^(Winner|Loser) of Game/;
+
+function isRealTeamName(name) {
+  if (!name) return false;
+  if (SEED_PLACEHOLDER.test(name)) return false;
+  if (PROVENANCE_PREFIX.test(name)) return false;
+  return true;
+}
 
 // Pool letters are DERIVED from the games, never hardcoded (2026-07-24).
 // A hardcoded A–F list silently hid pools G/H/I when the league reorganized
@@ -184,6 +200,37 @@ export default async function DivisionPage({ params }) {
     : null;
   const parentName = parent ? (parent.display_name ?? parent.name) : null;
 
+  // Find my team (dispatch-brief-14) — one normalized games array feeding
+  // TeamFinder, built the same way from either stage this division might
+  // be in: pool play carries a real pool letter, the bracket list never
+  // does (pool: null). Provenance placeholders are filtered out of the
+  // team list below; if that leaves nothing real, no picker renders.
+  const finderGames = [
+    ...poolGames.map((g) => ({
+      id: g.id,
+      pool: g.pool,
+      caption: formatFieldTime(g),
+      team1: g.team1_name,
+      team2: g.team2_name,
+      score1: g.team1_score,
+      score2: g.team2_score,
+      isFinal: g.status === "final",
+    })),
+    ...bracketGames.map((g) => ({
+      id: g.id,
+      pool: null,
+      caption: [`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
+      team1: g.team1_name,
+      team2: g.team2_name,
+      score1: g.team1_score,
+      score2: g.team2_score,
+      isFinal: g.status === "final",
+    })),
+  ];
+  const finderTeams = [
+    ...new Set(finderGames.flatMap((g) => [g.team1, g.team2]).filter(isRealTeamName)),
+  ].sort((a, b) => a.localeCompare(b));
+
   return (
     <div className="space-y-6">
       <Link
@@ -206,6 +253,10 @@ export default async function DivisionPage({ params }) {
           {division.day_label && ` · ${division.day_label}`}
         </p>
       </div>
+
+      {finderTeams.length > 0 && (
+        <TeamFinder teams={finderTeams} games={finderGames} divisionId={division.id} />
+      )}
 
       {hasPoolGames && <PoolPlaySection poolGames={poolGames} />}
 
