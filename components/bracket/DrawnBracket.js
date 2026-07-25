@@ -53,15 +53,36 @@ const BAND_GAP = 56; // tight vertical gap between the winners and losers bands
 const MIN_GAP = 1; // row units — the "clear gap" floor between two games in one column
 const CAPTION_ROOM = 24; // canvas padding reserved below the lowest box so its caption (outside all layout math) never clips
 
-function parseSlots(game, byRound) {
-  return ["team1_name", "team2_name"].map((slot) => {
-    const m = FEED_RE.exec(game?.[slot] ?? "");
+// A slot's feed comes from the SOURCE COLUMNS first, and only falls back to
+// parsing the placeholder text (JD, 2026-07-25: "what happened to the tourney
+// branch?").
+//
+// The bug this fixes: the drawing used to derive every edge from text like
+// "Winner of Game 3". The moment that game was scored, propagation replaced
+// the text with the winner's real name — and the edge vanished, taking the
+// whole branch out of the picture. A played game literally erased its own
+// line. `team*_source_game_id` survives propagation precisely because it is
+// the durable relationship; the text is only the visible placeholder.
+function parseSlots(game, byRound, roundByGameId) {
+  return [
+    ["team1_name", "team1_source_game_id", "team1_source_result"],
+    ["team2_name", "team2_source_game_id", "team2_source_result"],
+  ].map(([nameKey, srcKey, resKey]) => {
+    const srcId = game?.[srcKey];
+    if (srcId && roundByGameId?.has(srcId)) {
+      const round = roundByGameId.get(srcId);
+      if (byRound.has(round)) {
+        const res = String(game?.[resKey] ?? "winner").toLowerCase();
+        return { type: res === "loser" ? "Loser" : "Winner", round };
+      }
+    }
+    const m = FEED_RE.exec(game?.[nameKey] ?? "");
     if (m && byRound.has(Number(m[2]))) return { type: m[1], round: Number(m[2]) };
     return null;
   });
 }
-function feedersOf(game, byRound) {
-  return parseSlots(game, byRound)
+function feedersOf(game, byRound, roundByGameId) {
+  return parseSlots(game, byRound, roundByGameId)
     .filter(Boolean)
     .map((s) => s.round);
 }
@@ -75,8 +96,8 @@ function feedersOf(game, byRound) {
 // drawing it too states the same fact twice, in the noisiest way
 // available. Loser feeds still drive column and row placement; they just
 // aren't inked.
-function drawnFeedersOf(game, byRound) {
-  return parseSlots(game, byRound)
+function drawnFeedersOf(game, byRound, roundByGameId) {
+  return parseSlots(game, byRound, roundByGameId)
     .filter((s) => s && s.type === "Winner")
     .map((s) => s.round);
 }
@@ -87,7 +108,7 @@ function drawnFeedersOf(game, byRound) {
 // its feeders' columns, never adjusted to align with a band. Returns null
 // if a cycle is detected (malformed data) so the caller can bail to the
 // fallback list rather than looping forever.
-function computeDepths(byRound) {
+function computeDepths(byRound, roundByGameId) {
   const memo = new Map();
   const visiting = new Set();
   let cycle = false;
@@ -98,7 +119,7 @@ function computeDepths(byRound) {
       return 0;
     }
     visiting.add(round);
-    const feeders = feedersOf(byRound.get(round), byRound);
+    const feeders = feedersOf(byRound.get(round), byRound, roundByGameId);
     const d = feeders.length === 0 ? 0 : 1 + Math.max(...feeders.map(depth));
     visiting.delete(round);
     memo.set(round, d);
@@ -121,7 +142,7 @@ function computeDepths(byRound) {
   // column 0, throwing a long line across an empty column to Game 7.
   const consumers = new Map(); // round -> [rounds it feeds]
   for (const round of byRound.keys()) {
-    for (const f of feedersOf(byRound.get(round), byRound)) {
+    for (const f of feedersOf(byRound.get(round), byRound, roundByGameId)) {
       if (!consumers.has(f)) consumers.set(f, []);
       consumers.get(f).push(round);
     }
@@ -155,11 +176,11 @@ function computeDepths(byRound) {
 //     round, one as its winner and one as its loser) is FINAL too.
 //   - WINNERS: everything else (seed-fed games, and games fed only by
 //     winners-band winners).
-function computeBands(byRound, depthByRound) {
+function computeBands(byRound, depthByRound, roundByGameId) {
   const rounds = [...byRound.keys()].sort((a, b) => depthByRound.get(a) - depthByRound.get(b) || a - b);
   const band = new Map();
   for (const r of rounds) {
-    const slots = parseSlots(byRound.get(r), byRound);
+    const slots = parseSlots(byRound.get(r), byRound, roundByGameId);
     const hasLoserFeed = slots.some((s) => s && s.type === "Loser");
     const winnerSlots = slots.filter((s) => s && s.type === "Winner");
     const winnerFeedBands = winnerSlots.map((s) => band.get(s.round));
@@ -203,14 +224,14 @@ function computeBands(byRound, depthByRound) {
 // to inherit a row from. A game with same-band feeders centers on their
 // mean (one feeder inherits it exactly); collisions within the same
 // column are nudged down to keep a clear gap, same as before.
-function computeBandRows(byRound, depthByRound, band, bandName) {
+function computeBandRows(byRound, depthByRound, band, bandName, roundByGameId) {
   const bandRounds = [...byRound.keys()].filter((r) => band.get(r) === bandName);
   const ordered = [...bandRounds].sort((a, b) => depthByRound.get(a) - depthByRound.get(b) || a - b);
   const rowByRound = new Map();
   const placedByColumn = new Map();
   let rootCounter = 0;
   for (const r of ordered) {
-    const bandFeeders = feedersOf(byRound.get(r), byRound).filter((f) => band.get(f) === bandName);
+    const bandFeeders = feedersOf(byRound.get(r), byRound, roundByGameId).filter((f) => band.get(f) === bandName);
     let row;
     if (bandFeeders.length === 0) {
       row = rootCounter;
@@ -271,17 +292,21 @@ export function computeLayout(games) {
   if (real.length === 0) return null;
 
   const byRound = new Map();
-  for (const g of real) byRound.set(g.round, g);
+  const roundByGameId = new Map();
+  for (const g of real) {
+    byRound.set(g.round, g);
+    if (g.id) roundByGameId.set(g.id, g.round);
+  }
 
-  const depthByRound = computeDepths(byRound);
+  const depthByRound = computeDepths(byRound, roundByGameId);
   if (!depthByRound) return { cycle: true };
 
   const rounds = [...byRound.keys()];
   const maxDepth = Math.max(...rounds.map((r) => depthByRound.get(r)));
-  const band = computeBands(byRound, depthByRound);
+  const band = computeBands(byRound, depthByRound, roundByGameId);
 
-  const winnersRows = computeBandRows(byRound, depthByRound, band, "winners");
-  const losersRows = computeBandRows(byRound, depthByRound, band, "losers");
+  const winnersRows = computeBandRows(byRound, depthByRound, band, "winners", roundByGameId);
+  const losersRows = computeBandRows(byRound, depthByRound, band, "losers", roundByGameId);
 
   const winnersTop = TOP_PAD + HEADER_H;
   const winnersMaxRow = winnersRows.size ? Math.max(...winnersRows.values()) : 0;
@@ -310,7 +335,7 @@ export function computeLayout(games) {
   // GF2 sitting on GF1's line.
   const finalRounds = rounds.filter((r) => band.get(r) === "final").sort((a, b) => depthByRound.get(a) - depthByRound.get(b));
   for (const r of finalRounds) {
-    const slots = parseSlots(byRound.get(r), byRound).filter(Boolean);
+    const slots = parseSlots(byRound.get(r), byRound, roundByGameId).filter(Boolean);
     const sameRound = slots.length === 2 && slots[0].round === slots[1].round;
     let y;
     if (sameRound) {
@@ -356,7 +381,7 @@ export function computeLayout(games) {
   const joggedFeeds = []; // feeds where the vertical had to move earlier than the gutter right before the destination — reported per brief step 2
   for (const r of rounds) {
     const target = rectByRound.get(r);
-    for (const f of drawnFeedersOf(byRound.get(r), byRound)) {
+    for (const f of drawnFeedersOf(byRound.get(r), byRound, roundByGameId)) {
       const source = rectByRound.get(f);
       const x1 = source.x + CELL_W;
       const y1 = source.y + BOX_H / 2;
