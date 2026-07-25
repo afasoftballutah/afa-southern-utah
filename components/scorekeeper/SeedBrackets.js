@@ -13,6 +13,19 @@ function poolLetters(pools) {
   return Object.keys(pools).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
+// Slots arrive from the API already sorted by division, then game number
+// (dispatch-brief-23) — group them here for rendering without re-sorting
+// or hardcoding a Gold/Silver/Bronze name list.
+function groupSlotsByDivision(slots) {
+  const groups = [];
+  for (const s of slots) {
+    const last = groups[groups.length - 1];
+    if (last && last.division === s.division) last.rows.push(s);
+    else groups.push({ division: s.division, rows: [s] });
+  }
+  return groups;
+}
+
 // Groups an ordered team list into consecutive blocks sharing the same
 // rank (a tied group always occupies a contiguous run once sorted by
 // wins), so tied teams render together under one label with Up/Down
@@ -167,6 +180,35 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
     fetchPreview(nextOrders);
   }
 
+  // Remap (dispatch-brief-23): change which seed feeds a slot. Persists
+  // immediately, never touches team names or pool_games — safe at any
+  // time. Refetches the dry-run preview so both this row and any row that
+  // got swapped redraw with the server's answer, not a local guess.
+  async function remapSlot(gameId, slotSide, nextSeedRef) {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/scorekeeper/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tournamentSlug,
+          action: "remap",
+          gameId,
+          slot: slotSide,
+          seedRef: nextSeedRef,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not remap slot");
+      await fetchPreview(orders);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function apply() {
     setBusy(true);
     setError("");
@@ -202,6 +244,9 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   const preview = result.preview ?? [];
   const readyCount = preview.filter((p) => p.team).length;
   const waitingCount = preview.length - readyCount;
+  const slots = result.slots ?? [];
+  const seedRefOptions = result.seedRefOptions ?? [];
+  const slotGroups = groupSlotsByDivision(slots);
 
   return (
     <div className="chalk-panel space-y-4">
@@ -229,14 +274,57 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
         })}
       </div>
 
-      <div className="space-y-1 border-t border-afa-navy/10 pt-3">
-        <h3 className="text-sm font-bold text-afa-navy">Preview</h3>
-        {preview.length === 0 && <p className="text-sm text-afa-ink/60">No bracket slots to seed yet.</p>}
-        {preview.map((p) => (
-          <p key={p.seedRef} className="text-sm">
-            <span className="font-semibold text-afa-navy">{p.seedRef}</span>{" "}
-            → {p.team ? p.team : <span className="text-afa-ink/50">not yet</span>}
-          </p>
+      <div className="space-y-3 border-t border-afa-navy/10 pt-3">
+        <h3 className="text-sm font-bold text-afa-navy">Seeds → slots</h3>
+        <p className="text-xs text-afa-ink/60">
+          Seeds swap, they never duplicate — pointing a seed at a new slot moves
+          it off whatever slot it used to feed. This persists right away and is
+          always safe; nothing is written to the bracket until you press Apply
+          below.
+        </p>
+        {slots.length === 0 && (
+          <p className="text-sm text-afa-ink/60">No seed-fed slots on this bracket.</p>
+        )}
+        {slotGroups.map((group) => (
+          <div key={group.division} className="space-y-1">
+            <h4 className="text-sm font-bold text-afa-navy">{group.division}</h4>
+            <div className="space-y-2">
+              {group.rows.map((row) => (
+                <div
+                  key={`${row.gameId}-${row.slot}`}
+                  className="flex items-center justify-between gap-2 text-sm border-b border-afa-navy/10 pb-2"
+                >
+                  <span className="flex-1">
+                    <span className="font-semibold text-afa-navy">
+                      {row.division} · Game {row.round}
+                    </span>{" "}
+                    <span className="text-afa-ink/50">
+                      ({row.slot === "team1" ? "top" : "bottom"})
+                    </span>
+                    <br />
+                    <span className="font-semibold">{row.seedRef}</span>{" "}
+                    → {row.team ? row.team : <span className="text-afa-ink/50">not yet</span>}
+                  </span>
+                  <select
+                    aria-label={`Seed for ${group.division} Game ${row.round} ${row.slot === "team1" ? "top" : "bottom"}`}
+                    className="border border-afa-navy/30 rounded px-2 py-2"
+                    value={row.seedRef}
+                    disabled={busy}
+                    onChange={(e) =>
+                      remapSlot(row.gameId, row.slot, e.target.value === "" ? null : e.target.value)
+                    }
+                  >
+                    <option value="">— none —</option>
+                    {seedRefOptions.map((ref) => (
+                      <option key={ref} value={ref}>
+                        {ref}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
