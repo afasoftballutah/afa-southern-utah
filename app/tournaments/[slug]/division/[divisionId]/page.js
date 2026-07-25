@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getDivisionById } from "@/lib/data";
+import { getDivisionById, getPoolGames } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
 import TeamFinder from "@/components/TeamFinder";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
-import { poolFinishOrder } from "@/lib/bracket/seed";
+import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 
 export const revalidate = 30;
 
@@ -251,6 +251,44 @@ export async function generateMetadata({ params }) {
   return { title: `${renderedName} — ${division.tournament.name}` };
 }
 
+/**
+ * Two lookups the bracket needs to put a seed tag in front of a name:
+ * ref -> team ("D1" -> "Backwards K") for a slot that still holds its seed
+ * ref, and team -> ref for a team whose name has already propagated into a
+ * later game. Built from the pools that actually decided the seeding,
+ * which for a bracket child means its parent's pool games.
+ *
+ * resolveSeeds is the same function the scorekeeper's seeding uses, so a
+ * tag here can never disagree with what Apply seeding would write. It
+ * contributes nothing for an incomplete pool, which is correct: until the
+ * pool is final there is no seed to name.
+ */
+async function seedMapsFor(division, ownPoolGames) {
+  const source = division.parent_division_id
+    ? await getPoolGames(division.parent_division_id)
+    : ownPoolGames;
+  if (!source || source.length === 0) return null;
+
+  const byPool = {};
+  for (const g of source) (byPool[g.pool] ??= []).push(g);
+  const poolsByLetter = Object.fromEntries(
+    Object.entries(byPool).map(([letter, games]) => [letter, poolFinishOrder(games)])
+  );
+
+  const byRef = new Map();
+  const byTeam = new Map();
+  for (const [ref, team] of Object.entries(resolveSeeds(poolsByLetter))) {
+    const parsed = parseSeedRef(ref);
+    if (!parsed) continue;
+    const label = `${parsed.pool}${parsed.rank}`;
+    byRef.set(label, team);
+    // First one wins: a team holds exactly one pool finish, so a later
+    // collision would mean the data disagrees with itself.
+    if (!byTeam.has(team)) byTeam.set(team, label);
+  }
+  return { byRef, byTeam };
+}
+
 export default async function DivisionPage({ params }) {
   const { slug, divisionId } = await params;
   const division = await getDivisionById(divisionId);
@@ -284,6 +322,15 @@ export default async function DivisionPage({ params }) {
     ? allDivisions.find((d) => d.id === division.parent_division_id)
     : null;
   const parentName = parent ? (parent.display_name ?? parent.name) : null;
+
+  // A team carries its POOL SEED everywhere it appears in the bracket
+  // (redesign spec 5.3) — [D1] Backwards K in the game it was seeded into
+  // AND in the game it won its way to. The seeds live on the PARENT
+  // division: Gold/Silver/Bronze hold the bracket games, their parent
+  // holds pool play, so a bracket child has to look up a level to know
+  // who [D1] is. Without this a propagated name renders bare, which is
+  // what it did until now.
+  const seeds = await seedMapsFor(division, poolGames);
 
   // Find my team (dispatch-brief-14) — one normalized games array feeding
   // TeamFinder, built the same way from either stage this division might
@@ -389,7 +436,7 @@ export default async function DivisionPage({ params }) {
           <p className="text-sm text-afa-ink/70">
             Drawn and scheduled. Team names fill in as pool play finishes.
           </p>
-          <DrawnBracket games={bracketGames} division={division?.name} />
+          <DrawnBracket games={bracketGames} division={division?.name} seeds={seeds} />
         </div>
       )}
 
