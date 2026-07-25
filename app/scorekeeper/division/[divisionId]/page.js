@@ -7,6 +7,7 @@ import { isBracketDraft } from "@/lib/bracket/propagate";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
 import PoolPlayManager from "@/components/scorekeeper/PoolPlayManager";
+import SeedBrackets from "@/components/scorekeeper/SeedBrackets";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scorekeeper — Division" };
@@ -15,7 +16,7 @@ async function loadDivisionData(divisionId) {
   const supabase = getPublicClient();
   const { data: division, error } = await supabase
     .from("divisions")
-    .select("id, name, tournament_id, tournaments(name)")
+    .select("id, name, tournament_id, tournaments(name, slug)")
     .eq("id", divisionId)
     .maybeSingle();
   if (error || !division) return null;
@@ -89,7 +90,10 @@ export default async function ScorekeeperDivisionPage({ params }) {
         <h1 className="text-xl font-bold text-afa-navy">{data.division.name}</h1>
       </div>
       {data.poolGames.length > 0 && (
-        <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
+        <>
+          <SeedBrackets divisionId={divisionId} tournamentSlug={data.division.tournaments?.slug} />
+          <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
+        </>
       )}
       <BracketManager
         divisionId={divisionId}

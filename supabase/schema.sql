@@ -238,6 +238,16 @@ create table if not exists public.games (
   slot integer not null,
   team1_name text,
   team2_name text,
+  -- Seeding (dispatch-brief-22): the pool-finish slot each seeded team1/
+  -- team2 came FROM, e.g. "[A #1]" (Pool A's winner). Set once at bracket
+  -- transcription/generation time and then PRESERVED even after seeding
+  -- replaces team*_name with the real team — that's what lets seeding be
+  -- re-run after a score correction without losing what the slot meant.
+  -- Null for slots fed by the bracket engine's own propagation (Winner/
+  -- Loser of Game N) — those are resolved by lib/bracket/propagate.js,
+  -- never by seeding.
+  team1_seed_ref text,
+  team2_seed_ref text,
   -- Self-referential feed: when the feeder game finalizes, this slot's team
   -- name is filled in automatically (winner or loser of that game). Nullable
   -- because round-1 winners-bracket slots get their team names directly at
@@ -272,6 +282,8 @@ create table if not exists public.games (
   unique (division_id, bracket_group, bracket_side, round, slot)
 );
 comment on table public.games is 'Public bracket/schedule data. Team names only, no PII. Safe for anon read. Writes gated by scorekeeper PIN in application code.';
+comment on column public.games.team1_seed_ref is 'The pool-finish slot this game''s team1 came FROM (e.g. "[A #1]"), kept even after the real team name is filled in so seeding can be re-run after a score correction without losing what the slot originally meant. Null for slots resolved by bracket propagation instead of seeding.';
+comment on column public.games.team2_seed_ref is 'Same as team1_seed_ref, for team2.';
 
 -- ============================================================
 -- pool_games — PUBLIC READ. Added 2026-07-23 (dispatch-brief-7, Coed E
