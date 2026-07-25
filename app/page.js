@@ -25,6 +25,14 @@ export default async function Home() {
     getRecentScores(5),
   ]);
 
+  // Which tournament does this results section actually describe?
+  const hasPlacements = (lastResults?.divisions ?? []).some(
+    (d) => (d.placements ?? []).length > 0
+  );
+  const resultsTournamentName = hasPlacements
+    ? lastResults?.name
+    : (recentScores[0]?.tournamentName ?? tournament?.name ?? lastResults?.name ?? null);
+
   return (
     <div className="space-y-6">
       {/* The mascot — front page, always. Cropped to the eagle, name/facts
@@ -75,15 +83,23 @@ export default async function Home() {
 
       {/* Scores beat an empty promise (JD, 2026-07-24). "Check back after
           the next tournament" was exactly wrong during a live one, where
-          finals land every hour. Championship photos win when they exist;
-          otherwise the five most recent finals, in the same matchup unit
-          used on every other page. */}
+          finals land every hour.
+          The NAME over this section must be the tournament the content
+          actually belongs to (JD, 2026-07-24). It used to always name the
+          last COMPLETED tournament, so during a live weekend it read "Heat
+          Stroker" (July 10-11, finished) above scores coming from "Coed
+          Heat Stroker" (happening now) — right data, wrong name. Order of
+          preference: real placements win, then whichever tournament the
+          recent scores came from, then the one on deck. */}
       <section className="max-w-md mx-auto">
         <h2 className="text-xl font-bold text-afa-navy mb-3">
-          {lastResults ? "Last Results" : "Recent Scores"}
+          {hasPlacements ? "Last Results" : "Recent Scores"}
         </h2>
-        {lastResults ? (
-          <ResultsGallery tournament={lastResults} recentScores={recentScores} />
+        {resultsTournamentName && (
+          <p className="font-semibold text-afa-navy mb-2">{resultsTournamentName}</p>
+        )}
+        {hasPlacements ? (
+          <ResultsGallery tournament={lastResults} recentScores={recentScores} showName={false} />
         ) : recentScores.length > 0 ? (
           <RecentScores scores={recentScores} />
         ) : (
@@ -114,13 +130,13 @@ function RecentScores({ scores }) {
   );
 }
 
-function ResultsGallery({ tournament, recentScores = [] }) {
+function ResultsGallery({ tournament, recentScores = [], showName = true }) {
   const divisionsWithPlacements = (tournament.divisions ?? []).filter(
     (d) => (d.placements ?? []).length > 0
   );
   return (
     <div className="space-y-4">
-      <p className="font-semibold text-afa-navy">{tournament.name}</p>
+      {showName && <p className="font-semibold text-afa-navy">{tournament.name}</p>}
       {divisionsWithPlacements.length === 0 ? (
         recentScores.length > 0 ? (
           <RecentScores scores={recentScores} />
