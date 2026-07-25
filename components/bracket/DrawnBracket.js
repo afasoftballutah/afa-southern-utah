@@ -342,8 +342,13 @@ export function computeLayout(games) {
   if (winnersRows.size) bandCaptions.push({ y: winnersTop, label: "Winners" });
   if (losersRows.size) bandCaptions.push({ y: losersTop, label: "Losers" });
   if (finalRounds.length) {
+    // The Final is NOT a horizontal band. Winners and Losers run the width
+    // of the drawing, so a left-margin caption labels them correctly; the
+    // Final is two games at the far right. Captioning it in the margin
+    // stranded the word beside empty space seven columns from its games
+    // (JD, 2026-07-24). It sits above its own first game instead.
     const firstFinal = rectByRound.get(finalRounds[0]);
-    bandCaptions.push({ y: firstFinal.y, label: "Final" });
+    bandCaptions.push({ x: firstFinal.x, y: firstFinal.y - 20, label: "Final" });
   }
 
   return {
@@ -451,7 +456,11 @@ export default function DrawnBracket({ games }) {
           <div
             key={i}
             className="absolute text-[11px] font-bold uppercase tracking-wide text-afa-muted pointer-events-none"
-            style={{ left: 4, top: c.y, width: LEFT_PAD - 12 }}
+            style={{
+              left: c.x ?? 4,
+              top: c.y,
+              width: c.x != null ? CELL_W : LEFT_PAD - 12,
+            }}
           >
             {c.label}
           </div>
