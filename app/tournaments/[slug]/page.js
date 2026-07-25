@@ -136,26 +136,6 @@ export default async function TournamentDetailPage({ params }) {
         )}
       </div>
 
-      {/* Action row — facts that act (afa-product-plan.md, "Action links").
-          Directions only (JD ruling 2026-07-23): Text moved to Contacts at
-          the bottom, away from accidental thumbs; Calendar moved onto the
-          group cards below (one Door per group's day, not one whole-
-          tournament Door here). Schedule joins it as a second Door
-          (dispatch-brief-11) — the full field-by-field list, a door away
-          from the venue itself. */}
-      <div className="grid grid-cols-2 gap-2">
-        <Door
-          href={directionsHref}
-          title="Directions"
-          sub={`${tournament.venue_name}${tournament.venue_address ? `, ${tournament.venue_address}` : ""}`}
-        />
-        <Door
-          href={`/tournaments/${slug}/schedule`}
-          title="Schedule"
-          sub="Every game, by field"
-        />
-      </div>
-
       {/* THE GRID — one card per group, carrying its day (now a calendar
           link) and its divisions (afa-product-plan.md "central insight";
           dispatch-brief-4/5). Each card is a Card (div) holding TWO
@@ -177,6 +157,13 @@ export default async function TournamentDetailPage({ params }) {
                   >
                     <p className="font-display text-lg text-afa-navy group-hover:underline">
                       {division.display_name ?? division.name}
+                    </p>
+                    {/* Names what this door is FOR (JD, 2026-07-24). Without
+                        it people tapped "Schedule" hunting their own team's
+                        games and landed on the all-games list; the team
+                        picker lives through here. */}
+                    <p className="text-xs text-afa-ink/60 mt-0.5">
+                      My team&rsquo;s schedule and tournament updates
                     </p>
                     {divisionChips.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -210,6 +197,32 @@ export default async function TournamentDetailPage({ params }) {
           })}
         </div>
       )}
+
+      {/* Action row sits BELOW the division cards (JD, 2026-07-24).
+          Above them, people tapped "Schedule" looking for their own
+          team's games and hit a page with no team picker — the picker
+          lives on the division page. Leading with the division card
+          puts the finder in the path before the utility doors.
+          Original note follows.
+          Action row — facts that act (afa-product-plan.md, "Action links").
+          Directions only (JD ruling 2026-07-23): Text moved to Contacts at
+          the bottom, away from accidental thumbs; Calendar moved onto the
+          group cards below (one Door per group's day, not one whole-
+          tournament Door here). Schedule joins it as a second Door
+          (dispatch-brief-11) — the full field-by-field list, a door away
+          from the venue itself. */}
+      <div className="grid grid-cols-2 gap-2">
+        <Door
+          href={directionsHref}
+          title="Directions"
+          sub={`${tournament.venue_name}${tournament.venue_address ? `, ${tournament.venue_address}` : ""}`}
+        />
+        <Door
+          href={`/tournaments/${slug}/schedule`}
+          title="See Full Schedule"
+          sub="Every game, every field"
+        />
+      </div>
 
       {/* Specifics — organized, on-brand (dispatch-brief-6, JD ruling):
           three sub-sections instead of one free-floating notes column.
