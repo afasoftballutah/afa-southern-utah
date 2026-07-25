@@ -84,6 +84,23 @@ export default async function ScorekeeperDivisionPage({ params }) {
   const data = await loadDivisionData(divisionId);
   if (!data) notFound();
 
+  // Which bracket surface a division gets:
+  //
+  //  - a `brackets` row exists -> BracketManager, the generated bracket it
+  //    owns end to end.
+  //  - games but no `brackets` row -> a transcribed bracket (Gold/Silver/
+  //    Bronze, dispatch-brief-24). Read and score them; never offer to
+  //    generate a new structure over live games.
+  //  - pool play and no games of its own -> nothing here. Its teams are
+  //    still in pools and its bracket games live in the Gold/Silver/Bronze
+  //    divisions, filled from Seed Brackets above. BracketManager's "no
+  //    bracket yet" screen used to render in this spot offering to build a
+  //    double elimination out of `registrations`, a table these divisions
+  //    do not use: it read "0 teams registered" with the button disabled,
+  //    below a pool sheet listing 28 played games (JD, 2026-07-25).
+  const transcribed = !data.mainBracket && data.games.length > 0;
+  const generatable = !data.mainBracket && data.games.length === 0 && data.poolGames.length === 0;
+
   return (
     <div className="space-y-4">
       <div>
@@ -96,13 +113,8 @@ export default async function ScorekeeperDivisionPage({ params }) {
           <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
         </>
       )}
-      {!data.mainBracket && data.games.length > 0 ? (
-        // Transcribed bracket (Gold/Silver/Bronze — dispatch-brief-24): games
-        // exist but there's no `brackets` row, by design (see BracketScores).
-        // BracketManager's "no bracket yet" screen would otherwise render
-        // here and offer to Generate a brand new structure over live games.
-        <BracketScores games={data.games} />
-      ) : (
+      {transcribed && <BracketScores games={data.games} />}
+      {(data.mainBracket || generatable) && (
         <BracketManager
           divisionId={divisionId}
           mainBracket={data.mainBracket}

@@ -76,11 +76,11 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
       {/* Column labels (dispatch-brief-26) — RA needs a header to be
           readable; the same three columns the public standings table and
           PoolPlayManager use, so a director reads one language everywhere. */}
-      <div className="flex items-center gap-2 px-0.5 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-        <span className="flex-1">Team</span>
-        <span className="w-12 text-right">W-L</span>
-        <span className="w-10 text-right">PCT</span>
-        <span className="w-8 text-right">RA</span>
+      <div className="flex items-center gap-1.5 px-0.5 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+        <span className="flex-1 min-w-0">Team</span>
+        <span className="w-10 shrink-0 text-right">W-L</span>
+        <span className="w-10 shrink-0 text-right">PCT</span>
+        <span className="w-8 shrink-0 text-right">RA</span>
       </div>
 
       <div className="space-y-1">
@@ -116,18 +116,26 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
                     key={team}
                     className={`space-y-1 ${highlighted ? "bg-afa-navy/10 rounded px-1.5 -mx-1.5 py-1" : ""}`}
                   >
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="flex-1 min-w-0 truncate">
+                    <div className="flex items-center gap-1.5 text-sm">
+                      {/* A team name WRAPS, it never truncates (JD,
+                          2026-07-25). Three cards to a row leaves this
+                          column under 100px, and "Band of Randoms" read as
+                          "Band of ..." — the one thing on the row a
+                          director has to recognize was the one thing being
+                          cut. The stat columns hold their width instead
+                          (shrink-0), so the name takes a second line and
+                          every column still lines up under its header. */}
+                      <span className="flex-1 min-w-0 break-words leading-snug">
                         {seedRef && (
                           <span className="font-semibold text-afa-navy">{seedRef}</span>
                         )}{" "}
                         {team}
                       </span>
-                      <span className="w-12 text-right tabular-nums">
+                      <span className="w-10 shrink-0 text-right tabular-nums">
                         {info.w}-{info.l}
                       </span>
-                      <span className="w-10 text-right tabular-nums">{info.pct}</span>
-                      <span className="w-8 text-right tabular-nums">{info.ra}</span>
+                      <span className="w-10 shrink-0 text-right tabular-nums">{info.pct}</span>
+                      <span className="w-8 shrink-0 text-right tabular-nums">{info.ra}</span>
                       {tied && (
                         <span className="flex gap-1">
                           <button
@@ -163,14 +171,29 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
                     {current && (
                       <select
                         aria-label={`Destination for ${seedRef}, currently ${current.where}`}
-                        className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+                        className="w-full border border-afa-navy/30 rounded px-2 py-2.5 text-sm"
                         value={`${current.gameId}::${current.slot}`}
                         disabled={busy}
                         onChange={(e) => onRemap(current.raw, e.target.value)}
                       >
+                        {/* A native <select> shows its SELECTED option's
+                            text in the closed control, and that text can
+                            neither wrap nor ellipsize — "Bronze G1 —
+                            Unstable Legends" was simply cut off inside a
+                            280px card. The team name is the part that got
+                            cut, and for the selected option it is this
+                            row's OWN team, already printed in full
+                            directly above. So the current slot labels
+                            itself by slot alone; every OTHER option keeps
+                            the projected team, which is what makes a
+                            cross-bracket move readable (JD, 2026-07-25),
+                            and the operating system draws that open list
+                            at whatever width it needs. */}
                         {seedFedSlotOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>
-                            {opt.label}
+                            {opt.value === `${current.gameId}::${current.slot}`
+                              ? `${opt.slot} (current)`
+                              : opt.label}
                           </option>
                         ))}
                       </select>
@@ -363,6 +386,9 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   const seedFedSlotOptions = slots.map((sl) => ({
     value: `${sl.gameId}::${sl.slot}`,
     label: `${sl.division} G${sl.round} — ${sl.team || "not yet decided"}`,
+    // The slot on its own, for the one option a row renders as its
+    // current destination (see the option list below).
+    slot: `${sl.division} G${sl.round}`,
   }));
 
   return (
