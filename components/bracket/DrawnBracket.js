@@ -140,9 +140,17 @@ function computeDepths(byRound, roundByGameId) {
   //
   // Gold's Game 2 is the case that motivated this: seed-fed, sitting in
   // column 0, throwing a long line across an empty column to Game 7.
-  const consumers = new Map(); // round -> [rounds it feeds]
+  // Only DRAWN consumers constrain the slide. A loser drop is not inked
+  // (see drawnFeedersOf), so it produces no line — yet counting it here
+  // pinned games in place for the sake of an invisible edge. Gold's Game 4
+  // is the case: its winner feeds Game 8 two columns right, but its loser
+  // feeds Game 6 one column right, so the min-over-consumers held it at
+  // column 0 and its connector then had to cross the whole of column 1 —
+  // colliding with the traffic in that gutter (JD, 2026-07-25: "the lines
+  // are crossing again").
+  const consumers = new Map(); // round -> [rounds it feeds WITH A LINE]
   for (const round of byRound.keys()) {
-    for (const f of feedersOf(byRound.get(round), byRound, roundByGameId)) {
+    for (const f of drawnFeedersOf(byRound.get(round), byRound, roundByGameId)) {
       if (!consumers.has(f)) consumers.set(f, []);
       consumers.get(f).push(round);
     }
@@ -152,6 +160,13 @@ function computeDepths(byRound, roundByGameId) {
   while (moved && guard++ < 20) {
     moved = false;
     for (const round of byRound.keys()) {
+      // Only games with NO DRAWN INCOMING LINE may slide. Their inputs are
+      // text (a seed, or a loser-drop that isn't inked), so moving them
+      // costs nothing. A game fed by a drawn line cannot move without
+      // lengthening that line by exactly what it saves — and sliding
+      // everything, as an earlier pass did, drags the whole bracket right
+      // and empties the first columns entirely.
+      if (drawnFeedersOf(byRound.get(round), byRound, roundByGameId).length > 0) continue;
       const outs = consumers.get(round) ?? [];
       if (outs.length === 0) continue; // feeds nothing (a final) — leave it
       const latest = Math.min(...outs.map((r) => memo.get(r))) - 1;
