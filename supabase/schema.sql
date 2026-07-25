@@ -47,12 +47,30 @@ create table if not exists public.tournaments (
   ump_fee_cents integer,
   division_notes text,
   special_rules text,
+  -- prizes/registration_closes/registration_url/registration_note added
+  -- 2026-07-24 (dispatch-brief-20, additive, off the tournament poster).
+  -- prizes = what the winners get, its own Specifics sub-section between
+  -- Divisions and Tournament rules. registration_closes/registration_url/
+  -- registration_note render the Registration block below the action-row
+  -- doors: closed once registration_closes is past (non-interactive, dated
+  -- line, no red); registration_url is set when the league/city runs
+  -- registration elsewhere, meaning this tournament does NOT use the
+  -- site's own form; registration_note carries extra plain-text ways to
+  -- register. All nullable, additive only.
+  prizes text,
+  registration_closes date,
+  registration_url text,
+  registration_note text,
   created_at timestamptz not null default now()
 );
 comment on table public.tournaments is 'Public schedule data. No PII. Safe for anon read.';
 comment on column public.tournaments.ump_fee_cents is 'Per-game umpire fee, in cents. Part of the standard numbers grid (entry/deposit/guarantee/ump fee) on the Specifics card. Nullable — most tournaments have none set yet.';
 comment on column public.tournaments.division_notes is 'Division policy sentences (team minimums, combining rules, conditional divisions). Rendered as its own Specifics sub-section. Nullable.';
 comment on column public.tournaments.special_rules is 'Event-specific rules (e.g. equalizer policy). Rendered as its own Specifics sub-section. Nullable.';
+comment on column public.tournaments.prizes is 'What the winners get, rendered as its own Specifics sub-section (between Divisions and Tournament rules). Nullable — most tournaments have none set yet.';
+comment on column public.tournaments.registration_closes is 'The date entries close. Drives the Registration block''s display text and its disabled/non-interactive state once past. Nullable.';
+comment on column public.tournaments.registration_url is 'An EXTERNAL registration page, set when the league/city runs registration elsewhere. When set, this tournament does NOT use the site''s own registration form. Nullable.';
+comment on column public.tournaments.registration_note is 'Extra ways to register, plain text (e.g. in-person office, phone, email). Nullable.';
 
 -- ============================================================
 -- classes — PUBLIC READ, director-write (via scorekeeper door, a later

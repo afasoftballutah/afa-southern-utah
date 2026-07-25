@@ -70,6 +70,28 @@ function calendarHrefForDivision(slug, dayDate) {
   return `/tournaments/${slug}/calendar.ics?date=${dayDate.replaceAll("-", "")}`;
 }
 
+// Registration block (dispatch-brief-20) — true once registration_closes
+// is strictly before today. Page is ISR (revalidate = 30 above), so this
+// re-evaluates on every regeneration rather than freezing at build time.
+function isDateInPast(dateStr) {
+  if (!dateStr) return false;
+  const date = new Date(`${dateStr}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+// Hostname only, for the "Register" door's sub-line (dispatch-brief-20) —
+// falls back to the raw URL if it somehow isn't parseable.
+function registrationHostname(url) {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 export default async function TournamentDetailPage({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
@@ -111,9 +133,25 @@ export default async function TournamentDetailPage({ params }) {
 
   const numberRows = buildNumberRows(tournament);
   const divisionNotesLines = splitSentences(tournament.division_notes);
+  const prizesLines = splitSentences(tournament.prizes);
   const specialRulesLines = splitSentences(tournament.special_rules);
   const hasSpecifics =
-    numberRows.length > 0 || divisionNotesLines.length > 0 || specialRulesLines.length > 0;
+    numberRows.length > 0 ||
+    divisionNotesLines.length > 0 ||
+    prizesLines.length > 0 ||
+    specialRulesLines.length > 0;
+
+  // Registration block (dispatch-brief-20) — renders only when at least one
+  // field is set. St. George City runs registration for this tournament
+  // (registration_url), not this site's own form.
+  const hasRegistrationBlock = Boolean(
+    tournament.registration_closes || tournament.registration_url || tournament.registration_note
+  );
+  const registrationClosed = isDateInPast(tournament.registration_closes);
+  const registrationClosedDateText = tournament.registration_closes
+    ? formatDateRange(tournament.registration_closes, tournament.registration_closes)
+    : null;
+  const registrationHost = registrationHostname(tournament.registration_url);
 
   return (
     <div className="space-y-6">
@@ -224,6 +262,58 @@ export default async function TournamentDetailPage({ params }) {
         />
       </div>
 
+      {/* Registration (dispatch-brief-20) — sits directly below the action-
+          row doors. St. George City runs registration for this tournament,
+          not this site, so there's no site-side form to link to: closed,
+          it's a plain dated line (font-bold, muted, NOT a link, NOT red) so
+          a late arrival reads "closed" rather than "broken link"; open, it
+          points out to the city's page. No red here — the home page's
+          site-wide "Register a Team" button is untouched and out of scope. */}
+      {hasRegistrationBlock && (
+        <div>
+          <h2 className="text-lg font-bold text-afa-navy mb-2">Registration</h2>
+          <Card>
+            {registrationClosed ? (
+              <>
+                <p className="font-bold text-afa-ink/60">
+                  Registration closed {registrationClosedDateText}
+                </p>
+                {tournament.registration_url && (
+                  <a
+                    href={tournament.registration_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-afa-navy text-sm mt-2 inline-block"
+                  >
+                    {tournament.registration_url}
+                  </a>
+                )}
+                {tournament.registration_note && (
+                  <p className="text-sm text-afa-ink/70 mt-2">{tournament.registration_note}</p>
+                )}
+              </>
+            ) : (
+              tournament.registration_url && (
+                <>
+                  <a
+                    href={tournament.registration_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block min-h-11 hover:opacity-80"
+                  >
+                    <p className="font-bold text-afa-navy">Register</p>
+                    <p className="text-xs text-afa-ink/60 mt-1">{registrationHost}</p>
+                  </a>
+                  {tournament.registration_note && (
+                    <p className="text-sm text-afa-ink/70 mt-2">{tournament.registration_note}</p>
+                  )}
+                </>
+              )
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Specifics — organized, on-brand (dispatch-brief-6, JD ruling):
           three sub-sections instead of one free-floating notes column.
           Omitted entirely if every part is empty. */}
@@ -251,6 +341,19 @@ export default async function TournamentDetailPage({ params }) {
               </h3>
               <div className="text-sm space-y-1">
                 {divisionNotesLines.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </>
+          )}
+
+          {prizesLines.length > 0 && (
+            <>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+                Prizes
+              </h3>
+              <div className="text-sm space-y-1">
+                {prizesLines.map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
               </div>
