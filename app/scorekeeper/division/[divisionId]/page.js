@@ -6,6 +6,7 @@ import { getDivisionCompletion } from "@/lib/bracket/status";
 import { isBracketDraft } from "@/lib/bracket/propagate";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
+import BracketScores from "@/components/scorekeeper/BracketScores";
 import PoolPlayManager from "@/components/scorekeeper/PoolPlayManager";
 import SeedBrackets from "@/components/scorekeeper/SeedBrackets";
 
@@ -95,16 +96,24 @@ export default async function ScorekeeperDivisionPage({ params }) {
           <PoolPlayManager divisionId={divisionId} poolGames={data.poolGames} />
         </>
       )}
-      <BracketManager
-        divisionId={divisionId}
-        mainBracket={data.mainBracket}
-        consolationBracket={data.consolationBracket}
-        games={data.games}
-        teamNames={data.teamNames}
-        mainDraft={data.mainDraft}
-        consolationDraft={data.consolationDraft}
-        completion={data.completion}
-      />
+      {!data.mainBracket && data.games.length > 0 ? (
+        // Transcribed bracket (Gold/Silver/Bronze — dispatch-brief-24): games
+        // exist but there's no `brackets` row, by design (see BracketScores).
+        // BracketManager's "no bracket yet" screen would otherwise render
+        // here and offer to Generate a brand new structure over live games.
+        <BracketScores games={data.games} />
+      ) : (
+        <BracketManager
+          divisionId={divisionId}
+          mainBracket={data.mainBracket}
+          consolationBracket={data.consolationBracket}
+          games={data.games}
+          teamNames={data.teamNames}
+          mainDraft={data.mainDraft}
+          consolationDraft={data.consolationDraft}
+          completion={data.completion}
+        />
+      )}
     </div>
   );
 }

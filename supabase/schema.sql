@@ -234,6 +234,16 @@ create table if not exists public.games (
   division_id uuid not null references public.divisions(id) on delete cascade,
   bracket_group text not null default 'main' check (bracket_group in ('main', 'consolation')),
   bracket_side text not null check (bracket_side in ('winners', 'losers', 'final')),
+  -- For engine-generated brackets, round is the round-within-side (see
+  -- lib/bracket/structure.js). For the three transcribed brackets (Gold,
+  -- Silver, Bronze — dispatch-brief-24), bracket_side is 'winners' on
+  -- every row and round instead holds the league's printed game number,
+  -- unique per division; team*_source_game_id backfilled from that number
+  -- (supabase/migration-2026-07-25-bracket-source-links.sql). Because
+  -- bracket_side is never 'losers' or 'final' there, propagate.js's
+  -- grand-final and consolation-entry rules (both gated on bracket_side)
+  -- never fire for these divisions — only its generic source_game_id
+  -- cascade applies, which is exactly what they need.
   round integer not null,
   slot integer not null,
   team1_name text,
