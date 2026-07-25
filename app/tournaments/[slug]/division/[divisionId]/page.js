@@ -131,6 +131,11 @@ function PoolPlaySection({ poolGames }) {
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-afa-navy">Pool Play</h2>
+      {/* Three pools per line on desktop, one per line on a phone
+          (dispatch-brief-26) — layout only. This is the public standings
+          view: no controls, no dropdowns, no reorder — those live only on
+          the scorekeeper's seeding screen. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
       {poolLetters(byPool).map((letter) => {
         const games = byPool[letter];
         const { standings } = poolFinishOrder(games);
@@ -190,6 +195,7 @@ function PoolPlaySection({ poolGames }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

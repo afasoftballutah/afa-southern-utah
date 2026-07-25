@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
-import { poolFinishOrder } from "@/lib/bracket/seed";
-import Card from "@/components/ui/Card";
 
 // Ordered by TIME then FIELD (dispatch-brief-21), not by pool. The director
 // standing at the complex thinks "what just finished on Field 6," not
@@ -98,71 +96,6 @@ function groupByTime(games) {
     });
 }
 
-// Pool letters derived from the games, never hardcoded — same rule as the
-// public division page (app/tournaments/[slug]/division/[divisionId]/
-// page.js's poolLetters): whatever pools exist in the data are the pools
-// that render.
-function poolLetters(byPool) {
-  return Object.keys(byPool).sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-  );
-}
-
-// Standings table (dispatch-brief-25) — same shape as the public page's:
-// Team | W-L | PCT | RA. Computed from the SHARED poolFinishOrder
-// (lib/bracket/seed.js), the same function the seeding screen reads, so
-// the director's numbers and the seeding numbers can never disagree.
-// RA is shown so a tie is INFORMED, never so it gets auto-broken — tied
-// teams still share a rank and carry the `tied` chip.
-function PoolStandingsTable({ letter, standings }) {
-  return (
-    <div className="space-y-1">
-      <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">Pool {letter}</h3>
-      <Card>
-        <table className="w-full table-fixed text-sm divide-y divide-afa-navy/10">
-          <thead>
-            <tr className="divide-y divide-afa-navy/10 text-left">
-              <th className="py-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                Team
-              </th>
-              <th className="w-14 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                W-L
-              </th>
-              <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                PCT
-              </th>
-              <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                RA
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-afa-navy/10">
-            {standings.map((t) => (
-              <tr key={t.team}>
-                <td className="py-1 pr-2">
-                  <span className="block truncate">
-                    {t.team}
-                    {t.tied && (
-                      <span className="ml-1.5 rounded bg-afa-muted/15 px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
-                        tied
-                      </span>
-                    )}
-                  </span>
-                </td>
-                <td className="py-1 text-right tabular-nums">
-                  {t.w}-{t.l}
-                </td>
-                <td className="py-1 text-right tabular-nums">{t.pct}</td>
-                <td className="py-1 text-right tabular-nums">{t.ra}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  );
-}
-
 // Pool play (dispatch-brief-7) — separate, self-contained stage from the
 // bracket engine (BracketManager untouched). Patterned on BracketManager's
 // fetch/submit style: no optimistic magic, save, refetch, render.
@@ -174,16 +107,6 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   const teams = [...new Set(poolGames.flatMap((g) => [g.team1_name, g.team2_name]))].sort(
     (a, b) => a.localeCompare(b)
   );
-
-  // Standings are ALWAYS computed off every game in the pool, never the
-  // team filter below — the filter narrows which games there are to
-  // score, not what the pool's standings say.
-  const byPool = {};
-  for (const g of poolGames) (byPool[g.pool] ??= []).push(g);
-  const standingsByPool = poolLetters(byPool).map((letter) => ({
-    letter,
-    standings: poolFinishOrder(byPool[letter]).standings,
-  }));
 
   const groups = groupByTime(poolGames)
     .map((group) => ({
@@ -201,12 +124,6 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   return (
     <div className="chalk-panel space-y-4">
       <h2 className="font-bold text-afa-navy">Pool Play</h2>
-
-      <div className="space-y-3">
-        {standingsByPool.map(({ letter, standings }) => (
-          <PoolStandingsTable key={letter} letter={letter} standings={standings} />
-        ))}
-      </div>
 
       <div className="space-y-2">
         <select

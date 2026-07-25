@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Card from "@/components/ui/Card";
+import { parseSeedRef } from "@/lib/bracket/seed";
 
 // Seeding (dispatch-brief-22): "machine proposes, director disposes."
 // Standings compute; ties are surfaced for the director to settle and are
@@ -8,22 +10,15 @@ import { useEffect, useState, useCallback } from "react";
 // order (afa-spec.md). This panel computes and previews in dry-run on
 // load and after every change; nothing writes until the director presses
 // Apply seeding.
+//
+// One pool card IS the seeding interface (dispatch-brief-26): a team's
+// finish position in its pool already decides which bracket it enters, so
+// the standings row and the seed row are the same row. There is no
+// separate "Seeds -> slots" table anymore — its destination control now
+// lives inline on each team's own line.
 
 function poolLetters(pools) {
   return Object.keys(pools).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-}
-
-// Slots arrive from the API already sorted by division, then game number
-// (dispatch-brief-23) — group them here for rendering without re-sorting
-// or hardcoding a Gold/Silver/Bronze name list.
-function groupSlotsByDivision(slots) {
-  const groups = [];
-  for (const s of slots) {
-    const last = groups[groups.length - 1];
-    if (last && last.division === s.division) last.rows.push(s);
-    else groups.push({ division: s.division, rows: [s] });
-  }
-  return groups;
 }
 
 // Groups an ordered team list into consecutive blocks sharing the same
@@ -42,7 +37,7 @@ function groupByRank(order, standingsByTeam) {
   return groups;
 }
 
-function PoolBlock({ letter, pool, order, onReorder }) {
+function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swappedSeedRefs, busy, onReorder, onRemap }) {
   const standingsByTeam = new Map(pool.standings.map((t) => [t.team, t]));
   const groups = groupByRank(order, standingsByTeam);
   // The SEED number ("A #2") is always sequential position in the chosen
@@ -68,11 +63,31 @@ function PoolBlock({ letter, pool, order, onReorder }) {
   }
 
   return (
-    <div className="space-y-1">
-      <h3 className="text-sm font-bold text-afa-navy">Pool {letter}</h3>
+    <Card className="space-y-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-bold text-afa-navy">Pool {letter}</h3>
+        {!pool.complete && (
+          <span className="text-xs text-afa-ink/60">
+            {pool.remaining} of {pool.total} game{pool.total === 1 ? "" : "s"} left
+          </span>
+        )}
+      </div>
+
+      {/* Column labels (dispatch-brief-26) — RA needs a header to be
+          readable; the same three columns the public standings table and
+          PoolPlayManager use, so a director reads one language everywhere. */}
+      <div className="flex items-center gap-2 px-0.5 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+        <span className="flex-1">Team</span>
+        <span className="w-12 text-right">W-L</span>
+        <span className="w-10 text-right">PCT</span>
+        <span className="w-8 text-right">RA</span>
+      </div>
+
       <div className="space-y-1">
         {groups.map((g) => {
-          const tied = g.teams.length > 1;
+          // An incomplete pool shows standings, never seeding controls —
+          // there is nothing to seed yet, and W-L can still change.
+          const tied = pool.complete && g.teams.length > 1;
           return (
             <div
               key={g.rank}
@@ -85,38 +100,80 @@ function PoolBlock({ letter, pool, order, onReorder }) {
               )}
               {g.teams.map((team, idx) => {
                 const info = standingsByTeam.get(team);
+                // Canonical "A #1" — this component's own numbering, used
+                // only as a lookup key and as the display label. Never
+                // sent to the API: the stored seed_ref may or may not
+                // carry brackets ("[A #1]"), and computeRemap's
+                // swap-partner search is a strict string match against
+                // whatever is already in the column, so every write below
+                // uses current.raw, the exact string read back from the
+                // server — never a reformatted one.
+                const seedRef = pool.complete ? `${letter} #${seedNumberByTeam.get(team)}` : null;
+                const current = seedRef ? slotBySeedRef[seedRef] : null;
+                const highlighted = current ? swappedSeedRefs.has(current.raw) : false;
                 return (
-                  <div key={team} className="flex items-center justify-between gap-2 text-sm">
-                    <span>
-                      <span className="font-semibold text-afa-navy">
-                        {letter} #{seedNumberByTeam.get(team)}
-                      </span>{" "}
-                      {team}{" "}
-                      <span className="text-afa-ink/50">
-                        ({info.w}-{info.l})
+                  <div
+                    key={team}
+                    className={`space-y-1 ${highlighted ? "bg-afa-navy/10 rounded px-1.5 -mx-1.5 py-1" : ""}`}
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 min-w-0 truncate">
+                        {seedRef && (
+                          <span className="font-semibold text-afa-navy">{seedRef}</span>
+                        )}{" "}
+                        {team}
                       </span>
-                    </span>
-                    {tied && (
-                      <span className="flex gap-1">
-                        <button
-                          type="button"
-                          aria-label={`Move ${team} up`}
-                          disabled={idx === 0}
-                          onClick={() => move(team, -1)}
-                          className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Move ${team} down`}
-                          disabled={idx === g.teams.length - 1}
-                          onClick={() => move(team, 1)}
-                          className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
-                        >
-                          ↓
-                        </button>
+                      <span className="w-12 text-right tabular-nums">
+                        {info.w}-{info.l}
                       </span>
+                      <span className="w-10 text-right tabular-nums">{info.pct}</span>
+                      <span className="w-8 text-right tabular-nums">{info.ra}</span>
+                      {tied && (
+                        <span className="flex gap-1">
+                          <button
+                            type="button"
+                            aria-label={`Move ${team} up`}
+                            disabled={idx === 0}
+                            onClick={() => move(team, -1)}
+                            className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Move ${team} down`}
+                            disabled={idx === g.teams.length - 1}
+                            onClick={() => move(team, 1)}
+                            className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {/* Destination control (dispatch-brief-26) — the
+                        bracket-swap surface JD asked for, living right on
+                        the row it seeds. Any seed may be moved to any
+                        seed-fed slot in the tournament, including one in a
+                        different pool's bracket — that's the whole point,
+                        so nothing here restricts the option list to slots
+                        this pool could "reach." Only rendered when this
+                        seed actually feeds a slot right now (a pool can
+                        produce a rank the bracket never asked for). */}
+                    {current && (
+                      <select
+                        aria-label={`Destination for ${seedRef}, currently ${current.where}`}
+                        className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+                        value={`${current.gameId}::${current.slot}`}
+                        disabled={busy}
+                        onChange={(e) => onRemap(current.raw, e.target.value)}
+                      >
+                        {seedFedSlotOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </div>
                 );
@@ -125,7 +182,7 @@ function PoolBlock({ letter, pool, order, onReorder }) {
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -182,11 +239,12 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
 
   // Remap (dispatch-brief-23): change which seed feeds a slot. Persists
   // immediately, never touches team names or pool_games — safe at any
-  // time. Refetches the dry-run preview so both this row and any row that
-  // got swapped redraw with the server's answer, not a local guess.
-  // Slots touched by the most recent swap, highlighted briefly so both ends
-  // of the move are visible.
-  const [swapped, setSwapped] = useState([]);
+  // time. Refetches the dry-run preview so every row redraws with the
+  // server's answer, not a local guess.
+  // Seeds touched by the most recent swap, highlighted briefly so both
+  // ends of the move are visible — even when they land in different pool
+  // cards (dispatch-brief-26).
+  const [swappedSeedRefs, setSwappedSeedRefs] = useState(new Set());
 
   async function remapSlot(gameId, slotSide, nextSeedRef) {
     setBusy(true);
@@ -205,19 +263,31 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not remap slot");
-      // A swap always moves TWO slots. The API reports both; mark them so the
-      // partner is visible too — otherwise you change one dropdown and the
-      // seed you displaced moves somewhere off-screen with no sign of it
-      // (JD, 2026-07-25).
-      const touched = (json.changed ?? []).map((c) => `${c.gameId}-${c.slot}`);
-      setSwapped(touched);
+      // A swap always moves TWO seeds. The API reports both slots it wrote
+      // and the seed ref each now holds — mark those seeds so both rows
+      // light up, wherever their pool card sits (JD, 2026-07-25).
+      const touched = new Set((json.changed ?? []).map((c) => c.seedRef).filter(Boolean));
+      setSwappedSeedRefs(touched);
       await fetchPreview(orders);
-      if (touched.length) window.setTimeout(() => setSwapped([]), 6000);
+      if (touched.size) window.setTimeout(() => setSwappedSeedRefs(new Set()), 6000);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  // A row's destination <select> encodes its target slot as
+  // "gameId::slot" — gameId is a uuid (dashes throughout), so "::" is the
+  // separator, not "-". Picking an option performs the existing swap: the
+  // TARGET is the chosen slot, the value written there is this row's own
+  // seedRef.
+  function handleRemap(seedRef, destValue) {
+    const idx = destValue.lastIndexOf("::");
+    if (idx === -1) return;
+    const gameId = destValue.slice(0, idx);
+    const slotSide = destValue.slice(idx + 2);
+    remapSlot(gameId, slotSide, seedRef);
   }
 
   async function apply() {
@@ -256,121 +326,73 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   const readyCount = preview.filter((p) => p.team).length;
   const waitingCount = preview.length - readyCount;
   const slots = result.slots ?? [];
-  const seedRefOptions = result.seedRefOptions ?? [];
-  const slotGroups = groupSlotsByDivision(slots);
-  // Where does each seed CURRENTLY feed? Picking a seed swaps it here from
-  // wherever it is, so the option has to say where it is — otherwise a
-  // cross-bracket move (pulling a pool winner out of Gold into Silver) looks
-  // identical to a harmless shuffle within one bracket (JD, 2026-07-25).
+  // Where does each seed CURRENTLY feed, and by which exact slot (dispatch-
+  // brief-26)? Picking a destination swaps the seed here from wherever it
+  // is, so both the display and the <select>'s own value need the precise
+  // gameId+slot, not just the human-readable "where."
+  //
+  // Keyed by the CANONICAL "A #1" (this component's own numbering, no
+  // brackets, ever) so a pool row's rank always finds its slot regardless
+  // of how the database happens to have stored that seed_ref — some
+  // transcribed brackets carry the bracketed form "[A #1]" (dispatch-
+  // brief-22's placeholder convention), and computeRemap's swap-partner
+  // search (lib/bracket/seed.js) is a strict STRING match against the
+  // column's existing value. `raw` is that exact stored string; every
+  // remap request below sends `current.raw` back, never a reformatted
+  // canonical string — reformatting it would make the swap-partner search
+  // miss the seed's real current slot and duplicate it onto two slots
+  // instead of moving it.
   const slotBySeedRef = {};
   for (const sl of slots) {
-    if (sl.seedRef) {
-      slotBySeedRef[sl.seedRef] = {
-        where: `${sl.division} G${sl.round}`,
-        team: sl.team || null,
-      };
-    }
+    if (!sl.seedRef) continue;
+    const parsed = parseSeedRef(sl.seedRef);
+    if (!parsed) continue;
+    const key = `${parsed.pool} #${parsed.rank}`;
+    slotBySeedRef[key] = {
+      raw: sl.seedRef,
+      gameId: sl.gameId,
+      slot: sl.slot,
+      where: `${sl.division} G${sl.round}`,
+      team: sl.team || null,
+    };
   }
-  // Every option names the TEAM you would be swapping with (JD, 2026-07-25) —
-  // a director thinks in teams, not seed codes. Then where that team sits, so
-  // a cross-bracket move is visible. Top/bottom is dropped: which side of a
-  // matchup a team is listed on carries no meaning here.
-  const optionLabel = (ref) => {
-    const at = slotBySeedRef[ref];
-    if (!at) return `${ref} — unassigned`;
-    return at.team ? `${ref} ${at.team} — ${at.where}` : `${ref} — ${at.where}`;
-  };
+  // Every seed-fed slot in the tournament is a valid destination for any
+  // seed — a slot in a bracket a team "couldn't reach" is not a special
+  // case (JD, 2026-07-25). Labelled with the team currently projected
+  // there so a cross-bracket move reads as what it is.
+  const seedFedSlotOptions = slots.map((sl) => ({
+    value: `${sl.gameId}::${sl.slot}`,
+    label: `${sl.division} G${sl.round} — ${sl.team || "not yet decided"}`,
+  }));
 
   return (
     <div className="chalk-panel space-y-4">
       <h2 className="font-bold text-afa-navy">Seed Brackets</h2>
 
-      <div className="space-y-3">
-        {letters.map((letter) => {
-          const pool = pools[letter];
-          if (!pool.complete) {
-            return (
-              <p key={letter} className="text-sm text-afa-ink/70">
-                Pool {letter} — {pool.remaining} of {pool.total} game{pool.total === 1 ? "" : "s"} left
-              </p>
-            );
-          }
-          return (
-            <PoolBlock
-              key={letter}
-              letter={letter}
-              pool={pool}
-              order={orders[letter] ?? pool.standings.map((t) => t.team)}
-              onReorder={handleReorder}
-            />
-          );
-        })}
-      </div>
-
-      <div className="space-y-3 border-t border-afa-navy/10 pt-3">
-        <h3 className="text-sm font-bold text-afa-navy">Seeds → slots</h3>
-        <p className="text-xs text-afa-ink/60">
-          Seeds swap, they never duplicate — pointing a seed at a new slot moves
-          it off whatever slot it used to feed. This persists right away and is
-          always safe; nothing is written to the bracket until you press Apply
-          below.
+      {swappedSeedRefs.size > 0 && (
+        <p className="text-xs font-bold text-afa-navy">
+          Swapped — the highlighted rows below moved.
         </p>
-        {swapped.length > 0 && (
-          <p className="text-xs font-bold text-afa-navy">
-            Swapped — both slots below are highlighted.
-          </p>
-        )}
-        {slots.length === 0 && (
-          <p className="text-sm text-afa-ink/60">No seed-fed slots on this bracket.</p>
-        )}
-        {/* Gold / Silver / Bronze side by side (JD, 2026-07-25). Stacked,
-            28 slot rows ran the page to roughly eleven phone screens. Three
-            columns turns it into three short lists you can compare across.
-            One column on a phone — a dropdown inside a third of 390px is
-            unusable, so the columns only appear once there's room. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-start">
-        {slotGroups.map((group) => (
-          <div key={group.division} className="space-y-1">
-            <h4 className="text-sm font-bold text-afa-navy">{group.division}</h4>
-            <div className="space-y-2">
-              {group.rows.map((row) => (
-                <div
-                  key={`${row.gameId}-${row.slot}`}
-                  className={`text-sm border-b border-afa-navy/10 pb-2 space-y-1 ${
-                    swapped.includes(`${row.gameId}-${row.slot}`)
-                      ? "bg-afa-navy/5 rounded px-2 -mx-2"
-                      : ""
-                  }`}
-                >
-                  <div>
-                    <span className="font-semibold text-afa-navy">
-                      Game {row.round}
-                    </span>{" "}
-                    <span className="font-semibold">{row.seedRef}</span>{" "}
-                    → {row.team ? row.team : <span className="text-afa-ink/50">not yet</span>}
-                  </div>
-                  <select
-                    aria-label={`Seed for ${group.division} Game ${row.round}, currently ${row.seedRef}`}
-                    className="w-full border border-afa-navy/30 rounded px-2 py-2"
-                    value={row.seedRef}
-                    disabled={busy}
-                    onChange={(e) =>
-                      remapSlot(row.gameId, row.slot, e.target.value === "" ? null : e.target.value)
-                    }
-                  >
-                    <option value="">— none —</option>
-                    {seedRefOptions.map((ref) => (
-                      <option key={ref} value={ref}>
-                        {optionLabel(ref)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </div>
+      )}
+
+      {/* Three pool cards per line on desktop, one per line on a phone
+          (dispatch-brief-26) — these carry controls and must stay
+          thumb-usable, so the grid only kicks in once there's room. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+        {letters.map((letter) => (
+          <PoolCard
+            key={letter}
+            letter={letter}
+            pool={pools[letter]}
+            order={orders[letter] ?? pools[letter].standings.map((t) => t.team)}
+            slotBySeedRef={slotBySeedRef}
+            seedFedSlotOptions={seedFedSlotOptions}
+            swappedSeedRefs={swappedSeedRefs}
+            busy={busy}
+            onReorder={handleReorder}
+            onRemap={handleRemap}
+          />
         ))}
-        </div>
       </div>
 
       <p className="text-sm text-afa-ink/70">
