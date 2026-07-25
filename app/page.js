@@ -2,9 +2,12 @@ import Link from "next/link";
 import {
   getHeroTournament,
   getLastCompletedTournamentResults,
+  getRecentScores,
   formatDateRange,
   formatFee,
 } from "@/lib/data";
+import Matchup from "@/components/ui/Matchup";
+import { formatFieldTime } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import Door from "@/components/ui/Door";
 import Poster from "@/components/ui/Poster";
@@ -16,9 +19,10 @@ export const revalidate = 30;
 // sit obvious task-shaped doors — next tournament, schedules, rules,
 // register. Per-event posters live on each tournament's own page.
 export default async function Home() {
-  const [{ tournament, confirmed }, lastResults] = await Promise.all([
+  const [{ tournament, confirmed }, lastResults, recentScores] = await Promise.all([
     getHeroTournament(),
     getLastCompletedTournamentResults(),
+    getRecentScores(5),
   ]);
 
   return (
@@ -69,13 +73,22 @@ export default async function Home() {
 
       <div className="chalk-line" />
 
+      {/* Scores beat an empty promise (JD, 2026-07-24). "Check back after
+          the next tournament" was exactly wrong during a live one, where
+          finals land every hour. Championship photos win when they exist;
+          otherwise the five most recent finals, in the same matchup unit
+          used on every other page. */}
       <section className="max-w-md mx-auto">
-        <h2 className="text-xl font-bold text-afa-navy mb-3">Last Results</h2>
+        <h2 className="text-xl font-bold text-afa-navy mb-3">
+          {lastResults ? "Last Results" : "Recent Scores"}
+        </h2>
         {lastResults ? (
-          <ResultsGallery tournament={lastResults} />
+          <ResultsGallery tournament={lastResults} recentScores={recentScores} />
+        ) : recentScores.length > 0 ? (
+          <RecentScores scores={recentScores} />
         ) : (
           <p className="text-afa-ink/70">
-            No results yet — check back after the next tournament.
+            No scores yet — they appear here as games finish.
           </p>
         )}
       </section>
@@ -83,7 +96,25 @@ export default async function Home() {
   );
 }
 
-function ResultsGallery({ tournament }) {
+function RecentScores({ scores }) {
+  return (
+    <div className="space-y-2">
+      {scores.map((g) => (
+        <Matchup
+          key={g.id}
+          caption={[formatFieldTime(g), g.divisionName, g.label].filter(Boolean).join(" · ")}
+          team1={g.team1}
+          team2={g.team2}
+          score1={g.score1}
+          score2={g.score2}
+          isFinal
+        />
+      ))}
+    </div>
+  );
+}
+
+function ResultsGallery({ tournament, recentScores = [] }) {
   const divisionsWithPlacements = (tournament.divisions ?? []).filter(
     (d) => (d.placements ?? []).length > 0
   );
@@ -91,7 +122,13 @@ function ResultsGallery({ tournament }) {
     <div className="space-y-4">
       <p className="font-semibold text-afa-navy">{tournament.name}</p>
       {divisionsWithPlacements.length === 0 ? (
-        <p className="text-afa-ink/70 text-sm">No results yet — check back after the next tournament.</p>
+        recentScores.length > 0 ? (
+          <RecentScores scores={recentScores} />
+        ) : (
+          <p className="text-afa-ink/70 text-sm">
+            No scores yet — they appear here as games finish.
+          </p>
+        )
       ) : (
         divisionsWithPlacements.map((division) => (
           <div key={division.id} className="chalk-panel">

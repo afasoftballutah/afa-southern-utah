@@ -36,12 +36,22 @@ const FEED_RE = /^(Winner|Loser) of Game (\d+)$/;
 const CELL_W = 200;
 const GUTTER = 48;
 const ROW_UNIT_H = 155;
-const BOX_H = 124;
+// BOX_H is the two-pill unit ONLY (spec law 2, 2026-07-22): the caption is
+// rendered outside this component's Matchup call and excluded from every
+// centering/overlap/connector calc below. Since caption is never passed to
+// Matchup here, its rendered height is now identical for every cell (two
+// truncated single-line rows, no variable-height content), so this is a
+// true constant rather than an approximation: border-t-2(2) + p-3 top(12)
+// + row(py-1.5 12 + text-sm 20 = 32) + divide-y hairline(1) + row(32) +
+// p-3 bottom(12) + border bottom(1) = 92px. Confirmed against a real
+// getBoundingClientRect() read in verification (dispatch-brief-18).
+const BOX_H = 92;
 const HEADER_H = 26;
 const TOP_PAD = 16;
 const LEFT_PAD = 72; // reserved margin for the Winners/Losers/Final captions
 const BAND_GAP = 56; // tight vertical gap between the winners and losers bands
 const MIN_GAP = 1; // row units — the "clear gap" floor between two games in one column
+const CAPTION_ROOM = 24; // canvas padding reserved below the lowest box so its caption (outside all layout math) never clips
 
 function parseSlots(game, byRound) {
   return ["team1_name", "team2_name"].map((slot) => {
@@ -53,6 +63,21 @@ function parseSlots(game, byRound) {
 function feedersOf(game, byRound) {
   return parseSlots(game, byRound)
     .filter(Boolean)
+    .map((s) => s.round);
+}
+
+// Feeds that get a DRAWN LINE. Loser drops are deliberately not drawn
+// (JD, 2026-07-24, marking them up on a screenshot as "lines we don't
+// need"): a loser drop always crosses from the winners band to the losers
+// band, so it renders as a long vertical running the height of the whole
+// bracket, and several of them stack in the same gutter into one
+// meaningless stripe. The slot already SAYS "Loser of Game 4" in words —
+// drawing it too states the same fact twice, in the noisiest way
+// available. Loser feeds still drive column and row placement; they just
+// aren't inked.
+function drawnFeedersOf(game, byRound) {
+  return parseSlots(game, byRound)
+    .filter((s) => s && s.type === "Winner")
     .map((s) => s.round);
 }
 
@@ -186,50 +211,16 @@ function xForCol(depth) {
   return LEFT_PAD + depth * (CELL_W + GUTTER);
 }
 
-// A Y band clear of every box in the given intervening columns, closest
-// to preferY. A connector whose target is more than one column ahead of
-// its feeder (a cross-depth feed — the whole reason tree.js can't draw
-// these brackets) must jog through a trunk Y that clears every column it
-// passes over, or its line would be drawn straight through an unrelated
-// box. Returns null only if no such band exists anywhere; the caller then
-// routes below the whole diagram instead.
-function findClearBand(depths, preferY, rects) {
-  if (depths.length === 0) return preferY;
-  const ys = rects.flatMap((r) => [r.y, r.y + BOX_H]);
-  const lo = Math.min(...ys) - 400;
-  const hi = Math.max(...ys) + 400;
-  let candidate = [[-Infinity, Infinity]];
-  for (const d of depths) {
-    const boxes = rects.filter((r) => r.depth === d).sort((a, b) => a.y - b.y);
-    const bands = [];
-    let cursor = lo;
-    for (const b of boxes) {
-      if (b.y > cursor) bands.push([cursor, b.y]);
-      cursor = Math.max(cursor, b.y + BOX_H);
-    }
-    bands.push([cursor, hi]);
-    const next = [];
-    for (const [cs, ce] of candidate) {
-      for (const [bs, be] of bands) {
-        const s = Math.max(cs, bs);
-        const e = Math.min(ce, be);
-        if (s < e) next.push([s, e]);
-      }
-    }
-    candidate = next;
-  }
-  if (candidate.length === 0) return null;
-  let best = null;
-  let bestDist = Infinity;
-  for (const [s, e] of candidate) {
-    const y = Math.min(Math.max(preferY, s), e);
-    const dist = Math.abs(y - preferY);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = y;
-    }
-  }
-  return best;
+// Routing law (dispatch-brief-18, replacing the old "clear trunk band"
+// jog): every horizontal run must sit at the Y of one of its two
+// endpoints — never an arbitrary mid-Y that reads as a line through empty
+// space. A vertical run is always drawn inside a gutter, and a gutter
+// never holds a box, so a vertical never needs a clearance check — only a
+// horizontal can cross a box, and only when it passes over an
+// intervening column. This is that one check: does any box sitting in
+// column `depth` occupy the Y a horizontal run would pass through there.
+function crossesBoxAtY(depth, y, rects) {
+  return rects.some((r) => r.depth === depth && y > r.y && y < r.y + BOX_H);
 }
 
 /**
@@ -262,12 +253,18 @@ export function computeLayout(games) {
   const winnersHeight = winnersRows.size ? (winnersMaxRow + 1) * ROW_UNIT_H : 0;
   const losersTop = winnersTop + winnersHeight + (losersRows.size ? BAND_GAP : 0);
 
+  // Every rect.y is rounded to a whole pixel here, once, at the source —
+  // row averaging (a game centered on two feeders' mean row) can produce
+  // a half-unit row, and BOX_H is even, so rounding here is sufficient to
+  // keep every downstream center (rect.y + BOX_H / 2) a whole pixel too,
+  // rather than sprinkling Math.round across every call site (routing law
+  // item 4 — no 0.5 coordinates).
   const rectByRound = new Map();
   for (const [r, row] of winnersRows) {
-    rectByRound.set(r, { round: r, depth: depthByRound.get(r), x: xForCol(depthByRound.get(r)), y: winnersTop + row * ROW_UNIT_H, band: "winners" });
+    rectByRound.set(r, { round: r, depth: depthByRound.get(r), x: xForCol(depthByRound.get(r)), y: Math.round(winnersTop + row * ROW_UNIT_H), band: "winners" });
   }
   for (const [r, row] of losersRows) {
-    rectByRound.set(r, { round: r, depth: depthByRound.get(r), x: xForCol(depthByRound.get(r)), y: losersTop + row * ROW_UNIT_H, band: "losers" });
+    rectByRound.set(r, { round: r, depth: depthByRound.get(r), x: xForCol(depthByRound.get(r)), y: Math.round(losersTop + row * ROW_UNIT_H), band: "losers" });
   }
 
   // FINAL: positioned at its own depth column (columns stay depth-based
@@ -285,7 +282,7 @@ export function computeLayout(games) {
       y = rectByRound.get(slots[0].round).y;
     } else {
       const centers = slots.map((s) => rectByRound.get(s.round).y + BOX_H / 2);
-      y = centers.reduce((a, b) => a + b, 0) / centers.length - BOX_H / 2;
+      y = Math.round(centers.reduce((a, b) => a + b, 0) / centers.length - BOX_H / 2);
     }
     rectByRound.set(r, { round: r, depth: depthByRound.get(r), x: xForCol(depthByRound.get(r)), y, band: "final" });
   }
@@ -298,36 +295,72 @@ export function computeLayout(games) {
     maxY = Math.max(maxY, rect.y + BOX_H);
   }
 
-  // Connectors: box-edge to box-edge, one per feed relationship. Adjacent
-  // columns (the common case) collapse this to the spec's simple 3-segment
-  // elbow — feeder's right edge, horizontal to mid-gutter, vertical,
-  // horizontal into the fed box's left edge — because the trunk jog lands
-  // in the same single gutter for both jump points. This is also exactly
-  // what draws a drop-down: a winners-band game's LOSER feeding a losers-
-  // band game is just a connector whose two endpoints happen to sit in
-  // different bands, so the vertical run naturally spans the band gap. A
-  // feed that skips a column jogs through a clear trunk band instead of
-  // drawing straight through whatever sits in the column it passes over.
+  // Connectors: box-edge to box-edge, one per feed relationship. Routing
+  // law (dispatch-brief-18) — every horizontal run sits at the Y of one of
+  // its two endpoints, never an arbitrary mid-Y:
+  //   1. Same Y (within 1px): one straight horizontal, no jog at all.
+  //   2. Adjacent columns: the standard 3-segment elbow through the single
+  //      mid-gutter between them.
+  //   3. Cross-column (a feed 2+ columns back — a team that waits): the
+  //      horizontal runs at the FEEDER's own Y straight across the
+  //      intervening columns to the gutter immediately before the
+  //      destination, then one vertical, then one horizontal at the
+  //      destination's own Y into its left edge — the paper-bracket
+  //      bye/wait line. If that feeder-Y run would cross a box in one of
+  //      the intervening columns, the vertical moves EARLIER (into the
+  //      nearest clear gutter, walking back toward the source) so both
+  //      horizontals still sit only at their own endpoints' Y — never at
+  //      a third, made-up height. A vertical is never checked for
+  //      clearance: it always runs inside a gutter, and a gutter never
+  //      holds a box. This is also exactly what draws a drop-down: a
+  //      winners-band game's LOSER feeding a losers-band game is just a
+  //      connector whose two endpoints sit in different bands, so the
+  //      vertical run naturally spans the band gap without any special
+  //      case.
   const connectors = [];
+  const joggedFeeds = []; // feeds where the vertical had to move earlier than the gutter right before the destination — reported per brief step 2
   for (const r of rounds) {
     const target = rectByRound.get(r);
-    for (const f of feedersOf(byRound.get(r), byRound)) {
+    for (const f of drawnFeedersOf(byRound.get(r), byRound)) {
       const source = rectByRound.get(f);
       const x1 = source.x + CELL_W;
       const y1 = source.y + BOX_H / 2;
       const x2 = target.x;
       const y2 = target.y + BOX_H / 2;
+
+      if (Math.abs(y1 - y2) < 1) {
+        // Rule 1 — same center, dead straight, no elbow at all.
+        connectors.push(`M ${x1} ${Math.round(y1)} H ${Math.round(x2)}`);
+        continue;
+      }
+
+      if (target.depth === source.depth + 1) {
+        // Rule 2 — adjacent columns, the standard 3-segment elbow. The
+        // single gutter between the two columns is the only place a
+        // vertical can go, so there is no clearance search to run.
+        const gx = Math.round(x1 + GUTTER / 2);
+        connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
+        continue;
+      }
+
+      // Rule 3 — cross-column. Walk the split point back from the gutter
+      // right before the destination (the default: the whole feeder-Y run
+      // crosses every intervening column) toward the source, one gutter
+      // at a time, until both resulting horizontals are clear of every
+      // box in the columns they pass over.
       const interveningDepths = [];
       for (let d = source.depth + 1; d < target.depth; d++) interveningDepths.push(d);
-      const preferY = (y1 + y2) / 2;
-      let trunkY = findClearBand(interveningDepths, preferY, rects);
-      if (trunkY == null) {
-        trunkY = maxY + 60;
-        maxY = trunkY + 40;
+      let splitAt = interveningDepths.length; // y1-run covers interveningDepths[0..splitAt-1]
+      while (splitAt > 0) {
+        const y1Clear = interveningDepths.slice(0, splitAt).every((d) => !crossesBoxAtY(d, y1, rects));
+        const y2Clear = interveningDepths.slice(splitAt).every((d) => !crossesBoxAtY(d, y2, rects));
+        if (y1Clear && y2Clear) break;
+        splitAt -= 1;
       }
-      const gx1 = x1 + GUTTER / 2;
-      const gx2 = x2 - GUTTER / 2;
-      connectors.push(`M ${x1} ${y1} H ${gx1} V ${trunkY} H ${gx2} V ${y2} H ${x2}`);
+      if (splitAt < interveningDepths.length) joggedFeeds.push({ from: f, to: r, splitAt });
+      const lastY1Depth = splitAt > 0 ? interveningDepths[splitAt - 1] : source.depth;
+      const gx = Math.round(xForCol(lastY1Depth) + CELL_W + GUTTER / 2);
+      connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
     }
   }
 
@@ -354,10 +387,15 @@ export function computeLayout(games) {
   return {
     cells: rects.map((r) => ({ round: r.round, game: byRound.get(r.round), x: r.x, y: r.y, band: r.band })),
     connectors,
+    joggedFeeds,
     headers,
     bandCaptions,
     totalWidth: maxX + TOP_PAD,
-    totalHeight: maxY + TOP_PAD,
+    // + CAPTION_ROOM: the caption below the lowest box sits outside every
+    // layout calc above (rect.y/maxY are pill-pair-only), so the canvas
+    // needs a little extra room reserved beneath it or that last caption
+    // would have nothing to sit in.
+    totalHeight: maxY + TOP_PAD + CAPTION_ROOM,
   };
 }
 
@@ -467,8 +505,12 @@ export default function DrawnBracket({ games }) {
         ))}
         {layout.cells.map(({ round, game, x, y }) => (
           <div key={round} data-game-round={round} className="absolute" style={{ left: x, top: y, width: CELL_W }}>
+            {/* No caption prop — the game unit is the two-pill Matchup
+                alone (spec law 2, 2026-07-22). The caption renders below,
+                as its own element, outside every centering/connector calc
+                above: it occupies the gap beneath the box without ever
+                shifting the box's center or a connector's endpoint. */}
             <Matchup
-              caption={compactCaption(game)}
               team1={game.team1_name}
               team2={game.team2_name}
               score1={game.team1_score}
@@ -476,6 +518,12 @@ export default function DrawnBracket({ games }) {
               isFinal={game.status === "final"}
               className="[&>p]:whitespace-nowrap [&>p]:overflow-hidden [&>p]:text-ellipsis"
             />
+            <p
+              data-game-caption={round}
+              className="mt-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted whitespace-nowrap overflow-hidden text-ellipsis"
+            >
+              {compactCaption(game)}
+            </p>
           </div>
         ))}
       </div>
