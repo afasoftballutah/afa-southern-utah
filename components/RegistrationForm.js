@@ -6,15 +6,42 @@ import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waive
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
+// Same region ordering as the Tournaments page (lib/data.js REGION_ORDER) —
+// Southern Utah/Nevada first (home base), then Northern Utah, then the
+// Series circuit. Kept local here since only region LABELS are shared
+// (dispatch-brief-17); the order is a display concern of this filter alone.
+const REGION_ORDER = ["southern_utah", "northern_utah", "series"];
+
 const emptyPlayer = () => ({ name: "", birthDate: "", address: "" });
 const emptyCoach = () => ({ name: "", email: "", phone: "" });
 
-export default function RegistrationForm({ tournaments }) {
+function formatStartDate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export default function RegistrationForm({ tournaments, regionLabel }) {
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
   const [signers, setSigners] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
+
+  // Series filter (dispatch-brief-17) — "All" plus only the regions that
+  // actually have a registerable tournament in this list. `tournaments` here
+  // is already the registerable set (page.js filters is_placeholder/status).
+  const [seriesFilter, setSeriesFilter] = useState("all");
+  const filterOptions = useMemo(() => {
+    const present = REGION_ORDER.filter((r) => tournaments.some((t) => t.region === r));
+    return [{ value: "all", label: "All" }, ...present.map((r) => ({ value: r, label: regionLabel[r] }))];
+  }, [tournaments, regionLabel]);
+  const filteredTournaments = useMemo(() => {
+    const list = seriesFilter === "all" ? tournaments : tournaments.filter((t) => t.region === seriesFilter);
+    return list.slice().sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0));
+  }, [tournaments, seriesFilter]);
 
   const [tournamentId, setTournamentId] = useState(tournaments[0]?.id ?? "");
   const tournament = useMemo(
@@ -22,6 +49,31 @@ export default function RegistrationForm({ tournaments }) {
     [tournaments, tournamentId]
   );
   const [divisionId, setDivisionId] = useState("");
+
+  // Registerable divisions for the selected tournament — bracket-stage
+  // children (Gold/Silver/Bronze) have a parent_division_id and must never
+  // be offered here; a team registers into the parent (e.g. Coed), never
+  // the stage (dispatch-brief-17 regression check).
+  const registerableDivisions = useMemo(() => {
+    return (tournament?.divisions ?? [])
+      .filter((d) => d.parent_division_id == null)
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [tournament]);
+  const effectiveDivisionId = useMemo(() => {
+    if (registerableDivisions.length === 1) return registerableDivisions[0].id;
+    if (registerableDivisions.length === 0) return "";
+    return divisionId;
+  }, [registerableDivisions, divisionId]);
+
+  function chooseFilter(next) {
+    setSeriesFilter(next);
+    const stillVisible = next === "all" || (tournament && tournament.region === next);
+    if (!stillVisible) {
+      setTournamentId("");
+      setDivisionId("");
+    }
+  }
 
   const [teamName, setTeamName] = useState("");
   const [className, setClassName] = useState("");
@@ -44,8 +96,6 @@ export default function RegistrationForm({ tournaments }) {
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
 
-  const divisions = tournament?.divisions?.slice().sort((a, b) => a.sort_order - b.sort_order) ?? [];
-
   function updatePlayer(index, field, value) {
     setPlayers((prev) => {
       const next = [...prev];
@@ -63,8 +113,13 @@ export default function RegistrationForm({ tournaments }) {
   }
 
   function canProceed() {
-    if (step === 0) return Boolean(tournamentId && divisionId);
-    if (step === 1) return teamName.trim().length > 0;
+    if (step === 0) return Boolean(tournamentId);
+    if (step === 1) {
+      return (
+        teamName.trim().length > 0 &&
+        (registerableDivisions.length === 0 || Boolean(effectiveDivisionId))
+      );
+    }
     if (step === 2) return manager.name.trim().length > 0 && manager.email.trim().length > 0;
     if (step === 3) return players.some((p) => p.name.trim().length > 0);
     if (step === 4) return true; // coaches optional
@@ -77,7 +132,7 @@ export default function RegistrationForm({ tournaments }) {
     try {
       const payload = {
         tournamentId,
-        divisionId,
+        divisionId: effectiveDivisionId,
         teamName: teamName.trim(),
         class: className.trim(),
         afaMembershipNumber: afaMembershipNumber.trim(),
@@ -167,6 +222,22 @@ export default function RegistrationForm({ tournaments }) {
       <div className="form-panel p-4 space-y-4">
         {step === 0 && (
           <div className="space-y-4">
+            <div className="flex items-center gap-3 text-sm flex-wrap">
+              {filterOptions.map((opt, i) => (
+                <div key={opt.value} className="flex items-center gap-3">
+                  {i > 0 && <span className="text-afa-ink/30">|</span>}
+                  <button
+                    type="button"
+                    onClick={() => chooseFilter(opt.value)}
+                    className={`font-semibold ${
+                      seriesFilter === opt.value ? "text-afa-navy underline" : "text-afa-ink/50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                </div>
+              ))}
+            </div>
             <Field label="Tournament">
               <select
                 className="w-full border border-afa-navy/30 rounded px-3 py-2"
@@ -176,23 +247,10 @@ export default function RegistrationForm({ tournaments }) {
                   setDivisionId("");
                 }}
               >
-                {tournaments.map((t) => (
+                {filteredTournaments.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Division">
-              <select
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
-                value={divisionId}
-                onChange={(e) => setDivisionId(e.target.value)}
-              >
-                <option value="">Select a division&hellip;</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
+                    {t.name} — {formatStartDate(t.start_date)}
+                    {seriesFilter === "all" ? ` · ${regionLabel[t.region]}` : ""}
                   </option>
                 ))}
               </select>
@@ -209,6 +267,27 @@ export default function RegistrationForm({ tournaments }) {
                 onChange={(e) => setTeamName(e.target.value)}
               />
             </Field>
+            {registerableDivisions.length === 1 && (
+              <p className="text-sm">
+                Division: {registerableDivisions[0].display_name ?? registerableDivisions[0].name}
+              </p>
+            )}
+            {registerableDivisions.length > 1 && (
+              <Field label="Division">
+                <select
+                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  value={divisionId}
+                  onChange={(e) => setDivisionId(e.target.value)}
+                >
+                  <option value="">Select a division&hellip;</option>
+                  {registerableDivisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.display_name ?? d.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Class">
               <input
                 className="w-full border border-afa-navy/30 rounded px-3 py-2"

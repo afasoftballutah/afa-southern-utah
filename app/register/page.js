@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPublicClient } from "@/lib/supabase";
+import { REGION_LABEL } from "@/lib/data";
 import RegistrationForm from "@/components/RegistrationForm";
 
 export const revalidate = 30;
@@ -10,7 +11,9 @@ async function getRegisterableTournaments() {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("tournaments")
-    .select("id, slug, name, start_date, is_placeholder, status, divisions(id, name, sort_order)")
+    .select(
+      "id, slug, name, start_date, region, is_placeholder, status, divisions(id, name, display_name, sort_order, parent_division_id)"
+    )
     .order("start_date", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -39,7 +42,7 @@ export default async function RegisterPage() {
           </p>
         </div>
       ) : (
-        <RegistrationForm tournaments={registerable} />
+        <RegistrationForm tournaments={registerable} regionLabel={REGION_LABEL} />
       )}
     </div>
   );
