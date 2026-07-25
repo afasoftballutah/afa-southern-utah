@@ -618,7 +618,7 @@ export function computeLayout(games) {
       if (Math.abs(y1 - y2) < 1) {
         // Rule 1 — same center, dead straight, no elbow at all.
         connectors.push(`M ${x1} ${Math.round(y1)} H ${Math.round(x2)}`);
-        connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: Math.round(x2), y: Math.round(y1) } });
+        connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: Math.round(x2), y: Math.round(y1) } });
         continue;
       }
 
@@ -628,7 +628,7 @@ export function computeLayout(games) {
         // vertical can go, so there is no clearance search to run.
         const gx = Math.round(x1 + GUTTER / 2);
         connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
-        connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
+        connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
         continue;
       }
 
@@ -650,7 +650,7 @@ export function computeLayout(games) {
       const lastY1Depth = splitAt > 0 ? interveningDepths[splitAt - 1] : source.depth;
       const gx = Math.round(xForCol(lastY1Depth) + CELL_W + GUTTER / 2);
       connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
-      connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
+      connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
     }
   }
 
@@ -744,6 +744,19 @@ function compactCaption(g) {
   return parts.join(" · ");
 }
 
+// The label that names an outcome in the consequences view. Sits above
+// the card's own caption so the two do not collide.
+function OutcomeTag({ children, color }) {
+  return (
+    <span
+      className="absolute left-1/2 -translate-x-1/2 bottom-full mb-5 z-[4] whitespace-nowrap rounded-full px-2.5 py-[3px] text-[10px] font-bold uppercase tracking-[.07em] text-white"
+      style={{ background: color || "var(--afa-navy)", boxShadow: "0 2px 5px -1px rgba(22,35,61,.35)" }}
+    >
+      {children}
+    </span>
+  );
+}
+
 // The current transcribed-list rendering — used both as the true fallback
 // (cycle detected, or nothing to draw) and, being identical markup, means
 // falling back never reads as a regression from what the page showed
@@ -770,6 +783,10 @@ function FallbackList({ games }) {
 export default function DrawnBracket({ games, division, seeds }) {
   const layout = useMemo(() => computeLayout(games), [games]);
   const [showDrops, setShowDrops] = useState(true);
+  // Tap a game to see its consequences (spec 5.7). The question a manager
+  // actually has standing on the field is "what happens to us if we win
+  // this", and the answer was spread across the whole drawing.
+  const [focus, setFocus] = useState(null);
 
   // A team carries its POOL SEED everywhere it appears (spec 5.3). The
   // seeds map is supplied by the page when it knows pool results; without
@@ -801,6 +818,7 @@ export default function DrawnBracket({ games, division, seeds }) {
   // game whose two slots both point at the same feeder is a rematch, which
   // is exactly what "if necessary" means (spec 5.6).
   const ifRounds = new Set(layout.rematches.map((r) => r.to));
+  const roundById = new Map((games ?? []).map((g) => [g.id, g.round]));
 
   // The badge on a game wears the colour of the drop LEAVING it, so a game
   // and the fall it produces are tied together before you trace anything.
@@ -811,6 +829,21 @@ export default function DrawnBracket({ games, division, seeds }) {
   // off both go back to muted: a colour referring to a line you cannot
   // see is noise.
   const slotTintOf = new Map(layout.drops.map((d) => [`${d.to}:${d.slot}`, d.color]));
+
+  // Where a focused game's two outcomes lead. Both are stated in the data,
+  // so this is a lookup rather than a guess. A game whose winner feeds
+  // nothing is the last one played, and winning it wins the tournament.
+  const winTo = focus
+    ? layout.cells.find(({ game }) =>
+        [["team1_source_game_id", "team1_source_result", 0], ["team2_source_game_id", "team2_source_result", 1]].some(
+          ([k, r]) => game[k] && roundById.get(game[k]) === focus && String(game[r] ?? "winner").toLowerCase() === "winner"
+        )
+      )
+    : null;
+  const loseTo = focus ? layout.drops.find((d) => d.from === focus) : null;
+  const focusRole = (round) =>
+    round === focus ? "focus" : winTo && winTo.round === round ? "win" : loseTo && loseTo.to === round ? "lose" : focus ? "dim" : null;
+  const isChampion = focus != null && !winTo;
 
   const endpoints = [
     ...layout.connectorEnds.flatMap(({ a, b }) => [
@@ -865,7 +898,7 @@ export default function DrawnBracket({ games, division, seeds }) {
                 strokeDasharray="0.1 4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity={0.85}
+                opacity={focus != null ? (d.from === focus ? 1 : 0.07) : 0.85}
                 fill="none"
               />
             ))}
@@ -883,9 +916,21 @@ export default function DrawnBracket({ games, division, seeds }) {
                 fill="none"
               />
             ))}
-          {layout.connectors.map((d, i) => (
-            <path key={i} d={d} stroke="var(--afa-navy)" strokeWidth={1} fill="none" shapeRendering="crispEdges" />
-          ))}
+          {layout.connectors.map((d, i) => {
+            const from = layout.connectorEnds[i]?.fromRound;
+            const lit = focus != null && from === focus;
+            return (
+              <path
+                key={i}
+                d={d}
+                stroke="var(--afa-navy)"
+                strokeWidth={lit ? 2 : 1}
+                opacity={focus != null && !lit ? 0.08 : 1}
+                fill="none"
+                shapeRendering={lit ? undefined : "crispEdges"}
+              />
+            );
+          })}
         </svg>
 
         {/* A dot at each end of every connector, sitting exactly ON the
@@ -934,8 +979,21 @@ export default function DrawnBracket({ games, division, seeds }) {
             </div>
           ))}
 
-        {layout.cells.map(({ round, game, x, y }) => (
-          <div key={round} data-game-round={round} className="absolute" style={{ left: x, top: y, width: CELL_W }}>
+        {layout.cells.map(({ round, game, x, y }) => {
+          const role = focusRole(round);
+          return (
+          <div
+            key={round}
+            data-game-round={round}
+            data-role={role || undefined}
+            className="absolute cursor-pointer transition-opacity duration-200"
+            style={{ left: x, top: y, width: CELL_W, opacity: role === "dim" ? 0.22 : 1 }}
+            onClick={() => setFocus((f) => (f === round ? null : round))}
+          >
+            {/* One game in focus, its two outcomes named. */}
+            {role === "win" && <OutcomeTag>Winner</OutcomeTag>}
+            {role === "lose" && <OutcomeTag color={loseTo?.color}>Loser</OutcomeTag>}
+            {role === "focus" && isChampion && <OutcomeTag color="var(--afa-red)">Champion</OutcomeTag>}
             <BracketMatchup
               game={game}
               division={division}
@@ -949,9 +1007,11 @@ export default function DrawnBracket({ games, division, seeds }) {
               }
               resolveSeed={resolveSeed}
               seedTagFor={seedTagFor}
+              ring={role === "focus" ? "focus" : role === "win" || role === "lose" ? "dest" : null}
             />
           </div>
-        ))}
+          );
+        })}
         </div>
       </div>
     </div>

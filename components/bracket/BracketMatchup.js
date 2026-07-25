@@ -105,6 +105,7 @@ export default function BracketMatchup({
   slotTint = {},
   caption,
   order,
+  ring,
 }) {
   const isFinal = game.status === "final";
   const s1 = game.team1_score;
@@ -186,7 +187,11 @@ export default function BracketMatchup({
           minHeight: BOX_H,
           background: CARD_BG[division] ?? "#f4f6f9",
           boxShadow:
-            "0 1px 1px rgba(22,35,61,.05), 0 5px 10px -5px rgba(22,35,61,.4)",
+            ring === "focus"
+              ? "0 0 0 2px var(--afa-navy), 0 6px 16px -6px rgba(22,35,61,.5)"
+              : ring === "dest"
+              ? "0 0 0 1.5px rgba(30,58,110,.35), 0 6px 14px -6px rgba(22,35,61,.4)"
+              : "0 1px 1px rgba(22,35,61,.05), 0 5px 10px -5px rgba(22,35,61,.4)",
         }}
       >
         {/* Game number, inside the card's top-left, filled with the colour
