@@ -11,11 +11,14 @@ import Matchup from "@/components/ui/Matchup";
 // keyboard shortcuts. Remembers the pick per device in localStorage so a
 // player picks once and the page leads with them every visit after
 // (afa-product-plan.md, "My team first").
-const STORAGE_KEY_PREFIX = "afa-team-";
-
-export default function TeamFinder({ teams, games, divisionId }) {
+//
+// Storage key is TOURNAMENT-scoped, not division-scoped (dispatch-brief-19)
+// — a team plays in one division, so the caller passes the whole key
+// (`afa-team-{tournament slug}`) and both the division page and the
+// Schedule page share one memory: pick your team on either page and it's
+// already selected on the other.
+export default function TeamFinder({ teams, games, storageKey, chipPrefix }) {
   const [selected, setSelected] = useState("");
-  const storageKey = `${STORAGE_KEY_PREFIX}${divisionId}`;
 
   // Restore the remembered pick on mount. If it no longer names a real
   // team (roster change, wrong division), clear the stale key instead of
@@ -89,7 +92,9 @@ export default function TeamFinder({ teams, games, divisionId }) {
         <Card>
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-lg text-afa-navy">{selected}</h2>
-            {pool && <Chip variant="muted">Pool {pool}</Chip>}
+            {pool && (
+              <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
+            )}
           </div>
 
           <div className="mt-3">

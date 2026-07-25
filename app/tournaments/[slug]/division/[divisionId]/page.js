@@ -256,7 +256,7 @@ export default async function DivisionPage({ params }) {
       </div>
 
       {finderTeams.length > 0 && (
-        <TeamFinder teams={finderTeams} games={finderGames} divisionId={division.id} />
+        <TeamFinder teams={finderTeams} games={finderGames} storageKey={`afa-team-${slug}`} chipPrefix="Pool" />
       )}
 
       {hasPoolGames && <PoolPlaySection poolGames={poolGames} />}

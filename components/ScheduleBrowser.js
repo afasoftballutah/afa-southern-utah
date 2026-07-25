@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
+import TeamFinder from "@/components/TeamFinder";
 
 // By field | By time toggle (dispatch-brief-16) — same localStorage-via-
 // useSyncExternalStore pattern as the Tournaments page toggle
@@ -198,8 +199,13 @@ function ByTimeView({ rows }) {
  * (app/tournaments/[slug]/schedule/page.js) fetches via
  * getTournamentSchedule and passes flat, serializable rows straight
  * through — all grouping/sorting/view-state lives here, client-side.
+ *
+ * TeamFinder renders above the toggle (dispatch-brief-19) — "when do I
+ * play" is the first question on this page, so the picker is the first
+ * thing on it. `storageKey` is tournament-scoped so a pick here shares
+ * memory with the division page's own TeamFinder.
  */
-export default function ScheduleBrowser({ rows }) {
+export default function ScheduleBrowser({ rows, finderTeams, finderGames, storageKey }) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
   const view = explicitView ?? (storedView === "time" ? "time" : "field");
@@ -221,6 +227,10 @@ export default function ScheduleBrowser({ rows }) {
 
   return (
     <div className="space-y-6">
+      {finderTeams && finderTeams.length > 0 && (
+        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} />
+      )}
+
       <div className="flex items-center gap-3 text-sm">
         <button
           type="button"
