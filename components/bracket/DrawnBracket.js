@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Matchup from "@/components/ui/Matchup";
-import BracketMatchup, { rowOrder, BOX_H as PILL_BOX_H } from "@/components/bracket/BracketMatchup";
+import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -268,6 +268,229 @@ function xForCol(depth) {
   return LEFT_PAD + depth * (CELL_W + GUTTER);
 }
 
+// Pill centres inside the 92px card, which is where a drop lands. Kept
+// here rather than imported so the pure section stays standalone (the
+// prototype's exporter slices it out and runs it on its own). These must
+// agree with SIDE_Y in components/bracket/BracketMatchup.js.
+const PILL_CENTERS = [27, 65];
+
+/**
+ * A BYE enters at the top of its matchup (spec 5.4). Duplicated from the
+ * rendering side's needs on purpose: the drop routing has to aim at the
+ * row as DRAWN, so both must agree, and the pure section cannot import.
+ * Returns slot indices in display order.
+ */
+function rowOrderFor(game, roundByGameId) {
+  const kind = (ref, srcId, res) => (ref ? "seed" : srcId ? String(res ?? "winner") : null);
+  const when = (ref, srcId) => (ref ? 0 : srcId ? roundByGameId.get(srcId) ?? Infinity : Infinity);
+  const k1 = kind(game.team1_seed_ref, game.team1_source_game_id, game.team1_source_result);
+  const k2 = kind(game.team2_seed_ref, game.team2_source_game_id, game.team2_source_result);
+  if (!k1 || !k2 || k1 === k2) return [0, 1];
+  return when(game.team2_seed_ref, game.team2_source_game_id) <
+    when(game.team1_seed_ref, game.team1_source_game_id)
+    ? [1, 0]
+    : [0, 1];
+}
+
+// An axis-aligned polyline with rounded corners, so a drop reads as one
+// continuous fall rather than a set of joined sticks.
+function roundedPath(pts, r) {
+  const p = pts.filter((q, i) => i === 0 || q.x !== pts[i - 1].x || q.y !== pts[i - 1].y);
+  if (p.length < 2) return "";
+  let d = `M ${p[0].x} ${p[0].y}`;
+  for (let i = 1; i < p.length - 1; i++) {
+    const a = p[i - 1], b = p[i], c = p[i + 1];
+    const inX = Math.sign(b.x - a.x), inY = Math.sign(b.y - a.y);
+    const outX = Math.sign(c.x - b.x), outY = Math.sign(c.y - b.y);
+    const rr = Math.min(r, Math.hypot(b.x - a.x, b.y - a.y) / 2, Math.hypot(c.x - b.x, c.y - b.y) / 2);
+    d += ` L ${b.x - inX * rr} ${b.y - inY * rr} Q ${b.x} ${b.y} ${b.x + outX * rr} ${b.y + outY * rr}`;
+  }
+  const last = p[p.length - 1];
+  return `${d} L ${last.x} ${last.y}`;
+}
+
+/**
+ * LOSER DROPS (spec 5.5). Reverses the 2026-07-24 ruling that they should
+ * not be drawn: drawn straight, they stacked into a stripe of parallel
+ * verticals. Drawn like this they do not.
+ *
+ *   - Only OUT of the winners bracket. A losers-bracket game's loser is
+ *     eliminated. The one other "loser of" edge is the grand final
+ *     feeding the if-necessary game, which is a rematch, not a fall, and
+ *     is drawn separately.
+ *   - Each winners card in a column takes its own exit tick along its
+ *     bottom edge, 1/(M+1), 2/(M+1)... where M counts WINNERS games in
+ *     that column only. Four games in round 1 exit at a fifth, two
+ *     fifths, three fifths and four fifths, so their falls are
+ *     structurally incapable of overlapping.
+ *   - A drop falls clear of the winners band before it goes anywhere
+ *     sideways, crosses the corridor in a lane of its own, descends in
+ *     its own gutter, and enters on the destination's row.
+ *
+ * The corridor is measured to the LOSERS band, not to "any band that is
+ * not winners": the Final sits vertically between the two, and including
+ * it put the corridor's ceiling below its floor and collapsed eight lanes
+ * into 12px of hatching.
+ */
+function computeDrops(rounds, byRound, roundByGameId, rectByRound) {
+  const rects = [...rectByRound.values()];
+  const winners = rects.filter((r) => r.band === "winners");
+  const losers = rects.filter((r) => r.band === "losers");
+  if (!winners.length) return [];
+
+  const byColumn = new Map();
+  winners.forEach((r) => {
+    if (!byColumn.has(r.x)) byColumn.set(r.x, []);
+    byColumn.get(r.x).push(r);
+  });
+  const exitX = new Map();
+  const laneOfColumn = new Map();
+  byColumn.forEach((col) => {
+    col.sort((a, b) => a.y - b.y);
+    col.forEach((r, i) => {
+      exitX.set(r.round, r.x + CELL_W * ((i + 1) / (col.length + 1)));
+      laneOfColumn.set(r.round, i);
+    });
+  });
+
+  const clearOf = Math.max(...winners.map((r) => r.y + BOX_H));
+  const nextBand = losers.length ? Math.min(...losers.map((r) => r.y)) : clearOf + 130;
+  const corridorTop = clearOf + 14;
+  const corridorBot = Math.max(corridorTop + 12, nextBand - 14);
+
+  const drops = [];
+  for (const r of rounds) {
+    const target = rectByRound.get(r);
+    const game = byRound.get(r);
+    if (!target || !game) continue;
+    const order = rowOrderFor(game, roundByGameId);
+    [
+      [game.team1_source_game_id, game.team1_source_result, 0],
+      [game.team2_source_game_id, game.team2_source_result, 1],
+    ].forEach(([srcId, res, slot]) => {
+      if (!srcId || String(res ?? "winner").toLowerCase() !== "loser") return;
+      const srcRound = roundByGameId.get(srcId);
+      const source = srcRound != null ? rectByRound.get(srcRound) : null;
+      if (!source || source.band !== "winners") return;
+      drops.push({
+        from: srcRound,
+        to: r,
+        slot,
+        x1: exitX.get(srcRound),
+        y1: source.y + BOX_H,
+        x2: target.x,
+        y2: target.y + PILL_CENTERS[order.indexOf(slot)],
+        column: source.depth,
+        columnLane: laneOfColumn.get(srcRound) ?? 0,
+      });
+    });
+  }
+  if (!drops.length) return [];
+
+  // Farthest-right destination takes the highest lane: its long run then
+  // sits above the shorter ones and each descent crosses as few other
+  // lanes as possible.
+  drops.sort((a, b) => b.x2 - a.x2 || a.y2 - b.y2);
+  const perDest = new Map();
+  drops.forEach((d) => {
+    perDest.set(d.x2, (perDest.get(d.x2) ?? -1) + 1);
+    d.dropX = d.x2 - (16 + perDest.get(d.x2) * 11);
+  });
+
+  const room = corridorBot - corridorTop;
+  const gap = Math.max(10, Math.min(18, room / (drops.length + 1)));
+  const start = corridorTop + (room - gap * (drops.length - 1)) / 2;
+
+  // Every line leaving a round takes its own step along a purple-to-light-
+  // blue spectrum, first out of a round at the purple end. They run behind
+  // the cards, and a colour is what lets you pick one back up on the far
+  // side. Advancement lines stay one navy: they never run behind anything.
+  const byCol = new Map();
+  drops.forEach((d) => {
+    if (!byCol.has(d.column)) byCol.set(d.column, []);
+    byCol.get(d.column).push(d);
+  });
+  byCol.forEach((g) => {
+    g.sort((a, b) => a.columnLane - b.columnLane);
+    g.forEach((d, i) => {
+      const t = g.length > 1 ? i / (g.length - 1) : 0;
+      const h = Math.round(280 - t * 82);
+      const s = Math.round(50 + t * 12);
+      const l = Math.round(50 + t * 10);
+      d.color = `hsl(${h} ${s}% ${l}%)`;
+      d.badge = `hsl(${h} ${s}% ${Math.min(l, 46)}%)`;
+    });
+  });
+
+  return drops.map((d, i) => {
+    const laneY = Math.round(start + i * gap);
+    return {
+      from: d.from,
+      to: d.to,
+      slot: d.slot,
+      color: d.color,
+      badge: d.badge,
+      d: roundedPath(
+        [
+          { x: d.x1, y: d.y1 },
+          { x: d.x1, y: laneY },
+          { x: d.dropX, y: laneY },
+          { x: d.dropX, y: d.y2 },
+          { x: d.x2, y: d.y2 },
+        ],
+        9
+      ),
+    };
+  });
+}
+
+/**
+ * The if-necessary game is a REMATCH, so it gets two lines from the one
+ * game that feeds it: the solid one the routing above already draws for
+ * the winner, and this dotted one for the loser, who has earned the right
+ * to play again. Routed short and low rather than through the corridor —
+ * the two games sit side by side, and this is a step back into the ring,
+ * not a fall out of the bracket.
+ */
+function computeRematches(rounds, byRound, roundByGameId, rectByRound) {
+  const out = [];
+  for (const r of rounds) {
+    const game = byRound.get(r);
+    const target = rectByRound.get(r);
+    if (!game || !target) continue;
+    const a = game.team1_source_game_id;
+    const b = game.team2_source_game_id;
+    if (!a || !b || a !== b) continue;
+    const loserSlot =
+      String(game.team1_source_result ?? "").toLowerCase() === "loser"
+        ? 0
+        : String(game.team2_source_result ?? "").toLowerCase() === "loser"
+        ? 1
+        : -1;
+    const srcRound = roundByGameId.get(a);
+    const source = srcRound != null ? rectByRound.get(srcRound) : null;
+    if (loserSlot < 0 || !source) continue;
+    const order = rowOrderFor(game, roundByGameId);
+    const x1 = source.x + CELL_W / 2;
+    const y1 = source.y + BOX_H;
+    out.push({
+      from: srcRound,
+      to: r,
+      d: roundedPath(
+        [
+          { x: x1, y: y1 },
+          { x: x1, y: y1 + 24 },
+          { x: target.x - 18, y: y1 + 24 },
+          { x: target.x - 18, y: target.y + PILL_CENTERS[order.indexOf(loserSlot)] },
+          { x: target.x, y: target.y + PILL_CENTERS[order.indexOf(loserSlot)] },
+        ],
+        9
+      ),
+    });
+  }
+  return out;
+}
+
 // Routing law (dispatch-brief-18, replacing the old "clear trunk band"
 // jog): every horizontal run must sit at the Y of one of its two
 // endpoints — never an arbitrary mid-Y that reads as a line through empty
@@ -379,6 +602,9 @@ export function computeLayout(games) {
   //      vertical run naturally spans the band gap without any special
   //      case.
   const connectors = [];
+  // Endpoints kept alongside the path strings so the markers can be drawn
+  // without measuring the DOM: a server render has no getPointAtLength.
+  const connectorEnds = [];
   const joggedFeeds = []; // feeds where the vertical had to move earlier than the gutter right before the destination — reported per brief step 2
   for (const r of rounds) {
     const target = rectByRound.get(r);
@@ -392,6 +618,7 @@ export function computeLayout(games) {
       if (Math.abs(y1 - y2) < 1) {
         // Rule 1 — same center, dead straight, no elbow at all.
         connectors.push(`M ${x1} ${Math.round(y1)} H ${Math.round(x2)}`);
+        connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: Math.round(x2), y: Math.round(y1) } });
         continue;
       }
 
@@ -401,6 +628,7 @@ export function computeLayout(games) {
         // vertical can go, so there is no clearance search to run.
         const gx = Math.round(x1 + GUTTER / 2);
         connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
+        connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
         continue;
       }
 
@@ -422,6 +650,7 @@ export function computeLayout(games) {
       const lastY1Depth = splitAt > 0 ? interveningDepths[splitAt - 1] : source.depth;
       const gx = Math.round(xForCol(lastY1Depth) + CELL_W + GUTTER / 2);
       connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
+      connectorEnds.push({ a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
     }
   }
 
@@ -448,6 +677,13 @@ export function computeLayout(games) {
   return {
     cells: rects.map((r) => ({ round: r.round, game: byRound.get(r.round), x: r.x, y: r.y, band: r.band })),
     connectors,
+    connectorEnds,
+    // Loser drops and the if-necessary rematch, computed off the same
+    // rects the advancement lines use, so they cannot disagree about
+    // where a game is (spec 5.5, 5.6).
+    drops: computeDrops(rounds, byRound, roundByGameId, rectByRound),
+    rematches: computeRematches(rounds, byRound, roundByGameId, rectByRound),
+    rowOrders: Object.fromEntries(rounds.map((r) => [r, rowOrderFor(byRound.get(r), roundByGameId)])),
     joggedFeeds,
     headers,
     bandCaptions,
@@ -533,13 +769,7 @@ function FallbackList({ games }) {
 
 export default function DrawnBracket({ games, division, seeds }) {
   const layout = useMemo(() => computeLayout(games), [games]);
-
-  // Round-number lookup for the bye rule: a slot's source is a game id, and
-  // "which was settled first" is a comparison of the games those ids name.
-  const roundOf = useMemo(() => {
-    const m = new Map((games ?? []).map((g) => [g.id, g.round]));
-    return (id) => m.get(id);
-  }, [games]);
+  const [showDrops, setShowDrops] = useState(true);
 
   // A team carries its POOL SEED everywhere it appears (spec 5.3). The
   // seeds map is supplied by the page when it knows pool results; without
@@ -570,22 +800,100 @@ export default function DrawnBracket({ games, division, seeds }) {
   // The if-necessary game, read out of the data rather than hardcoded: a
   // game whose two slots both point at the same feeder is a rematch, which
   // is exactly what "if necessary" means (spec 5.6).
-  const ifRounds = new Set(
-    layout.cells
-      .filter(({ game }) => {
-        const a = game.team1_source_game_id;
-        const b = game.team2_source_game_id;
-        return a && b && a === b;
-      })
-      .map((c) => c.round)
-  );
+  const ifRounds = new Set(layout.rematches.map((r) => r.to));
+
+  // The badge on a game wears the colour of the drop LEAVING it, so a game
+  // and the fall it produces are tied together before you trace anything.
+  // A navy badge means this game sends nobody down.
+  const badgeOf = new Map(layout.drops.map((d) => [d.from, d.badge]));
+  // And the slot a drop lands in wears the colour of the line arriving,
+  // so "[Loser 1]" and its line are obviously the same fact. With drops
+  // off both go back to muted: a colour referring to a line you cannot
+  // see is noise.
+  const slotTintOf = new Map(layout.drops.map((d) => [`${d.to}:${d.slot}`, d.color]));
+
+  const endpoints = [
+    ...layout.connectorEnds.flatMap(({ a, b }) => [
+      { ...a, color: "var(--afa-navy)" },
+      { ...b, color: "var(--afa-navy)" },
+    ]),
+    ...(showDrops
+      ? layout.drops.flatMap((d) => {
+          const m = /^M\s*([\d.-]+)\s+([\d.-]+)/.exec(d.d);
+          const last = /L\s*([\d.-]+)\s+([\d.-]+)$/.exec(d.d);
+          const out = [];
+          if (m) out.push({ x: +m[1], y: +m[2], color: d.color, drop: true });
+          if (last) out.push({ x: +last[1], y: +last[2], color: d.color, drop: true });
+          return out;
+        })
+      : []),
+  ];
 
   return (
-    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
-      <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
+    <div>
+      {layout.drops.length > 0 && (
+        <div className="mb-2">
+          <button
+            type="button"
+            onClick={() => setShowDrops((v) => !v)}
+            aria-pressed={showDrops}
+            className={[
+              "rounded-full border px-3 text-[12px] font-semibold min-h-9",
+              showDrops
+                ? "bg-afa-navy/[0.08] border-afa-navy/30 text-afa-navy"
+                : "border-afa-ink/15 text-afa-ink/70",
+            ].join(" ")}
+          >
+            {showDrops ? "••• Loser drops on" : "Loser drops off"}
+          </button>
+        </div>
+      )}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
+        {/* Drops go UNDER the advancement lines: where the two share a
+            gutter, the solid line should be the one you read. Both sit
+            under the cards, so a drop passing behind a card disappears
+            rather than crossing a team name. */}
         <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
+          {showDrops &&
+            layout.drops.map((d, i) => (
+              <path
+                key={`drop-${i}`}
+                d={d.d}
+                stroke={d.color}
+                strokeWidth={1.6}
+                strokeDasharray="0.1 4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.85}
+                fill="none"
+              />
+            ))}
+          {showDrops &&
+            layout.rematches.map((d, i) => (
+              <path
+                key={`rematch-${i}`}
+                d={d.d}
+                stroke="var(--afa-navy)"
+                strokeWidth={1.6}
+                strokeDasharray="0.1 4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.75}
+                fill="none"
+              />
+            ))}
           {layout.connectors.map((d, i) => (
             <path key={i} d={d} stroke="var(--afa-navy)" strokeWidth={1} fill="none" shapeRendering="crispEdges" />
+          ))}
+        </svg>
+
+        {/* A dot at each end of every connector, sitting exactly ON the
+            card's border. Drawn in a layer ABOVE the cards so it reads as
+            a full circle rather than the half one a card would clip. */}
+        <svg className="absolute inset-0 pointer-events-none z-[2]" width={layout.totalWidth} height={layout.totalHeight}>
+          {endpoints.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={p.drop ? 2.1 : 1.55} fill={p.color} />
           ))}
         </svg>
 
@@ -632,12 +940,19 @@ export default function DrawnBracket({ games, division, seeds }) {
               game={game}
               division={division}
               caption={scheduleCaption(game)}
-              order={rowOrder(game, roundOf)}
+              order={layout.rowOrders[round]}
+              badgeColor={showDrops ? badgeOf.get(round) : null}
+              slotTint={
+                showDrops
+                  ? { 0: slotTintOf.get(`${round}:0`), 1: slotTintOf.get(`${round}:1`) }
+                  : {}
+              }
               resolveSeed={resolveSeed}
               seedTagFor={seedTagFor}
             />
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
