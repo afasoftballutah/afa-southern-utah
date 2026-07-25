@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDivisionById } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
+import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
 import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
@@ -294,28 +295,17 @@ export default async function DivisionPage({ params }) {
           league's own pre-drawn bracket, so they carry their real field and
           time and their slots read as provenance — "A #1", "Winner of Game
           5" — the fence convention: the bracket exists before it is played.
-          They render as the same matchup unit used everywhere else. The
-          drawn TREE is a separate job; until a `brackets` row exists,
-          BracketTree stays out of the way and this list is the view. */}
+          DrawnBracket lays it out from the feed graph itself (dispatch-
+          brief-15) — these brackets are irregular (byes from 9/10-entrant
+          pools), which breaks the halving math BracketTree/tree.js rely on,
+          so this is a separate renderer rather than a variant of that one. */}
       {!hasBracket && bracketGames.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-bold text-afa-navy">Bracket</h2>
           <p className="text-sm text-afa-ink/70">
             Drawn and scheduled. Team names fill in as pool play finishes.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {bracketGames.map((g) => (
-              <Matchup
-                key={g.id}
-                caption={[`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · ")}
-                team1={g.team1_name}
-                team2={g.team2_name}
-                score1={g.team1_score}
-                score2={g.team2_score}
-                isFinal={g.status === "final"}
-              />
-            ))}
-          </div>
+          <DrawnBracket games={bracketGames} />
         </div>
       )}
 
