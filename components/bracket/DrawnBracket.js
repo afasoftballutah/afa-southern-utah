@@ -128,54 +128,13 @@ function computeDepths(byRound, roundByGameId) {
   for (const round of byRound.keys()) depth(round);
   if (cycle) return null;
 
-  // Slide seed-fed games as late as they can go (JD, 2026-07-25: "if there
-  // is a gap in the round ahead of the matchup, move the matchup to that
-  // round so all the branches are short").
-  //
-  // Why only seed-fed games: their inputs are TEXT ([A #1]), not drawn
-  // lines, so moving one rightward costs nothing and shortens its outgoing
-  // branch. A game fed by other GAMES cannot move without lengthening its
-  // own incoming connectors by exactly what it saves — no net gain, so
-  // those stay put, adjacent to their deepest feeder.
-  //
-  // Gold's Game 2 is the case that motivated this: seed-fed, sitting in
-  // column 0, throwing a long line across an empty column to Game 7.
-  // Only DRAWN consumers constrain the slide. A loser drop is not inked
-  // (see drawnFeedersOf), so it produces no line — yet counting it here
-  // pinned games in place for the sake of an invisible edge. Gold's Game 4
-  // is the case: its winner feeds Game 8 two columns right, but its loser
-  // feeds Game 6 one column right, so the min-over-consumers held it at
-  // column 0 and its connector then had to cross the whole of column 1 —
-  // colliding with the traffic in that gutter (JD, 2026-07-25: "the lines
-  // are crossing again").
-  const consumers = new Map(); // round -> [rounds it feeds WITH A LINE]
-  for (const round of byRound.keys()) {
-    for (const f of drawnFeedersOf(byRound.get(round), byRound, roundByGameId)) {
-      if (!consumers.has(f)) consumers.set(f, []);
-      consumers.get(f).push(round);
-    }
-  }
-  let moved = true;
-  let guard = 0;
-  while (moved && guard++ < 20) {
-    moved = false;
-    for (const round of byRound.keys()) {
-      // Only games with NO DRAWN INCOMING LINE may slide. Their inputs are
-      // text (a seed, or a loser-drop that isn't inked), so moving them
-      // costs nothing. A game fed by a drawn line cannot move without
-      // lengthening that line by exactly what it saves — and sliding
-      // everything, as an earlier pass did, drags the whole bracket right
-      // and empties the first columns entirely.
-      if (drawnFeedersOf(byRound.get(round), byRound, roundByGameId).length > 0) continue;
-      const outs = consumers.get(round) ?? [];
-      if (outs.length === 0) continue; // feeds nothing (a final) — leave it
-      const latest = Math.min(...outs.map((r) => memo.get(r))) - 1;
-      if (latest > memo.get(round)) {
-        memo.set(round, latest);
-        moved = true;
-      }
-    }
-  }
+  // NO SLIDING. A round is a FACT about the tournament — how many games a
+  // team had to win to be standing there — not a layout variable. Earlier
+  // passes moved games rightward to shorten connectors, which made the
+  // column headers lie: Gold's Games 1-4 are all Round 1 (every slot comes
+  // straight from a pool), yet two of them were being drawn in Round 2.
+  // Crossings are solved by the TREE layout in computeBandRows, vertically,
+  // never by moving a game out of its true round (JD, 2026-07-25).
   return memo;
 }
 
@@ -240,43 +199,69 @@ function computeBands(byRound, depthByRound, roundByGameId) {
 // mean (one feeder inherits it exactly); collisions within the same
 // column are nudged down to keep a clear gap, same as before.
 function computeBandRows(byRound, depthByRound, band, bandName, roundByGameId) {
+  // A bracket is a SYMMETRIC BINARY TREE and must be laid out from the root
+  // backwards (JD, 2026-07-25): the final sits at the centre, its two feeders
+  // take the upper and lower halves of its span, and so on down. Each subtree
+  // then owns a CONTIGUOUS vertical band, which is what makes crossings
+  // structurally impossible rather than something to detect and patch.
+  //
+  // What this replaces placed each game at the AVERAGE of its feeders' rows,
+  // with roots numbered by an arbitrary counter. Nothing owned a band, so a
+  // subtree could land anywhere the arithmetic put it — Gold's Game 2 sat on
+  // a low branch while its winner belonged to Game 7 up top, and the
+  // connector had to climb across the branch below it.
+  //
+  // Implementation: leaves are numbered in depth-first traversal order, and
+  // every parent takes the midpoint of its children. Traversal order is what
+  // guarantees contiguity; the midpoint is what makes it look like a bracket.
   const bandRounds = [...byRound.keys()].filter((r) => band.get(r) === bandName);
-  const ordered = [...bandRounds].sort((a, b) => depthByRound.get(a) - depthByRound.get(b) || a - b);
-  const rowByRound = new Map();
-  const placedByColumn = new Map();
-  let rootCounter = 0;
-  for (const r of ordered) {
-    const bandFeeders = feedersOf(byRound.get(r), byRound, roundByGameId).filter((f) => band.get(f) === bandName);
-    let row;
-    if (bandFeeders.length === 0) {
-      row = rootCounter;
-      rootCounter += 1;
-    } else {
-      const feederRows = bandFeeders.map((f) => rowByRound.get(f));
-      row =
-        feederRows.length === 1 ? feederRows[0] : feederRows.reduce((a, b) => a + b, 0) / feederRows.length;
-    }
-    const d = depthByRound.get(r);
-    if (!placedByColumn.has(d)) placedByColumn.set(d, []);
-    const placed = placedByColumn.get(d);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const p of placed) {
-        if (Math.abs(row - p.row) < MIN_GAP) {
-          const nudged = p.row + MIN_GAP;
-          if (nudged > row) {
-            row = nudged;
-            changed = true;
-          }
-        }
-      }
-    }
-    placed.push({ round: r, row });
-    rowByRound.set(r, row);
+  if (bandRounds.length === 0) return new Map();
+
+  const inBand = new Set(bandRounds);
+  const childrenOf = new Map(); // round -> feeder rounds inside this band
+  const consumed = new Set();
+  for (const r of bandRounds) {
+    const kids = feedersOf(byRound.get(r), byRound, roundByGameId)
+      .filter((f) => inBand.has(f))
+      .sort((a, b) => (depthByRound.get(b) ?? 0) - (depthByRound.get(a) ?? 0) || a - b);
+    childrenOf.set(r, kids);
+    for (const k of kids) consumed.add(k);
   }
+
+  // Roots: games nothing else in this band feeds from — deepest last so the
+  // tree reads top to bottom in play order.
+  const roots = bandRounds
+    .filter((r) => !consumed.has(r))
+    .sort((a, b) => (depthByRound.get(b) ?? 0) - (depthByRound.get(a) ?? 0) || a - b);
+
+  const rowByRound = new Map();
+  let nextLeafRow = 0;
+  const seen = new Set();
+
+  function place(round) {
+    if (seen.has(round)) return rowByRound.get(round);
+    seen.add(round);
+    const kids = childrenOf.get(round) ?? [];
+    if (kids.length === 0) {
+      const row = nextLeafRow;
+      nextLeafRow += 1;
+      rowByRound.set(round, row);
+      return row;
+    }
+    const kidRows = kids.map(place);
+    const row = (Math.min(...kidRows) + Math.max(...kidRows)) / 2;
+    rowByRound.set(round, row);
+    return row;
+  }
+
+  for (const root of roots) place(root);
+  // Anything unreachable from a root (malformed data) still gets a row so it
+  // renders rather than vanishing.
+  for (const r of bandRounds) if (!rowByRound.has(r)) place(r);
+
   return rowByRound;
 }
+
 
 function xForCol(depth) {
   return LEFT_PAD + depth * (CELL_W + GUTTER);
