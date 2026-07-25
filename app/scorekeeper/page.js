@@ -19,7 +19,9 @@ async function getTournamentsWithDivisions() {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("tournaments")
-    .select("id, name, start_date, status, region, is_placeholder, divisions(id, name, display_name, sort_order, parent_division_id)")
+    .select(
+      "id, name, start_date, status, region, is_placeholder, divisions(id, name, display_name, sort_order, parent_division_id, pool_games(id))"
+    )
     .order("start_date", { ascending: true });
   if (error) throw error;
   const rows = (data ?? []).filter((t) => !t.is_placeholder);
@@ -57,16 +59,27 @@ function TournamentList({ groups }) {
                   {(t.divisions ?? [])
                     .slice()
                     .sort((a, b) => a.sort_order - b.sort_order)
-                    .map((d) => (
-                      <li key={d.id} className={d.parent_division_id ? "ml-4" : ""}>
-                        <Link
-                          href={`/scorekeeper/division/${d.id}`}
-                          className="text-afa-navy underline text-sm"
-                        >
-                          {d.display_name ?? d.name}
-                        </Link>
-                      </li>
-                    ))}
+                    .map((d) => {
+                      // A division with pool games is where the director
+                      // scores pool play, so it reads by what he'll DO
+                      // there (dispatch-brief-21) — scorekeeper-only, the
+                      // public site keeps calling it Coed. Bracket-stage
+                      // children (Gold/Silver/Bronze) have no pool_games
+                      // rows, so they fall through to their own name
+                      // unchanged, same as a division with neither stage.
+                      const hasPoolGames = (d.pool_games ?? []).length > 0;
+                      const label = hasPoolGames ? "Pool Play" : d.display_name ?? d.name;
+                      return (
+                        <li key={d.id} className={d.parent_division_id ? "ml-4" : ""}>
+                          <Link
+                            href={`/scorekeeper/division/${d.id}`}
+                            className="text-afa-navy underline text-sm"
+                          >
+                            {label}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   {(t.divisions ?? []).length === 0 && (
                     <li className="text-sm text-afa-ink/50">No divisions yet</li>
                   )}
