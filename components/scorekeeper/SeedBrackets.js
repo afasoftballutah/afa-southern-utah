@@ -184,6 +184,10 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // immediately, never touches team names or pool_games — safe at any
   // time. Refetches the dry-run preview so both this row and any row that
   // got swapped redraw with the server's answer, not a local guess.
+  // Slots touched by the most recent swap, highlighted briefly so both ends
+  // of the move are visible.
+  const [swapped, setSwapped] = useState([]);
+
   async function remapSlot(gameId, slotSide, nextSeedRef) {
     setBusy(true);
     setError("");
@@ -201,7 +205,14 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not remap slot");
+      // A swap always moves TWO slots. The API reports both; mark them so the
+      // partner is visible too — otherwise you change one dropdown and the
+      // seed you displaced moves somewhere off-screen with no sign of it
+      // (JD, 2026-07-25).
+      const touched = (json.changed ?? []).map((c) => `${c.gameId}-${c.slot}`);
+      setSwapped(touched);
       await fetchPreview(orders);
+      if (touched.length) window.setTimeout(() => setSwapped([]), 6000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -247,6 +258,28 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   const slots = result.slots ?? [];
   const seedRefOptions = result.seedRefOptions ?? [];
   const slotGroups = groupSlotsByDivision(slots);
+  // Where does each seed CURRENTLY feed? Picking a seed swaps it here from
+  // wherever it is, so the option has to say where it is — otherwise a
+  // cross-bracket move (pulling a pool winner out of Gold into Silver) looks
+  // identical to a harmless shuffle within one bracket (JD, 2026-07-25).
+  const slotBySeedRef = {};
+  for (const sl of slots) {
+    if (sl.seedRef) {
+      slotBySeedRef[sl.seedRef] = {
+        where: `${sl.division} G${sl.round}`,
+        team: sl.team || null,
+      };
+    }
+  }
+  // Every option names the TEAM you would be swapping with (JD, 2026-07-25) —
+  // a director thinks in teams, not seed codes. Then where that team sits, so
+  // a cross-bracket move is visible. Top/bottom is dropped: which side of a
+  // matchup a team is listed on carries no meaning here.
+  const optionLabel = (ref) => {
+    const at = slotBySeedRef[ref];
+    if (!at) return `${ref} — unassigned`;
+    return at.team ? `${ref} ${at.team} — ${at.where}` : `${ref} — ${at.where}`;
+  };
 
   return (
     <div className="chalk-panel space-y-4">
@@ -282,9 +315,20 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
           always safe; nothing is written to the bracket until you press Apply
           below.
         </p>
+        {swapped.length > 0 && (
+          <p className="text-xs font-bold text-afa-navy">
+            Swapped — both slots below are highlighted.
+          </p>
+        )}
         {slots.length === 0 && (
           <p className="text-sm text-afa-ink/60">No seed-fed slots on this bracket.</p>
         )}
+        {/* Gold / Silver / Bronze side by side (JD, 2026-07-25). Stacked,
+            28 slot rows ran the page to roughly eleven phone screens. Three
+            columns turns it into three short lists you can compare across.
+            One column on a phone — a dropdown inside a third of 390px is
+            unusable, so the columns only appear once there's room. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-start">
         {slotGroups.map((group) => (
           <div key={group.division} className="space-y-1">
             <h4 className="text-sm font-bold text-afa-navy">{group.division}</h4>
@@ -292,22 +336,22 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
               {group.rows.map((row) => (
                 <div
                   key={`${row.gameId}-${row.slot}`}
-                  className="flex items-center justify-between gap-2 text-sm border-b border-afa-navy/10 pb-2"
+                  className={`text-sm border-b border-afa-navy/10 pb-2 space-y-1 ${
+                    swapped.includes(`${row.gameId}-${row.slot}`)
+                      ? "bg-afa-navy/5 rounded px-2 -mx-2"
+                      : ""
+                  }`}
                 >
-                  <span className="flex-1">
+                  <div>
                     <span className="font-semibold text-afa-navy">
-                      {row.division} · Game {row.round}
+                      Game {row.round}
                     </span>{" "}
-                    <span className="text-afa-ink/50">
-                      ({row.slot === "team1" ? "top" : "bottom"})
-                    </span>
-                    <br />
                     <span className="font-semibold">{row.seedRef}</span>{" "}
                     → {row.team ? row.team : <span className="text-afa-ink/50">not yet</span>}
-                  </span>
+                  </div>
                   <select
-                    aria-label={`Seed for ${group.division} Game ${row.round} ${row.slot === "team1" ? "top" : "bottom"}`}
-                    className="border border-afa-navy/30 rounded px-2 py-2"
+                    aria-label={`Seed for ${group.division} Game ${row.round}, currently ${row.seedRef}`}
+                    className="w-full border border-afa-navy/30 rounded px-2 py-2"
                     value={row.seedRef}
                     disabled={busy}
                     onChange={(e) =>
@@ -317,7 +361,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
                     <option value="">— none —</option>
                     {seedRefOptions.map((ref) => (
                       <option key={ref} value={ref}>
-                        {ref}
+                        {optionLabel(ref)}
                       </option>
                     ))}
                   </select>
@@ -326,6 +370,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       <p className="text-sm text-afa-ink/70">

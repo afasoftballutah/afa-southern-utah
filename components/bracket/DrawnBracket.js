@@ -105,7 +105,42 @@ function computeDepths(byRound) {
     return d;
   }
   for (const round of byRound.keys()) depth(round);
-  return cycle ? null : memo;
+  if (cycle) return null;
+
+  // Slide seed-fed games as late as they can go (JD, 2026-07-25: "if there
+  // is a gap in the round ahead of the matchup, move the matchup to that
+  // round so all the branches are short").
+  //
+  // Why only seed-fed games: their inputs are TEXT ([A #1]), not drawn
+  // lines, so moving one rightward costs nothing and shortens its outgoing
+  // branch. A game fed by other GAMES cannot move without lengthening its
+  // own incoming connectors by exactly what it saves — no net gain, so
+  // those stay put, adjacent to their deepest feeder.
+  //
+  // Gold's Game 2 is the case that motivated this: seed-fed, sitting in
+  // column 0, throwing a long line across an empty column to Game 7.
+  const consumers = new Map(); // round -> [rounds it feeds]
+  for (const round of byRound.keys()) {
+    for (const f of feedersOf(byRound.get(round), byRound)) {
+      if (!consumers.has(f)) consumers.set(f, []);
+      consumers.get(f).push(round);
+    }
+  }
+  let moved = true;
+  let guard = 0;
+  while (moved && guard++ < 20) {
+    moved = false;
+    for (const round of byRound.keys()) {
+      const outs = consumers.get(round) ?? [];
+      if (outs.length === 0) continue; // feeds nothing (a final) — leave it
+      const latest = Math.min(...outs.map((r) => memo.get(r))) - 1;
+      if (latest > memo.get(round)) {
+        memo.set(round, latest);
+        moved = true;
+      }
+    }
+  }
+  return memo;
 }
 
 // Band classification, processed in ascending-depth order so every
