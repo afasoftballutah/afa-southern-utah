@@ -24,6 +24,10 @@
   --color-afa-muted: var(--afa-muted);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-display: var(--font-display-face), Arial, Helvetica, sans-serif;
+  /* The bracket's team face (redesign spec 5.2) — condensed like the
+     display face but variable, so weight can carry winner/loser/undecided
+     while the name itself stays black. */
+  --font-team: var(--font-team-face), "Arial Narrow", Arial, sans-serif;
 }
 
 html {

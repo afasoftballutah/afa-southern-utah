@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Matchup from "@/components/ui/Matchup";
+import BracketMatchup, { rowOrder, BOX_H as PILL_BOX_H } from "@/components/bracket/BracketMatchup";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -473,6 +474,13 @@ function fullCaption(g) {
 // Reuses LEAGUE_TZ from lib/bracket/tree.js (read-only import) rather than
 // re-deriving the timezone. Any part that's missing (no time, no field)
 // is omitted along with its separator — never a dangling " · ".
+// The card's own caption, which no longer carries the game number: that
+// moved into the badge inside the card's top-left corner (spec 5.2). Same
+// abbreviation rules as compactCaption, minus the G-part.
+function scheduleCaption(g) {
+  return compactCaption(g).replace(/^G\d+\s*·\s*/, "");
+}
+
 function compactCaption(g) {
   const parts = [`G${g.round}`];
   if (g.scheduled_time) {
@@ -523,8 +531,34 @@ function FallbackList({ games }) {
   );
 }
 
-export default function DrawnBracket({ games }) {
+export default function DrawnBracket({ games, division, seeds }) {
   const layout = useMemo(() => computeLayout(games), [games]);
+
+  // Round-number lookup for the bye rule: a slot's source is a game id, and
+  // "which was settled first" is a comparison of the games those ids name.
+  const roundOf = useMemo(() => {
+    const m = new Map((games ?? []).map((g) => [g.id, g.round]));
+    return (id) => m.get(id);
+  }, [games]);
+
+  // A team carries its POOL SEED everywhere it appears (spec 5.3). The
+  // seeds map is supplied by the page when it knows pool results; without
+  // it a propagated name simply renders without a tag rather than
+  // borrowing the game number, which would say something different.
+  const seedTagFor = useMemo(() => {
+    const byTeam = seeds?.byTeam ?? null;
+    return (name) => (byTeam ? byTeam.get(name) ?? null : null);
+  }, [seeds]);
+  const resolveSeed = useMemo(() => {
+    const byRef = seeds?.byRef ?? null;
+    return (ref) => {
+      if (!ref) return null;
+      const m = /\[?\s*([A-Za-z])\s*#\s*(\d+)\s*\]?/.exec(ref);
+      if (!m) return null;
+      const label = `${m[1].toUpperCase()}${m[2]}`;
+      return { label, name: byRef ? byRef.get(label) ?? null : null };
+    };
+  }, [seeds]);
 
   if (!layout || layout.cycle) {
     if (layout?.cycle) {
@@ -533,57 +567,75 @@ export default function DrawnBracket({ games }) {
     return <FallbackList games={games} />;
   }
 
+  // The if-necessary game, read out of the data rather than hardcoded: a
+  // game whose two slots both point at the same feeder is a rematch, which
+  // is exactly what "if necessary" means (spec 5.6).
+  const ifRounds = new Set(
+    layout.cells
+      .filter(({ game }) => {
+        const a = game.team1_source_game_id;
+        const b = game.team2_source_game_id;
+        return a && b && a === b;
+      })
+      .map((c) => c.round)
+  );
+
   return (
     <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
-        <svg className="absolute inset-0 pointer-events-none" width={layout.totalWidth} height={layout.totalHeight}>
+        <svg className="absolute inset-0 pointer-events-none bracket-connectors" width={layout.totalWidth} height={layout.totalHeight}>
           {layout.connectors.map((d, i) => (
             <path key={i} d={d} stroke="var(--afa-navy)" strokeWidth={1} fill="none" shapeRendering="crispEdges" />
           ))}
         </svg>
-        {layout.headers.map((h, i) => (
-          <div
-            key={i}
-            className="absolute font-display text-afa-navy text-[13px] tracking-wide text-center pointer-events-none"
-            style={{ left: h.x, top: 0, width: h.w, height: HEADER_H }}
-          >
-            {h.label}
-          </div>
-        ))}
+
+        {/* Round headers are gone (spec 5.2). Every game carries its own
+            number, time and field, a bracket's shape says which round it
+            is, and the headers were the only thing crowding the captions
+            that now sit above each card. */}
+
         {layout.bandCaptions.map((c, i) => (
           <div
             key={i}
-            className="absolute text-[11px] font-bold uppercase tracking-wide text-afa-muted pointer-events-none"
+            className={[
+              "absolute text-[11px] font-bold uppercase tracking-wide pointer-events-none",
+              c.x != null ? "text-afa-navy text-center" : "text-afa-muted",
+            ].join(" ")}
             style={{
               left: c.x ?? 4,
-              top: c.y,
+              // FINAL sits UNDER its game: above it lands in the strip the
+              // time-and-field field claims. The layout hands this caption
+              // in 20px above its game, so the game's top is c.y + 20.
+              top: c.x != null ? c.y + 20 + BOX_H + 7 : c.y,
               width: c.x != null ? CELL_W : LEFT_PAD - 12,
             }}
           >
             {c.label}
           </div>
         ))}
+
+        {layout.cells
+          .filter(({ round }) => ifRounds.has(round))
+          .map(({ round, x, y }) => (
+            <div
+              key={`if-${round}`}
+              className="absolute text-[11px] font-bold uppercase tracking-wide italic text-afa-muted text-center pointer-events-none"
+              style={{ left: x, top: y + BOX_H + 7, width: CELL_W }}
+            >
+              If necessary
+            </div>
+          ))}
+
         {layout.cells.map(({ round, game, x, y }) => (
           <div key={round} data-game-round={round} className="absolute" style={{ left: x, top: y, width: CELL_W }}>
-            {/* No caption prop — the game unit is the two-pill Matchup
-                alone (spec law 2, 2026-07-22). The caption renders below,
-                as its own element, outside every centering/connector calc
-                above: it occupies the gap beneath the box without ever
-                shifting the box's center or a connector's endpoint. */}
-            <Matchup
-              team1={game.team1_name}
-              team2={game.team2_name}
-              score1={game.team1_score}
-              score2={game.team2_score}
-              isFinal={game.status === "final"}
-              className="[&>p]:whitespace-nowrap [&>p]:overflow-hidden [&>p]:text-ellipsis"
+            <BracketMatchup
+              game={game}
+              division={division}
+              caption={scheduleCaption(game)}
+              order={rowOrder(game, roundOf)}
+              resolveSeed={resolveSeed}
+              seedTagFor={seedTagFor}
             />
-            <p
-              data-game-caption={round}
-              className="mt-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted whitespace-nowrap overflow-hidden text-ellipsis"
-            >
-              {compactCaption(game)}
-            </p>
           </div>
         ))}
       </div>

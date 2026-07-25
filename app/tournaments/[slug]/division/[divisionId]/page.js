@@ -389,7 +389,7 @@ export default async function DivisionPage({ params }) {
           <p className="text-sm text-afa-ink/70">
             Drawn and scheduled. Team names fill in as pool play finishes.
           </p>
-          <DrawnBracket games={bracketGames} />
+          <DrawnBracket games={bracketGames} division={division?.name} />
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { Anton } from "next/font/google";
+import { Anton, Oswald } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 
@@ -9,6 +9,17 @@ const displayFace = Anton({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-display-face",
+});
+
+// The bracket's team face (redesign spec 5.2). Condensed like the display
+// face, so a team pill reads as a scoreboard, but VARIABLE: a team name is
+// always black and its weight is what says winner, loser or undecided.
+// Anton was tried first and cannot do that — it ships one weight, so a
+// winner and a loser render identically. No `weight` here on purpose,
+// which is what loads the variable cut.
+const teamFace = Oswald({
+  subsets: ["latin"],
+  variable: "--font-team-face",
 });
 
 export const metadata = {
@@ -36,7 +47,7 @@ function NavLink({ href, children }) {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`h-full ${displayFace.variable}`}>
+    <html lang="en" className={`h-full ${displayFace.variable} ${teamFace.variable}`}>
       <body className="min-h-full flex flex-col bg-afa-cream text-afa-ink antialiased">
         {/* Masthead — navy ground, eagle at left, name in white. Thin red
             bar underneath is the one place red is decoration, not action. */}
