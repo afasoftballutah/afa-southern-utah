@@ -162,6 +162,15 @@ export default async function DivisionPage({ params }) {
   const hasBracket = (division.brackets ?? []).length > 0;
   const poolGames = division.pool_games ?? [];
   const hasPoolGames = poolGames.length > 0;
+  // Chronological, then by the printed game number — the order the bracket
+  // is actually played in.
+  const bracketGames = [...(division.games ?? [])]
+    .filter((g) => !g.is_bye && g.status !== "cancelled")
+    .sort(
+      (a, b) =>
+        String(a.scheduled_time ?? "").localeCompare(String(b.scheduled_time ?? "")) ||
+        (a.round ?? 0) - (b.round ?? 0)
+    );
 
   // Bracket stages: this division's children, or — when this IS a child —
   // its siblings, so the toggle works from inside either bracket.
@@ -230,7 +239,36 @@ export default async function DivisionPage({ params }) {
 
       {hasBracket && <BracketTree division={division} />}
 
-      {!hasPlacements && !hasBracket && !hasPoolGames && (
+      {/* A drawn-but-unplayed bracket. These games are transcribed from the
+          league's own pre-drawn bracket, so they carry their real field and
+          time and their slots read as provenance — "A #1", "Winner of Game
+          5" — the fence convention: the bracket exists before it is played.
+          They render as the same matchup unit used everywhere else. The
+          drawn TREE is a separate job; until a `brackets` row exists,
+          BracketTree stays out of the way and this list is the view. */}
+      {!hasBracket && bracketGames.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-bold text-afa-navy">Bracket</h2>
+          <p className="text-sm text-afa-ink/70">
+            Drawn and scheduled. Team names fill in as pool play finishes.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {bracketGames.map((g) => (
+              <Matchup
+                key={g.id}
+                caption={[`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · ")}
+                team1={g.team1_name}
+                team2={g.team2_name}
+                score1={g.team1_score}
+                score2={g.team2_score}
+                isFinal={g.status === "final"}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!hasPlacements && !hasBracket && !hasPoolGames && bracketGames.length === 0 && (
         <p className="text-afa-ink/70 text-sm">
           No results yet — check back after the bracket is set.
         </p>
