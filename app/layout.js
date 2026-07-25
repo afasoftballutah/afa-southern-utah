@@ -76,19 +76,24 @@ export default function RootLayout({ children }) {
 
         <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">{children}</main>
 
-        <footer className="bg-afa-navy text-white text-sm print:hidden">
-          <div className="max-w-4xl mx-auto px-4 py-6 space-y-2">
-            <p>American Fastpitch Association &mdash; Southern Utah Slow Pitch Division.</p>
+        {/* Fine print, sized AND written like fine print (JD, 2026-07-24).
+            Shrinking the type alone didn't stop the wrap — at any readable
+            size these sentences were simply longer than a 390px screen, so
+            the words were shortened too. Meaning is preserved: the privacy
+            line still says what we collect and that nothing is sold, and
+            the release line still points at the full text on Register. */}
+        <footer className="bg-afa-navy text-white text-xs leading-snug print:hidden">
+          <div className="max-w-4xl mx-auto px-4 py-5 space-y-1.5">
+            <p>AFA &mdash; Southern Utah Slow Pitch</p>
             <p className="text-white/80">
-              We collect names and contact info to run the league. Nothing is sold.
+              Names and contacts only. Nothing is sold.
             </p>
             <p className="text-white/80">
-              Registering a team means reading and signing the official AFA
-              release. See{" "}
+              Registering means signing the AFA release &mdash; full text on{" "}
               <Link href="/register" className="underline">
                 Register
-              </Link>{" "}
-              for the full text.
+              </Link>
+              .
             </p>
           </div>
         </footer>
