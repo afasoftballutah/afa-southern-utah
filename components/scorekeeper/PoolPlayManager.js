@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { poolFinishOrder } from "@/lib/bracket/seed";
+import Card from "@/components/ui/Card";
 
 // Ordered by TIME then FIELD (dispatch-brief-21), not by pool. The director
 // standing at the complex thinks "what just finished on Field 6," not
@@ -47,6 +49,35 @@ function timeLabel(scheduledTime) {
   );
 }
 
+// Row-level time (dispatch-brief-25): hour only, no weekday — the
+// time-group heading above already carries the weekday, this is just
+// enough for a fast glance without tracing back up to it.
+function shortTimeLabel(scheduledTime) {
+  if (!scheduledTime) return null;
+  const d = new Date(scheduledTime);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ });
+}
+
+// Split "11:00 PM" into its own two lines (dispatch-brief-25 grid
+// correction) — meta is the column that SHRINKS, so its widest line
+// should be "11:00" (5 chars), not "11:00 PM" (8) — every extra pixel
+// meta doesn't need goes to a team name instead.
+function shortTimeParts(scheduledTime) {
+  const label = shortTimeLabel(scheduledTime);
+  if (!label) return null;
+  const [hm, ampm] = label.split(" ");
+  return { hm, ampm };
+}
+
+// "Field 3" -> "F3" — short enough to sit inline on a dense row. Anything
+// with no digit in it (a named field, or none at all) prints as-is/blank
+// rather than guessing an abbreviation.
+function fieldAbbrev(field) {
+  if (!field) return "";
+  const m = field.match(/\d+/);
+  return m ? `F${m[0]}` : field;
+}
+
 function groupByTime(games) {
   const byTime = new Map();
   for (const g of games) {
@@ -67,6 +98,71 @@ function groupByTime(games) {
     });
 }
 
+// Pool letters derived from the games, never hardcoded — same rule as the
+// public division page (app/tournaments/[slug]/division/[divisionId]/
+// page.js's poolLetters): whatever pools exist in the data are the pools
+// that render.
+function poolLetters(byPool) {
+  return Object.keys(byPool).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
+
+// Standings table (dispatch-brief-25) — same shape as the public page's:
+// Team | W-L | PCT | RA. Computed from the SHARED poolFinishOrder
+// (lib/bracket/seed.js), the same function the seeding screen reads, so
+// the director's numbers and the seeding numbers can never disagree.
+// RA is shown so a tie is INFORMED, never so it gets auto-broken — tied
+// teams still share a rank and carry the `tied` chip.
+function PoolStandingsTable({ letter, standings }) {
+  return (
+    <div className="space-y-1">
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">Pool {letter}</h3>
+      <Card>
+        <table className="w-full table-fixed text-sm divide-y divide-afa-navy/10">
+          <thead>
+            <tr className="divide-y divide-afa-navy/10 text-left">
+              <th className="py-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                Team
+              </th>
+              <th className="w-14 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                W-L
+              </th>
+              <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                PCT
+              </th>
+              <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                RA
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-afa-navy/10">
+            {standings.map((t) => (
+              <tr key={t.team}>
+                <td className="py-1 pr-2">
+                  <span className="block truncate">
+                    {t.team}
+                    {t.tied && (
+                      <span className="ml-1.5 rounded bg-afa-muted/15 px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
+                        tied
+                      </span>
+                    )}
+                  </span>
+                </td>
+                <td className="py-1 text-right tabular-nums">
+                  {t.w}-{t.l}
+                </td>
+                <td className="py-1 text-right tabular-nums">{t.pct}</td>
+                <td className="py-1 text-right tabular-nums">{t.ra}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
 // Pool play (dispatch-brief-7) — separate, self-contained stage from the
 // bracket engine (BracketManager untouched). Patterned on BracketManager's
 // fetch/submit style: no optimistic magic, save, refetch, render.
@@ -78,6 +174,16 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   const teams = [...new Set(poolGames.flatMap((g) => [g.team1_name, g.team2_name]))].sort(
     (a, b) => a.localeCompare(b)
   );
+
+  // Standings are ALWAYS computed off every game in the pool, never the
+  // team filter below — the filter narrows which games there are to
+  // score, not what the pool's standings say.
+  const byPool = {};
+  for (const g of poolGames) (byPool[g.pool] ??= []).push(g);
+  const standingsByPool = poolLetters(byPool).map((letter) => ({
+    letter,
+    standings: poolFinishOrder(byPool[letter]).standings,
+  }));
 
   const groups = groupByTime(poolGames)
     .map((group) => ({
@@ -95,6 +201,12 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
   return (
     <div className="chalk-panel space-y-4">
       <h2 className="font-bold text-afa-navy">Pool Play</h2>
+
+      <div className="space-y-3">
+        {standingsByPool.map(({ letter, standings }) => (
+          <PoolStandingsTable key={letter} letter={letter} standings={standings} />
+        ))}
+      </div>
 
       <div className="space-y-2">
         <select
@@ -133,11 +245,11 @@ export default function PoolPlayManager({ divisionId, poolGames }) {
           opens this screen. Reset on every load, on purpose. */}
 
       {groups.map((group) => (
-        <div key={group.time ?? "__tbd__"} className="space-y-2">
+        <div key={group.time ?? "__tbd__"} className="space-y-1">
           <h3 className="text-sm font-bold text-afa-navy">
             {group.heading} <span className="font-normal text-afa-ink/50">({group.games.length} game{group.games.length === 1 ? "" : "s"})</span>
           </h3>
-          <div className="space-y-2">
+          <div className="divide-y divide-afa-navy/10">
             {group.games.map((g) => (
               <PoolGameRow key={g.id} game={g} />
             ))}
@@ -156,6 +268,9 @@ function PoolGameRow({ game }) {
   const [error, setError] = useState("");
 
   const isFinal = game.status === "final";
+  const isTie = isFinal && game.team1_score === game.team2_score;
+  const team1Won = isFinal && !isTie && game.team1_score > game.team2_score;
+  const team2Won = isFinal && !isTie && game.team2_score > game.team1_score;
 
   async function save() {
     setBusy(true);
@@ -198,42 +313,66 @@ function PoolGameRow({ game }) {
   }
 
   return (
-    <div className="border border-afa-navy/10 rounded p-3 space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm">
-          <span className="font-bold text-afa-navy">{game.field || "Field TBD"}</span>{" "}
-          {game.team1_name} vs {game.team2_name}
-        </p>
-        <span className="text-xs text-afa-ink/50 whitespace-nowrap">Pool {game.pool}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 items-end">
-        <label className="block">
-          <span className="block text-xs font-semibold mb-1">{game.team1_name}</span>
+    <div className="py-1.5">
+      {/* Score-centered grid (dispatch-brief-25 correction): meta is the
+          column that shrinks to its content, the two team-name columns
+          split whatever's left EQUALLY and only truncate as a last
+          resort — the names are the only thing anyone reads here, so
+          they're the last thing to give up width. The inputs sit in the
+          score column so both screens read identically. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-0">
+        <div className="whitespace-nowrap text-[11px] leading-tight text-afa-muted">
+          <div>{fieldAbbrev(game.field)}</div>
+          {(() => {
+            const parts = shortTimeParts(game.scheduled_time);
+            return parts ? (
+              <>
+                <div>{parts.hm}</div>
+                <div>{parts.ampm}</div>
+              </>
+            ) : (
+              <div>TBD</div>
+            );
+          })()}
+        </div>
+        <span
+          className={`min-w-0 truncate text-right text-sm ${team1Won ? "font-semibold text-afa-navy" : ""}`}
+        >
+          {game.team1_name}
+        </span>
+        <div className="flex items-center gap-0">
           <input
             type="number"
             inputMode="numeric"
-            className="w-full border border-afa-navy/30 rounded px-2 py-2 text-lg"
+            aria-label={`${game.team1_name} score`}
+            className="w-14 shrink-0 rounded border border-afa-navy/30 px-0.5 text-center text-base"
             value={score1}
             onChange={(e) => setScore1(e.target.value)}
             disabled={busy}
           />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-semibold mb-1">{game.team2_name}</span>
+          <span className="shrink-0 text-afa-ink/40">–</span>
           <input
             type="number"
             inputMode="numeric"
-            className="w-full border border-afa-navy/30 rounded px-2 py-2 text-lg"
+            aria-label={`${game.team2_name} score`}
+            className="w-14 shrink-0 rounded border border-afa-navy/30 px-0.5 text-center text-base"
             value={score2}
             onChange={(e) => setScore2(e.target.value)}
             disabled={busy}
           />
-        </label>
+        </div>
+        <span
+          className={`min-w-0 truncate text-left text-sm ${team2Won ? "font-semibold text-afa-navy" : ""}`}
+        >
+          {game.team2_name}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center justify-end gap-2">
         <button
           type="button"
           disabled={busy || score1 === "" || score2 === ""}
           onClick={save}
-          className="bg-afa-navy text-white font-bold py-3 rounded-lg disabled:opacity-40"
+          className="shrink-0 rounded-lg bg-afa-navy px-3 text-xs font-bold text-white disabled:opacity-40"
         >
           Save
         </button>
@@ -242,13 +381,13 @@ function PoolGameRow({ game }) {
             type="button"
             disabled={busy}
             onClick={clear}
-            className="border border-afa-navy/30 text-afa-navy font-bold py-3 rounded-lg disabled:opacity-40"
+            className="shrink-0 rounded-lg border border-afa-navy/30 px-3 text-xs font-bold text-afa-navy disabled:opacity-40"
           >
             Clear
           </button>
         )}
       </div>
-      {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
+      {error && <p className="text-right text-xs font-bold text-afa-ink underline">{error}</p>}
     </div>
   );
 }

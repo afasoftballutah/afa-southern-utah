@@ -4,9 +4,9 @@ import { getDivisionById } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
-import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
-import { formatFieldTime } from "@/lib/bracket/tree";
+import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
+import { poolFinishOrder } from "@/lib/bracket/seed";
 
 export const revalidate = 30;
 
@@ -36,23 +36,92 @@ function poolLetters(byPool) {
   );
 }
 
-// Pool play (dispatch-brief-7) — a separate, self-contained stage from the
-// bracket engine (untouched). Standings and the game list both DERIVE from
-// the pool_games rows; there's no separate standings table. Ties are
-// broken by the director at seeding, not computed here.
-function poolStandings(games) {
-  const teams = new Map();
-  for (const g of games) {
-    if (!teams.has(g.team1_name)) teams.set(g.team1_name, { name: g.team1_name, w: 0, l: 0 });
-    if (!teams.has(g.team2_name)) teams.set(g.team2_name, { name: g.team2_name, w: 0, l: 0 });
-    if (g.status !== "final") continue;
-    const team1Won = g.team1_score > g.team2_score;
-    teams.get(g.team1_name)[team1Won ? "w" : "l"] += 1;
-    teams.get(g.team2_name)[team1Won ? "l" : "w"] += 1;
-  }
-  return [...teams.values()].sort((a, b) => b.w - a.w || a.name.localeCompare(b.name));
+// Row-level time (dispatch-brief-25): hour only, no weekday — paired with
+// the short field abbreviation below, same convention the scorekeeper's
+// PoolPlayManager rows use (components/scorekeeper/PoolPlayManager.js).
+function shortTimeLabel(scheduledTime) {
+  if (!scheduledTime) return null;
+  const d = new Date(scheduledTime);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ });
 }
 
+// Split "11:00 PM" into its own two lines (dispatch-brief-25 grid
+// correction) — meta is the column that SHRINKS, so its widest line
+// should be "11:00" (5 chars), not "11:00 PM" (8) — same helper as the
+// scorekeeper's compact row.
+function shortTimeParts(scheduledTime) {
+  const label = shortTimeLabel(scheduledTime);
+  if (!label) return null;
+  const [hm, ampm] = label.split(" ");
+  return { hm, ampm };
+}
+
+// "Field 3" -> "F3" — same helper as the scorekeeper's compact row.
+function fieldAbbrev(field) {
+  if (!field) return "";
+  const m = field.match(/\d+/);
+  return m ? `F${m[0]}` : field;
+}
+
+// Compact game row (dispatch-brief-25, corrected) — score-centered grid:
+// meta (field+time) shrinks to its content, the two team-name columns
+// split whatever's left EQUALLY and only truncate as a last resort — the
+// names are the only thing anyone reads here. Score is the fixed centre
+// axis, tabular-nums, so it lines up down the page; winner's name AND
+// its own score digits go font-semibold, loser plain, a tie leaves both
+// plain (matching Matchup's convention). Unplayed: no score at all (the
+// existing no-0-0-lies rule) — the score column is simply empty.
+function PoolGameRow({ game }) {
+  const isFinal = game.status === "final";
+  const isTie = isFinal && game.team1_score === game.team2_score;
+  const team1Won = isFinal && !isTie && game.team1_score > game.team2_score;
+  const team2Won = isFinal && !isTie && game.team2_score > game.team1_score;
+
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-0 py-1.5">
+      <div className="whitespace-nowrap text-[11px] leading-tight text-afa-muted">
+        <div>{fieldAbbrev(game.field)}</div>
+        {(() => {
+          const parts = shortTimeParts(game.scheduled_time);
+          return parts ? (
+            <>
+              <div>{parts.hm}</div>
+              <div>{parts.ampm}</div>
+            </>
+          ) : (
+            <div>TBD</div>
+          );
+        })()}
+      </div>
+      <span
+        className={`min-w-0 truncate text-right text-sm ${team1Won ? "font-semibold text-afa-navy" : ""}`}
+      >
+        {game.team1_name}
+      </span>
+      <span className="whitespace-nowrap px-1 text-center text-sm tabular-nums text-afa-ink/60">
+        {isFinal && (
+          <>
+            <span className={team1Won ? "font-semibold text-afa-navy" : ""}>{game.team1_score}</span>
+            {"–"}
+            <span className={team2Won ? "font-semibold text-afa-navy" : ""}>{game.team2_score}</span>
+          </>
+        )}
+      </span>
+      <span
+        className={`min-w-0 truncate text-left text-sm ${team2Won ? "font-semibold text-afa-navy" : ""}`}
+      >
+        {game.team2_name}
+      </span>
+    </div>
+  );
+}
+
+// Pool play (dispatch-brief-7) — a separate, self-contained stage from the
+// bracket engine (untouched). Standings and the game list both DERIVE from
+// the pool_games rows; there's no separate standings table stored. Ties
+// are broken by the director at seeding, not computed here — the shared
+// poolFinishOrder (lib/bracket/seed.js) marks a genuine tie and leaves it
+// tied, it never resolves one.
 function PoolPlaySection({ poolGames }) {
   if (!poolGames || poolGames.length === 0) return null;
 
@@ -64,7 +133,7 @@ function PoolPlaySection({ poolGames }) {
       <h2 className="text-lg font-bold text-afa-navy">Pool Play</h2>
       {poolLetters(byPool).map((letter) => {
         const games = byPool[letter];
-        const standings = poolStandings(games);
+        const { standings } = poolFinishOrder(games);
         return (
           <div key={letter} className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">
@@ -72,41 +141,50 @@ function PoolPlaySection({ poolGames }) {
             </h3>
 
             <Card>
-              <table className="w-full text-sm divide-y divide-afa-navy/10">
+              <table className="w-full table-fixed text-sm divide-y divide-afa-navy/10">
                 <thead>
                   <tr className="text-left divide-y divide-afa-navy/10">
-                    <th className="font-semibold py-1">Team</th>
-                    <th className="font-semibold py-1 text-right w-8 text-[11px] uppercase tracking-wide text-afa-muted">
-                      W
+                    <th className="py-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                      Team
                     </th>
-                    <th className="font-semibold py-1 text-right w-8 text-[11px] uppercase tracking-wide text-afa-muted">
-                      L
+                    <th className="w-14 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                      W-L
+                    </th>
+                    <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                      PCT
+                    </th>
+                    <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
+                      RA
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-afa-navy/10">
                   {standings.map((t) => (
-                    <tr key={t.name}>
-                      <td className="py-1">{t.name}</td>
-                      <td className="py-1 text-right w-8">{t.w}</td>
-                      <td className="py-1 text-right w-8">{t.l}</td>
+                    <tr key={t.team}>
+                      <td className="py-1 pr-2">
+                        <span className="block truncate">
+                          {t.team}
+                          {t.tied && (
+                            <span className="ml-1.5 rounded bg-afa-muted/15 px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
+                              tied
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {t.w}-{t.l}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">{t.pct}</td>
+                      <td className="py-1 text-right tabular-nums">{t.ra}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </Card>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="divide-y divide-afa-navy/10 rounded-lg border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white px-3">
               {games.map((g) => (
-                <Matchup
-                  key={g.id}
-                  caption={formatFieldTime(g)}
-                  team1={g.team1_name}
-                  team2={g.team2_name}
-                  score1={g.team1_score}
-                  score2={g.team2_score}
-                  isFinal={g.status === "final"}
-                />
+                <PoolGameRow key={g.id} game={g} />
               ))}
             </div>
           </div>
