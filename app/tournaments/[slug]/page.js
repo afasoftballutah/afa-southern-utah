@@ -5,6 +5,7 @@ import {
   getRecentScores,
   getUpcomingGames,
   getTeamSummaries,
+  getSeedLabels,
   getTournamentBySlug,
   formatDateRange,
   formatFee,
@@ -146,6 +147,7 @@ export default async function TournamentDetailPage({ params }) {
   const withWhen = (list) => list.map((g) => ({ ...g, ...whenParts(g.scheduledTime) }));
   const hasSchedule = recentScores.length > 0 || upcomingGames.length > 0;
   const teamSummaries = await getTeamSummaries(tournament);
+  const seedLabels = await getSeedLabels(tournament);
 
   const divisions = tournament.divisions ?? [];
 
@@ -297,7 +299,11 @@ export default async function TournamentDetailPage({ params }) {
           schedule; the moment there is, the schedule is. They never both
           hold the same spot. */}
       {hasSchedule ? (
-        <GameFeed results={withWhen(recentScores)} upcoming={withWhen(upcomingGames)} />
+        <GameFeed
+          results={withWhen(recentScores)}
+          upcoming={withWhen(upcomingGames)}
+          seeds={seedLabels}
+        />
       ) : null}
 
       {/* Registration (dispatch-brief-20) — sits directly below the action-

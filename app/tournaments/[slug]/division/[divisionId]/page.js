@@ -10,6 +10,7 @@ import {
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
+import MatchupCard from "@/components/ui/MatchupCard";
 import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
@@ -98,42 +99,21 @@ function fieldAbbrev(field) {
 // belonged to whom, and it truncated both names to do it. Here the name has
 // the whole row and wraps if it needs to; nothing is ever cut off.
 function PoolGameRow({ game }) {
-  const isFinal = game.status === "final";
-  const isTie = isFinal && game.team1_score === game.team2_score;
-  const won1 = isFinal && !isTie && game.team1_score > game.team2_score;
-  const won2 = isFinal && !isTie && game.team2_score > game.team1_score;
-
-  const side = (name, score, won) => (
-    <div className="grid grid-cols-[minmax(0,1fr)_56px] items-center gap-2 py-[5px] pl-2.5 pr-1.5">
-      <span
-        className={`text-sm leading-tight [overflow-wrap:anywhere] ${
-          won ? "font-semibold text-afa-ink" : "text-afa-ink/[0.58]"
-        }`}
-      >
-        {name}
-      </span>
-      <span
-        className={`flex h-[34px] items-center justify-center rounded-[7px] bg-afa-navy/[0.035] text-[15px] font-semibold tabular-nums ${
-          won ? "text-afa-ink" : "text-afa-ink/[0.55]"
-        }`}
-      >
-        {/* No 0-0 lies: an unplayed game shows a dash, not a score. */}
-        {isFinal ? score : "\u2013"}
-      </span>
-    </div>
-  );
-
   return (
     <div data-pool-game={game.id} className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-2 py-1">
-      <div className="text-[10px] font-medium leading-tight text-afa-muted">
-        <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
-        <br />
+      <div className="t-meta leading-tight">
+        <div className="font-bold">{fieldAbbrev(game.field)}</div>
         {shortTime(game.scheduled_time)}
       </div>
-      <div className="overflow-hidden rounded-[10px] border border-afa-navy/15 divide-y divide-afa-navy/[0.07] bg-white">
-        {side(game.team1_name, game.team1_score, won1)}
-        {side(game.team2_name, game.team2_score, won2)}
-      </div>
+      {/* The same matchup card the bracket and the schedule use — white,
+          because a pool game belongs to no bracket yet (JD, 2026-07-26). */}
+      <MatchupCard
+        team1={game.team1_name}
+        team2={game.team2_name}
+        score1={game.team1_score}
+        score2={game.team2_score}
+        isFinal={game.status === "final"}
+      />
     </div>
   );
 }
@@ -274,6 +254,9 @@ function eventTitle(tournamentName, divisionName) {
  * have for teams whose run has ended; a team still playing has no finish
  * yet and says so rather than being given a rank we invented.
  */
+// The podium wears its medals; fourth and below wear their number.
+const PODIUM = { 1: "\u{1F3C6}", 2: "\u{1F948}", 3: "\u{1F949}" };
+
 function bracketStandings(games, teamStatus) {
   const byTeam = new Map();
   const add = (name) => {
@@ -349,12 +332,17 @@ function StandingsPanel({ name, rows }) {
             <span className="text-right font-semibold tabular-nums text-afa-ink/[0.78]">
               {t.w}&ndash;{t.l}
             </span>
+            {/* A medal for the podium, the number for everyone else (JD,
+                2026-07-26). "Champion" is what a trophy already says. */}
             <span
-              className={`text-right text-xs ${
-                t.finish ? "font-semibold text-afa-ink/70" : "text-afa-muted"
+              className={`text-right ${
+                t.finish ? "text-base font-semibold text-afa-ink/70" : "t-meta"
               }`}
+              title={t.finish ? t.finish.label : undefined}
             >
-              {t.finish ? t.finish.label : "still in"}
+              {t.finish
+                ? PODIUM[t.finish.n] ?? <span className="text-xs">{t.finish.label}</span>
+                : "still in"}
             </span>
           </div>
         ))}

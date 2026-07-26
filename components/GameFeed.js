@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import MatchupCard from "@/components/ui/MatchupCard";
 import Card from "@/components/ui/Card";
 
 // The tournament's games, in the two states anyone asks about (JD,
@@ -22,59 +23,42 @@ function href(g) {
 
 const fieldShort = (f) => (f ? String(f).replace(/^Field\s*/i, "F") : "");
 
-function Row({ g, played }) {
+function Row({ g, played, seeds }) {
   const to = href(g);
-  const tie = played && g.score1 === g.score2;
-  const won1 = played && !tie && g.score1 > g.score2;
-  const won2 = played && !tie && g.score2 > g.score1;
-
-  const side = (name, score, won) => (
-    <div className="grid grid-cols-[minmax(0,1fr)_28px] items-center gap-2">
-      <span className={`truncate ${won ? "t-strong" : "t-body"}`}>
-        {name ?? "TBD"}
-      </span>
-      <span
-        className={`text-right tabular-nums ${won ? "t-strong" : "t-body"}`}
-      >
-        {played ? score : ""}
-      </span>
-    </div>
-  );
-
   const body = (
-    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5">
-      {/* Where and when, in a fixed column so they line up down the list
-          and can be read at a glance from a car park. */}
+    <div className="grid grid-cols-[52px_minmax(0,1fr)] items-center gap-3">
+      {/* Where and when, in a fixed column, so a list of games can be read
+          at a glance from a car park. */}
       <div className="t-meta leading-tight">
         <div className="font-bold">{fieldShort(g.field)}</div>
         <div>{g.whenDay}</div>
         <div>{g.whenTime}</div>
       </div>
-      <div className="min-w-0 divide-y divide-afa-navy/10">
-        {side(g.team1, g.score1, won1)}
-        {side(g.team2, g.score2, won2)}
-      </div>
+      <MatchupCard
+        caption={[g.divisionName, g.label].filter(Boolean).join(" \u00b7 ")}
+        division={g.divisionName}
+        team1={g.team1}
+        team2={g.team2}
+        score1={g.score1}
+        score2={g.score2}
+        isFinal={played}
+        seeds={seeds}
+      />
     </div>
   );
-
-  const shell =
-    "block card";
   return to ? (
     <Link
       href={to}
-      className={`${shell} transition card-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
+      className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40"
     >
-      <p className="t-label px-3 pt-2">
-        {[g.divisionName, g.label].filter(Boolean).join(" · ")}
-      </p>
       {body}
     </Link>
   ) : (
-    <div className={shell}>{body}</div>
+    body
   );
 }
 
-export default function GameFeed({ results = [], upcoming = [] }) {
+export default function GameFeed({ results = [], upcoming = [], seeds }) {
   // One of the two is always on — the same rule as Pool play | Bracket —
   // and it opens on NEXT (JD, 2026-07-26). What is coming is the question
   // a tournament page is open to answer; results are what you check
@@ -84,7 +68,24 @@ export default function GameFeed({ results = [], upcoming = [] }) {
 
   return (
     <Card className="space-y-3">
-      <h2 className="t-heading">Schedule</h2>
+      {/* The next game beside the title, as its own card — the answer most
+          people opened the page for, before they have pressed anything
+          (JD, 2026-07-26). */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h2 className="t-heading">Schedule</h2>
+        {upcoming[0] && (
+          <MatchupCard
+            className="w-full sm:w-64"
+            caption={[upcoming[0].whenDay, upcoming[0].whenTime, fieldShort(upcoming[0].field)]
+              .filter(Boolean)
+              .join(" \u00b7 ")}
+            division={upcoming[0].divisionName}
+            team1={upcoming[0].team1}
+            team2={upcoming[0].team2}
+            seeds={seeds}
+          />
+        )}
+      </div>
       <div className="seg">
         {[
           ["results", `Results${results.length ? ` (${results.length})` : ""}`],
@@ -108,7 +109,7 @@ export default function GameFeed({ results = [], upcoming = [] }) {
       ) : (
         <div className="space-y-2">
           {shown.map((g) => (
-            <Row key={g.id} g={g} played={tab === "results"} />
+            <Row key={g.id} g={g} played={tab === "results"} seeds={seeds} />
           ))}
         </div>
       )}
