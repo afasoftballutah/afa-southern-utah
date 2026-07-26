@@ -37,6 +37,23 @@ function whenParts(scheduledTime) {
   };
 }
 
+// Prizes read as a podium, not as prose (JD, 2026-07-26). The league
+// writes them "1st place: custom jerseys", so the place comes out of the
+// line and becomes a medal and a pill, leaving just the prize.
+const MEDAL = { 1: "\u{1F3C6}", 2: "\u{1F948}", 3: "\u{1F949}" };
+
+function parsePrize(line) {
+  const m = /^(\d+)(?:st|nd|rd|th)\s+place\s*[:\u2013-]\s*(.+)$/i.exec(line.trim());
+  if (!m) return { place: null, medal: null, text: line };
+  const n = Number(m[1]);
+  const suffix = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+  return {
+    place: `${n}${suffix}`,
+    medal: MEDAL[n] ?? "\u{1F396}\uFE0F",
+    text: m[2].replace(/\.$/, ""),
+  };
+}
+
 export const revalidate = 30;
 
 export async function generateMetadata({ params }) {
@@ -369,16 +386,28 @@ export default async function TournamentDetailPage({ params }) {
           )}
 
           {prizesLines.length > 0 && (
-            <>
-              <h3 className="t-label mt-3 first:mt-0">
-                Prizes
-              </h3>
-              <div className="t-body space-y-1">
-                {prizesLines.map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
-              </div>
-            </>
+            /* No "Prizes" label: a trophy and a "1st" pill say it, and the
+               line keeps only the prize itself. */
+            <div className="mt-3 space-y-2">
+              {prizesLines.map((line, i) => {
+                const { place, medal, text } = parsePrize(line);
+                return (
+                  <div key={i} className="flex items-start gap-2">
+                    {medal && (
+                      <span aria-hidden="true" className="leading-6">
+                        {medal}
+                      </span>
+                    )}
+                    {place && (
+                      <span className="t-label mt-1 shrink-0 rounded-full bg-afa-navy/[0.07] px-2 py-1">
+                        {place}
+                      </span>
+                    )}
+                    <span className="t-body min-w-0">{text}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {specialRulesLines.length > 0 && (

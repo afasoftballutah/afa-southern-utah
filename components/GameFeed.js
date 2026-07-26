@@ -75,11 +75,11 @@ function Row({ g, played }) {
 }
 
 export default function GameFeed({ results = [], upcoming = [] }) {
-  // The two buttons ARE the expander (JD, 2026-07-26). Nothing is open
-  // until you ask for one, pressing the open one closes it, and the card
-  // is a heading and two choices until then.
-  const [tab, setTab] = useState(null);
-  const shown = tab === "next" ? upcoming : tab === "results" ? results : [];
+  // One of the two is always on (JD, 2026-07-26) — the same rule as Pool
+  // play | Bracket. It opens on whichever has anything in it: Next during
+  // a tournament, Results once there is nothing left to play.
+  const [tab, setTab] = useState(upcoming.length > 0 ? "next" : "results");
+  const shown = tab === "next" ? upcoming : results;
 
   return (
     <Card className="space-y-3">
@@ -92,26 +92,25 @@ export default function GameFeed({ results = [], upcoming = [] }) {
           <button
             key={key}
             type="button"
-            aria-expanded={tab === key}
-            onClick={() => setTab((v) => (v === key ? null : key))}
+            aria-current={tab === key}
+            onClick={() => setTab(key)}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {tab &&
-        (shown.length === 0 ? (
-          <p className="t-body">
-            {tab === "next" ? "Nothing left to play." : "No results yet."}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {shown.map((g) => (
-              <Row key={g.id} g={g} played={tab === "results"} />
-            ))}
-          </div>
-        ))}
+      {shown.length === 0 ? (
+        <p className="t-body">
+          {tab === "next" ? "Nothing left to play." : "No results yet."}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {shown.map((g) => (
+            <Row key={g.id} g={g} played={tab === "results"} />
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
