@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import TeamFinder from "@/components/TeamFinder";
 import { HighlightTeamProvider } from "@/components/bracket/HighlightTeamContext";
 import { DropsProvider } from "@/components/bracket/DropsContext";
+import { FocusRoundProvider } from "@/components/bracket/FocusRoundContext";
 
 // The bracket picker is the same segmented control as Pool play / Bracket
 // — inset track, one filled segment — but each fills in its own metal
@@ -66,6 +67,24 @@ export default function DivisionView({
   // it again closes them (JD, 2026-07-26). The button you would reach for
   // to ask "how did Gold finish" is the one that already says Gold.
   const [standingsFor, setStandingsFor] = useState(null);
+
+  // Landing from a result elsewhere: ?game=5 opens the bracket on game 5,
+  // ?pool=A opens pool play. Read from the URL rather than taken as a prop
+  // so the page itself stays static-friendly, and only once — the moment
+  // someone touches a control the screen is theirs.
+  const [arrivedAt, setArrivedAt] = useState(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const game = Number(q.get("game"));
+    if (Number.isFinite(game) && game > 0) {
+      setArrivedAt(game);
+      setStage("bracket");
+      setTouched(true);
+    } else if (q.get("pool")) {
+      setStage("pools");
+      setTouched(true);
+    }
+  }, []);
   const mine = team ? bracketByTeam?.[team] : null;
   const shownBracketId =
     (bracketId && bracketPanes[bracketId] && bracketId) ||
@@ -174,7 +193,11 @@ export default function DivisionView({
         <div className="space-y-3">
           {standingsFor && standingsPanes?.[standingsFor]}
           <DropsProvider value={{ showDrops, setShowDrops }}>
-            <HighlightTeamProvider team={team}>{bracketPanes[shownBracketId]}</HighlightTeamProvider>
+            <FocusRoundProvider round={arrivedAt}>
+              <HighlightTeamProvider team={team}>
+                {bracketPanes[shownBracketId]}
+              </HighlightTeamProvider>
+            </FocusRoundProvider>
           </DropsProvider>
         </div>
       ) : (

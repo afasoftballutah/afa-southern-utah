@@ -5,6 +5,7 @@ import Matchup from "@/components/ui/Matchup";
 import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
 import { useDrops } from "@/components/bracket/DropsContext";
+import { useFocusRound } from "@/components/bracket/FocusRoundContext";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -822,6 +823,17 @@ export default function DrawnBracket({
   // this", and the answer was spread across the whole drawing.
   const [focus, setFocus] = useState(null);
 
+  // Arriving from a result somewhere else: open on THAT game, and put it
+  // on screen. Applied once — after that the drawing is the reader's.
+  const arrivedAt = useFocusRound();
+  const [honoured, setHonoured] = useState(false);
+  useEffect(() => {
+    if (honoured || arrivedAt == null) return;
+    if (!layout.cells.some((c) => c.round === arrivedAt)) return;
+    setFocus(arrivedAt);
+    setHonoured(true);
+  }, [arrivedAt, honoured, layout.cells]);
+
   // A team carries its POOL SEED everywhere it appears (spec 5.3). The
   // seeds map is supplied by the page when it knows pool results; without
   // it a propagated name simply renders without a tag rather than
@@ -929,14 +941,29 @@ export default function DrawnBracket({
   // and a highlight you have to go looking for is not much of a highlight.
   useEffect(() => {
     const el = scrollerRef.current;
-    if (!el || mine.next == null) return;
+    if (!el) return;
+
+    // Arriving from a link: bring the game into view on BOTH axes. It can
+    // sit a thousand pixels down a tall bracket, and landing on a blank
+    // stretch of white is not "here is your game".
+    if (arrivedAt != null && layout.cells.some((c) => c.round === arrivedAt)) {
+      const node = el.querySelector(`[data-game-round="${arrivedAt}"]`);
+      if (node) {
+        node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        return;
+      }
+    }
+
+    // Following a team: centre their next game horizontally only. Yanking
+    // the page vertically because someone picked a name would be rude.
+    if (mine.next == null) return;
     const cell = layout.cells.find((c) => c.round === mine.next);
     if (!cell) return;
     el.scrollTo({
       left: Math.max(0, cell.x + CELL_W / 2 - el.clientWidth / 2),
       behavior: "smooth",
     });
-  }, [mine.next, layout.cells]);
+  }, [arrivedAt, mine.next, layout.cells]);
   const isChampion = focus != null && !winTo;
 
   const endpoints = [
