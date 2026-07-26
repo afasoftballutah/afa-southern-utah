@@ -5,6 +5,17 @@ import TeamFinder from "@/components/TeamFinder";
 import { HighlightTeamProvider } from "@/components/bracket/HighlightTeamContext";
 import { DropsProvider } from "@/components/bracket/DropsContext";
 
+// The bracket picker is the same segmented control as Pool play / Bracket
+// — inset track, one filled segment — but each fills in its own metal
+// (JD, 2026-07-26). The tints are the ones the seed chips and the
+// placement chip already use, so Gold reads as Gold everywhere on the
+// page rather than as a navy pill that happens to say "Gold".
+const TIER_ACTIVE = {
+  Gold: "bg-[#f7edcd] text-[#7a5c12]",
+  Silver: "bg-[#dbe3ee] text-[#3b4a60]",
+  Bronze: "bg-[#f3e2d6] text-[#7b4a28]",
+};
+
 // Pool play or the bracket (JD, 2026-07-26: "when bracket play is live
 // bracket should be the default view for a team. should have a pool/
 // bracket toggle").
@@ -55,6 +66,7 @@ export default function DivisionView({
     (bracketId && bracketPanes[bracketId] && bracketId) ||
     (mine && bracketPanes[mine] && mine) ||
     (bracketPanes[finderProps.currentId] && finderProps.currentId) ||
+    stages.find((st) => bracketPanes[st.id])?.id ||
     Object.keys(bracketPanes ?? {})[0];
 
   // Picking a team moves the drawing to their bracket, even if you had
@@ -106,24 +118,27 @@ export default function DivisionView({
           {stage === "bracket" && hasBracket && (
             <>
               {stages.length > 1 && (
-                <div className="inline-flex flex-wrap gap-2">
+                <div className="inline-flex gap-0.5 rounded-lg bg-afa-navy/5 p-0.5">
                   {stages
                     .filter((st) => bracketPanes[st.id])
-                    .map((st) => (
-                      <button
-                        key={st.id}
-                        type="button"
-                        aria-current={st.id === shownBracketId}
-                        onClick={() => setBracketId(st.id)}
-                        className={`min-h-11 rounded-lg px-4 text-sm font-bold ${
-                          st.id === shownBracketId
-                            ? "border border-afa-navy bg-afa-navy text-white"
-                            : "border border-afa-navy/25 bg-white text-afa-navy hover:border-afa-navy/60"
-                        }`}
-                      >
-                        {st.name}
-                      </button>
-                    ))}
+                    .map((st) => {
+                      const on = st.id === shownBracketId;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          aria-current={on}
+                          onClick={() => setBracketId(st.id)}
+                          className={`min-h-11 rounded-md px-4 text-sm font-semibold ${
+                            on
+                              ? `${TIER_ACTIVE[st.name] ?? "bg-white text-afa-navy"} shadow-sm`
+                              : "text-afa-ink/70"
+                          }`}
+                        >
+                          {st.name}
+                        </button>
+                      );
+                    })}
                 </div>
               )}
               <button
