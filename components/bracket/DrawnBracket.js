@@ -1061,12 +1061,12 @@ export default function DrawnBracket({
             data-game-round={round}
             data-role={role || undefined}
             className="absolute cursor-pointer transition-opacity duration-200"
-            style={{
-              left: x,
-              top: y,
-              width: CELL_W,
-              opacity: role === "dim" && !mine.rounds.has(round) ? 0.22 : 1,
-            }}
+            // A followed team's games recede with everything else once a
+            // game is in focus (JD, 2026-07-26). They keep their outline,
+            // which at this opacity reads as a faint navy edge — enough to
+            // see where their run sits without competing with the one
+            // question the focus is answering.
+            style={{ left: x, top: y, width: CELL_W, opacity: role === "dim" ? 0.22 : 1 }}
             onClick={() =>
               onSelectGame ? onSelectGame(round) : setFocus((f) => (f === round ? null : round))
             }
@@ -1098,7 +1098,7 @@ export default function DrawnBracket({
                   ? "focus"
                   : role === "win" || role === "lose"
                   ? "dest"
-                  : round === mine.next
+                  : round === mine.next && role !== "dim"
                   ? "next"
                   : mine.rounds.has(round)
                   ? "mine"

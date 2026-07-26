@@ -207,8 +207,8 @@ export default function TeamFinder({
                 </div>
               ) : (
                 /* Collapsed, a team's season is a column of results you can
-                   read in one go: who they played and what it finished. The
-                   time and the field are what expand (JD, 2026-07-26). */
+                   read in one go: when, who they played, and how it
+                   finished. The field is what expands (JD, 2026-07-26). */
                 <ul className="divide-y divide-afa-navy/10">
                   {teamGames.map((g) => {
                     const won =
@@ -223,23 +223,44 @@ export default function TeamFinder({
                         key={g.id}
                         className="flex items-center gap-3 py-2 text-sm"
                       >
+                        {/* When, in a fixed column so the games line up
+                            down the card (JD, 2026-07-26). */}
+                        <span className="w-[72px] shrink-0 whitespace-nowrap text-xs text-afa-muted">
+                          {g.whenShort}
+                        </span>
                         <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                           <span className="text-afa-ink/50">vs </span>
                           {opponent}
                         </span>
                         {g.isFinal ? (
-                          <span className="tabular-nums whitespace-nowrap">
-                            <b className={won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"}>
-                              {mine}
-                            </b>
-                            <span className="px-1 text-afa-ink/40">&ndash;</span>
-                            <span className={won ? "text-afa-ink/60" : "font-semibold text-afa-ink"}>
-                              {theirs}
+                          <span className="flex items-center gap-2 whitespace-nowrap">
+                            {/* W or L in front (JD, 2026-07-26). A score
+                                alone makes you work out which side you
+                                were on before you know how it went. */}
+                            <span
+                              className={`w-4 text-center text-xs font-bold ${
+                                mine === theirs
+                                  ? "text-afa-muted"
+                                  : won
+                                  ? "text-[#2f7a4f]"
+                                  : "text-afa-ink/45"
+                              }`}
+                            >
+                              {mine === theirs ? "T" : won ? "W" : "L"}
+                            </span>
+                            <span className="tabular-nums">
+                              <b className={won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"}>
+                                {mine}
+                              </b>
+                              <span className="px-1 text-afa-ink/40">&ndash;</span>
+                              <span className={won ? "text-afa-ink/60" : "font-semibold text-afa-ink"}>
+                                {theirs}
+                              </span>
                             </span>
                           </span>
                         ) : (
-                          <span className="whitespace-nowrap text-xs text-afa-muted">
-                            {g.caption}
+                          <span className="whitespace-nowrap text-xs font-semibold text-afa-navy">
+                            Up next
                           </span>
                         )}
                       </li>
@@ -277,7 +298,7 @@ export default function TeamFinder({
                 onClick={() => setDetails((v) => !v)}
                 className="min-h-11 text-sm text-afa-navy underline"
               >
-                {details ? "Hide details" : "Show times and fields"}
+                {details ? "Hide details" : "Show fields"}
               </button>
             )}
             <button

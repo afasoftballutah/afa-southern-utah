@@ -42,6 +42,25 @@ function poolLetters(byPool) {
   );
 }
 
+// "Fri 9 PM" — the column the team card lines its games up in. Formatted
+// on the server because the league's time zone lives here; a client
+// component would render it in the reader's, and a team in California
+// does not want their Utah game an hour early.
+function whenShort(scheduledTime) {
+  if (!scheduledTime) return "";
+  const d = new Date(scheduledTime);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: LEAGUE_TZ,
+  }).formatToParts(d);
+  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
+  const min = get("minute");
+  return `${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`;
+}
+
 // "Fri 9p" — weekday plus hour, the sample sheet's convention. Minutes
 // only appear when a game is not on the hour, which at this league is
 // never, so the column stays two short lines.
@@ -368,6 +387,7 @@ export default async function DivisionPage({ params }) {
       id: g.id,
       pool: g.pool,
       when: g.scheduled_time,
+      whenShort: whenShort(g.scheduled_time),
       caption: formatFieldTime(g),
       team1: g.team1_name,
       team2: g.team2_name,
@@ -388,6 +408,7 @@ export default async function DivisionPage({ params }) {
           id: g.id,
           pool: null,
           when: g.scheduled_time,
+          whenShort: whenShort(g.scheduled_time),
           caption: [`${stageName} Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
           team1: g.team1_name,
           team2: g.team2_name,
@@ -400,6 +421,7 @@ export default async function DivisionPage({ params }) {
       id: g.id,
       pool: null,
       when: g.scheduled_time,
+      whenShort: whenShort(g.scheduled_time),
       caption: [`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
       team1: g.team1_name,
       team2: g.team2_name,
