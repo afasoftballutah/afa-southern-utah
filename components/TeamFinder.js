@@ -38,7 +38,6 @@ export default function TeamFinder({
   onSelectedChange,
 }) {
   const [selected, setSelected] = useState("");
-  const [open, setOpen] = useState(true);
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
   // downloading a frozen copy, and it needs an absolute host — which only
   // exists after mount. Until then the link is the plain https path,
@@ -135,13 +134,13 @@ export default function TeamFinder({
     // card whose first line repeated the same team name was one control
     // and one label doing one job twice.
     <Card className="p-0">
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+      <div className="flex flex-nowrap items-center gap-2 px-4 py-3">
         {/* The name is TEXT, with a real <select> laid invisibly over it.
             A native select sizes itself to its widest option, which would
             have parked the caret a dozen characters past a short team
             name; this way the caret sits where the name ends and the
             display face renders exactly as it does anywhere else. */}
-        <span className="relative inline-flex min-w-0 items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
+        <span className="relative flex min-w-0 flex-1 items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
           <span className="truncate font-display text-lg text-afa-navy">
             {selected || "Find your team"}
           </span>
@@ -169,7 +168,7 @@ export default function TeamFinder({
         </span>
 
         {selected && (
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             {!isOut && !isChampion && myStage && (
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
@@ -193,22 +192,14 @@ export default function TeamFinder({
             {isOut || isChampion ? (
               <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
             ) : (
+              !myStage &&
               pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
             )}
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
-              className="ml-1 min-h-9 rounded px-2 text-afa-navy/60 hover:text-afa-navy"
-            >
-              <span className="sr-only">{open ? "Collapse" : "Expand"} games</span>
-              <span aria-hidden="true">{open ? "▴" : "▾"}</span>
-            </button>
           </div>
         )}
       </div>
 
-      {selected && open && (
+      {selected && (
         <div className="border-t border-afa-navy/10 px-4 py-3">
           {(isOut || isChampion) && (
             <p className="mb-2 text-sm text-afa-ink/70">No more games scheduled.</p>
@@ -229,12 +220,20 @@ export default function TeamFinder({
                 return (
                   <li
                     key={g.id}
-                    className="grid grid-cols-[76px_minmax(0,1fr)_34px_16px_48px] items-center gap-x-2 py-2 text-sm"
+                    className="grid grid-cols-[26px_minmax(0,1fr)_46px_30px_14px_44px] items-center gap-x-1.5 py-2 text-sm"
                   >
-                    <span className="whitespace-nowrap text-xs text-afa-muted">{g.whenShort}</span>
-                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                      <span className="text-afa-ink/50">vs </span>
+                    <span className="whitespace-nowrap text-xs text-afa-muted">
+                      {g.whenShort?.day}
+                    </span>
+                    {/* The opponent gets every pixel the other columns do
+                        not need. "vs" was a word's worth of that, and on a
+                        phone it was the difference between one line and
+                        two (JD, 2026-07-26). */}
+                    <span className="min-w-0 truncate" title={opponent}>
                       {opponent}
+                    </span>
+                    <span className="whitespace-nowrap text-right text-xs text-afa-muted">
+                      {g.whenShort?.time}
                     </span>
                     <span className="whitespace-nowrap text-right text-xs text-afa-muted">
                       {g.field ? g.field.replace(/^Field\s*/i, "F") : ""}
@@ -260,7 +259,7 @@ export default function TeamFinder({
                             from the field to the W and from the W to the
                             score are the same 8px, and 5-1 still sits
                             under 19-11 digit for digit. */}
-                        <span className="grid grid-cols-[19px_10px_19px] items-center tabular-nums">
+                        <span className="grid grid-cols-[17px_10px_17px] items-center tabular-nums text-[13px]">
                           <span
                             className={`text-right ${
                               won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"
@@ -298,7 +297,7 @@ export default function TeamFinder({
                 href={`${host ? `webcal://${host}` : ""}/tournaments/${slug}/games.ics?team=${encodeURIComponent(selected)}`}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
               >
-                Subscribe to {selected}&rsquo;s games
+                Subscribe to these games
               </a>
               <span className="text-xs text-afa-ink/60">
                 Adds to your calendar and keeps itself up to date.

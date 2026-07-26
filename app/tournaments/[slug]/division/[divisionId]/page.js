@@ -47,7 +47,7 @@ function poolLetters(byPool) {
 // component would render it in the reader's, and a team in California
 // does not want their Utah game an hour early.
 function whenShort(scheduledTime) {
-  if (!scheduledTime) return "";
+  if (!scheduledTime) return { day: "", time: "" };
   const d = new Date(scheduledTime);
   const parts = new Intl.DateTimeFormat("en-US", {
     weekday: "short",
@@ -58,7 +58,10 @@ function whenShort(scheduledTime) {
   }).formatToParts(d);
   const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
   const min = get("minute");
-  return `${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`;
+  return {
+    day: get("weekday"),
+    time: `${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`,
+  };
 }
 
 // "Fri 9p" — weekday plus hour, the sample sheet's convention. Minutes
