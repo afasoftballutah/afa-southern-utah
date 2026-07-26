@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import { parseSeedRef } from "@/lib/bracket/seed";
 
@@ -37,7 +38,7 @@ function groupByRank(order, standingsByTeam) {
   return groups;
 }
 
-function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, proposedSeeds, busy, onReorder, onOpenPicker }) {
+function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, proposedSeeds, busy, onReorder, onOpenPicker, games = [], filtered = false, readOnly, onGameSaved }) {
   const standingsByTeam = new Map(pool.standings.map((t) => [t.team, t]));
   const groups = groupByRank(order, standingsByTeam);
   // The SEED number ("A #2") is always sequential position in the chosen
@@ -66,8 +67,21 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, propose
     <Card className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-[11px] font-bold uppercase tracking-[.09em] text-afa-navy">Pool {letter}</h3>
-        <span className="text-[11px] font-semibold text-afa-muted">
-          {pool.complete ? "Final" : `${pool.remaining} of ${pool.total} left`}
+        <span
+          className={`flex items-center gap-1.5 text-[11px] font-semibold ${
+            readOnly ? "font-bold text-afa-navy" : "text-afa-muted"
+          }`}
+        >
+          {readOnly ? (
+            <>&#128274; Final</>
+          ) : pool.complete ? (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-[#46a06a]" />
+              Final
+            </>
+          ) : (
+            `${pool.remaining} game${pool.remaining === 1 ? "" : "s"} left`
+          )}
         </span>
       </div>
 
@@ -182,8 +196,162 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, propose
           );
         })}
       </div>
+
+      {/* A pool is three teams AND the three games that decided them, so
+          they live on one card. The standings above are computed from
+          these scores; scoring the last one is what makes the pool final
+          and opens its seeding (redesign spec 4). */}
+      {games.length > 0 && (
+        <div>
+          <p className="pt-3.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-muted">
+            {filtered ? "Matching games" : "Games"}
+          </p>
+          <div className="space-y-1">
+            {games.map((g) => (
+              <PoolGameRow key={g.id} game={g} readOnly={readOnly} onSaved={onGameSaved} />
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
+}
+
+/**
+ * One game, one row per team, each team's score on its own row. A score
+ * centred between two names is in the one place it can sit without
+ * belonging to either. Save arrives when a number changes and leaves when
+ * it is saved — there is no permanent Save on 28 rows waiting for an
+ * event that rarely comes.
+ */
+function PoolGameRow({ game, readOnly, onSaved }) {
+  const final = game.status === "final";
+  const [s1, setS1] = useState(final ? String(game.team1_score) : "");
+  const [s2, setS2] = useState(final ? String(game.team2_score) : "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const dirty = s1 !== (final ? String(game.team1_score) : "") || s2 !== (final ? String(game.team2_score) : "");
+  const both = s1 !== "" && s2 !== "";
+  const w1 = both && Number(s1) > Number(s2);
+  const w2 = both && Number(s2) > Number(s1);
+
+  async function save() {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/scorekeeper/pool-games/${game.id}/score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team1_score: Number(s1), team2_score: Number(s2) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not save");
+      onSaved?.();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const side = (name, val, set, won) => (
+    <div className="grid grid-cols-[minmax(0,1fr)_56px] items-center gap-2 py-[5px] pl-2.5 pr-1.5">
+      <span
+        className={`text-sm leading-tight [overflow-wrap:anywhere] ${
+          won ? "font-semibold text-afa-ink" : "text-afa-ink/[0.58]"
+        }`}
+      >
+        {name}
+      </span>
+      <input
+        type="number"
+        inputMode="numeric"
+        placeholder="&ndash;"
+        aria-label={`${name} score`}
+        readOnly={readOnly}
+        disabled={busy || readOnly}
+        value={val}
+        onChange={(e) => set(e.target.value)}
+        className={`h-[34px] w-14 rounded-[7px] border border-transparent bg-afa-navy/[0.035] px-0.5 text-center text-[15px] font-semibold tabular-nums [appearance:textfield] focus:border-afa-navy focus:bg-white focus:outline-none focus:ring-[3px] focus:ring-afa-navy/[0.16] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+          won ? "text-afa-ink" : "text-afa-ink/[0.55]"
+        }`}
+      />
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-[40px_minmax(0,1fr)_62px] items-center gap-2 py-1">
+      <div className="text-[10px] font-medium leading-tight text-afa-muted">
+        <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
+        <br />
+        {shortTime(game.scheduled_time)}
+      </div>
+      <div className={`overflow-hidden rounded-[10px] border bg-white transition ${dirty ? "border-afa-navy/45 ring-[3px] ring-afa-navy/10" : "border-afa-navy/15"} divide-y divide-afa-navy/[0.07]`}>
+        {side(game.team1_name, s1, setS1, w1)}
+        {side(game.team2_name, s2, setS2, w2)}
+      </div>
+      <div>
+        {dirty && both && !readOnly && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={save}
+            className="h-9 rounded-full bg-afa-navy px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-40"
+          >
+            Save
+          </button>
+        )}
+      </div>
+      {err && <p className="col-span-3 text-xs font-bold text-afa-ink underline">{err}</p>}
+    </div>
+  );
+}
+
+/**
+ * Field and time chips. During a tournament a director is standing at a
+ * field working a time slot, not reading pool by pool — filtering to
+ * "F3 · Fri 10p" turns nine cards into the two with a game on right now.
+ * A pool with no matching game drops out entirely rather than sitting
+ * there empty.
+ */
+function FilterChips({ label, value, options, format, onPick }) {
+  if (options.length < 2) return null;
+  const chip = (v, text) => (
+    <button
+      key={String(v)}
+      type="button"
+      aria-pressed={value === v}
+      onClick={() => onPick(v)}
+      className={`min-h-[30px] rounded-full px-[11px] text-xs font-semibold whitespace-nowrap transition ${
+        value === v ? "bg-afa-navy text-white" : "bg-afa-navy/5 text-afa-ink/[0.72] hover:bg-afa-navy/10"
+      }`}
+    >
+      {text}
+    </button>
+  );
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="pr-0.5 text-[9.5px] font-bold uppercase tracking-[.08em] text-afa-muted whitespace-nowrap">
+        {label}
+      </span>
+      {chip(null, "All")}
+      {options.map((o) => chip(o, format(o)))}
+    </div>
+  );
+}
+
+function fieldAbbrev(field) {
+  if (!field) return "";
+  const m = String(field).match(/\d+/);
+  return m ? `F${m[0]}` : field;
+}
+
+function shortTime(iso) {
+  if (!iso) return "TBD";
+  const d = new Date(iso);
+  const h = d.getHours() % 12 || 12;
+  const m = d.getMinutes();
+  return `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]} ${h}${m ? ":" + String(m).padStart(2, "0") : ""}${d.getHours() < 12 ? "a" : "p"}`;
 }
 
 // Gold, Silver and Bronze read as themselves rather than as three
@@ -195,7 +363,8 @@ const TIER_CLASS = {
   Bronze: "bg-[#f3e2d6] text-[#7b4a28]",
 };
 
-export default function SeedBrackets({ divisionId, tournamentSlug }) {
+export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [], readOnly = false }) {
+  const router = useRouter();
   const [result, setResult] = useState(null);
   const [orders, setOrders] = useState({}); // { [poolLetter]: [teamName,...] }
   const [busy, setBusy] = useState(false);
@@ -258,6 +427,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // than a <select>: a native dropdown cannot show which team currently
   // holds each slot without truncating it inside a 280px card.
   const [picker, setPicker] = useState(null);
+  const [filter, setFilter] = useState({ field: null, time: null });
   // Nothing is written on selection. A swap is PROPOSED: both ends light
   // up, a dotted line is drawn between them wherever they sit, and the
   // director confirms. Every applied swap is then listed, undoable.
@@ -474,9 +644,48 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
     slot: `${sl.division} G${sl.round}`,
   }));
 
+  const fieldOptions = [...new Set(poolGames.map((g) => g.field).filter(Boolean))].sort();
+  const timeOptions = [...new Set(poolGames.map((g) => g.scheduled_time).filter(Boolean))].sort();
+  const filtering = Boolean(filter.field || filter.time);
+  const matches = (g) =>
+    (!filter.field || g.field === filter.field) && (!filter.time || g.scheduled_time === filter.time);
+  const gamesFor = (letter) => poolGames.filter((g) => g.pool === letter && matches(g));
+  // A pool with no game in the chosen slot is not shown as an empty card;
+  // it is not part of the answer to "what is on Field 3 right now".
+  const shownLetters = filtering ? letters.filter((l) => gamesFor(l).length > 0) : letters;
+  const shownGames = shownLetters.reduce((n, l) => n + gamesFor(l).length, 0);
+
   return (
     <div className="chalk-panel space-y-4">
-      <h2 className="font-bold text-afa-navy">Seed Brackets</h2>
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h2 className="font-bold text-afa-navy">Seed Brackets</h2>
+        <span className="ml-auto text-[12.5px] text-afa-muted">
+          {filtering
+            ? `${shownGames} game${shownGames === 1 ? "" : "s"} in ${shownLetters.length} pool${
+                shownLetters.length === 1 ? "" : "s"
+              }`
+            : `${letters.length} pool${letters.length === 1 ? "" : "s"}`}
+        </span>
+      </div>
+
+      {(fieldOptions.length > 1 || timeOptions.length > 1) && (
+        <div className="flex gap-4 overflow-x-auto pb-0.5">
+          <FilterChips
+            label="Field"
+            value={filter.field}
+            options={fieldOptions}
+            format={fieldAbbrev}
+            onPick={(v) => setFilter((f) => ({ ...f, field: v }))}
+          />
+          <FilterChips
+            label="Time"
+            value={filter.time}
+            options={timeOptions}
+            format={shortTime}
+            onPick={(v) => setFilter((f) => ({ ...f, time: v }))}
+          />
+        </div>
+      )}
 
       {/* Every swap made this session, newest first, each one undoable.
           A change you cannot see you made is a change you cannot trust. */}
@@ -522,8 +731,8 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
       {/* Three pool cards per line on desktop, one per line on a phone
           (dispatch-brief-26) — these carry controls and must stay
           thumb-usable, so the grid only kicks in once there's room. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
-        {letters.map((letter) => (
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(372px,1fr))] gap-4 items-start">
+        {shownLetters.map((letter) => (
           <PoolCard
             key={letter}
             letter={letter}
@@ -538,6 +747,13 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
             busy={busy}
             onReorder={handleReorder}
             onOpenPicker={setPicker}
+            games={gamesFor(letter)}
+            filtered={filtering}
+            readOnly={readOnly}
+            onGameSaved={() => {
+              fetchPreview(orders);
+              router.refresh();
+            }}
           />
         ))}
       </div>

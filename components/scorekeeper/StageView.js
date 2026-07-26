@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SeedBrackets from "./SeedBrackets";
-import PoolPlayManager from "./PoolPlayManager";
 import BracketEditor from "./BracketEditor";
 
 // StageView — the scorekeeper's two stages (redesign spec §1, §2).
@@ -135,10 +134,16 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
               </button>
             </div>
           )}
-          {!confirmed && (
-            <SeedBrackets divisionId={divisionId} tournamentSlug={tournamentSlug} />
-          )}
-          <PoolPlayManager divisionId={divisionId} poolGames={poolGames} readOnly={confirmed} />
+          {/* One surface, like the sample. Games live on their pool card,
+              and the by-time question — "what is on Field 3 at 10?" — is
+              answered by the field/time chips rather than by a second list
+              of the same 28 games underneath. */}
+          <SeedBrackets
+            divisionId={divisionId}
+            tournamentSlug={tournamentSlug}
+            poolGames={poolGames}
+            readOnly={confirmed}
+          />
         </>
       ) : (
         <BracketEditor stages={stages} />
