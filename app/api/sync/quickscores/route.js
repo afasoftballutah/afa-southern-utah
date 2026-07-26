@@ -5,6 +5,7 @@ import {
   parseBracketResults,
   normalizeTeam,
   isPlaceholderName,
+  parsePlacements,
 } from "@/lib/quickscores";
 import { computeTeamStatus } from "@/lib/elimination";
 
@@ -134,7 +135,14 @@ async function syncPoolDivision(supabase, division, html, dryRun, report) {
   }
 }
 
-async function syncBracketDivision(supabase, division, html, dryRun, report) {
+async function syncBracketDivision(supabase, division, html, dryRun, report, placements) {
+  // The league prints each team's finish in the drawing itself. Read it
+  // here, where the page is already fetched, and hand it to the status
+  // pass below rather than fetching every bracket a second time.
+  for (const { place, team } of parsePlacements(html)) {
+    placements.set(normalizeTeam(team), { place, bracket: division.name });
+  }
+
   const upstream = parseBracketResults(html);
   report.parsed.bracket += upstream.length;
 
@@ -254,7 +262,7 @@ async function syncBracketDivision(supabase, division, html, dryRun, report) {
  * rows — and reconciling it row by row would be more code and more ways to
  * leave a stale "eliminated" on a team that is very much still playing.
  */
-async function refreshTeamStatus(supabase, dryRun, report) {
+async function refreshTeamStatus(supabase, dryRun, report, placements) {
   const { data: synced } = await supabase
     .from("divisions")
     .select("tournament_id")
@@ -283,26 +291,41 @@ async function refreshTeamStatus(supabase, dryRun, report) {
         .in("division_id", ids),
     ]);
 
-    const rows = computeTeamStatus(games ?? [], poolGames ?? [], names).map((r) => ({
-      ...r,
-      tournament_id: tournamentId,
-      updated_at: new Date().toISOString(),
-    }));
+    const rows = computeTeamStatus(games ?? [], poolGames ?? [], names).map((r) => {
+      // The bracket a team finished in is known from their last game even
+      // when the league has not printed a placement yet, so the two are
+      // filled independently — "Gold" on its own still tells you more
+      // than nothing.
+      const finish = placements.get(normalizeTeam(r.team_name));
+      return {
+        ...r,
+        tournament_id: tournamentId,
+        bracket_name: finish?.bracket ?? r.last_game_label?.replace(/ Game \d+$/, "") ?? null,
+        placement: finish?.place ?? null,
+        updated_at: new Date().toISOString(),
+      };
+    });
 
     const { data: existing } = await supabase
       .from("team_status")
-      .select("team_name, state")
+      .select("team_name, state, placement")
       .eq("tournament_id", tournamentId);
-    const before = new Map((existing ?? []).map((r) => [r.team_name, r.state]));
+    const before = new Map((existing ?? []).map((r) => [r.team_name, r]));
 
     for (const r of rows) {
-      if (before.get(r.team_name) !== r.state) {
-        report.status.push({ team: r.team_name, state: r.state, after: r.last_game_label });
+      const was = before.get(r.team_name);
+      if (was?.state !== r.state || was?.placement !== r.placement) {
+        report.status.push({
+          team: r.team_name,
+          state: r.state,
+          finished: [r.bracket_name, r.placement].filter(Boolean).join(" "),
+          after: r.last_game_label,
+        });
       }
     }
     const now = new Set(rows.map((r) => r.team_name));
-    for (const [team, state] of before) {
-      if (!now.has(team)) report.status.push({ team, state: "still playing", was: state });
+    for (const [team, was] of before) {
+      if (!now.has(team)) report.status.push({ team, state: "still playing", wasStated: was.state });
     }
 
     if (dryRun) continue;
@@ -327,6 +350,9 @@ export async function GET(request) {
     .select("id, name, source_url, parent_division_id")
     .not("source_url", "is", null);
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  // team -> {place, bracket}, filled as each bracket page is parsed.
+  const placements = new Map();
 
   const report = {
     dryRun,
@@ -363,7 +389,7 @@ export async function GET(request) {
         .select("id", { count: "exact", head: true })
         .eq("division_id", division.id);
       if (poolCount) await syncPoolDivision(supabase, division, html, dryRun, report);
-      else await syncBracketDivision(supabase, division, html, dryRun, report);
+      else await syncBracketDivision(supabase, division, html, dryRun, report, placements);
     } catch (err) {
       report.errors.push(`${division.name}: ${err.message}`);
     }
@@ -374,7 +400,7 @@ export async function GET(request) {
   // changed — a team also becomes eliminated when a game they were
   // waiting on gets scored somewhere else entirely.
   try {
-    await refreshTeamStatus(supabase, dryRun, report);
+    await refreshTeamStatus(supabase, dryRun, report, placements);
   } catch (err) {
     report.errors.push(`team status: ${err.message}`);
   }

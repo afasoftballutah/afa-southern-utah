@@ -6,6 +6,15 @@ import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
 
+// The bracket a team finished in, tinted as itself — the same three
+// metallics the seed chips use, so "Gold" reads as Gold wherever it
+// appears rather than as one more grey pill.
+const TIER_CHIP = {
+  Gold: "bg-[#f7edcd] text-[#7a5c12]",
+  Silver: "bg-[#e9edf2] text-[#46546a]",
+  Bronze: "bg-[#f3e2d6] text-[#7b4a28]",
+};
+
 // Find my team (dispatch-brief-14, JD: "a dropdown at the top by team?
 // When a team is selected they get highlighted and you see their pool and
 // schedule."). A plain <select> — no search, no fuzzy matching, no
@@ -173,14 +182,15 @@ export default function TeamFinder({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg text-afa-navy">{selected}</h2>
             <div className="flex items-center gap-2">
-              {isChampion && (
-                <span className="rounded-full bg-[#f7edcd] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-[#7a5c12]">
-                  Champion
-                </span>
-              )}
-              {isOut && (
-                <span className="rounded-full bg-afa-navy/[0.07] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-afa-ink/60">
-                  Eliminated
+              {(isOut || isChampion) && (
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                    TIER_CHIP[status.bracket_name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
+                  }`}
+                >
+                  {[status.bracket_name, status.placement && `${status.placement} Place`]
+                    .filter(Boolean)
+                    .join(" \u00b7 ") || "No more games"}
                 </span>
               )}
               {pool && (
@@ -189,19 +199,14 @@ export default function TeamFinder({
             </div>
           </div>
 
+          {/* Stated as a fact, not a verdict (JD, 2026-07-26: "You can just
+              say No More Games Scheduled"). Nobody who has just lost wants
+              ELIMINATED in red; what they want to know is whether to go
+              home, and where they finished. */}
           {(isOut || isChampion) && (
             <p className="mt-1 text-sm text-afa-ink/70">
-              {isChampion ? (
-                <>
-                  Won it at <b className="font-semibold text-afa-ink">{status.last_game_label}</b>.
-                  Congratulations.
-                </>
-              ) : (
-                <>
-                  <b className="font-semibold text-afa-ink">{status.last_game_label}</b> was their
-                  last game — nothing more is scheduled. Thanks for coming out.
-                </>
-              )}
+              No more games scheduled.
+              {status.last_game_label ? ` ${status.last_game_label} was their last.` : ""}
             </p>
           )}
 
