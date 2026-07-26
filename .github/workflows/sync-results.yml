@@ -1,0 +1,49 @@
+# Hourly results sync (JD, 2026-07-26: "can you just pull the results in
+# every hour?").
+#
+# This lives in Actions rather than vercel.json for one reason: the
+# project is on Vercel's Hobby plan, where a cron job fires ONCE A DAY no
+# matter what schedule you write. "0 * * * *" there would quietly be a
+# daily sync. Actions actually runs hourly and costs nothing.
+#
+# It calls the endpoint and nothing more — all the logic, and every
+# safeguard, lives in app/api/sync/quickscores/route.js.
+name: Sync results from QuickScores
+
+on:
+  schedule:
+    - cron: "5 * * * *" # five past the hour; GitHub queues on the hour
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "Report what would change without writing"
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull results
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE: https://afa-southern-utah.vercel.app
+        run: |
+          DRY=""
+          if [ "${{ inputs.dryRun }}" = "true" ]; then DRY="?dryRun=1"; fi
+          # --fail-with-body so an auth failure or a 500 fails the run
+          # loudly instead of looking like a quiet sync with nothing to do.
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE/api/sync/quickscores$DRY" | tee result.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("result.json"))
+          print(f"\nparsed {r['parsed']} · applied {r['applied']}")
+          for c in r["changes"]:
+              print(f"  {c['division']} {c['game']}: {c['was']} -> {c['now']}")
+          for u in r["unmatched"]:
+              print(f"  UNMATCHED {u}")
+          for e in r["errors"]:
+              print(f"  ERROR {e}")
+          PY
