@@ -621,7 +621,15 @@ export default async function DivisionPage({ params }) {
       </nav>
 
       {showsFinder && (
+        // KEYED on the division. Navigating from one division to another
+        // keeps the same route pattern, so React reuses this component and
+        // its state — which meant the bracket you were last looking at
+        // followed you to the next division, and the ?game= in the new URL
+        // was never read because the mount effect had already run. Clicking
+        // a Gold result from a Silver page landed you on Silver (JD,
+        // 2026-07-26). A key forces the remount the navigation implies.
         <DivisionView
+          key={division.id}
           teams={finderTeams}
           games={finderGames}
           storageKey={`afa-team-${slug}`}

@@ -7,6 +7,7 @@ import {
   formatFee,
 } from "@/lib/data";
 import Matchup from "@/components/ui/Matchup";
+import RecentScores from "@/components/RecentScores";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import Door from "@/components/ui/Door";
@@ -32,6 +33,7 @@ export default async function Home() {
   const resultsTournamentName = hasPlacements
     ? lastResults?.name
     : (recentScores[0]?.tournamentName ?? tournament?.name ?? lastResults?.name ?? null);
+  const resultsTournamentSlug = recentScores[0]?.tournamentSlug ?? tournament?.slug ?? null;
 
   return (
     <div className="space-y-6">
@@ -93,18 +95,30 @@ export default async function Home() {
           recent scores came from, then the one on deck. */}
       <section className="max-w-md mx-auto">
         <h2 className="text-xl font-bold text-afa-navy mb-3">
-          {hasPlacements ? "Last Results" : "Recent Scores"}
+          {/* Not "Recent Scores" any more — the scores themselves live
+              on the tournament page now, and this section is the finished
+              result plus a way through to them. */}
+          Last Results
         </h2>
         {resultsTournamentName && (
           <p className="font-semibold text-afa-navy mb-2">{resultsTournamentName}</p>
         )}
+        {/* Recent scores moved to the tournament page (JD, 2026-07-26).
+            A game belongs to a tournament, and a list of them on the front
+            page was a mile from anything that explained it. The front page
+            keeps the finished RESULT — champion and runner-up — which is
+            the thing worth putting on a poster. */}
         {hasPlacements ? (
-          <ResultsGallery tournament={lastResults} recentScores={recentScores} showName={false} />
-        ) : recentScores.length > 0 ? (
-          <RecentScores scores={recentScores} />
+          <ResultsGallery tournament={lastResults} showName={false} />
         ) : (
           <p className="text-afa-ink/70">
-            No scores yet — they appear here as games finish.
+            {resultsTournamentSlug ? (
+              <Link href={`/tournaments/${resultsTournamentSlug}`} className="underline text-afa-navy">
+                See the latest scores
+              </Link>
+            ) : (
+              "No scores yet — they appear here as games finish."
+            )}
           </p>
         )}
       </section>
@@ -112,50 +126,7 @@ export default async function Home() {
   );
 }
 
-// A result on the home page used to be a dead end (JD, 2026-07-26:
-// "people expect to be able to click into them and see the game"). Each
-// one now opens its own division, on the stage that game belongs to, with
-// the game itself picked out of the drawing.
-function resultHref(g) {
-  if (!g.tournamentSlug || !g.divisionId) return null;
-  const base = `/tournaments/${g.tournamentSlug}/division/${g.divisionId}`;
-  if (g.pool) return `${base}?pool=${encodeURIComponent(g.pool)}&pg=${g.id}`;
-  if (g.round) return `${base}?game=${g.round}`;
-  return base;
-}
-
-function RecentScores({ scores }) {
-  return (
-    <div className="space-y-2">
-      {scores.map((g) => {
-        const href = resultHref(g);
-        const card = (
-          <Matchup
-            caption={[formatFieldTime(g), g.divisionName, g.label].filter(Boolean).join(" · ")}
-            team1={g.team1}
-            team2={g.team2}
-            score1={g.score1}
-            score2={g.score2}
-            isFinal
-          />
-        );
-        return href ? (
-          <Link
-            key={g.id}
-            href={href}
-            className="block rounded-lg transition hover:brightness-[.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40"
-          >
-            {card}
-          </Link>
-        ) : (
-          <div key={g.id}>{card}</div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ResultsGallery({ tournament, recentScores = [], showName = true }) {
+function ResultsGallery({ tournament, showName = true }) {
   const divisionsWithPlacements = (tournament.divisions ?? []).filter(
     (d) => (d.placements ?? []).length > 0
   );
@@ -163,13 +134,9 @@ function ResultsGallery({ tournament, recentScores = [], showName = true }) {
     <div className="space-y-4">
       {showName && <p className="font-semibold text-afa-navy">{tournament.name}</p>}
       {divisionsWithPlacements.length === 0 ? (
-        recentScores.length > 0 ? (
-          <RecentScores scores={recentScores} />
-        ) : (
-          <p className="text-afa-ink/70 text-sm">
-            No scores yet — they appear here as games finish.
-          </p>
-        )
+        <p className="text-afa-ink/70 text-sm">
+          No results posted yet.
+        </p>
       ) : (
         divisionsWithPlacements.map((division) => (
           <div key={division.id} className="chalk-panel">

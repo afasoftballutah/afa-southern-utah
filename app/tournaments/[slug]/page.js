@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import {
+  getRecentScores,
   getTournamentBySlug,
   formatDateRange,
   formatFee,
@@ -12,6 +13,7 @@ import Poster from "@/components/ui/Poster";
 import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
+import RecentScores from "@/components/RecentScores";
 
 export const revalidate = 30;
 
@@ -96,6 +98,15 @@ export default async function TournamentDetailPage({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
+
+  // Recent scores live here now, not on the front page (JD, 2026-07-26).
+  // A game belongs to a tournament; a list of them a mile from anything
+  // that named it was the wrong home. Scoped to THIS tournament's
+  // divisions rather than the league.
+  const recentScores = await getRecentScores(
+    8,
+    (tournament.divisions ?? []).map((d) => d.id)
+  );
 
   const divisions = tournament.divisions ?? [];
 
@@ -261,6 +272,13 @@ export default async function TournamentDetailPage({ params }) {
           sub="Every game, every field"
         />
       </div>
+
+      {recentScores.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-afa-navy mb-2">Recent Scores</h2>
+          <RecentScores scores={recentScores} />
+        </section>
+      )}
 
       {/* Registration (dispatch-brief-20) — sits directly below the action-
           row doors. St. George City runs registration for this tournament,
