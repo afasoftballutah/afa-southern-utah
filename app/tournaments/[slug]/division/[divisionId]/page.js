@@ -186,7 +186,7 @@ function PoolPlaySection({ poolGames }) {
                     <span className="text-right text-[12.5px] font-bold text-afa-navy/50 tabular-nums">
                       {left === 0 ? i + 1 : "\u00b7"}
                     </span>
-                    <span className="font-display text-[15px] leading-tight text-afa-ink [overflow-wrap:anywhere]">
+                    <span className="team-name text-[15px] font-semibold leading-tight [overflow-wrap:anywhere]">
                       {t.team}
                       {t.tied && (
                         <span className="ml-1.5 rounded bg-afa-navy/[0.08] px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
@@ -326,7 +326,7 @@ function StandingsPanel({ name, rows }) {
             key={t.team}
             className="grid min-h-11 grid-cols-[minmax(0,1fr)_46px_52px] items-center gap-x-2 border-b border-afa-navy/[0.07] py-1.5 text-sm last:border-0"
           >
-            <span className="font-display truncate text-afa-ink" title={t.team}>
+            <span className="team-name truncate font-semibold" title={t.team}>
               {t.team}
             </span>
             <span className="text-right font-semibold tabular-nums text-afa-ink/[0.78]">

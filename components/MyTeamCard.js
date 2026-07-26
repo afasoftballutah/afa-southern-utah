@@ -84,7 +84,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             door through. */}
         <div className="min-w-0 flex-1">
           <span className="pointer-events-auto relative inline-flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
-            <span className="t-heading truncate">
+            <span className="team-name truncate text-lg font-semibold">
               {me ? me.team : "My Team"}
             </span>
             {/* Same line as the division page's header — name, record,

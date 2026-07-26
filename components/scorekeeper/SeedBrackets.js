@@ -138,7 +138,7 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, propose
                     <span className="text-right text-[12.5px] font-bold tabular-nums text-afa-navy/50">
                       {pool.complete ? seedNo : "\u00b7"}
                     </span>
-                    <span className="min-w-0 break-words text-[15px] font-semibold leading-tight">{team}</span>
+                    <span className="team-name min-w-0 break-words text-[15px] font-semibold leading-tight">{team}</span>
                     <span className="text-right text-[13.5px] font-semibold tabular-nums text-afa-ink/[0.78]">
                       {info.w}&ndash;{info.l}
                     </span>
@@ -257,8 +257,8 @@ function PoolGameRow({ game, readOnly, onSaved }) {
   const side = (name, val, set, won) => (
     <div className="grid grid-cols-[minmax(0,1fr)_56px] items-center gap-2 py-[5px] pl-2.5 pr-1.5">
       <span
-        className={`text-sm leading-tight [overflow-wrap:anywhere] ${
-          won ? "font-semibold text-afa-ink" : "text-afa-ink/[0.58]"
+        className={`team-name text-sm leading-tight [overflow-wrap:anywhere] ${
+          won ? "font-semibold" : "font-normal text-afa-ink/[0.58]"
         }`}
       >
         {name}

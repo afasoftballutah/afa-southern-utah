@@ -111,6 +111,24 @@ button {
     font-size: 1.125rem;
     line-height: 1.25;
   }
+  /* A TEAM NAME. The condensed team face, not the display face (JD,
+     2026-07-26: "the bold Anton is really smudgy and tricky to read.
+     seemed better spaced for team names before").
+
+     Anton is one heavy weight, so at name size it reads black and a
+     winner's bold has to be SYNTHESISED — smudgy, exactly as JD saw.
+     This face is variable, so weight is real: 400 for a loser, 700 for a
+     winner, which is how the bracket says who won without a word.
+
+     The rule underneath: Anton is for TITLES — the page, a section. This
+     is for NAMES. One face per job, everywhere. */
+  .team-name {
+    font-family: var(--font-team);
+    text-transform: uppercase;
+    letter-spacing: 0.012em;
+    color: var(--afa-ink);
+  }
+
   .t-body {
     font-size: 0.9375rem;
     line-height: 1.45;

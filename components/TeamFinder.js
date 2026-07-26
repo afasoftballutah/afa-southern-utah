@@ -141,7 +141,7 @@ export default function TeamFinder({
             name; this way the caret sits where the name ends and the
             display face renders exactly as it does anywhere else. */}
         <span className="relative flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
-          <span className="truncate font-display text-lg text-afa-navy">
+          <span className="team-name truncate text-lg font-semibold">
             {selected || "Find your team"}
           </span>
           {selected && (record.w || record.l) > 0 && (
