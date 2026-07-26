@@ -39,10 +39,21 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
       const t = window.localStorage.getItem(`afa-team-${slug}`);
       if (t && summaries[t]) setTeam(t);
     } catch {
-      // private browsing — the card just stays generic
+      // private browsing — the card just stays unset
     }
   }, [slug, summaries]);
 
+  function pick(value) {
+    setTeam(value);
+    try {
+      if (value) window.localStorage.setItem(`afa-team-${slug}`, value);
+      else window.localStorage.removeItem(`afa-team-${slug}`);
+    } catch {
+      // still works for this visit, it just will not be remembered
+    }
+  }
+
+  const teams = Object.keys(summaries).sort((a, b) => a.localeCompare(b));
   const me = team ? summaries[team] : null;
   const href = me?.next?.divisionId
     ? `/tournaments/${slug}/division/${me.next.divisionId}${
@@ -54,16 +65,41 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
 
   return (
     <Card className="hover:border-afa-navy/50">
-      <Link href={href} className="flex flex-wrap items-center gap-x-4 gap-y-2 min-h-11">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* The title IS the picker — the same control the division page
+            uses, so setting your team in either place sets it in both. The
+            card cannot be one big link any more or tapping the title would
+            navigate instead of opening it; the summary on the right is the
+            door through. */}
         <div className="min-w-0 flex-1">
-          <p className="font-display text-lg text-afa-navy">{me ? me.team : "My Team"}</p>
+          <span className="relative inline-flex min-w-0 max-w-full items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
+            <span className="truncate font-display text-lg text-afa-navy">
+              {me ? me.team : "My Team"}
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-sm text-afa-navy/50">
+              ▾
+            </span>
+            <select
+              aria-label="Pick your team"
+              value={team}
+              onChange={(e) => pick(e.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              <option value="">Find your team</option>
+              {teams.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </span>
           <p className="text-xs text-afa-ink/60 mt-0.5">
-            {me ? "Tap for the full picture" : "Schedule and tournament updates"}
+            {me ? "Schedule and tournament updates" : "Tap to pick your team"}
           </p>
         </div>
 
         {me && (
-          <div className="flex items-center gap-3">
+          <Link href={href} className="flex min-h-11 items-center gap-3">
             {me.stage && (
               <span
                 className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
@@ -75,35 +111,41 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             )}
             {/* Their next game, or — once there is no next game — where
                 they finished. One of the two is always the answer. */}
-            <div className="text-right text-sm">
+            <span className="text-right text-sm">
               {me.next ? (
                 <>
-                  <p className="font-semibold text-afa-ink">
+                  <span className="block font-semibold text-afa-ink">
                     {me.next.opponent ? `vs ${me.next.opponent}` : me.next.label}
-                  </p>
-                  <p className="text-xs text-afa-muted">
+                  </span>
+                  <span className="block text-xs text-afa-muted">
                     {whenLabel(me.next.scheduledTime, timeZone)}
                     {me.next.field ? ` · ${String(me.next.field).replace(/^Field\s*/i, "F")}` : ""}
-                  </p>
+                    {me.w + me.l > 0 ? ` · ${me.w}\u2013${me.l}` : ""}
+                  </span>
                 </>
               ) : me.result ? (
                 <>
-                  <p className="font-semibold text-afa-ink">
+                  <span className="block font-semibold text-afa-ink">
                     {me.result.state === "champion"
                       ? "Champion"
                       : me.result.placement
                         ? `Finished ${me.result.placement}`
                         : "Done"}
-                  </p>
-                  <p className="text-xs text-afa-muted">{me.played} games played</p>
+                  </span>
+                  <span className="block text-xs text-afa-muted tabular-nums">
+                    {me.w}&ndash;{me.l}
+                  </span>
                 </>
               ) : (
-                <p className="text-xs text-afa-muted">No games scheduled</p>
+                <span className="block text-xs text-afa-muted">No games scheduled</span>
               )}
-            </div>
-          </div>
+            </span>
+            <span aria-hidden="true" className="text-afa-navy/50">
+              &rarr;
+            </span>
+          </Link>
         )}
-      </Link>
+      </div>
     </Card>
   );
 }
