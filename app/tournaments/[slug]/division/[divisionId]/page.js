@@ -420,7 +420,6 @@ export default async function DivisionPage({ params }) {
   const hasPlacements = placements.length > 0;
   const hasBracket = (division.brackets ?? []).length > 0;
   const poolGames = division.pool_games ?? [];
-  const hasPoolGames = poolGames.length > 0;
   // Chronological, then by the printed game number — the order the bracket
   // is actually played in.
   const bracketGames = [...(division.games ?? [])]
@@ -451,6 +450,18 @@ export default async function DivisionPage({ params }) {
   // who [D1] is. Without this a propagated name renders bare, which is
   // what it did until now.
   const seeds = await seedMapsFor(division, poolGames);
+
+  // Pool play belongs to the TOURNAMENT, not to whichever page you are
+  // standing on (JD, 2026-07-26: "when we click into a team we should see
+  // the record and games from the whole tournament"). A bracket child has
+  // no pool games of its own, so it reads its parent's — the same games
+  // its seeding came out of. Without this, a team's record and game list
+  // on the Gold page began at the bracket, as though Friday had not
+  // happened, and the Pool play tab had nothing to show.
+  const stagePoolGames = division.parent_division_id
+    ? await getPoolGames(division.parent_division_id)
+    : poolGames;
+  const hasPoolGames = stagePoolGames.length > 0;
   const teamStatus = await getTeamStatus(tournament.id);
 
   // The bracket children's own games, so this page can draw them inline
@@ -511,7 +522,7 @@ export default async function DivisionPage({ params }) {
   // team list below; if that leaves nothing real, no picker renders.
   const ownMoot = mootIfRounds(bracketGames);
   const finderGames = [
-    ...poolGames.map((g) => ({
+    ...stagePoolGames.map((g) => ({
       id: g.id,
       pool: g.pool,
       when: g.scheduled_time,
@@ -638,7 +649,7 @@ export default async function DivisionPage({ params }) {
           teamStatus={teamStatus}
           slug={slug}
           bracketLive={bracketLive}
-          poolPane={hasPoolGames ? <PoolPlaySection poolGames={poolGames} /> : null}
+          poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} /> : null}
           standingsPanes={Object.fromEntries(
             Object.entries(playableStageGames)
               .filter(([, list]) => list.length > 0)
