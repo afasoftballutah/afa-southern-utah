@@ -399,64 +399,51 @@ export default async function TournamentDetailPage({ params }) {
       )}
 
       {tournament.fb_album_url && (
-        <>
-          <div className="chalk-line" />
-          <div>
-            <h2 className="h-section mb-2">Photos</h2>
-            <a
-              href={tournament.fb_album_url}
-              target="_blank"
-              rel="noopener"
-              className="underline text-afa-navy"
-            >
-              Facebook album
-            </a>
-          </div>
-        </>
+        <Card className="space-y-2">
+          <h2 className="h-section">Photos</h2>
+          <a
+            href={tournament.fb_album_url}
+            target="_blank"
+            rel="noopener"
+            className="btn-quiet"
+          >
+            Facebook album
+          </a>
+        </Card>
       )}
 
       {contacts.length > 0 && (
-        <>
-          <div className="chalk-line" />
-          <div>
-            <h2 className="h-section mb-2">Contacts</h2>
-            <Card>
-              <div className="space-y-2">
-                {contacts.map((c, i) => {
-                  const sms = smsHref(c.phone);
-                  const tel = telHref(c.phone);
-                  const buttonClass =
-                    "rounded border border-afa-navy/25 bg-white px-3 py-2 text-sm font-bold text-afa-navy hover:border-afa-navy/60 min-h-11 flex items-center";
-                  // Name over number as a two-line block, buttons centered
-                  // against it (JD, 2026-07-24). Name and number on one line
-                  // made row height depend on name length — Joey's wrapped,
-                  // Frank's didn't, and the two rows stopped rhyming. Stacked,
-                  // every contact row is the same shape regardless of name.
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-afa-navy truncate">{c.name}</p>
-                        {c.phone && (
-                          <p className="text-sm text-afa-ink/70">{c.phone}</p>
-                        )}
-                      </div>
-                      {sms && tel && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <a href={sms} className={buttonClass}>
-                            Text
-                          </a>
-                          <a href={tel} className={buttonClass}>
-                            Call
-                          </a>
-                        </div>
-                      )}
+        <Card className="space-y-3">
+          <h2 className="h-section">Contacts</h2>
+          <div className="space-y-2">
+            {contacts.map((c, i) => {
+              const sms = smsHref(c.phone);
+              const tel = telHref(c.phone);
+              // Name over number as a two-line block, buttons centred
+              // against it (JD, 2026-07-24). Name and number on one line
+              // made row height depend on name length — Joey's wrapped,
+              // Frank's didn't, and the two rows stopped rhyming.
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-afa-navy truncate">{c.name}</p>
+                    {c.phone && <p className="text-sm text-afa-ink/70">{c.phone}</p>}
+                  </div>
+                  {sms && tel && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a href={sms} className="btn-quiet">
+                        Text
+                      </a>
+                      <a href={tel} className="btn-quiet">
+                        Call
+                      </a>
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </>
+        </Card>
       )}
     </div>
   );

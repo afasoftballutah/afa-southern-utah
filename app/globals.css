@@ -194,3 +194,37 @@ button {
   letter-spacing: 0.09em;
   color: var(--afa-navy);
 }
+
+/* ── Action buttons ─────────────────────────────────────────────────
+   Two weights, both pill-shaped, so a thing you can press looks the
+   same wherever it is (JD, 2026-07-26). Squared bordered boxes next to
+   pill segmented controls next to underlined links was three
+   vocabularies for one idea. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--afa-navy);
+  color: #fff;
+}
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #fff;
+  color: var(--afa-navy);
+  border: 1px solid rgba(30, 58, 110, 0.25);
+}
+.btn-quiet:hover { border-color: rgba(30, 58, 110, 0.6); }
