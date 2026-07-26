@@ -881,7 +881,19 @@ export default function DrawnBracket({ games, division, seeds }) {
           </button>
         </div>
       )}
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
+      {/* The bracket sits on WHITE, not on the page's cream. The tinted
+          matchup cards and the drop colours were both chosen against a
+          white ground, and on cream the pale end of the spectrum washes
+          out. It also gives the drawing an edge to stop against instead
+          of bleeding into the page. Full-bleed on a phone, a panel from
+          sm up. */}
+      <div
+        className="-mx-4 sm:mx-0 bg-white sm:rounded-xl overflow-x-auto px-4 py-4"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          boxShadow: "0 1px 2px rgba(22,35,61,.05), 0 10px 26px -18px rgba(22,35,61,.5)",
+        }}
+      >
         <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
         {/* Drops go UNDER the advancement lines: where the two share a
             gutter, the solid line should be the one you read. Both sit

@@ -376,14 +376,14 @@ export default async function DivisionPage({ params }) {
         ← {parentName ?? tournament.name}
       </Link>
 
+      {/* One line, not three. The back link directly above already names
+          where you came from — the parent division on a bracket page, the
+          tournament everywhere else — so repeating it in the heading said
+          "Coed" twice in two inches, and the tournament-and-day line under
+          it said a third thing nobody came here to read. Both are one tap
+          away on the page that link goes to. */}
       <div className="text-center">
-        <h1 className="font-display text-2xl text-afa-navy">
-          {parentName ? `${parentName} · ${renderedName}` : renderedName}
-        </h1>
-        <p className="text-sm text-afa-ink/70">
-          {tournament.name}
-          {division.day_label && ` · ${division.day_label}`}
-        </p>
+        <h1 className="font-display text-2xl text-afa-navy">{renderedName}</h1>
       </div>
 
       {finderTeams.length > 0 && (
@@ -430,12 +430,13 @@ export default async function DivisionPage({ params }) {
           brief-15) — these brackets are irregular (byes from 9/10-entrant
           pools), which breaks the halving math BracketTree/tree.js rely on,
           so this is a separate renderer rather than a variant of that one. */}
+      {/* No heading and no explainer here: "Brackets" already sits above the
+          Gold/Silver/Bronze picker a few pixels up, so a second "Bracket"
+          heading named the same thing twice, and the drawing itself says it
+          is drawn and scheduled — every game carries its time, its field
+          and its provenance. */}
       {!hasBracket && bracketGames.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-bold text-afa-navy">Bracket</h2>
-          <p className="text-sm text-afa-ink/70">
-            Drawn and scheduled. Team names fill in as pool play finishes.
-          </p>
+        <div>
           <DrawnBracket games={bracketGames} division={division?.name} seeds={seeds} />
         </div>
       )}

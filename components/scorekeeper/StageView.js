@@ -20,7 +20,12 @@ import DrawnBracket from "@/components/bracket/DrawnBracket";
 function ConfirmRail({ open, title, detail, action, onCancel, onGo, busy }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-afa-navy text-white shadow-[0_-12px_40px_-14px_rgba(22,35,61,.55)]">
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-x-0 bottom-0 z-50 bg-afa-navy text-white shadow-[0_-12px_40px_-14px_rgba(22,35,61,.55)]"
+    >
       <div className="mx-auto max-w-3xl px-4 py-3 flex flex-wrap items-center gap-3">
         <div className="min-w-0">
           <p className="font-semibold">{title}</p>
@@ -37,6 +42,7 @@ function ConfirmRail({ open, title, detail, action, onCancel, onGo, busy }) {
           </button>
           <button
             type="button"
+            data-rail-go
             onClick={onGo}
             disabled={busy}
             className="rounded-full bg-white px-4 font-semibold text-afa-navy disabled:opacity-50"
