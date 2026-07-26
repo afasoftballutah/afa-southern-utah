@@ -14,7 +14,7 @@ export const metadata = { title: "Rules — AFA Southern Utah" };
 export default function RulesPage() {
   return (
     <div className="space-y-4">
-      <h1 className="h-page">Rules</h1>
+      <h1 className="t-title">Rules</h1>
       <p className="text-sm text-afa-ink/70">
         {RULES_SOURCE.title} ({RULES_SOURCE.year}) —{" "}
         <a

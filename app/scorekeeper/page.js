@@ -48,7 +48,7 @@ function TournamentList({ groups }) {
     <div className="space-y-5">
       {groups.map((group) => (
         <section key={group.region}>
-          <h2 className="h-sub text-afa-muted mb-1">
+          <h2 className="t-label mb-1">
             {group.label}
           </h2>
           {group.tournaments.map((t, i) => (
@@ -108,7 +108,7 @@ export default async function ScorekeeperPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="h-page">Scorekeeper</h1>
+        <h1 className="t-title">Scorekeeper</h1>
       </div>
       <PullResults />
       {upcoming.length === 0 && pastCount === 0 ? (

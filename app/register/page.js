@@ -27,7 +27,7 @@ export default async function RegisterPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="h-page">Register a Team</h1>
+      <h1 className="t-title">Register a Team</h1>
       {registerable.length === 0 ? (
         <div className="text-center space-y-2 py-6">
           <p className="font-semibold text-afa-navy">

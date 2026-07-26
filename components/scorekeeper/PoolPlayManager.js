@@ -128,7 +128,7 @@ export default function PoolPlayManager({ divisionId, poolGames, readOnly = fals
 
   return (
     <div className="card p-4 space-y-4">
-      <h2 className="h-section">Pool Play</h2>
+      <h2 className="t-heading">Pool Play</h2>
 
       <div className="space-y-2">
         <select
@@ -168,7 +168,7 @@ export default function PoolPlayManager({ divisionId, poolGames, readOnly = fals
 
       {groups.map((group) => (
         <div key={group.time ?? "__tbd__"} className="space-y-1">
-          <h3 className="text-sm h-section">
+          <h3 className="text-sm t-heading">
             {group.heading} <span className="font-normal text-afa-ink/50">({group.games.length} game{group.games.length === 1 ? "" : "s"})</span>
           </h3>
           <div className="divide-y divide-afa-navy/10">

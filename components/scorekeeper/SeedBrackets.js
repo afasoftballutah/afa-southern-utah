@@ -66,7 +66,7 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, propose
   return (
     <Card className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="h-sub">Pool {letter}</h3>
+        <h3 className="t-label">Pool {letter}</h3>
         <span
           className={`flex items-center gap-1.5 text-[11px] font-semibold ${
             readOnly ? "font-bold text-afa-navy" : "text-afa-muted"
@@ -589,7 +589,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
   if (!result) {
     return (
       <div className="card p-4 space-y-2">
-        <h2 className="h-section">Seed Brackets</h2>
+        <h2 className="t-heading">Seed Brackets</h2>
         <p className="text-sm text-afa-ink/60">Loading pool standings…</p>
       </div>
     );
@@ -658,7 +658,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
   return (
     <div className="card p-4 space-y-4">
       <div className="flex flex-wrap items-baseline gap-3">
-        <h2 className="h-section">Seed Brackets</h2>
+        <h2 className="t-heading">Seed Brackets</h2>
         <span className="ml-auto text-[12.5px] text-afa-muted">
           {filtering
             ? `${shownGames} game${shownGames === 1 ? "" : "s"} in ${shownLetters.length} pool${
@@ -692,7 +692,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
       {swaps.length > 0 && (
         <div className="rounded-xl bg-white shadow-sm">
           <div className="flex items-center gap-2 border-b border-afa-navy/10 px-4 py-3">
-            <h3 className="h-sub">Swaps this session</h3>
+            <h3 className="t-label">Swaps this session</h3>
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-afa-navy px-1.5 text-[11px] font-bold text-white">
               {swaps.length}
             </span>

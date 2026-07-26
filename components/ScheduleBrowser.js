@@ -178,7 +178,7 @@ function ByTimeView({ rows }) {
       {groups.map((group) => (
         <div key={group.time ?? "__tbd__"} className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="h-section">{group.heading}</h2>
+            <h2 className="t-heading">{group.heading}</h2>
             <Chip variant="muted">
               {group.games.length} game{group.games.length === 1 ? "" : "s"}
             </Chip>

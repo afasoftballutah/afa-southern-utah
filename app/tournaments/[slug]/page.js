@@ -196,7 +196,7 @@ export default async function TournamentDetailPage({ params }) {
 
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 flex-wrap">
-          <h1 className="h-page">{tournament.name}</h1>
+          <h1 className="t-title">{tournament.name}</h1>
           {tournament.status === "complete" && <Chip variant="muted">Final</Chip>}
         </div>
         {/* The calendar link lives on the DATES now (JD, 2026-07-26). It
@@ -207,18 +207,18 @@ export default async function TournamentDetailPage({ params }) {
             it (JD, 2026-07-26): the fields take you to directions, the
             dates put the tournament in your calendar. The separate
             Directions door below is gone — this IS it. */}
-        <p className="text-sm text-afa-ink/70 mt-1">
+        <p className="t-meta mt-1">
           {tournament.venue_name && (
             <>
-              <a href={directionsHref} className="underline text-afa-navy">
+              <a href={directionsHref} className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2">
                 {tournament.venue_name}
               </a>
-              <span aria-hidden="true" className="px-2 text-afa-ink/30">
+              <span aria-hidden="true" className="px-2 text-afa-muted">
                 |
               </span>
             </>
           )}
-          <a href={`/tournaments/${tournament.slug}/calendar.ics`} className="underline text-afa-navy">
+          <a href={`/tournaments/${tournament.slug}/calendar.ics`} className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2">
             {dateRange}
           </a>
         </p>
@@ -244,8 +244,8 @@ export default async function TournamentDetailPage({ params }) {
         <div className="space-y-3">
           {groupCards.length > 1 && (
             <div>
-              <h2 className="h-section">My Team</h2>
-              <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
+              <h2 className="t-heading">My Team</h2>
+              <p className="t-meta">Schedule and tournament updates</p>
             </div>
           )}
           {groupCards.length === 1 ? (
@@ -265,9 +265,7 @@ export default async function TournamentDetailPage({ params }) {
                   <p className="font-display text-lg text-afa-navy group-hover:underline">
                     {division.display_name ?? division.name}
                   </p>
-                  <p className="text-xs text-afa-ink/60 mt-0.5">
-                    Schedule and tournament updates
-                  </p>
+                  <p className="t-meta mt-0.5">Schedule and tournament updates</p>
                 </Link>
               </Card>
             ))
@@ -294,7 +292,7 @@ export default async function TournamentDetailPage({ params }) {
           site-wide "Register a Team" button is untouched and out of scope. */}
       {hasRegistrationBlock && !hasSchedule && (
         <Card className="space-y-3">
-          <h2 className="h-section">Registration</h2>
+          <h2 className="t-heading">Registration</h2>
           <div>
             {registrationClosed ? (
               <>
@@ -342,15 +340,15 @@ export default async function TournamentDetailPage({ params }) {
           Omitted entirely if every part is empty. */}
       {hasSpecifics && (
         <Card>
-          <h2 className="h-section">Specifics</h2>
+          <h2 className="t-heading">Specifics</h2>
 
           {numberRows.length > 0 && (
             <>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
                 {numberRows.map(([label, value]) => (
                   <Fragment key={label}>
-                    <span className="font-semibold">{label}</span>
-                    <span>{value}</span>
+                    <span className="t-strong">{label}</span>
+                    <span className="t-body">{value}</span>
                   </Fragment>
                 ))}
               </div>
@@ -359,10 +357,10 @@ export default async function TournamentDetailPage({ params }) {
 
           {divisionNotesLines.length > 0 && (
             <>
-              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
+              <h3 className="t-label mt-3 first:mt-0">
                 Divisions
               </h3>
-              <div className="text-sm space-y-1">
+              <div className="t-body space-y-1">
                 {divisionNotesLines.map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
@@ -372,10 +370,10 @@ export default async function TournamentDetailPage({ params }) {
 
           {prizesLines.length > 0 && (
             <>
-              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
+              <h3 className="t-label mt-3 first:mt-0">
                 Prizes
               </h3>
-              <div className="text-sm space-y-1">
+              <div className="t-body space-y-1">
                 {prizesLines.map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
@@ -385,10 +383,10 @@ export default async function TournamentDetailPage({ params }) {
 
           {specialRulesLines.length > 0 && (
             <>
-              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
+              <h3 className="t-label mt-3 first:mt-0">
                 Tournament rules
               </h3>
-              <div className="text-sm space-y-1">
+              <div className="t-body space-y-1">
                 {specialRulesLines.map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
@@ -400,7 +398,7 @@ export default async function TournamentDetailPage({ params }) {
 
       {tournament.fb_album_url && (
         <Card className="space-y-2">
-          <h2 className="h-section">Photos</h2>
+          <h2 className="t-heading">Photos</h2>
           <a
             href={tournament.fb_album_url}
             target="_blank"
@@ -414,7 +412,7 @@ export default async function TournamentDetailPage({ params }) {
 
       {contacts.length > 0 && (
         <Card className="space-y-3">
-          <h2 className="h-section">Contacts</h2>
+          <h2 className="t-heading">Contacts</h2>
           <div className="space-y-2">
             {contacts.map((c, i) => {
               const sms = smsHref(c.phone);
@@ -426,8 +424,8 @@ export default async function TournamentDetailPage({ params }) {
               return (
                 <div key={i} className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-afa-navy truncate">{c.name}</p>
-                    {c.phone && <p className="text-sm text-afa-ink/70">{c.phone}</p>}
+                    <p className="t-strong truncate">{c.name}</p>
+                    {c.phone && <p className="t-meta">{c.phone}</p>}
                   </div>
                   {sms && tel && (
                     <div className="flex items-center gap-2 shrink-0">

@@ -161,7 +161,7 @@ function PoolPlaySection({ poolGames }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="h-section">Pool Play</h2>
+      <h2 className="t-heading">Pool Play</h2>
       {/* Cards find their own width at a 372px minimum rather than being
           forced three across — three-up left the name column ~73px, which
           is what was cutting "Band of Randoms" to "Band of R...". */}
@@ -173,7 +173,7 @@ function PoolPlaySection({ poolGames }) {
           return (
             <Card key={letter} className="space-y-2">
               <div className="flex items-baseline justify-between gap-2 pb-2">
-                <h3 className="h-sub">
+                <h3 className="t-label">
                   Pool {letter}
                 </h3>
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold text-afa-muted">
@@ -323,7 +323,7 @@ function StandingsPanel({ name, rows }) {
   return (
     <div className="card">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 pt-3 pb-2">
-        <h2 className="h-section">{name} standings</h2>
+        <h2 className="t-heading">{name} standings</h2>
         <span className="text-[11px] text-afa-muted">
           {settled === rows.length
             ? "Final"

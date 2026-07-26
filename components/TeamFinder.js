@@ -174,7 +174,7 @@ export default function TeamFinder({
           <div className="flex shrink-0 items-center gap-1.5">
             {!isOut && !isChampion && myStage && (
               <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                className={`t-label rounded-full px-2.5 py-1 ${
                   TIER_CHIP[myStage.name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
                 }`}
               >
@@ -183,7 +183,7 @@ export default function TeamFinder({
             )}
             {(isOut || isChampion) && (
               <span
-                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
+                className={`t-label whitespace-nowrap rounded-full px-2 py-1 ${
                   TIER_CHIP[status.bracket_name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
                 }`}
               >

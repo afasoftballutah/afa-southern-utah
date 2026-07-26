@@ -121,7 +121,7 @@ export default async function ScorekeeperDivisionPage({ params }) {
     <div className="space-y-4">
       <div>
         <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
-        <h1 className="h-page">{data.division.name}</h1>
+        <h1 className="t-title">{data.division.name}</h1>
       </div>
       {data.poolGames.length > 0 && (
         <StageView

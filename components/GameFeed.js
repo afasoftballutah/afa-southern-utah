@@ -30,13 +30,11 @@ function Row({ g, played }) {
 
   const side = (name, score, won) => (
     <div className="grid grid-cols-[minmax(0,1fr)_28px] items-center gap-2">
-      <span className={`truncate text-sm ${won ? "font-bold text-afa-ink" : "text-afa-ink/[0.72]"}`}>
+      <span className={`truncate ${won ? "t-strong" : "t-body"}`}>
         {name ?? "TBD"}
       </span>
       <span
-        className={`text-right text-sm tabular-nums ${
-          won ? "font-bold text-afa-ink" : "text-afa-ink/60"
-        }`}
+        className={`text-right tabular-nums ${won ? "t-strong" : "t-body"}`}
       >
         {played ? score : ""}
       </span>
@@ -47,8 +45,8 @@ function Row({ g, played }) {
     <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5">
       {/* Where and when, in a fixed column so they line up down the list
           and can be read at a glance from a car park. */}
-      <div className="text-[11px] leading-tight text-afa-muted">
-        <div className="font-bold text-afa-ink/60">{fieldShort(g.field)}</div>
+      <div className="t-meta leading-tight">
+        <div className="font-bold">{fieldShort(g.field)}</div>
         <div>{g.whenDay}</div>
         <div>{g.whenTime}</div>
       </div>
@@ -66,7 +64,7 @@ function Row({ g, played }) {
       href={to}
       className={`${shell} transition card-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
     >
-      <p className="px-3 pt-2 text-[10.5px] font-bold uppercase tracking-wide text-afa-muted">
+      <p className="t-label px-3 pt-2">
         {[g.divisionName, g.label].filter(Boolean).join(" · ")}
       </p>
       {body}
@@ -85,8 +83,8 @@ export default function GameFeed({ results = [], upcoming = [] }) {
 
   return (
     <Card className="space-y-3">
-      <h2 className="h-section">Schedule</h2>
-      <div className="inline-flex gap-0.5 rounded-full bg-afa-navy/5 p-0.5">
+      <h2 className="t-heading">Schedule</h2>
+      <div className="seg">
         {[
           ["results", `Results${results.length ? ` (${results.length})` : ""}`],
           ["next", `Next${upcoming.length ? ` (${upcoming.length})` : ""}`],
@@ -96,9 +94,6 @@ export default function GameFeed({ results = [], upcoming = [] }) {
             type="button"
             aria-expanded={tab === key}
             onClick={() => setTab((v) => (v === key ? null : key))}
-            className={`min-h-11 rounded-full px-4 text-sm font-semibold ${
-              tab === key ? "bg-white text-afa-navy shadow-sm" : "text-afa-ink/70"
-            }`}
           >
             {label}
           </button>
@@ -107,7 +102,7 @@ export default function GameFeed({ results = [], upcoming = [] }) {
 
       {tab &&
         (shown.length === 0 ? (
-          <p className="text-sm text-afa-ink/70">
+          <p className="t-body">
             {tab === "next" ? "Nothing left to play." : "No results yet."}
           </p>
         ) : (

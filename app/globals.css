@@ -63,100 +63,157 @@ button {
  *   POSTER   the one thing that is a picture, not a component
  * ============================================================ */
 
-/* ── Type ───────────────────────────────────────────────────────────
-   ONE recipe for the display face — Anton, upright caps, its own
-   single weight — used at three sizes. Nothing else varies.
+@layer components {
+  /* ── Type ───────────────────────────────────────────────────────────
+     SIX styles, and every word on the site is one of them (JD,
+     2026-07-26: "there are so many fonts and sizes and embellishments
+     here just on this one page! needs to be CONSOLIDATED").
 
-   Anton ships one weight (400). Asking for 700 makes the browser
-   SYNTHESISE a bold, which smears the letterforms sideways — that is
-   what made the section headings look smooshed next to the team
-   dropdown when they were meant to be the same face. Weight is set
-   here, once, so nothing can ask for a weight that does not exist. */
-.font-display,
-.h-page,
-.h-section {
-  font-family: var(--font-display);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  color: var(--afa-navy);
-}
-.h-page {
-  font-size: 1.5rem;
-  line-height: 1.15;
-}
-.h-section {
-  font-size: 1.125rem;
-  line-height: 1.25;
-}
-/* The one non-display label: the small caps line above a group of
-   rows. Deliberately the body face — it is a caption, not a title. */
-.h-sub {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--afa-navy);
-}
+     Before this there were fourteen on the tournament page alone — six
+     sizes, four weights, and the muted grey appearing as FIVE different
+     values because each call site reached for a different opacity
+     modifier (/.3, /.5, /.6, /.7) instead of the token. Opacity is how a
+     palette becomes a gradient nobody chose.
 
-/* ── Card ───────────────────────────────────────────────────────────
-   One surface. It floats; it never draws a rule to prove it is a card.
-   The lift is the same one the bracket's own game cards carry. */
-.card {
-  background: #fff;
-  border-radius: 0.75rem;
-  box-shadow:
-    0 1px 2px rgba(22, 35, 61, 0.05),
-    0 10px 26px -18px rgba(22, 35, 61, 0.5);
-}
-.card-lift:hover {
-  box-shadow:
-    0 1px 2px rgba(22, 35, 61, 0.06),
-    0 14px 30px -16px rgba(22, 35, 61, 0.55);
-}
+       .t-title    the page. Display face.
+       .t-heading  a section, or a name. Display face, one step down.
+       .t-body     content.
+       .t-strong   content that labels other content, or a name in a list.
+       .t-meta     secondary — times, phone numbers, the line under a title.
+       .t-label    the small caps line above a group of rows.
 
-/* ── Button ─────────────────────────────────────────────────────────
-   One pill, two weights. Loud is navy on white; quiet is the outline.
-   Segmented controls are the same pill, grouped on a tinted track. */
-.btn,
-.btn-quiet {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.btn {
-  background: var(--afa-navy);
-  color: #fff;
-}
-.btn-quiet {
-  background: #fff;
-  color: var(--afa-navy);
-  border: 1px solid rgba(30, 58, 110, 0.25);
-}
-.btn-quiet:hover {
-  border-color: rgba(30, 58, 110, 0.6);
-}
+     Anton ships ONE weight. Asking for 700 makes the browser synthesise a
+     bold and smear the letterforms, which is why the headings once looked
+     like a denser font than the team dropdown. Weight is set here so
+     nothing can ask for one that does not exist. */
+  .font-display,
+  .t-title,
+  .t-heading {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    color: var(--afa-navy);
+  }
+  .t-title {
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+  .t-heading {
+    font-size: 1.125rem;
+    line-height: 1.25;
+  }
+  .t-body {
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--afa-ink);
+  }
+  .t-strong {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--afa-ink);
+  }
+  .t-meta {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--afa-muted);
+  }
+  .t-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--afa-muted);
+  }
 
-/* ── Poster ─────────────────────────────────────────────────────────
-   The season flyer, pinned to a board. Never cropped, never screened
-   behind text. */
-.poster-frame {
-  background: #fff;
-  border: 1px solid rgba(30, 58, 110, 0.25);
-  box-shadow: 0 6px 16px rgba(22, 35, 61, 0.18);
-  padding: 0.5rem;
-}
-.poster-frame img {
-  display: block;
-  width: 100%;
-  height: auto;
-  object-fit: contain;
+
+
+  /* ── Card ───────────────────────────────────────────────────────────
+     One surface. It floats; it never draws a rule to prove it is a card.
+     The lift is the same one the bracket's own game cards carry. */
+  .card {
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow:
+      0 1px 2px rgba(22, 35, 61, 0.05),
+      0 10px 26px -18px rgba(22, 35, 61, 0.5);
+  }
+  .card-lift:hover {
+    box-shadow:
+      0 1px 2px rgba(22, 35, 61, 0.06),
+      0 14px 30px -16px rgba(22, 35, 61, 0.55);
+  }
+
+  /* Segmented control — the same pill and the same voice as .btn, grouped
+     on a tinted track. It was 14/600 in its own shade of grey, which is a
+     sixth style for a thing that is just a button among buttons. */
+  .seg {
+    display: inline-flex;
+    gap: 2px;
+    border-radius: 999px;
+    background: rgba(30, 58, 110, 0.05);
+    padding: 2px;
+  }
+  .seg > button {
+    min-height: 44px;
+    padding: 0 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--afa-muted);
+  }
+  .seg > button[aria-current="true"],
+  .seg > button[aria-expanded="true"] {
+    background: #fff;
+    color: var(--afa-navy);
+    box-shadow: 0 1px 2px rgba(22, 35, 61, 0.12);
+  }
+
+  /* ── Button ─────────────────────────────────────────────────────────
+     One pill, two weights. Loud is navy on white; quiet is the outline.
+     Segmented controls are the same pill, grouped on a tinted track. */
+  .btn,
+  .btn-quiet {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .btn {
+    background: var(--afa-navy);
+    color: #fff;
+  }
+  .btn-quiet {
+    background: #fff;
+    color: var(--afa-navy);
+    border: 1px solid rgba(30, 58, 110, 0.25);
+  }
+  .btn-quiet:hover {
+    border-color: rgba(30, 58, 110, 0.6);
+  }
+
+  /* ── Poster ─────────────────────────────────────────────────────────
+     The season flyer, pinned to a board. Never cropped, never screened
+     behind text. */
+  .poster-frame {
+    background: #fff;
+    border: 1px solid rgba(30, 58, 110, 0.25);
+    box-shadow: 0 6px 16px rgba(22, 35, 61, 0.18);
+    padding: 0.5rem;
+  }
+  .poster-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
 }
 
 /* Print: the bracket, in black, with nothing else. */

@@ -138,7 +138,7 @@ export default function DivisionView({
       {(showToggle || (stage === "bracket" && hasBracket)) && (
         <div className="flex flex-wrap items-center gap-2">
           {showToggle && (
-            <div className="inline-flex gap-0.5 rounded-full bg-afa-navy/5 p-0.5">
+            <div className="seg">
               {[
                 ["pools", "Pool play"],
                 ["bracket", "Bracket"],
@@ -151,10 +151,7 @@ export default function DivisionView({
                     setStage(key);
                     setTouched(true);
                   }}
-                  className={`min-h-11 rounded-full px-4 text-sm font-semibold ${
-                    stage === key ? "bg-white text-afa-navy shadow-sm" : "text-afa-ink/70"
-                  }`}
-                >
+                      >
                   {label}
                 </button>
               ))}
@@ -164,7 +161,7 @@ export default function DivisionView({
           {stage === "bracket" && hasBracket && (
             <>
               {stages.length > 1 && (
-                <div className="inline-flex gap-0.5 rounded-full bg-afa-navy/5 p-0.5">
+                <div className="seg">
                   {stages
                     .filter((st) => bracketPanes[st.id])
                     .map((st) => {

@@ -84,18 +84,18 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             door through. */}
         <div className="min-w-0 flex-1">
           <span className="pointer-events-auto relative inline-flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
-            <span className="truncate font-display text-lg text-afa-navy">
+            <span className="t-heading truncate">
               {me ? me.team : "My Team"}
             </span>
             {/* Same line as the division page's header — name, record,
                 caret — so a team reads identically in both places (JD,
                 2026-07-26). */}
             {me && me.w + me.l > 0 && (
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-afa-ink/45">
+              <span className="t-meta shrink-0 tabular-nums">
                 ({me.w}&ndash;{me.l})
               </span>
             )}
-            <span aria-hidden="true" className="shrink-0 text-sm text-afa-navy/50">
+            <span aria-hidden="true" className="t-meta shrink-0">
               ▾
             </span>
             <select
@@ -115,7 +115,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
               ))}
             </select>
           </span>
-          <p className="text-xs text-afa-ink/60 mt-0.5">
+          <p className="t-meta mt-0.5">
             {me ? "Schedule and tournament updates" : "Tap to pick your team"}
           </p>
         </div>
@@ -124,8 +124,8 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
           <div className="flex min-h-11 items-center gap-3">
             {me.stage && (
               <span
-                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
-                  TIER[me.stage] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
+                className={`t-label whitespace-nowrap rounded-full px-2 py-1 ${
+                  TIER[me.stage] ?? "bg-afa-navy/[0.07]"
                 }`}
               >
                 {me.stage}
@@ -133,20 +133,20 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             )}
             {/* Their next game, or — once there is no next game — where
                 they finished. One of the two is always the answer. */}
-            <span className="text-right text-sm">
+            <span className="text-right">
               {me.next ? (
                 <>
-                  <span className="block font-semibold text-afa-ink">
+                  <span className="t-strong block">
                     {me.next.opponent ? `vs ${me.next.opponent}` : me.next.label}
                   </span>
-                  <span className="block text-xs text-afa-muted">
+                  <span className="t-meta block">
                     {whenLabel(me.next.scheduledTime, timeZone)}
                     {me.next.field ? ` · ${String(me.next.field).replace(/^Field\s*/i, "F")}` : ""}
                   </span>
                 </>
               ) : me.result ? (
                 <>
-                  <span className="block font-semibold text-afa-ink">
+                  <span className="t-strong block">
                     {me.result.state === "champion"
                       ? "Champion"
                       : me.result.placement
@@ -156,10 +156,10 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
 
                 </>
               ) : (
-                <span className="block text-xs text-afa-muted">No games scheduled</span>
+                <span className="t-meta block">No games scheduled</span>
               )}
             </span>
-            <span aria-hidden="true" className="text-afa-navy/50">
+            <span aria-hidden="true" className="t-meta">
               &rarr;
             </span>
           </div>

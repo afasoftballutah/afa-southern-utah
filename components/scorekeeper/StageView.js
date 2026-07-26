@@ -110,7 +110,7 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <div className="inline-flex gap-0.5 rounded-full bg-afa-navy/5 p-0.5">
+        <div className="seg">
           {[
             ["pools", confirmed ? "Pool play 🔒" : "Pool play"],
             ["bracket", "Bracket"],
@@ -121,11 +121,6 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
               aria-current={stage === key}
               disabled={key === "bracket" && !stages?.length}
               onClick={() => setStage(key)}
-              className={[
-                "rounded-full px-4 text-sm font-semibold min-h-11",
-                stage === key ? "bg-white text-afa-navy shadow-sm" : "text-afa-ink/70",
-                key === "bracket" && !stages?.length ? "opacity-40" : "",
-              ].join(" ")}
             >
               {label}
             </button>

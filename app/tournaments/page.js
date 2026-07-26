@@ -10,7 +10,7 @@ export default async function TournamentsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="h-page">Tournaments</h1>
+      <h1 className="t-title">Tournaments</h1>
       <TournamentBrowser groups={groups} />
     </div>
   );
