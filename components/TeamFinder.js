@@ -180,17 +180,29 @@ export default function TeamFinder({
             )}
             {(isOut || isChampion) && (
               <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
                   TIER_CHIP[status.bracket_name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
                 }`}
               >
-                {[status.bracket_name, status.placement && `${status.placement} Place`]
-                  .filter(Boolean)
-                  .join(" \u00b7 ") || "No more games"}
+                {/* "Bronze · 7th", not "Bronze · 7th Place" (JD,
+                    2026-07-26). The word "Place" was pushing the team's
+                    own name off the header on a phone. */}
+                {[status.bracket_name, status.placement].filter(Boolean).join(" ") ||
+                  "No more games"}
               </span>
             )}
+            {/* One letter in a square rather than the whole word. Said in
+                full to a screen reader, and on hover. */}
             {isOut || isChampion ? (
-              <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
+              <span
+                title={isChampion ? "Champion" : "Eliminated"}
+                className={`flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold ${
+                  isChampion ? "bg-[#f7edcd] text-[#7a5c12]" : "bg-afa-navy/[0.09] text-afa-ink/60"
+                }`}
+              >
+                <span aria-hidden="true">{isChampion ? "C" : "E"}</span>
+                <span className="sr-only">{isChampion ? "Champion" : "Eliminated"}</span>
+              </span>
             ) : (
               !myStage &&
               pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
