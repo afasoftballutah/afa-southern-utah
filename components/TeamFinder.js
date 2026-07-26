@@ -30,6 +30,12 @@ export default function TeamFinder({
 }) {
   const [selected, setSelected] = useState("");
   const [showAllBrackets, setShowAllBrackets] = useState(false);
+  // webcal:// is what makes a calendar client SUBSCRIBE instead of
+  // downloading a frozen copy, and it needs an absolute host — which only
+  // exists after mount. Until then the link is the plain https path,
+  // which still works, it just downloads.
+  const [host, setHost] = useState(null);
+  useEffect(() => setHost(window.location.host), []);
 
   // Restore the remembered pick on mount. If it no longer names a real
   // team (roster change, wrong division), clear the stale key instead of
@@ -182,6 +188,24 @@ export default function TeamFinder({
               <p className="text-sm text-afa-ink/70">No games scheduled yet.</p>
             )}
           </div>
+
+          {/* Subscribe, not download. A field change, a rain delay, a
+              bracket game whose opponent only exists once pool play is
+              applied — all of it updates in your calendar by itself.
+              Downloading gets you tonight's schedule frozen. */}
+          {slug && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <a
+                href={`${host ? `webcal://${host}` : ""}/tournaments/${slug}/games.ics?team=${encodeURIComponent(selected)}`}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
+              >
+                Subscribe to {selected}&rsquo;s games
+              </a>
+              <span className="text-xs text-afa-ink/60">
+                Adds to your calendar and keeps itself up to date.
+              </span>
+            </div>
+          )}
 
           <button
             type="button"
