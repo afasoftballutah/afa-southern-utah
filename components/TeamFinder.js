@@ -207,8 +207,11 @@ export default function TeamFinder({
                 </div>
               ) : (
                 /* Collapsed, a team's season is a column of results you can
-                   read in one go: when, who they played, and how it
-                   finished. The field is what expands (JD, 2026-07-26). */
+                   read in one go: day, time, field, opponent, result — all
+                   of it lined up in fixed columns. JD, 2026-07-26: the
+                   time and field and day were "essential for people
+                   knowing where they played", so they are on every row
+                   rather than behind the expander. */
                 <ul className="divide-y divide-afa-navy/10">
                   {teamGames.map((g) => {
                     const won =
@@ -231,6 +234,9 @@ export default function TeamFinder({
                         <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                           <span className="text-afa-ink/50">vs </span>
                           {opponent}
+                        </span>
+                        <span className="w-[52px] shrink-0 whitespace-nowrap text-right text-xs text-afa-muted">
+                          {g.field ? g.field.replace(/^Field\s*/i, "F") : ""}
                         </span>
                         {g.isFinal ? (
                           <span className="flex items-center gap-2 whitespace-nowrap">
@@ -260,7 +266,7 @@ export default function TeamFinder({
                           </span>
                         ) : (
                           <span className="whitespace-nowrap text-xs font-semibold text-afa-navy">
-                            Up next
+                            Scheduled
                           </span>
                         )}
                       </li>
@@ -298,7 +304,7 @@ export default function TeamFinder({
                 onClick={() => setDetails((v) => !v)}
                 className="min-h-11 text-sm text-afa-navy underline"
               >
-                {details ? "Hide details" : "Show fields"}
+                {details ? "Hide details" : "Show details"}
               </button>
             )}
             <button
