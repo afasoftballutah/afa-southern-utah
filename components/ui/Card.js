@@ -1,15 +1,16 @@
-// Card — the ticket/program-entry family (component grammar, phase 1).
-// default: thin navy top rule, the box family established in the bracket
-// tree spec. navy: solid navy ground, no top rule — the navy IS the weight.
+// Card — the one surface.
+//
+// It floats. It does not draw a rule to prove it is a card: the dark top
+// border that used to sit on every card on every page was a stripe
+// announcing itself (JD, 2026-07-26: "AI tell"). The lift is the same one
+// the bracket's own game cards carry, so one grammar covers both.
+//
+// The look itself lives in .card in globals.css — this only chooses the
+// ground and the padding.
 
 const VARIANTS = {
-  // Floating, not ruled. The dark top border was on every card on
-  // every page — a stripe announcing "this is a card" rather than
-  // letting the card be one (JD, 2026-07-26: "AI tell"). Same lift
-  // the bracket's own game cards have, so one grammar covers both.
-  default:
-    "bg-white rounded-xl p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]",
-  navy: "bg-afa-navy text-white rounded-xl p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]",
+  default: "card p-4",
+  navy: "card p-4 bg-afa-navy text-white",
 };
 
 export default function Card({ variant = "default", className = "", children }) {

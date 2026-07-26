@@ -127,7 +127,7 @@ export default function PoolPlayManager({ divisionId, poolGames, readOnly = fals
   const filteredCount = groups.reduce((sum, g) => sum + g.games.length, 0);
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-4">
+    <div className="card p-4 space-y-4">
       <h2 className="h-section">Pool Play</h2>
 
       <div className="space-y-2">

@@ -56,7 +56,7 @@ export default function BracketManager({
 
   if (!mainBracket) {
     return (
-      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-3">
+      <div className="card p-4 space-y-3">
         <p className="text-sm text-afa-ink/70">
           {teamNames.length} team{teamNames.length === 1 ? "" : "s"} registered. No bracket yet.
         </p>

@@ -70,14 +70,14 @@ export default function PlacementsUpload({ divisionId, completion }) {
 
   if (done) {
     return (
-      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">
+      <div className="card p-4">
         <p className="font-semibold text-afa-navy">Champion and runner-up recorded.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-3">
+    <div className="card p-4 space-y-3">
       <h2 className="h-section">Record Champion &amp; Runner-Up</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">

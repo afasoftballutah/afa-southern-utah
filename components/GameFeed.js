@@ -60,11 +60,11 @@ function Row({ g, played }) {
   );
 
   const shell =
-    "block rounded-xl bg-white shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]";
+    "block card";
   return to ? (
     <Link
       href={to}
-      className={`${shell} transition hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
+      className={`${shell} transition card-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
     >
       <p className="px-3 pt-2 text-[10.5px] font-bold uppercase tracking-wide text-afa-muted">
         {[g.divisionName, g.label].filter(Boolean).join(" · ")}

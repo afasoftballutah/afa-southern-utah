@@ -29,7 +29,7 @@ export default function Matchup({
   return (
     <div
       className={[
-        "rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]",
+        "card p-3",
         className,
       ]
         .filter(Boolean)

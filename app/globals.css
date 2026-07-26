@@ -53,38 +53,103 @@ button {
 }
 
 /* ============================================================
- * Identity system (Lacy, 2026-07-21) — one display face for
- * tournament names, chalk-line dividers instead of card borders,
- * red reserved for the Register/Sign action only.
+ * The whole visual system. Four ideas, and every page is made of
+ * them (JD, 2026-07-26: "we should have a greatly simplified style
+ * sheet").
+ *
+ *   TYPE     one display face, three sizes, one recipe
+ *   CARD     one floating surface
+ *   BUTTON   one pill, two weights
+ *   POSTER   the one thing that is a picture, not a component
  * ============================================================ */
 
-/* Tournament names only. Heavy condensed caps, sports-program style.
-   Everything else in the site stays plain — the whole type budget. */
-.font-display {
+/* ── Type ───────────────────────────────────────────────────────────
+   ONE recipe for the display face — Anton, upright caps, its own
+   single weight — used at three sizes. Nothing else varies.
+
+   Anton ships one weight (400). Asking for 700 makes the browser
+   SYNTHESISE a bold, which smears the letterforms sideways — that is
+   what made the section headings look smooshed next to the team
+   dropdown when they were meant to be the same face. Weight is set
+   here, once, so nothing can ask for a weight that does not exist. */
+.font-display,
+.h-page,
+.h-section {
   font-family: var(--font-display);
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.01em;
+  color: var(--afa-navy);
+}
+.h-page {
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+.h-section {
+  font-size: 1.125rem;
+  line-height: 1.25;
+}
+/* The one non-display label: the small caps line above a group of
+   rows. Deliberately the body face — it is a caption, not a title. */
+.h-sub {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--afa-navy);
 }
 
-/* Section dividers — a slightly imperfect white-on-tan rule, like a
-   baseline dragged in dirt. Replaces generic card borders. */
-/* Read-only content blocks (results, release text, confirmations) sit
-   between chalk lines instead of inside a bordered card. */
-/* Functional input surfaces (the registration wizard) keep a plain
-   contained look — this is a tool, not display content, so it's exempt
-   from the chalk-line-only rule. */
-.form-panel {
-  background: white;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(30, 58, 110, 0.12);
+/* ── Card ───────────────────────────────────────────────────────────
+   One surface. It floats; it never draws a rule to prove it is a card.
+   The lift is the same one the bracket's own game cards carry. */
+.card {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+}
+.card-lift:hover {
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.06),
+    0 14px 30px -16px rgba(22, 35, 61, 0.55);
 }
 
-/* The season poster, presented like a flyer pinned to a board: thin
-   border, slight shadow, never cropped, never screened behind text. */
+/* ── Button ─────────────────────────────────────────────────────────
+   One pill, two weights. Loud is navy on white; quiet is the outline.
+   Segmented controls are the same pill, grouped on a tinted track. */
+.btn,
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn {
+  background: var(--afa-navy);
+  color: #fff;
+}
+.btn-quiet {
+  background: #fff;
+  color: var(--afa-navy);
+  border: 1px solid rgba(30, 58, 110, 0.25);
+}
+.btn-quiet:hover {
+  border-color: rgba(30, 58, 110, 0.6);
+}
+
+/* ── Poster ─────────────────────────────────────────────────────────
+   The season flyer, pinned to a board. Never cropped, never screened
+   behind text. */
 .poster-frame {
+  background: #fff;
   border: 1px solid rgba(30, 58, 110, 0.25);
   box-shadow: 0 6px 16px rgba(22, 35, 61, 0.18);
-  background: white;
   padding: 0.5rem;
 }
 .poster-frame img {
@@ -94,12 +159,7 @@ button {
   object-fit: contain;
 }
 
-/* ============================================================
- * Public bracket TREE — read-only renderer (Lacy spec, 2026-07-21).
- * Print view is always the desktop tree: black hairlines, full bleed,
- * no nav/footer/toggle. Screen behavior (which tab is showing) is
- * handled by Tailwind's hidden/print:block pairing in the components.
- * ============================================================ */
+/* Print: the bracket, in black, with nothing else. */
 @media print {
   .bracket-connectors path {
     stroke: #000 !important;
@@ -119,71 +179,3 @@ button {
   }
   }
 
-/* ── Type hierarchy ─────────────────────────────────────────────────
-   Three levels, one voice each, so a heading means the same thing on
-   every page (JD, 2026-07-26: "this brand consistency / hierarchy needs
-   to permeate through the whole website").
-
-   .h-page    what this page is ABOUT. The display face, which is
-              otherwise reserved for names — a page title is one.
-   .h-section a section within it. Also the display face (JD, 2026-07-26)
-              — the brand carries further than the risk of two voices,
-              and the size difference does the ranking.
-   .h-sub     the label above a group of rows.
-
-   Sizes live here rather than at each call site, which is how they
-   drifted into ten of one and ten of another in the first place. */
-.h-page {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  line-height: 1.15;
-  color: var(--afa-navy);
-}
-.h-section {
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--afa-navy);
-}
-.h-sub {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--afa-navy);
-}
-
-/* ── Action buttons ─────────────────────────────────────────────────
-   Two weights, both pill-shaped, so a thing you can press looks the
-   same wherever it is (JD, 2026-07-26). Squared bordered boxes next to
-   pill segmented controls next to underlined links was three
-   vocabularies for one idea. */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  white-space: nowrap;
-  background: var(--afa-navy);
-  color: #fff;
-}
-.btn-quiet {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  white-space: nowrap;
-  background: #fff;
-  color: var(--afa-navy);
-  border: 1px solid rgba(30, 58, 110, 0.25);
-}
-.btn-quiet:hover { border-color: rgba(30, 58, 110, 0.6); }

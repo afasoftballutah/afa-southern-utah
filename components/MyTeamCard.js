@@ -64,7 +64,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
       : fallbackHref;
 
   return (
-    <Card className="relative hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)]">
+    <Card className="relative card-lift">
       {/* Once a team is set the whole card is the way through — every part
           of it EXCEPT the dropdown (JD, 2026-07-26). The link is a layer
           underneath; the content above it does not take clicks, and the

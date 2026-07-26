@@ -321,7 +321,7 @@ function StandingsPanel({ name, rows }) {
   if (rows.length === 0) return null;
   const settled = rows.filter((r) => r.finish).length;
   return (
-    <div className="rounded-xl bg-white shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">
+    <div className="card">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 pt-3 pb-2">
         <h2 className="h-section">{name} standings</h2>
         <span className="text-[11px] text-afa-muted">

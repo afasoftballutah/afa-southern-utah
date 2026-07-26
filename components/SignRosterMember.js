@@ -30,7 +30,7 @@ export default function SignRosterMember({ token, member }) {
 
   if (state === "done") {
     return (
-      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">
+      <div className="card p-4">
         <p className="font-semibold text-afa-navy">
           {member.alreadySigned ? "Already signed — thanks." : "Signed. Thanks."}
         </p>
@@ -64,7 +64,7 @@ export default function SignRosterMember({ token, member }) {
         )}
       </dl>
 
-      <div className="max-h-48 overflow-y-auto rounded-xl bg-white p-3 text-sm shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">{RELEASE_TEXT}</div>
+      <div className="max-h-48 overflow-y-auto rounded-xl bg-white p-3 text-sm card">{RELEASE_TEXT}</div>
 
       <label className="flex items-start gap-2 text-sm">
         <input

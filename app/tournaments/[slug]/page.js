@@ -257,7 +257,7 @@ export default async function TournamentDetailPage({ params }) {
             />
           ) : (
             groupCards.map((division) => (
-              <Card key={division.id} className="hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)]">
+              <Card key={division.id} className="card-lift">
                 <Link
                   href={`/tournaments/${tournament.slug}/division/${division.id}`}
                   className="group block min-h-11"
