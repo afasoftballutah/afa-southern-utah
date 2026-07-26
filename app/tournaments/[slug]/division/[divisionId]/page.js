@@ -13,6 +13,7 @@ import Card from "@/components/ui/Card";
 import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
+import { mootIfRounds } from "@/lib/bracket/if-game";
 
 export const revalidate = 30;
 
@@ -296,9 +297,14 @@ function bracketStandings(games, teamStatus) {
   // is out — which is true, they are still in it — and their place is
   // simply blank until it is decided.
   const placeOf = (t) => {
-    const raw = teamStatus[t]?.placement;
-    const n = raw ? Number(String(raw).match(/\d+/)?.[0]) : null;
-    return Number.isFinite(n) ? { label: raw, n } : null;
+    const st = teamStatus[t];
+    if (!st) return null;
+    // The league writes "Champion" rather than "1st" for the winner, and
+    // a champion is the most settled place there is — it must not fall
+    // through to "still in" for want of a digit.
+    if (st.state === "champion") return { label: st.placement || "Champion", n: 1 };
+    const n = st.placement ? Number(String(st.placement).match(/\d+/)?.[0]) : null;
+    return Number.isFinite(n) ? { label: st.placement, n } : null;
   };
 
   return [...byTeam.values()]
@@ -505,6 +511,7 @@ export default async function DivisionPage({ params }) {
   // be in: pool play carries a real pool letter, the bracket list never
   // does (pool: null). Provenance placeholders are filtered out of the
   // team list below; if that leaves nothing real, no picker renders.
+  const ownMoot = mootIfRounds(bracketGames);
   const finderGames = [
     ...poolGames.map((g) => ({
       id: g.id,
@@ -524,7 +531,12 @@ export default async function DivisionPage({ params }) {
     // a team on the parent page showed two Friday games and nothing since.
     ...Object.entries(playableStageGames).flatMap(([id, list]) => {
       const stageName = stages.find((st) => st.id === id)?.display_name ?? "";
+      // The drawing still shows a moot if-game, marked N/A — that is the
+      // sheet. A SCHEDULE is a list of games that will happen, and this
+      // one will not (JD, 2026-07-26).
+      const moot = mootIfRounds(list);
       return list
+        .filter((g) => !moot.has(g.round))
         .filter(
           (g) => isRealTeamName(g.team1_name) && isRealTeamName(g.team2_name) && g.division_id !== division.id
         )
@@ -542,7 +554,11 @@ export default async function DivisionPage({ params }) {
           isFinal: g.status === "final",
         }));
     }),
-    ...bracketGames.map((g) => ({
+    // This division's OWN bracket games. Filtered the same way: on a
+    // bracket page the moot if-game arrives through here, not through the
+    // children above, which is why it was still showing as "Scheduled" on
+    // the champion's card.
+    ...bracketGames.filter((g) => !ownMoot.has(g.round)).map((g) => ({
       id: g.id,
       pool: null,
       when: g.scheduled_time,
