@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Matchup from "@/components/ui/Matchup";
 import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
+import { useDrops } from "@/components/bracket/DropsContext";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -810,7 +811,12 @@ export default function DrawnBracket({
   // loser go", which is a second question — the first is "who plays who",
   // and a dozen coloured curves across the sheet is not the first thing a
   // reader should have to look past to get it.
-  const [showDrops, setShowDrops] = useState(false);
+  const [ownShowDrops, setOwnShowDrops] = useState(false);
+  // A page may own the switch and put it in its own toolbar; otherwise
+  // the drawing carries it.
+  const dropsCtl = useDrops();
+  const showDrops = dropsCtl ? dropsCtl.showDrops : ownShowDrops;
+  const setShowDrops = dropsCtl ? dropsCtl.setShowDrops : setOwnShowDrops;
   // Tap a game to see its consequences (spec 5.7). The question a manager
   // actually has standing on the field is "what happens to us if we win
   // this", and the answer was spread across the whole drawing.
@@ -925,7 +931,7 @@ export default function DrawnBracket({
 
   return (
     <div>
-      {layout.drops.length > 0 && (
+      {layout.drops.length > 0 && !dropsCtl && (
         <div className="mb-2">
           <button
             type="button"

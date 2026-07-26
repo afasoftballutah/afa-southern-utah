@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
-import Matchup from "@/components/ui/Matchup";
 
 // The bracket a team finished in, tinted as itself — the same three
 // metallics the seed chips use, so "Gold" reads as Gold wherever it
@@ -39,7 +38,7 @@ export default function TeamFinder({
   onSelectedChange,
 }) {
   const [selected, setSelected] = useState("");
-  const [details, setDetails] = useState(false);
+  const [open, setOpen] = useState(true);
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
   // downloading a frozen copy, and it needs an absolute host — which only
   // exists after mount. Until then the link is the plain https path,
@@ -91,12 +90,6 @@ export default function TeamFinder({
     onSelectedChange?.(value);
   }
 
-  function handleClear() {
-    setSelected("");
-    remember("");
-    onSelectedChange?.("");
-  }
-
   // Newest first (JD, 2026-07-26). During a tournament the game you just
   // played is the one you are looking for; the one from Friday is
   // history, and history goes underneath.
@@ -123,166 +116,157 @@ export default function TeamFinder({
   const isChampion = status?.state === "champion";
 
   return (
-    <div className="space-y-2">
-      <select
-        aria-label="Find your team"
-        value={selected}
-        onChange={handleChange}
-        className="w-full rounded-lg border border-afa-navy/25 bg-white px-4 py-3 text-base"
-      >
-        <option value="">Find your team</option>
-        {teams.map((team) => (
-          <option key={team} value={team}>
-            {team}
-          </option>
-        ))}
-      </select>
+    // The picker IS the card's header (JD, 2026-07-26). A dropdown above a
+    // card whose first line repeated the same team name was one control
+    // and one label doing one job twice.
+    <Card className="p-0">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+        {/* The name is TEXT, with a real <select> laid invisibly over it.
+            A native select sizes itself to its widest option, which would
+            have parked the caret a dozen characters past a short team
+            name; this way the caret sits where the name ends and the
+            display face renders exactly as it does anywhere else. */}
+        <span className="relative inline-flex min-w-0 items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
+          <span className="truncate font-display text-lg text-afa-navy">
+            {selected || "Find your team"}
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-sm text-afa-navy/50">
+            ▾
+          </span>
+          <select
+            aria-label="Find your team"
+            value={selected}
+            onChange={handleChange}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          >
+            <option value="">Find your team</option>
+            {teams.map((team) => (
+              <option key={team} value={team}>
+                {team}
+              </option>
+            ))}
+          </select>
+        </span>
 
-      {selected && (
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-lg text-afa-navy">{selected}</h2>
-            <div className="flex items-center gap-2">
-              {(isOut || isChampion) && (
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
-                    TIER_CHIP[status.bracket_name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
-                  }`}
-                >
-                  {[status.bracket_name, status.placement && `${status.placement} Place`]
-                    .filter(Boolean)
-                    .join(" \u00b7 ") || "No more games"}
-                </span>
-              )}
-              {/* Once a team is done, "Eliminated" takes the pool chip's
-                  place rather than sitting beside it (JD, 2026-07-26).
-                  Their pool is how they GOT here and is still one line
-                  down in the standings; what the chip slot is worth now
-                  is saying they are finished. */}
-              {/* A team still playing gets its bracket here — the row that
-                  used to say "Backwards K is in Gold" was a whole line to
-                  carry one word (JD, 2026-07-26). */}
-              {!isOut && !isChampion && myStage && (
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
-                    TIER_CHIP[myStage.name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
-                  }`}
-                >
-                  {myStage.name}
-                </span>
-              )}
-              {isOut || isChampion ? (
-                <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
-              ) : (
-                pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
-              )}
-            </div>
+        {selected && (
+          <div className="ml-auto flex items-center gap-2">
+            {!isOut && !isChampion && myStage && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                  TIER_CHIP[myStage.name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
+                }`}
+              >
+                {myStage.name}
+              </span>
+            )}
+            {(isOut || isChampion) && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                  TIER_CHIP[status.bracket_name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
+                }`}
+              >
+                {[status.bracket_name, status.placement && `${status.placement} Place`]
+                  .filter(Boolean)
+                  .join(" \u00b7 ") || "No more games"}
+              </span>
+            )}
+            {isOut || isChampion ? (
+              <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
+            ) : (
+              pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
+            )}
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              className="ml-1 min-h-9 rounded px-2 text-afa-navy/60 hover:text-afa-navy"
+            >
+              <span className="sr-only">{open ? "Collapse" : "Expand"} games</span>
+              <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* Stated as a fact, not a verdict (JD, 2026-07-26: "You can just
-              say No More Games Scheduled"). Nobody who has just lost wants
-              ELIMINATED in red; what they want to know is whether to go
-              home, and where they finished — which the chip already says,
-              so naming the last game as well was one clause too many. */}
+      {selected && open && (
+        <div className="border-t border-afa-navy/10 px-4 py-3">
           {(isOut || isChampion) && (
-            <p className="mt-1 text-sm text-afa-ink/70">No more games scheduled.</p>
+            <p className="mb-2 text-sm text-afa-ink/70">No more games scheduled.</p>
           )}
 
-          <div className="mt-3">
-            {teamGames.length > 0 ? (
-              details ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {teamGames.map((g) => (
-                    <Matchup
-                      key={g.id}
-                      caption={g.caption}
-                      team1={g.team1}
-                      team2={g.team2}
-                      score1={g.score1}
-                      score2={g.score2}
-                      isFinal={g.isFinal}
-                      highlightTeam={selected}
-                    />
-                  ))}
-                </div>
-              ) : (
-                /* Collapsed, a team's season is a column of results you can
-                   read in one go: day, time, field, opponent, result — all
-                   of it lined up in fixed columns. JD, 2026-07-26: the
-                   time and field and day were "essential for people
-                   knowing where they played", so they are on every row
-                   rather than behind the expander. */
-                <ul className="divide-y divide-afa-navy/10">
-                  {teamGames.map((g) => {
-                    const won =
-                      g.isFinal &&
-                      ((g.team1 === selected && g.score1 > g.score2) ||
-                        (g.team2 === selected && g.score2 > g.score1));
-                    const opponent = g.team1 === selected ? g.team2 : g.team1;
-                    const mine = g.team1 === selected ? g.score1 : g.score2;
-                    const theirs = g.team1 === selected ? g.score2 : g.score1;
-                    return (
-                      <li
-                        key={g.id}
-                        className="flex items-center gap-3 py-2 text-sm"
-                      >
-                        {/* When, in a fixed column so the games line up
-                            down the card (JD, 2026-07-26). */}
-                        <span className="w-[72px] shrink-0 whitespace-nowrap text-xs text-afa-muted">
-                          {g.whenShort}
+          {teamGames.length > 0 ? (
+            /* Day, time, opponent, field, result — fixed tracks, so every
+               column starts at the same x down the whole card. */
+            <ul className="divide-y divide-afa-navy/10">
+              {teamGames.map((g) => {
+                const won =
+                  g.isFinal &&
+                  ((g.team1 === selected && g.score1 > g.score2) ||
+                    (g.team2 === selected && g.score2 > g.score1));
+                const opponent = g.team1 === selected ? g.team2 : g.team1;
+                const mine = g.team1 === selected ? g.score1 : g.score2;
+                const theirs = g.team1 === selected ? g.score2 : g.score1;
+                return (
+                  <li
+                    key={g.id}
+                    className="grid grid-cols-[76px_minmax(0,1fr)_34px_16px_28px_10px_28px] items-center gap-x-2 py-2 text-sm"
+                  >
+                    <span className="whitespace-nowrap text-xs text-afa-muted">{g.whenShort}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      <span className="text-afa-ink/50">vs </span>
+                      {opponent}
+                    </span>
+                    <span className="whitespace-nowrap text-right text-xs text-afa-muted">
+                      {g.field ? g.field.replace(/^Field\s*/i, "F") : ""}
+                    </span>
+                    {g.isFinal ? (
+                      <>
+                        {/* W or L in front. A score on its own makes you
+                            work out which side you were on before you know
+                            how it went. */}
+                        <span
+                          className={`text-center text-xs font-bold ${
+                            mine === theirs
+                              ? "text-afa-muted"
+                              : won
+                              ? "text-[#2f7a4f]"
+                              : "text-afa-ink/45"
+                          }`}
+                        >
+                          {mine === theirs ? "T" : won ? "W" : "L"}
                         </span>
-                        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                          <span className="text-afa-ink/50">vs </span>
-                          {opponent}
+                        <span
+                          className={`text-right tabular-nums ${
+                            won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"
+                          }`}
+                        >
+                          {mine}
                         </span>
-                        <span className="w-[52px] shrink-0 whitespace-nowrap text-right text-xs text-afa-muted">
-                          {g.field ? g.field.replace(/^Field\s*/i, "F") : ""}
+                        <span className="text-center text-afa-ink/40">&ndash;</span>
+                        <span
+                          className={`tabular-nums ${
+                            won ? "text-afa-ink/60" : "font-semibold text-afa-ink"
+                          }`}
+                        >
+                          {theirs}
                         </span>
-                        {g.isFinal ? (
-                          <span className="flex items-center gap-2 whitespace-nowrap">
-                            {/* W or L in front (JD, 2026-07-26). A score
-                                alone makes you work out which side you
-                                were on before you know how it went. */}
-                            <span
-                              className={`w-4 text-center text-xs font-bold ${
-                                mine === theirs
-                                  ? "text-afa-muted"
-                                  : won
-                                  ? "text-[#2f7a4f]"
-                                  : "text-afa-ink/45"
-                              }`}
-                            >
-                              {mine === theirs ? "T" : won ? "W" : "L"}
-                            </span>
-                            <span className="tabular-nums">
-                              <b className={won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"}>
-                                {mine}
-                              </b>
-                              <span className="px-1 text-afa-ink/40">&ndash;</span>
-                              <span className={won ? "text-afa-ink/60" : "font-semibold text-afa-ink"}>
-                                {theirs}
-                              </span>
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="whitespace-nowrap text-xs font-semibold text-afa-navy">
-                            Scheduled
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )
-            ) : (
-              <p className="text-sm text-afa-ink/70">No games scheduled yet.</p>
-            )}
-          </div>
+                      </>
+                    ) : (
+                      <span className="col-span-4 whitespace-nowrap text-right text-xs font-semibold text-afa-navy">
+                        Scheduled
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-afa-ink/70">No games scheduled yet.</p>
+          )}
 
           {/* Subscribe, not download. A field change, a rain delay, a
               bracket game whose opponent only exists once pool play is
-              applied — all of it updates in your calendar by itself.
-              Downloading gets you tonight's schedule frozen. */}
+              applied — all of it updates in your calendar by itself. */}
           {slug && !isOut && !isChampion && (
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
@@ -296,27 +280,8 @@ export default function TeamFinder({
               </span>
             </div>
           )}
-
-          <div className="mt-3 flex items-center gap-4">
-            {teamGames.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setDetails((v) => !v)}
-                className="min-h-11 text-sm text-afa-navy underline"
-              >
-                {details ? "Hide details" : "Show details"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleClear}
-              className="min-h-11 text-sm text-afa-navy underline"
-            >
-              Clear
-            </button>
-          </div>
-        </Card>
+        </div>
       )}
-    </div>
+    </Card>
   );
 }
