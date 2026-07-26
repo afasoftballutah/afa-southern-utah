@@ -86,6 +86,11 @@ button {
      bold and smear the letterforms, which is why the headings once looked
      like a denser font than the team dropdown. Weight is set here so
      nothing can ask for one that does not exist. */
+  /* The FACE. No colour: this one is used for names, and a name has to
+     be able to sit on a dark ground — putting navy in the recipe turned
+     the tournament name navy-on-navy inside the navy card and made it
+     disappear (JD, 2026-07-26). Colour belongs to the two structural
+     headings below, which are always on paper. */
   .font-display,
   .t-title,
   .t-heading {
@@ -93,6 +98,9 @@ button {
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.01em;
+  }
+  .t-title,
+  .t-heading {
     color: var(--afa-navy);
   }
   .t-title {
