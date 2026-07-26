@@ -373,7 +373,7 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
       </svg>
       {/* Chalk-line dividers between winners / losers. */}
       {layout.dividers.map((dv, i) => (
-        <div key={i} className="chalk-line absolute" style={{ top: dv.y, left: layout.leftPad, width: layout.totalWidth - layout.leftPad - 24, margin: 0 }} />
+        <div key={i} className="absolute border-t border-afa-navy/10" style={{ top: dv.y, left: layout.leftPad, width: layout.totalWidth - layout.leftPad - 24, margin: 0 }} />
       ))}
       {/* Anton round headers over each column, small caps. */}
       {layout.roundHeaders.map((h, i) => (

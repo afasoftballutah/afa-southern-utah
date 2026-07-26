@@ -81,7 +81,6 @@ export default async function Home() {
         </Link>
       </section>
 
-      <div className="chalk-line" />
 
       {/* Scores beat an empty promise (JD, 2026-07-24). "Check back after
           the next tournament" was exactly wrong during a live one, where
@@ -139,7 +138,7 @@ function ResultsGallery({ tournament, showName = true }) {
         </p>
       ) : (
         divisionsWithPlacements.map((division) => (
-          <div key={division.id} className="chalk-panel">
+          <Card key={division.id}>
             <p className="font-semibold text-sm text-afa-navy mb-2">{division.name}</p>
             <div className="grid grid-cols-2 gap-4">
               {["champion", "runner_up"].map((place) => {
@@ -161,7 +160,7 @@ function ResultsGallery({ tournament, showName = true }) {
                 );
               })}
             </div>
-          </div>
+          </Card>
         ))
       )}
     </div>

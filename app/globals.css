@@ -68,44 +68,8 @@ button {
 
 /* Section dividers — a slightly imperfect white-on-tan rule, like a
    baseline dragged in dirt. Replaces generic card borders. */
-.chalk-line {
-  height: 3px;
-  border: none;
-  margin: 1.25rem 0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.95) 0px,
-    rgba(255, 255, 255, 0.95) 7px,
-    rgba(255, 255, 255, 0.55) 7px,
-    rgba(255, 255, 255, 0.55) 10px,
-    rgba(255, 255, 255, 0.8) 10px,
-    rgba(255, 255, 255, 0.8) 15px,
-    transparent 15px,
-    transparent 19px
-  );
-  opacity: 0.9;
-  filter: blur(0.3px);
-}
-
 /* Read-only content blocks (results, release text, confirmations) sit
    between chalk lines instead of inside a bordered card. */
-.chalk-panel {
-  border-top: 3px solid transparent;
-  border-image: repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.95) 0px,
-      rgba(255, 255, 255, 0.95) 7px,
-      rgba(255, 255, 255, 0.55) 7px,
-      rgba(255, 255, 255, 0.55) 10px,
-      rgba(255, 255, 255, 0.8) 10px,
-      rgba(255, 255, 255, 0.8) 15px,
-      transparent 15px,
-      transparent 19px
-    )
-    1;
-  padding-top: 1.25rem;
-}
-
 /* Functional input surfaces (the registration wizard) keep a plain
    contained look — this is a tool, not display content, so it's exempt
    from the chalk-line-only rule. */
@@ -153,14 +117,7 @@ button {
   .bracket-header {
     color: #000 !important;
   }
-  .chalk-line {
-    background-image: none !important;
-    background: #000 !important;
-    height: 1px !important;
-    opacity: 1 !important;
-    filter: none !important;
   }
-}
 
 /* ── Type hierarchy ─────────────────────────────────────────────────
    Three levels, one voice each, so a heading means the same thing on
@@ -169,8 +126,9 @@ button {
 
    .h-page    what this page is ABOUT. The display face, which is
               otherwise reserved for names — a page title is one.
-   .h-section a section within it. Never the display face: two display
-              faces on one screen is two things claiming to be the title.
+   .h-section a section within it. Also the display face (JD, 2026-07-26)
+              — the brand carries further than the risk of two voices,
+              and the size difference does the ranking.
    .h-sub     the label above a group of rows.
 
    Sizes live here rather than at each call site, which is how they
@@ -182,6 +140,7 @@ button {
   color: var(--afa-navy);
 }
 .h-section {
+  font-family: var(--font-display);
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.3;

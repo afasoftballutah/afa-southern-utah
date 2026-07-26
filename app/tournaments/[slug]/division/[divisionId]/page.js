@@ -668,7 +668,7 @@ export default async function DivisionPage({ params }) {
       )}
 
       {hasPlacements && (
-        <div className="chalk-panel mb-6">
+        <Card className="mb-6">
           <div className="grid grid-cols-2 gap-4">
             {["champion", "runner_up"].map((place) => {
               const p = placements.find((x) => x.place === place);
@@ -685,7 +685,7 @@ export default async function DivisionPage({ params }) {
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
 
       {hasBracket && <BracketTree division={division} />}

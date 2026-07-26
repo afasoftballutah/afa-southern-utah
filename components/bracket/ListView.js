@@ -29,7 +29,6 @@ export default function ListView({ games }) {
               <h3 className="text-sm font-bold text-afa-navy">{SIDE_LABELS[side.name]}</h3>
               {side.rounds.map(({ round, games: roundGames }, i) => (
                 <div key={round}>
-                  {i > 0 && <div className="chalk-line" />}
                   <p className="text-xs font-semibold text-afa-ink/50 mt-2 mb-1">{roundLabel(side.name, round)}</p>
                   <div className="space-y-1.5">
                     {roundGames.map((g) => (

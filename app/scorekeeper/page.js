@@ -53,7 +53,6 @@ function TournamentList({ groups }) {
           </h2>
           {group.tournaments.map((t, i) => (
             <div key={t.id}>
-              {i > 0 && <div className="chalk-line" />}
               <div className="py-2">
                 <p className="font-semibold text-afa-navy">{t.name}</p>
                 <ul className="mt-1 space-y-1">

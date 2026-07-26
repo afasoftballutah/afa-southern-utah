@@ -588,7 +588,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
 
   if (!result) {
     return (
-      <div className="chalk-panel space-y-2">
+      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-2">
         <h2 className="h-section">Seed Brackets</h2>
         <p className="text-sm text-afa-ink/60">Loading pool standings…</p>
       </div>
@@ -656,7 +656,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
   const shownGames = shownLetters.reduce((n, l) => n + gamesFor(l).length, 0);
 
   return (
-    <div className="chalk-panel space-y-4">
+    <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-4">
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className="h-section">Seed Brackets</h2>
         <span className="ml-auto text-[12.5px] text-afa-muted">

@@ -109,7 +109,6 @@ export default function TournamentBrowser({ groups }) {
 
       {pastCount > 0 && (
         <div>
-          <div className="chalk-line" />
           <button
             type="button"
             onClick={() => setShowPast((v) => !v)}

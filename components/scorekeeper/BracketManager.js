@@ -56,7 +56,7 @@ export default function BracketManager({
 
   if (!mainBracket) {
     return (
-      <div className="chalk-panel space-y-3">
+      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-3">
         <p className="text-sm text-afa-ink/70">
           {teamNames.length} team{teamNames.length === 1 ? "" : "s"} registered. No bracket yet.
         </p>
@@ -124,7 +124,7 @@ export default function BracketManager({
 
       {consolationBracket && (
         <>
-          <div className="chalk-line" />
+          <div className="border-t border-afa-navy/10" />
           <BracketSection
             label="Consolation Bracket"
             games={consolationGames}
@@ -158,7 +158,7 @@ function BracketSection({ label, games, draft, teamNames, onChanged }) {
             <div>
               {Object.entries(groupByRound(bySide[side])).map(([round, roundGames], i) => (
                 <div key={round}>
-                  {i > 0 && <div className="chalk-line" />}
+                  {i > 0 && <div className="border-t border-afa-navy/10" />}
                   <p className="text-xs font-semibold text-afa-ink/50 mt-2 mb-1">
                     {roundLabel(side, Number(round))}
                   </p>

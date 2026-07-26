@@ -111,7 +111,7 @@ export default function BracketTree({ division }) {
         {consolationGames.length > 0 && (
           <div className="mt-8">
             {/* Site chalk-line separates the consolation tree from the losers bracket above. */}
-            <div className="chalk-line" />
+            <div className="border-t border-afa-navy/10" />
             <p className="font-display text-afa-navy text-sm mb-2 mt-4">Consolation</p>
             <TreeCanvas games={consolationGames} scale={0.82} isMobile={isMobile} showRoundStrip={false} fit={!isMobile} />
           </div>
@@ -123,7 +123,7 @@ export default function BracketTree({ division }) {
         <ListView games={mainGames} />
         {consolationGames.length > 0 && (
           <div className="mt-6">
-            <div className="chalk-line" />
+            <div className="border-t border-afa-navy/10" />
             <p className="text-xs font-semibold text-afa-navy/60 mb-2 mt-4">Consolation Bracket</p>
             <ListView games={consolationGames} />
           </div>

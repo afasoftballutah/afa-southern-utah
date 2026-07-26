@@ -164,12 +164,11 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
 
   if (submitState === "done") {
     return (
-      <div className="chalk-panel p-6 space-y-4">
+      <div className="rounded-xl bg-white p-6 space-y-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">
         <h2 className="h-page">Registration saved</h2>
         <p className="text-afa-ink/80">
           {teamName} is on the books for {tournament?.name}.
         </p>
-        <div className="chalk-line" />
         <div>
           <p className="font-semibold text-sm mb-2">
             Send each of these to the person by name — nothing goes out

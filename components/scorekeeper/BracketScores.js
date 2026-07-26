@@ -60,14 +60,14 @@ export default function BracketScores({ games }) {
 
   if (groups.length === 0) {
     return (
-      <div className="chalk-panel">
+      <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]">
         <p className="text-sm text-afa-ink/70">No bracket games yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="chalk-panel space-y-4">
+    <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)] space-y-4">
       <h2 className="h-section">Bracket</h2>
       {groups.map((group) => (
         <div key={group.time ?? "__tbd__"} className="space-y-2">

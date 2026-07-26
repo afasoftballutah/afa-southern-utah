@@ -86,7 +86,7 @@ export default function GameFeed({ results = [], upcoming = [] }) {
   return (
     <Card className="space-y-3">
       <h2 className="h-section">Schedule</h2>
-      <div className="inline-flex gap-0.5 rounded-lg bg-afa-navy/5 p-0.5">
+      <div className="inline-flex gap-0.5 rounded-full bg-afa-navy/5 p-0.5">
         {[
           ["results", `Results${results.length ? ` (${results.length})` : ""}`],
           ["next", `Next${upcoming.length ? ` (${upcoming.length})` : ""}`],
@@ -96,7 +96,7 @@ export default function GameFeed({ results = [], upcoming = [] }) {
             type="button"
             aria-expanded={tab === key}
             onClick={() => setTab((v) => (v === key ? null : key))}
-            className={`min-h-11 rounded-md px-4 text-sm font-semibold ${
+            className={`min-h-11 rounded-full px-4 text-sm font-semibold ${
               tab === key ? "bg-white text-afa-navy shadow-sm" : "text-afa-ink/70"
             }`}
           >
