@@ -83,6 +83,28 @@ export default function DivisionView({
     } else if (q.get("pool")) {
       setStage("pools");
       setTouched(true);
+      // A pool result used to open the division and single out nothing —
+      // nine cards and no answer to "which game did I just tap?" (JD,
+      // 2026-07-26: "the clicks are not all going to the correct games").
+      // The bracket half was landing correctly; this half was not.
+      const id = q.get("pg");
+      if (id) {
+        // After paint: the pool pane has to exist before it can be found.
+        requestAnimationFrame(() => {
+          const el = document.querySelector(`[data-pool-game="${CSS.escape(id)}"]`);
+          if (!el) return;
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          const pill = el.lastElementChild;
+          if (!pill) return;
+          // The same navy ring a focused bracket game wears, faded out
+          // rather than left on — it answers a question and then leaves.
+          pill.style.transition = "box-shadow .4s ease";
+          pill.style.boxShadow = "0 0 0 2px var(--afa-navy), 0 0 18px rgba(30,58,110,.35)";
+          setTimeout(() => {
+            pill.style.boxShadow = "";
+          }, 4000);
+        });
+      }
     }
   }, []);
   const mine = team ? bracketByTeam?.[team] : null;

@@ -119,7 +119,7 @@ export default async function Home() {
 function resultHref(g) {
   if (!g.tournamentSlug || !g.divisionId) return null;
   const base = `/tournaments/${g.tournamentSlug}/division/${g.divisionId}`;
-  if (g.pool) return `${base}?pool=${encodeURIComponent(g.pool)}`;
+  if (g.pool) return `${base}?pool=${encodeURIComponent(g.pool)}&pg=${g.id}`;
   if (g.round) return `${base}?game=${g.round}`;
   return base;
 }

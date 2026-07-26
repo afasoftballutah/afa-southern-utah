@@ -6,6 +6,7 @@ import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
 import { useDrops } from "@/components/bracket/DropsContext";
 import { useFocusRound } from "@/components/bracket/FocusRoundContext";
+import { mootIfRounds } from "@/lib/bracket/if-game";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -864,6 +865,11 @@ export default function DrawnBracket({
   // game whose two slots both point at the same feeder is a rematch, which
   // is exactly what "if necessary" means (spec 5.6).
   const ifRounds = new Set(layout.rematches.map((r) => r.to));
+  // An if-game the undefeated team made unnecessary by winning the first
+  // final (JD, 2026-07-26). It is not "still to come", it is never
+  // happening, and saying "If necessary" over an empty card leaves people
+  // waiting for a game that will not be played.
+  const moot = useMemo(() => mootIfRounds(games ?? []), [games]);
   const roundById = new Map((games ?? []).map((g) => [g.id, g.round]));
 
   // The badge on a game wears the colour of the drop LEAVING it, so a game
@@ -964,7 +970,11 @@ export default function DrawnBracket({
       behavior: "smooth",
     });
   }, [arrivedAt, mine.next, layout.cells]);
-  const isChampion = focus != null && !winTo;
+  // Winning a game that feeds nothing wins the tournament — unless the
+  // only thing it feeds is an if-game that will never be played, which is
+  // the same thing.
+  const isChampion =
+    focus != null && (!winTo || (moot.has(winTo.round) && !moot.has(focus)));
 
   const endpoints = [
     ...layout.connectorEnds.flatMap(({ a, b }) => [
@@ -1146,7 +1156,7 @@ export default function DrawnBracket({
               className="absolute text-[11px] font-bold uppercase tracking-wide italic text-afa-muted text-center pointer-events-none"
               style={{ left: x, top: y + BOX_H + 7, width: CELL_W }}
             >
-              If necessary
+              {moot.has(round) ? "N/A \u2014 not needed" : "If necessary"}
             </div>
           ))}
 
@@ -1163,7 +1173,14 @@ export default function DrawnBracket({
             // which at this opacity reads as a faint navy edge — enough to
             // see where their run sits without competing with the one
             // question the focus is answering.
-            style={{ left: x, top: y, width: CELL_W, opacity: role === "dim" ? 0.22 : 1 }}
+            style={{
+              left: x,
+              top: y,
+              width: CELL_W,
+              // A game that will never be played sits back from the ones
+              // that were — present on the sheet, plainly not pending.
+              opacity: role === "dim" ? 0.22 : moot.has(round) && role == null ? 0.45 : 1,
+            }}
             onClick={() =>
               onSelectGame ? onSelectGame(round) : setFocus((f) => (f === round ? null : round))
             }

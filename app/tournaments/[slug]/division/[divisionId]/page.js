@@ -123,7 +123,7 @@ function PoolGameRow({ game }) {
   );
 
   return (
-    <div className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-2 py-1">
+    <div data-pool-game={game.id} className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-2 py-1">
       <div className="text-[10px] font-medium leading-tight text-afa-muted">
         <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
         <br />
