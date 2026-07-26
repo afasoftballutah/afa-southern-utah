@@ -209,7 +209,7 @@ export default function TeamFinder({
                 return (
                   <li
                     key={g.id}
-                    className="grid grid-cols-[76px_minmax(0,1fr)_34px_16px_28px_10px_28px] items-center gap-x-2 py-2 text-sm"
+                    className="grid grid-cols-[76px_minmax(0,1fr)_34px_16px_48px] items-center gap-x-2 py-2 text-sm"
                   >
                     <span className="whitespace-nowrap text-xs text-afa-muted">{g.whenShort}</span>
                     <span className="min-w-0 [overflow-wrap:anywhere]">
@@ -235,24 +235,29 @@ export default function TeamFinder({
                         >
                           {mine === theirs ? "T" : won ? "W" : "L"}
                         </span>
-                        <span
-                          className={`text-right tabular-nums ${
-                            won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"
-                          }`}
-                        >
-                          {mine}
-                        </span>
-                        <span className="text-center text-afa-ink/40">&ndash;</span>
-                        <span
-                          className={`tabular-nums ${
-                            won ? "text-afa-ink/60" : "font-semibold text-afa-ink"
-                          }`}
-                        >
-                          {theirs}
+                        {/* The two scores are ONE cell with fixed
+                            two-digit halves (JD, 2026-07-26), so the gap
+                            from the field to the W and from the W to the
+                            score are the same 8px, and 5-1 still sits
+                            under 19-11 digit for digit. */}
+                        <span className="grid grid-cols-[19px_10px_19px] items-center tabular-nums">
+                          <span
+                            className={`text-right ${
+                              won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"
+                            }`}
+                          >
+                            {mine}
+                          </span>
+                          <span className="text-center text-afa-ink/40">&ndash;</span>
+                          <span
+                            className={won ? "text-afa-ink/60" : "font-semibold text-afa-ink"}
+                          >
+                            {theirs}
+                          </span>
                         </span>
                       </>
                     ) : (
-                      <span className="col-span-4 whitespace-nowrap text-right text-xs font-semibold text-afa-navy">
+                      <span className="col-span-2 whitespace-nowrap text-right text-xs font-semibold text-afa-navy">
                         Scheduled
                       </span>
                     )}

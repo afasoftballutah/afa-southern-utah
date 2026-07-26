@@ -236,6 +236,31 @@ function PoolPlaySection({ poolGames }) {
   );
 }
 
+/**
+ * What to call this event on one line (JD, 2026-07-26: "since there are no
+ * divisions, it's just Heat Stroker Coed... if there were divisions and it
+ * was mens, it would be Heat Stroker Men's E").
+ *
+ * The tournament is stored as "Coed Heat Stroker" and its division as
+ * "Coed", so naming both gave "Coed Heat Stroker / Coed" — the same word
+ * twice in four inches. The division word is lifted OUT of the tournament
+ * name and put back on the end, which reads as one title and generalises:
+ * a Men's E division of the same event becomes "Heat Stroker Men's E"
+ * without anything about it being special-cased.
+ */
+function eventTitle(tournamentName, divisionName) {
+  if (!divisionName) return tournamentName;
+  const escaped = divisionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const stripped = String(tournamentName)
+    .replace(new RegExp(`\\b${escaped}\\b`, "i"), "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  // A tournament whose whole name IS its division has nothing left to
+  // prefix with; keep what we were given rather than printing the
+  // division twice or nothing at all.
+  return stripped ? `${stripped} ${divisionName}` : tournamentName;
+}
+
 export async function generateMetadata({ params }) {
   const { divisionId } = await params;
   const division = await getDivisionById(divisionId);
@@ -439,27 +464,47 @@ export default async function DivisionPage({ params }) {
   const showsFinder = finderTeams.length > 0 || stages.length > 1;
 
   return (
-    <div className="space-y-6">
-      <Link
-        href={
-          parent
-            ? `/tournaments/${slug}/division/${parent.id}`
-            : `/tournaments/${slug}`
-        }
-        className="text-sm text-afa-navy underline min-h-11 inline-flex items-center"
-      >
-        ← {parentName ?? tournament.name}
-      </Link>
-
-      {/* One line, not three. The back link directly above already names
-          where you came from — the parent division on a bracket page, the
-          tournament everywhere else — so repeating it in the heading said
-          "Coed" twice in two inches, and the tournament-and-day line under
-          it said a third thing nobody came here to read. Both are one tap
-          away on the page that link goes to. */}
-      <div className="text-center">
-        <h1 className="font-display text-2xl text-afa-navy">{renderedName}</h1>
-      </div>
+    <div className="space-y-4">
+      {/* Where you are and how to get back, on ONE line (JD, 2026-07-26).
+          A back link, then a centred title on its own row, cost most of a
+          phone screen before anything worth reading appeared. The arrow
+          goes up a level; the trail behind it says which level that is,
+          and the last crumb — this division — is the heading. */}
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
+        <Link
+          href={parent ? `/tournaments/${slug}/division/${parent.id}` : `/tournaments/${slug}`}
+          aria-label={`Back to ${parent ? eventTitle(tournament.name, parentName) : tournament.name}`}
+          className="-ml-1 flex h-9 w-7 shrink-0 items-center justify-center text-lg text-afa-navy"
+        >
+          &larr;
+        </Link>
+        {parent ? (
+          <>
+            <Link
+              href={`/tournaments/${slug}/division/${parent.id}`}
+              className="truncate text-afa-ink/60 hover:text-afa-navy hover:underline"
+            >
+              {eventTitle(tournament.name, parentName)}
+            </Link>
+            <span aria-hidden="true" className="text-afa-ink/25">
+              /
+            </span>
+            <h1
+              className="truncate font-display text-lg leading-none text-afa-navy"
+              aria-current="page"
+            >
+              {renderedName}
+            </h1>
+          </>
+        ) : (
+          <h1
+            className="truncate font-display text-lg leading-none text-afa-navy"
+            aria-current="page"
+          >
+            {eventTitle(tournament.name, renderedName)}
+          </h1>
+        )}
+      </nav>
 
       {showsFinder && (
         <DivisionView

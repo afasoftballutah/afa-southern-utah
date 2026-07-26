@@ -12,7 +12,12 @@ name: Sync results from QuickScores
 
 on:
   schedule:
-    - cron: "5 * * * *" # five past the hour; GitHub queues on the hour
+    # A BACKUP schedule. The primary one lives in Postgres (pg_cron, see
+    # supabase/migration-2026-07-26-sync-cron.sql) because GitHub's shared
+    # cron queue is best-effort — the 06:05 run had still not fired by
+    # 06:36. :47 keeps this off the same minute as the database's :23, and
+    # off the top of the hour, which is the queue's worst slot.
+    - cron: "47 * * * *"
   workflow_dispatch:
     inputs:
       dryRun:
