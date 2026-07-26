@@ -66,26 +66,6 @@ function whenShort(scheduledTime) {
   };
 }
 
-// "Fri 9p" — weekday plus hour, the sample sheet's convention. Minutes
-// only appear when a game is not on the hour, which at this league is
-// never, so the column stays two short lines.
-function shortTime(scheduledTime) {
-  if (!scheduledTime) return "TBD";
-  const d = new Date(scheduledTime);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: LEAGUE_TZ,
-  }).formatToParts(d);
-  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
-  const min = get("minute");
-  return `${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""}${
-    get("dayPeriod").toLowerCase().startsWith("a") ? "a" : "p"
-  }`;
-}
-
 // "Field 3" -> "F3" — same helper as the scorekeeper's compact row.
 function fieldAbbrev(field) {
   if (!field) return "";
@@ -99,15 +79,13 @@ function fieldAbbrev(field) {
 // belonged to whom, and it truncated both names to do it. Here the name has
 // the whole row and wraps if it needs to; nothing is ever cut off.
 function PoolGameRow({ game }) {
+  const { day, time } = whenShort(game.scheduled_time);
   return (
-    <div data-pool-game={game.id} className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-2 py-1">
-      <div className="t-meta leading-tight">
-        <div className="font-bold">{fieldAbbrev(game.field)}</div>
-        {shortTime(game.scheduled_time)}
-      </div>
-      {/* The same matchup card the bracket and the schedule use — white,
-          because a pool game belongs to no bracket yet (JD, 2026-07-26). */}
+    <div data-pool-game={game.id}>
+      {/* The same card, and the same meta column, as the schedule and the
+          bracket. A pool card is white — it belongs to no bracket yet. */}
       <MatchupCard
+        meta={{ field: fieldAbbrev(game.field), day, time }}
         team1={game.team1_name}
         team2={game.team2_name}
         score1={game.team1_score}
@@ -151,7 +129,7 @@ function PoolPlaySection({ poolGames }) {
           const { standings } = poolFinishOrder(games);
           const left = games.filter((g) => g.status !== "final").length;
           return (
-            <Card key={letter} className="space-y-2">
+            <Card key={letter} data-pool-card={letter} className="space-y-2">
               <div className="flex items-baseline justify-between gap-2 pb-2">
                 <h3 className="t-label">
                   Pool {letter}
@@ -450,6 +428,12 @@ export default async function DivisionPage({ params }) {
     ? await getPoolGames(division.parent_division_id)
     : poolGames;
   const hasPoolGames = stagePoolGames.length > 0;
+
+  // Which pool is a team in — so their own pool can lead (JD, 2026-07-26).
+  const poolByTeam = {};
+  for (const g of stagePoolGames) {
+    for (const n of [g.team1_name, g.team2_name]) if (n && !poolByTeam[n]) poolByTeam[n] = g.pool;
+  }
   const teamStatus = await getTeamStatus(tournament.id);
 
   // The bracket children's own games, so this page can draw them inline
@@ -634,6 +618,7 @@ export default async function DivisionPage({ params }) {
           stages={stages.map((st) => ({ id: st.id, name: st.display_name ?? st.name }))}
           currentId={division.id}
           bracketByTeam={bracketByTeam}
+          poolByTeam={poolByTeam}
           teamStatus={teamStatus}
           slug={slug}
           bracketLive={bracketLive}

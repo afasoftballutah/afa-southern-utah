@@ -26,25 +26,17 @@ const fieldShort = (f) => (f ? String(f).replace(/^Field\s*/i, "F") : "");
 function Row({ g, played, seeds }) {
   const to = href(g);
   const body = (
-    <div className="grid grid-cols-[52px_minmax(0,1fr)] items-center gap-3">
-      {/* Where and when, in a fixed column, so a list of games can be read
-          at a glance from a car park. */}
-      <div className="t-meta leading-tight">
-        <div className="font-bold">{fieldShort(g.field)}</div>
-        <div>{g.whenDay}</div>
-        <div>{g.whenTime}</div>
-      </div>
-      <MatchupCard
-        caption={[g.divisionName, g.label].filter(Boolean).join(" \u00b7 ")}
-        division={g.divisionName}
-        team1={g.team1}
-        team2={g.team2}
-        score1={g.score1}
-        score2={g.score2}
-        isFinal={played}
-        seeds={seeds}
-      />
-    </div>
+    <MatchupCard
+      meta={{ field: fieldShort(g.field), day: g.whenDay, time: g.whenTime }}
+      caption={[g.divisionName, g.label].filter(Boolean).join(" \u00b7 ")}
+      division={g.divisionName}
+      team1={g.team1}
+      team2={g.team2}
+      score1={g.score1}
+      score2={g.score2}
+      isFinal={played}
+      seeds={seeds}
+    />
   );
   return to ? (
     <Link

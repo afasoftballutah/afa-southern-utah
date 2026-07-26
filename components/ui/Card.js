@@ -13,7 +13,11 @@ const VARIANTS = {
   navy: "card p-4 bg-afa-navy text-white",
 };
 
-export default function Card({ variant = "default", className = "", children }) {
+export default function Card({ variant = "default", className = "", children, ...rest }) {
   const base = VARIANTS[variant] ?? VARIANTS.default;
-  return <div className={[base, className].filter(Boolean).join(" ")}>{children}</div>;
+  return (
+    <div className={[base, className].filter(Boolean).join(" ")} {...rest}>
+      {children}
+    </div>
+  );
 }

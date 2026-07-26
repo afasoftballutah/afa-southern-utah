@@ -40,6 +40,7 @@ export default function DivisionView({
   stages,
   bracketLive,
   bracketByTeam,
+  poolByTeam,
   ...finderProps
 }) {
   const [team, setTeam] = useState("");
@@ -67,6 +68,17 @@ export default function DivisionView({
   // it again closes them (JD, 2026-07-26). The button you would reach for
   // to ask "how did Gold finish" is the one that already says Gold.
   const [standingsFor, setStandingsFor] = useState(null);
+
+  // Your own pool leads, the rest stay alphabetical underneath (JD,
+  // 2026-07-26). The cards are rendered on the server, so this reorders
+  // them with CSS `order` rather than re-rendering the list — grid honours
+  // it, and nothing about the markup has to know who you are.
+  useEffect(() => {
+    const mine = team ? poolByTeam?.[team] : null;
+    document.querySelectorAll("[data-pool-card]").forEach((el) => {
+      el.style.order = mine && el.getAttribute("data-pool-card") === mine ? "-1" : "";
+    });
+  }, [team, poolByTeam, stage]);
 
   // Landing from a result elsewhere: ?game=5 opens the bracket on game 5,
   // ?pool=A opens pool play. Read from the URL rather than taken as a prop

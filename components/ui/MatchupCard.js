@@ -56,13 +56,18 @@ function Pill({ name, seed, score, won, waiting }) {
 }
 
 /**
- * @param caption   the line above the card — "SUN 12A · F4", "GOLD · GAME 8"
+ * @param caption   the line above the card — "GOLD · GAME 8"
+ * @param meta      { field, day, time } — the fixed column to the left of
+ *                  the card. Part of THIS component so a game says where
+ *                  and when the same way everywhere (JD, 2026-07-26); it
+ *                  was two lines in a pool card and three in the schedule.
  * @param division  "Gold" | "Silver" | "Bronze" — tints the ground; anything
  *                  else (pool play) stays white
  * @param seeds     optional { [teamName]: "D1" }
  */
 export default function MatchupCard({
   caption,
+  meta,
   division,
   team1,
   team2,
@@ -77,11 +82,9 @@ export default function MatchupCard({
   const won2 = isFinal && !tie && score2 > score1;
   const seedOf = (n) => (n && seeds ? seeds[n] ?? null : null);
 
-  return (
-    <div className={`min-w-0 ${className}`}>
-      {caption && (
-        <p className="t-label mb-1 truncate text-afa-muted">{caption}</p>
-      )}
+  const card = (
+    <div className="min-w-0">
+      {caption && <p className="t-label mb-1 truncate">{caption}</p>}
       <div
         className="card flex flex-col gap-1 rounded-[11px] px-2 py-2.5"
         style={{ background: GROUND[division] ?? "#fff" }}
@@ -89,6 +92,21 @@ export default function MatchupCard({
         <Pill name={team1} seed={seedOf(team1)} score={isFinal ? score1 : null} won={won1} waiting={!team1} />
         <Pill name={team2} seed={seedOf(team2)} score={isFinal ? score2 : null} won={won2} waiting={!team2} />
       </div>
+    </div>
+  );
+
+  if (!meta) return <div className={`min-w-0 ${className}`}>{card}</div>;
+
+  return (
+    <div className={`grid grid-cols-[52px_minmax(0,1fr)] items-center gap-3 ${className}`}>
+      {/* Field, day, time — one under the other in a fixed column, so a
+          list of games lines up and can be read at a glance. */}
+      <div className="t-meta leading-tight">
+        {meta.field && <div className="font-bold">{meta.field}</div>}
+        {meta.day && <div>{meta.day}</div>}
+        {meta.time && <div>{meta.time}</div>}
+      </div>
+      {card}
     </div>
   );
 }
