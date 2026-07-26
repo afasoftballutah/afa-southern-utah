@@ -33,9 +33,8 @@ function Pill({ name, seed, score, won, waiting }) {
           "min-w-0 flex-1 truncate leading-none",
           waiting
             ? "text-center text-[12px] font-semibold italic text-afa-muted"
-            : "font-team text-[14px] uppercase tracking-[.012em] text-afa-ink",
+            : "font-display text-[14px] text-afa-ink",
         ].join(" ")}
-        style={waiting ? undefined : { fontWeight: won ? 700 : 400 }}
       >
         {seed && <span className="text-[11.5px] font-bold text-afa-muted">[{seed}] </span>}
         {name ?? "TBD"}

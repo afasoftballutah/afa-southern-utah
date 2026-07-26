@@ -54,13 +54,10 @@ function Pill({ label, tag, score, won, waiting, tint }) {
           "min-w-0 truncate leading-none",
           waiting
             ? "italic text-[12px] font-semibold tracking-[.01em]"
-            : "font-team uppercase text-[14px] tracking-[.012em] text-afa-ink",
+            : "font-display text-[14px] text-afa-ink",
           waiting ? "flex-1 text-center" : "",
         ].join(" ")}
-        style={{
-          fontWeight: waiting ? undefined : won ? 700 : 400,
-          color: waiting ? tint || "var(--afa-muted)" : undefined,
-        }}
+        style={{ color: waiting ? tint || "var(--afa-muted)" : undefined }}
       >
         {tag && (
           <span
