@@ -37,7 +37,7 @@ function groupByRank(order, standingsByTeam) {
   return groups;
 }
 
-function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swappedSeedRefs, busy, onReorder, onRemap }) {
+function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, busy, onReorder, onOpenPicker }) {
   const standingsByTeam = new Map(pool.standings.map((t) => [t.team, t]));
   const groups = groupByRank(order, standingsByTeam);
   // The SEED number ("A #2") is always sequential position in the chosen
@@ -65,37 +65,34 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
   return (
     <Card className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold text-afa-navy">Pool {letter}</h3>
-        {!pool.complete && (
-          <span className="text-xs text-afa-ink/60">
-            {pool.remaining} of {pool.total} game{pool.total === 1 ? "" : "s"} left
-          </span>
-        )}
+        <h3 className="text-[11px] font-bold uppercase tracking-[.09em] text-afa-navy">Pool {letter}</h3>
+        <span className="text-[11px] font-semibold text-afa-muted">
+          {pool.complete ? "Final" : `${pool.remaining} of ${pool.total} left`}
+        </span>
       </div>
 
-      {/* Column labels (dispatch-brief-26) — RA needs a header to be
-          readable; the same three columns the public standings table and
-          PoolPlayManager use, so a director reads one language everywhere. */}
-      <div className="flex items-center gap-1.5 px-0.5 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-        <span className="flex-1 min-w-0">Team</span>
-        <span className="w-10 shrink-0 text-right">W-L</span>
-        <span className="w-10 shrink-0 text-right">PCT</span>
-        <span className="w-8 shrink-0 text-right">RA</span>
+      {/* Columns are labelled ONCE at the top of the pool so no row has to
+          carry a unit, which is what makes a one-line row fit. PCT is
+          gone: in a two-game pool it restates W-L, and it was the column
+          squeezing the names (redesign spec 4). */}
+      <div className="grid grid-cols-[17px_minmax(0,1fr)_34px_26px_98px] items-center gap-x-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-muted border-b border-afa-navy/10">
+        <span />
+        <span>Team</span>
+        <span className="text-right">W&ndash;L</span>
+        <span className="text-right">RA</span>
+        <span className="pl-0.5">Seeded to</span>
       </div>
 
-      <div className="space-y-1">
+      <div>
         {groups.map((g) => {
           // An incomplete pool shows standings, never seeding controls —
           // there is nothing to seed yet, and W-L can still change.
           const tied = pool.complete && g.teams.length > 1;
           return (
-            <div
-              key={g.rank}
-              className={tied ? "border border-afa-navy/25 rounded p-2 space-y-1 bg-afa-navy/5" : ""}
-            >
+            <div key={g.rank} className={tied ? "-mx-1.5 rounded-[11px] bg-afa-navy/[0.045] px-1.5 py-0.5" : ""}>
               {tied && (
-                <p className="text-xs font-bold text-afa-navy">
-                  Tied at {standingsByTeam.get(g.teams[0]).w}-{standingsByTeam.get(g.teams[0]).l} — you decide the order
+                <p className="px-0.5 pt-1.5 pb-0.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-navy/80">
+                  Tied at {standingsByTeam.get(g.teams[0]).w}&ndash;{standingsByTeam.get(g.teams[0]).l} &middot; you decide the order
                 </p>
               )}
               {g.teams.map((team, idx) => {
@@ -111,92 +108,67 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
                 const seedRef = pool.complete ? `${letter} #${seedNumberByTeam.get(team)}` : null;
                 const current = seedRef ? slotBySeedRef[seedRef] : null;
                 const highlighted = current ? swappedSeedRefs.has(current.raw) : false;
+                const seedNo = seedNumberByTeam.get(team);
                 return (
                   <div
                     key={team}
-                    className={`space-y-1 ${highlighted ? "bg-afa-navy/10 rounded px-1.5 -mx-1.5 py-1" : ""}`}
+                    className={`grid grid-cols-[17px_minmax(0,1fr)_34px_26px_98px] items-center gap-x-2 min-h-11 py-1.5 border-b border-afa-navy/[0.07] last:border-0 ${
+                      highlighted ? "rounded bg-afa-navy/10" : ""
+                    }`}
                   >
-                    <div className="flex items-center gap-1.5 text-sm">
-                      {/* A team name WRAPS, it never truncates (JD,
-                          2026-07-25). Three cards to a row leaves this
-                          column under 100px, and "Band of Randoms" read as
-                          "Band of ..." — the one thing on the row a
-                          director has to recognize was the one thing being
-                          cut. The stat columns hold their width instead
-                          (shrink-0), so the name takes a second line and
-                          every column still lines up under its header. */}
-                      <span className="flex-1 min-w-0 break-words leading-snug">
-                        {seedRef && (
-                          <span className="font-semibold text-afa-navy">{seedRef}</span>
-                        )}{" "}
-                        {team}
-                      </span>
-                      <span className="w-10 shrink-0 text-right tabular-nums">
-                        {info.w}-{info.l}
-                      </span>
-                      <span className="w-10 shrink-0 text-right tabular-nums">{info.pct}</span>
-                      <span className="w-8 shrink-0 text-right tabular-nums">{info.ra}</span>
-                      {tied && (
-                        <span className="flex gap-1">
-                          <button
-                            type="button"
-                            aria-label={`Move ${team} up`}
-                            disabled={idx === 0}
-                            onClick={() => move(team, -1)}
-                            className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Move ${team} down`}
-                            disabled={idx === g.teams.length - 1}
-                            onClick={() => move(team, 1)}
-                            className="min-h-11 min-w-11 border border-afa-navy/30 rounded text-afa-navy font-bold disabled:opacity-30"
-                          >
-                            ↓
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                    {/* Destination control (dispatch-brief-26) — the
-                        bracket-swap surface JD asked for, living right on
-                        the row it seeds. Any seed may be moved to any
-                        seed-fed slot in the tournament, including one in a
-                        different pool's bracket — that's the whole point,
-                        so nothing here restricts the option list to slots
-                        this pool could "reach." Only rendered when this
-                        seed actually feeds a slot right now (a pool can
-                        produce a rank the bracket never asked for). */}
-                    {current && (
-                      <select
-                        aria-label={`Destination for ${seedRef}, currently ${current.where}`}
-                        className="w-full border border-afa-navy/30 rounded px-2 py-2.5 text-sm"
-                        value={`${current.gameId}::${current.slot}`}
+                    <span className="text-right text-[12.5px] font-bold tabular-nums text-afa-navy/50">
+                      {pool.complete ? seedNo : "\u00b7"}
+                    </span>
+                    <span className="min-w-0 break-words text-[15px] font-semibold leading-tight">{team}</span>
+                    <span className="text-right text-[13.5px] font-semibold tabular-nums text-afa-ink/[0.78]">
+                      {info.w}&ndash;{info.l}
+                    </span>
+                    <span className="text-right text-[13px] tabular-nums text-afa-muted">{info.ra}</span>
+
+                    {/* The destination is what this screen PRODUCES, so it
+                        gets a colour language keyed to the bracket names
+                        the league already says out loud, not a fourth
+                        native dropdown on a 280px card. Tapping it opens
+                        the picker (redesign spec 3). */}
+                    {current ? (
+                      <button
+                        type="button"
                         disabled={busy}
-                        onChange={(e) => onRemap(current.raw, e.target.value)}
+                        onClick={() => onOpenPicker({ seedRef, raw: current.raw, team, current })}
+                        aria-label={`Destination for ${seedRef}, currently ${current.where}`}
+                        className={`min-h-9 w-full rounded-lg px-1.5 text-[11px] font-bold uppercase tracking-[.04em] disabled:opacity-50 ${
+                          TIER_CLASS[current.where.split(" ")[0]] ?? "bg-afa-navy/10 text-afa-navy"
+                        }`}
                       >
-                        {/* A native <select> shows its SELECTED option's
-                            text in the closed control, and that text can
-                            neither wrap nor ellipsize — "Bronze G1 —
-                            Unstable Legends" was simply cut off inside a
-                            280px card. The team name is the part that got
-                            cut, and for the selected option it is this
-                            row's OWN team, already printed in full
-                            directly above. So the current slot labels
-                            itself by slot alone; every OTHER option keeps
-                            the projected team, which is what makes a
-                            cross-bracket move readable (JD, 2026-07-25),
-                            and the operating system draws that open list
-                            at whatever width it needs. */}
-                        {seedFedSlotOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.value === `${current.gameId}::${current.slot}`
-                              ? `${opt.slot} (current)`
-                              : opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        {current.where}
+                      </button>
+                    ) : (
+                      <span className="text-center text-[13px] text-afa-ink/20" title="Seeding opens when the pool is final">
+                        &ndash;
+                      </span>
+                    )}
+
+                    {tied && (
+                      <span className="col-start-5 col-end-6 -mt-1 flex justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-label={`Move ${team} up`}
+                          disabled={idx === 0}
+                          onClick={() => move(team, -1)}
+                          className="min-h-8 min-w-8 rounded border border-afa-navy/30 text-xs font-bold text-afa-navy disabled:opacity-30"
+                        >
+                          &#9650;
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Move ${team} down`}
+                          disabled={idx === g.teams.length - 1}
+                          onClick={() => move(team, 1)}
+                          className="min-h-8 min-w-8 rounded border border-afa-navy/30 text-xs font-bold text-afa-navy disabled:opacity-30"
+                        >
+                          &#9660;
+                        </button>
+                      </span>
                     )}
                   </div>
                 );
@@ -208,6 +180,15 @@ function PoolCard({ letter, pool, order, slotBySeedRef, seedFedSlotOptions, swap
     </Card>
   );
 }
+
+// Gold, Silver and Bronze read as themselves rather than as three
+// identical grey chips — muted metallics that sit quiet on cream and
+// never fight navy.
+const TIER_CLASS = {
+  Gold: "bg-[#f7edcd] text-[#7a5c12]",
+  Silver: "bg-[#e9edf2] text-[#46546a]",
+  Bronze: "bg-[#f3e2d6] text-[#7b4a28]",
+};
 
 export default function SeedBrackets({ divisionId, tournamentSlug }) {
   const [result, setResult] = useState(null);
@@ -268,6 +249,10 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // ends of the move are visible — even when they land in different pool
   // cards (dispatch-brief-26).
   const [swappedSeedRefs, setSwappedSeedRefs] = useState(new Set());
+  // The seed whose destination the director is choosing. A sheet rather
+  // than a <select>: a native dropdown cannot show which team currently
+  // holds each slot without truncating it inside a 280px card.
+  const [picker, setPicker] = useState(null);
 
   async function remapSlot(gameId, slotSide, nextSeedRef) {
     setBusy(true);
@@ -385,6 +370,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // there so a cross-bracket move reads as what it is.
   const seedFedSlotOptions = slots.map((sl) => ({
     value: `${sl.gameId}::${sl.slot}`,
+    who: sl.team || "not yet decided",
     label: `${sl.division} G${sl.round} — ${sl.team || "not yet decided"}`,
     // The slot on its own, for the one option a row renders as its
     // current destination (see the option list below).
@@ -412,11 +398,11 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
             pool={pools[letter]}
             order={orders[letter] ?? pools[letter].standings.map((t) => t.team)}
             slotBySeedRef={slotBySeedRef}
-            seedFedSlotOptions={seedFedSlotOptions}
+
             swappedSeedRefs={swappedSeedRefs}
             busy={busy}
             onReorder={handleReorder}
-            onRemap={handleRemap}
+            onOpenPicker={setPicker}
           />
         ))}
       </div>
@@ -439,6 +425,68 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
                 .join(", ")}
             </p>
           ))}
+        </div>
+      )}
+
+      {picker && (
+        <div className="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setPicker(null)}
+            className="absolute inset-0 bg-afa-ink/30"
+          />
+          <div className="relative w-full max-h-[76vh] overflow-y-auto rounded-t-2xl bg-afa-cream p-4">
+            <div className="mb-2">
+              <p className="text-[17px] font-semibold">{picker.team}</p>
+              <p className="text-sm text-afa-muted">
+                {picker.seedRef} &middot; currently {picker.current.where}
+              </p>
+            </div>
+            {["Gold", "Silver", "Bronze"].map((tier) => {
+              const list = seedFedSlotOptions.filter((o) => o.slot.startsWith(tier));
+              if (!list.length) return null;
+              return (
+                <div key={tier}>
+                  <p className="px-1 pt-3 pb-1 text-[10.5px] font-bold uppercase tracking-[.09em] text-afa-muted">
+                    {tier} bracket
+                  </p>
+                  {list.map((opt, i) => {
+                    const isCurrent = opt.value === `${picker.current.gameId}::${picker.current.slot}`;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          const p = picker;
+                          setPicker(null);
+                          if (!isCurrent) handleRemap(p.raw, opt.value);
+                        }}
+                        className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2 text-left disabled:opacity-50"
+                      >
+                        {/* The second side of a game reads as the
+                            opponent's line rather than repeating the game
+                            name — "Silver G4" holds two seeds because two
+                            teams play Silver game 4. */}
+                        <span
+                          className={`w-[92px] shrink-0 rounded-lg px-1.5 py-1.5 text-center text-[11px] font-bold uppercase tracking-[.04em] ${
+                            TIER_CLASS[tier]
+                          }`}
+                        >
+                          {i > 0 && list[i - 1].slot === opt.slot ? <i className="not-italic opacity-60">vs</i> : opt.slot}
+                        </span>
+                        <span className="min-w-0 break-words text-[14.5px]">
+                          {opt.who === picker.team ? <i className="text-afa-muted">stays here</i> : opt.who}
+                        </span>
+                        {isCurrent && <span className="ml-auto text-afa-navy">&#10003;</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
