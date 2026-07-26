@@ -264,6 +264,101 @@ function eventTitle(tournamentName, divisionName) {
   return stripped ? `${stripped} ${divisionName}` : tournamentName;
 }
 
+/**
+ * Standings for one bracket (JD, 2026-07-26: "when you click on the
+ * division it shows the final standings and records for that division").
+ *
+ * Records are COMPUTED from the games, the same way pool standings are —
+ * nothing is stored. The finish column is the league's own, which we only
+ * have for teams whose run has ended; a team still playing has no finish
+ * yet and says so rather than being given a rank we invented.
+ */
+function bracketStandings(games, teamStatus) {
+  const byTeam = new Map();
+  const add = (name) => {
+    if (!isRealTeamName(name)) return null;
+    if (!byTeam.has(name)) byTeam.set(name, { team: name, w: 0, l: 0 });
+    return byTeam.get(name);
+  };
+  for (const g of games) {
+    const a = add(g.team1_name);
+    const b = add(g.team2_name);
+    if (g.status !== "final" || g.team1_score === null || g.team2_score === null) continue;
+    if (!a || !b || g.team1_score === g.team2_score) continue;
+    const [win, lose] = g.team1_score > g.team2_score ? [a, b] : [b, a];
+    win.w += 1;
+    lose.l += 1;
+  }
+
+  // Only SETTLED places are shown (JD, 2026-07-26). A team still playing
+  // has not finished anywhere yet, and giving them a row number would
+  // read as a placing they have not earned. They sit above everyone who
+  // is out — which is true, they are still in it — and their place is
+  // simply blank until it is decided.
+  const placeOf = (t) => {
+    const raw = teamStatus[t]?.placement;
+    const n = raw ? Number(String(raw).match(/\d+/)?.[0]) : null;
+    return Number.isFinite(n) ? { label: raw, n } : null;
+  };
+
+  return [...byTeam.values()]
+    .map((t) => ({ ...t, finish: placeOf(t.team) }))
+    .sort((x, y) => {
+      if (!x.finish && !y.finish) return y.w - x.w || x.l - y.l || x.team.localeCompare(y.team);
+      if (!x.finish) return -1; // still playing outranks anyone already out
+      if (!y.finish) return 1;
+      return x.finish.n - y.finish.n;
+    });
+}
+
+function StandingsPanel({ name, rows }) {
+  if (rows.length === 0) return null;
+  const settled = rows.filter((r) => r.finish).length;
+  return (
+    <div className="rounded-xl border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 pt-3 pb-2">
+        <h2 className="text-[11px] font-bold uppercase tracking-[.09em] text-afa-navy">
+          {name} standings
+        </h2>
+        <span className="text-[11px] text-afa-muted">
+          {settled === rows.length
+            ? "Final"
+            : `${settled} of ${rows.length} places settled`}
+        </span>
+      </div>
+      {/* Bounded, so a long bracket scrolls inside its own panel rather
+          than pushing the drawing off the bottom of the screen. */}
+      <div className="max-h-[60vh] overflow-y-auto px-4 pb-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_46px_52px] items-center gap-x-2 border-b border-afa-navy/10 pb-1.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-muted">
+          <span>Team</span>
+          <span className="text-right">W&ndash;L</span>
+          <span className="text-right">Finish</span>
+        </div>
+        {rows.map((t) => (
+          <div
+            key={t.team}
+            className="grid min-h-11 grid-cols-[minmax(0,1fr)_46px_52px] items-center gap-x-2 border-b border-afa-navy/[0.07] py-1.5 text-sm last:border-0"
+          >
+            <span className="truncate font-semibold" title={t.team}>
+              {t.team}
+            </span>
+            <span className="text-right font-semibold tabular-nums text-afa-ink/[0.78]">
+              {t.w}&ndash;{t.l}
+            </span>
+            <span
+              className={`text-right text-xs ${
+                t.finish ? "font-semibold text-afa-ink/70" : "text-afa-muted"
+              }`}
+            >
+              {t.finish ? t.finish.label : "still in"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export async function generateMetadata({ params }) {
   const { divisionId } = await params;
   const division = await getDivisionById(divisionId);
@@ -522,6 +617,18 @@ export default async function DivisionPage({ params }) {
           slug={slug}
           bracketLive={bracketLive}
           poolPane={hasPoolGames ? <PoolPlaySection poolGames={poolGames} /> : null}
+          standingsPanes={Object.fromEntries(
+            Object.entries(playableStageGames)
+              .filter(([, list]) => list.length > 0)
+              .map(([id, list]) => [
+                id,
+                <StandingsPanel
+                  key={id}
+                  name={stages.find((st) => st.id === id)?.display_name ?? ""}
+                  rows={bracketStandings(list, teamStatus)}
+                />,
+              ])
+          )}
           bracketPanes={Object.fromEntries(
             Object.entries(playableStageGames)
               .filter(([, list]) => list.length > 0)

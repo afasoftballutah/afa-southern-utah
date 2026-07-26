@@ -35,6 +35,7 @@ const TIER_ACTIVE = {
 export default function DivisionView({
   poolPane,
   bracketPanes, // { [divisionId]: node }
+  standingsPanes, // { [divisionId]: node }
   stages,
   bracketLive,
   bracketByTeam,
@@ -61,6 +62,10 @@ export default function DivisionView({
   // Owned here so it can sit in the one toolbar row with everything else
   // (JD, 2026-07-26) rather than on its own line under it.
   const [showDrops, setShowDrops] = useState(false);
+  // Pressing the bracket you are ALREADY on opens its standings; pressing
+  // it again closes them (JD, 2026-07-26). The button you would reach for
+  // to ask "how did Gold finish" is the one that already says Gold.
+  const [standingsFor, setStandingsFor] = useState(null);
   const mine = team ? bracketByTeam?.[team] : null;
   const shownBracketId =
     (bracketId && bracketPanes[bracketId] && bracketId) ||
@@ -128,7 +133,14 @@ export default function DivisionView({
                           key={st.id}
                           type="button"
                           aria-current={on}
-                          onClick={() => setBracketId(st.id)}
+                          aria-expanded={on ? standingsFor === st.id : undefined}
+                          onClick={() => {
+                            if (on) setStandingsFor((v) => (v === st.id ? null : st.id));
+                            else {
+                              setBracketId(st.id);
+                              setStandingsFor(null);
+                            }
+                          }}
                           className={`min-h-11 rounded-md px-4 text-sm font-semibold ${
                             on
                               ? `${TIER_ACTIVE[st.name] ?? "bg-white text-afa-navy"} shadow-sm`
@@ -159,9 +171,12 @@ export default function DivisionView({
       )}
 
       {stage === "bracket" && hasBracket ? (
-        <DropsProvider value={{ showDrops, setShowDrops }}>
-          <HighlightTeamProvider team={team}>{bracketPanes[shownBracketId]}</HighlightTeamProvider>
-        </DropsProvider>
+        <div className="space-y-3">
+          {standingsFor && standingsPanes?.[standingsFor]}
+          <DropsProvider value={{ showDrops, setShowDrops }}>
+            <HighlightTeamProvider team={team}>{bracketPanes[shownBracketId]}</HighlightTeamProvider>
+          </DropsProvider>
+        </div>
       ) : (
         poolPane
       )}
