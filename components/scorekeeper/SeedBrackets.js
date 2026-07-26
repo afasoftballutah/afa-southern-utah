@@ -37,7 +37,7 @@ function groupByRank(order, standingsByTeam) {
   return groups;
 }
 
-function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, busy, onReorder, onOpenPicker }) {
+function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, proposedSeeds, busy, onReorder, onOpenPicker }) {
   const standingsByTeam = new Map(pool.standings.map((t) => [t.team, t]));
   const groups = groupByRank(order, standingsByTeam);
   // The SEED number ("A #2") is always sequential position in the chosen
@@ -112,8 +112,13 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, busy, o
                 return (
                   <div
                     key={team}
+                    data-seed={seedRef ?? undefined}
                     className={`grid grid-cols-[17px_minmax(0,1fr)_34px_26px_98px] items-center gap-x-2 min-h-11 py-1.5 border-b border-afa-navy/[0.07] last:border-0 ${
-                      highlighted ? "rounded bg-afa-navy/10" : ""
+                      proposedSeeds?.has(seedRef)
+                        ? "rounded bg-afa-navy/[0.07] ring-2 ring-afa-navy/40"
+                        : highlighted
+                        ? "rounded bg-afa-navy/10"
+                        : ""
                     }`}
                   >
                     <span className="text-right text-[12.5px] font-bold tabular-nums text-afa-navy/50">
@@ -253,6 +258,13 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // than a <select>: a native dropdown cannot show which team currently
   // holds each slot without truncating it inside a 280px card.
   const [picker, setPicker] = useState(null);
+  // Nothing is written on selection. A swap is PROPOSED: both ends light
+  // up, a dotted line is drawn between them wherever they sit, and the
+  // director confirms. Every applied swap is then listed, undoable.
+  const [proposal, setProposal] = useState(null);
+  const [swaps, setSwaps] = useState([]);
+  const [undoing, setUndoing] = useState(null);
+  const [link, setLink] = useState(null);
 
   async function remapSlot(gameId, slotSide, nextSeedRef) {
     setBusy(true);
@@ -290,6 +302,50 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
   // separator, not "-". Picking an option performs the existing swap: the
   // TARGET is the chosen slot, the value written there is this row's own
   // seedRef.
+  /* A swap always moves TWO seeds, so it is stated as both moves before
+     either happens. The partner is whoever currently holds the seat being
+     taken — read off the same slots list the picker was built from, never
+     guessed. */
+  function proposeSwap(pick, opt) {
+    const idx = opt.value.lastIndexOf("::");
+    const gameId = opt.value.slice(0, idx);
+    const slotSide = opt.value.slice(idx + 2);
+    const target = (result?.slots ?? []).find((sl) => sl.gameId === gameId && sl.slot === slotSide);
+    if (!target) return;
+    const targetLabel = `${target.division} G${target.round}`;
+    const partnerSeed = target.seedRef ? seedLabelOf(target.seedRef) : null;
+    setProposal({
+      value: opt.value,
+      a: { raw: pick.raw, seedRef: pick.seedRef, team: pick.team, from: pick.current.where, to: targetLabel },
+      b: {
+        raw: target.seedRef,
+        seedRef: partnerSeed,
+        team: target.team || "the seat's current holder",
+        from: targetLabel,
+        to: pick.current.where,
+      },
+      backValue: `${pick.current.gameId}::${pick.current.slot}`,
+    });
+  }
+
+  async function commitSwap() {
+    const p = proposal;
+    setProposal(null);
+    await remapSlot(...splitDest(p.value), p.a.raw);
+    setSwaps((prev) => [{ id: `${Date.now()}-${p.a.raw}`, ...p }, ...prev]);
+  }
+
+  async function undoSwap(entry) {
+    setUndoing(null);
+    await remapSlot(...splitDest(entry.backValue), entry.a.raw);
+    setSwaps((prev) => prev.filter((s) => s.id !== entry.id));
+  }
+
+  function splitDest(value) {
+    const i = value.lastIndexOf("::");
+    return [value.slice(0, i), value.slice(i + 2)];
+  }
+
   function handleRemap(seedRef, destValue) {
     const idx = destValue.lastIndexOf("::");
     if (idx === -1) return;
@@ -318,6 +374,47 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
       setBusy(false);
     }
   }
+
+  // "[A #1]" or "A #1" -> "A #1", the canonical key the rows are drawn
+  // with, so a proposal can find both of its ends in the DOM.
+  function seedLabelOf(raw) {
+    const parsed = parseSeedRef(raw);
+    return parsed ? `${parsed.pool} #${parsed.rank}` : null;
+  }
+
+  /* The dotted line between the two rows of a proposed swap. Measured off
+     the rendered rows rather than computed, because the two ends can sit
+     in any two pool cards on the page — and redrawn on scroll and resize
+     for the same reason. */
+  useEffect(() => {
+    if (!proposal) {
+      setLink(null);
+      return;
+    }
+    const draw = () => {
+      const el = (ref) => document.querySelector(`[data-seed="${CSS.escape(ref)}"]`);
+      const A = el(proposal.a.seedRef);
+      const B = proposal.b.seedRef ? el(proposal.b.seedRef) : null;
+      if (!A || !B) return setLink(null);
+      const ra = A.getBoundingClientRect();
+      const rb = B.getBoundingClientRect();
+      const ca = { x: ra.left + ra.width / 2, y: ra.top + ra.height / 2 };
+      const cb = { x: rb.left + rb.width / 2, y: rb.top + rb.height / 2 };
+      const [T, Bm] = ca.y <= cb.y ? [ra, rb] : [rb, ra];
+      const p1 = { x: T.left + T.width / 2, y: T.bottom + 3 };
+      const p2 = { x: Bm.left + Bm.width / 2, y: Bm.top - 3 };
+      const bow = Math.max(24, (p2.y - p1.y) * 0.4);
+      setLink(`M ${p1.x} ${p1.y} C ${p1.x} ${p1.y + bow}, ${p2.x} ${p2.y - bow}, ${p2.x} ${p2.y}`);
+    };
+    draw();
+    const on = () => requestAnimationFrame(draw);
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on);
+      window.removeEventListener("resize", on);
+    };
+  }, [proposal]);
 
   if (!result) {
     return (
@@ -381,6 +478,41 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
     <div className="chalk-panel space-y-4">
       <h2 className="font-bold text-afa-navy">Seed Brackets</h2>
 
+      {/* Every swap made this session, newest first, each one undoable.
+          A change you cannot see you made is a change you cannot trust. */}
+      {swaps.length > 0 && (
+        <div className="rounded-xl bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-afa-navy/10 px-4 py-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-[.09em] text-afa-navy">Swaps this session</h3>
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-afa-navy px-1.5 text-[11px] font-bold text-white">
+              {swaps.length}
+            </span>
+          </div>
+          {swaps.map((sw, i) => (
+            <div key={sw.id} className="grid grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-3 border-b border-afa-navy/10 px-4 py-3 last:border-0">
+              <span className="text-right text-[11px] font-bold text-afa-muted tabular-nums">{swaps.length - i}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight">
+                  {sw.a.team} <span className="px-1 font-normal text-afa-muted">&#8644;</span> {sw.b.team}
+                </p>
+                <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-afa-muted">
+                  <span><b className="font-semibold text-afa-ink/[0.66]">{sw.a.team}</b> {sw.a.from} &rarr; {sw.a.to}</span>
+                  <span><b className="font-semibold text-afa-ink/[0.66]">{sw.b.team}</b> {sw.b.from} &rarr; {sw.b.to}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setUndoing(sw)}
+                className="min-h-9 rounded-full border border-afa-ink/15 px-3.5 text-[12.5px] font-semibold text-afa-navy disabled:opacity-40"
+              >
+                Undo
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {swappedSeedRefs.size > 0 && (
         <p className="text-xs font-bold text-afa-navy">
           Swapped — the highlighted rows below moved.
@@ -400,6 +532,9 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
             slotBySeedRef={slotBySeedRef}
 
             swappedSeedRefs={swappedSeedRefs}
+            proposedSeeds={
+              proposal ? new Set([proposal.a.seedRef, proposal.b.seedRef].filter(Boolean)) : null
+            }
             busy={busy}
             onReorder={handleReorder}
             onOpenPicker={setPicker}
@@ -425,6 +560,57 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
                 .join(", ")}
             </p>
           ))}
+        </div>
+      )}
+
+      {/* The dotted line, drawn over the page so it can join two rows in
+          different pool cards. */}
+      {link && (
+        <svg className="pointer-events-none fixed inset-0 z-40 h-screen w-screen" aria-hidden="true">
+          <path d={link} fill="none" stroke="var(--afa-navy)" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.85" />
+        </svg>
+      )}
+
+      {proposal && (
+        <div role="alertdialog" aria-modal="true" aria-label="Confirm swap" className="fixed inset-x-0 bottom-0 z-50 bg-afa-navy text-white">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="font-semibold">Swap {proposal.a.team} and {proposal.b.team}?</p>
+              <p className="text-sm text-white/70">
+                {proposal.a.team} takes {proposal.a.to}. {proposal.b.team} takes {proposal.b.to}. Nothing is
+                written until you confirm.
+              </p>
+            </div>
+            <div className="ml-auto flex gap-2">
+              <button type="button" onClick={() => setProposal(null)} disabled={busy} className="rounded-full border border-white/30 px-4 font-semibold">
+                Cancel
+              </button>
+              <button type="button" data-swap-go onClick={commitSwap} disabled={busy} className="rounded-full bg-white px-4 font-semibold text-afa-navy disabled:opacity-50">
+                {busy ? "Working…" : "Swap them"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {undoing && (
+        <div role="alertdialog" aria-modal="true" aria-label="Confirm undo" className="fixed inset-x-0 bottom-0 z-50 bg-afa-navy text-white">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="font-semibold">Undo the swap of {undoing.a.team} and {undoing.b.team}?</p>
+              <p className="text-sm text-white/70">
+                {undoing.a.team} goes back to {undoing.a.from}. {undoing.b.team} goes back to {undoing.b.from}.
+              </p>
+            </div>
+            <div className="ml-auto flex gap-2">
+              <button type="button" onClick={() => setUndoing(null)} disabled={busy} className="rounded-full border border-white/30 px-4 font-semibold">
+                Cancel
+              </button>
+              <button type="button" data-undo-go onClick={() => undoSwap(undoing)} disabled={busy} className="rounded-full bg-white px-4 font-semibold text-afa-navy disabled:opacity-50">
+                {busy ? "Working…" : "Undo it"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -461,7 +647,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug }) {
                         onClick={() => {
                           const p = picker;
                           setPicker(null);
-                          if (!isCurrent) handleRemap(p.raw, opt.value);
+                          if (!isCurrent) proposeSwap(p, opt);
                         }}
                         className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2 text-left disabled:opacity-50"
                       >
