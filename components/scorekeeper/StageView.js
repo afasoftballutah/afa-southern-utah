@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SeedBrackets from "./SeedBrackets";
 import PoolPlayManager from "./PoolPlayManager";
-import DrawnBracket from "@/components/bracket/DrawnBracket";
+import BracketEditor from "./BracketEditor";
 
 // StageView — the scorekeeper's two stages (redesign spec §1, §2).
 //
@@ -141,31 +141,7 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
           <PoolPlayManager divisionId={divisionId} poolGames={poolGames} readOnly={confirmed} />
         </>
       ) : (
-        <div className="space-y-3">
-          {stages?.length > 1 && (
-            <div className="flex flex-wrap gap-2">
-              {stages.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-current={bracket?.id === s.id}
-                  onClick={() => setShown(s.id)}
-                  className={[
-                    "rounded-lg px-3 text-xs font-bold uppercase tracking-wide",
-                    bracket?.id === s.id ? "bg-afa-navy text-white" : "bg-afa-navy/5 text-afa-ink/70",
-                  ].join(" ")}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {bracket ? (
-            <DrawnBracket games={bracket.games} division={bracket.name} />
-          ) : (
-            <p className="text-sm text-afa-ink/60">No bracket games yet.</p>
-          )}
-        </div>
+        <BracketEditor stages={stages} />
       )}
 
       {/* The one primary action, and it advances: confirm the bracket, then

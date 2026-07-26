@@ -780,7 +780,24 @@ function FallbackList({ games }) {
   );
 }
 
-export default function DrawnBracket({ games, division, seeds }) {
+/**
+ * @param onSelectGame  when supplied, tapping a game calls this instead of
+ *   toggling the consequences view. That is the difference between the
+ *   public bracket (tap to see what happens if you win) and the
+ *   scorekeeper's (tap to edit). One renderer, two verbs.
+ * @param selectedRound the game the caller has open, ringed the same way
+ *   focus is.
+ * @param conflictRounds games sharing a field and a time with another
+ *   game, flagged on the card.
+ */
+export default function DrawnBracket({
+  games,
+  division,
+  seeds,
+  onSelectGame,
+  selectedRound = null,
+  conflictRounds,
+}) {
   const layout = useMemo(() => computeLayout(games), [games]);
   const [showDrops, setShowDrops] = useState(true);
   // Tap a game to see its consequences (spec 5.7). The question a manager
@@ -842,7 +859,7 @@ export default function DrawnBracket({ games, division, seeds }) {
     : null;
   const loseTo = focus ? layout.drops.find((d) => d.from === focus) : null;
   const focusRole = (round) =>
-    round === focus ? "focus" : winTo && winTo.round === round ? "win" : loseTo && loseTo.to === round ? "lose" : focus ? "dim" : null;
+    round === focus || round === selectedRound ? "focus" : winTo && winTo.round === round ? "win" : loseTo && loseTo.to === round ? "lose" : focus ? "dim" : null;
   const isChampion = focus != null && !winTo;
 
   const endpoints = [
@@ -1000,12 +1017,19 @@ export default function DrawnBracket({ games, division, seeds }) {
             data-role={role || undefined}
             className="absolute cursor-pointer transition-opacity duration-200"
             style={{ left: x, top: y, width: CELL_W, opacity: role === "dim" ? 0.22 : 1 }}
-            onClick={() => setFocus((f) => (f === round ? null : round))}
+            onClick={() =>
+              onSelectGame ? onSelectGame(round) : setFocus((f) => (f === round ? null : round))
+            }
           >
             {/* One game in focus, its two outcomes named. */}
             {role === "win" && <OutcomeTag>Winner</OutcomeTag>}
             {role === "lose" && <OutcomeTag color={loseTo?.color}>Loser</OutcomeTag>}
-            {role === "focus" && isChampion && <OutcomeTag color="var(--afa-red)">Champion</OutcomeTag>}
+            {role === "focus" && isChampion && !onSelectGame && (
+              <OutcomeTag color="var(--afa-red)">Champion</OutcomeTag>
+            )}
+            {conflictRounds?.has(round) && (
+              <OutcomeTag color="var(--afa-red)">Field clash</OutcomeTag>
+            )}
             <BracketMatchup
               game={game}
               division={division}
