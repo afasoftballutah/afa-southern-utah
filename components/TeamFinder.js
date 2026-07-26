@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
@@ -17,8 +18,18 @@ import Matchup from "@/components/ui/Matchup";
 // (`afa-team-{tournament slug}`) and both the division page and the
 // Schedule page share one memory: pick your team on either page and it's
 // already selected on the other.
-export default function TeamFinder({ teams, games, storageKey, chipPrefix }) {
+export default function TeamFinder({
+  teams,
+  games,
+  storageKey,
+  chipPrefix,
+  stages = [],
+  currentId = null,
+  bracketByTeam = {},
+  slug,
+}) {
   const [selected, setSelected] = useState("");
+  const [showAllBrackets, setShowAllBrackets] = useState(false);
 
   // Restore the remembered pick on mount. If it no longer names a real
   // team (roster change, wrong division), clear the stale key instead of
@@ -65,12 +76,21 @@ export default function TeamFinder({ teams, games, storageKey, chipPrefix }) {
   function handleClear() {
     setSelected("");
     remember("");
+    setShowAllBrackets(false);
   }
 
   const teamGames = selected
     ? games.filter((g) => g.team1 === selected || g.team2 === selected)
     : [];
   const pool = teamGames.find((g) => g.pool)?.pool ?? null;
+
+  // Which bracket is the picked team in? Once we know, there is no reason
+  // to offer them the other two — they are not in them. The others stay
+  // one tap away rather than gone, because people do look up who they
+  // might meet in the final.
+  const myStageId = selected ? bracketByTeam[selected] : null;
+  const myStage = myStageId ? stages.find((st) => st.id === myStageId) : null;
+  const shownStages = myStage && !showAllBrackets ? [myStage] : stages;
 
   return (
     <div className="space-y-2">
@@ -87,6 +107,51 @@ export default function TeamFinder({ teams, games, storageKey, chipPrefix }) {
           </option>
         ))}
       </select>
+
+      {stages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {myStage && !showAllBrackets && (
+            <span className="text-sm text-afa-ink/70">
+              <b className="font-semibold text-afa-ink">{selected}</b> is in
+            </span>
+          )}
+          {shownStages.map((st) => {
+            const isCurrent = st.id === currentId;
+            return isCurrent ? (
+              <span
+                key={st.id}
+                aria-current="page"
+                className="flex min-h-11 items-center rounded-lg border border-afa-navy bg-afa-navy px-4 text-sm font-bold text-white"
+              >
+                {st.name}
+              </span>
+            ) : (
+              <Link
+                key={st.id}
+                href={`/tournaments/${slug}/division/${st.id}`}
+                className="flex min-h-11 items-center rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
+              >
+                {st.name}
+                {myStage && !showAllBrackets && <span className="pl-1.5 font-normal">&rarr;</span>}
+              </Link>
+            );
+          })}
+          {myStage && stages.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setShowAllBrackets((v) => !v)}
+              className="min-h-11 text-sm text-afa-navy underline"
+            >
+              {showAllBrackets ? "Just mine" : "All brackets"}
+            </button>
+          )}
+          {!selected && stages.length > 1 && (
+            <span className="text-sm text-afa-ink/70">
+              Pick your team to see just yours.
+            </span>
+          )}
+        </div>
+      )}
 
       {selected && (
         <Card>

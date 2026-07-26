@@ -799,7 +799,11 @@ export default function DrawnBracket({
   conflictRounds,
 }) {
   const layout = useMemo(() => computeLayout(games), [games]);
-  const [showDrops, setShowDrops] = useState(true);
+  // Off by default (JD, 2026-07-25). The drop lines answer "where does a
+  // loser go", which is a second question — the first is "who plays who",
+  // and a dozen coloured curves across the sheet is not the first thing a
+  // reader should have to look past to get it.
+  const [showDrops, setShowDrops] = useState(false);
   // Tap a game to see its consequences (spec 5.7). The question a manager
   // actually has standing on the field is "what happens to us if we win
   // this", and the answer was spread across the whole drawing.

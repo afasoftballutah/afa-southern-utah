@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getDivisionById, getPoolGames } from "@/lib/data";
+import { getDivisionById, getPoolGames, getBracketSeedSlots } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
@@ -211,49 +211,6 @@ function PoolPlaySection({ poolGames }) {
   );
 }
 
-// Bracket stages (Gold/Silver) are CHILDREN of their division, not peers
-// (JD ruling 2026-07-24): Coed E doesn't sit beside Gold and Silver — it
-// BECOMES them, and which one your team lands in is decided by where you
-// finish in your pool. So a parent shows them as the next step; a child
-// shows its siblings as a toggle, so you can flip brackets without
-// backing out.
-function BracketStages({ slug, stages, currentId, poolPlayFeeds }) {
-  if (stages.length === 0) return null;
-  return (
-    <div className="space-y-2">
-      <h2 className="text-lg font-bold text-afa-navy">Brackets</h2>
-      {poolPlayFeeds && (
-        <p className="text-sm text-afa-ink/70">
-          Which bracket your team plays in is set by where you finish in your pool.
-        </p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        {stages.map((s) => {
-          const name = s.display_name ?? s.name;
-          const isCurrent = s.id === currentId;
-          return isCurrent ? (
-            <span
-              key={s.id}
-              aria-current="page"
-              className="rounded border border-afa-navy bg-afa-navy px-4 py-2 text-sm font-bold text-white min-h-11 flex items-center"
-            >
-              {name}
-            </span>
-          ) : (
-            <Link
-              key={s.id}
-              href={`/tournaments/${slug}/division/${s.id}`}
-              className="rounded border border-afa-navy/25 bg-white px-4 py-2 text-sm font-bold text-afa-navy hover:border-afa-navy/60 min-h-11 flex items-center"
-            >
-              {name}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export async function generateMetadata({ params }) {
   const { divisionId } = await params;
   const division = await getDivisionById(divisionId);
@@ -343,6 +300,26 @@ export default async function DivisionPage({ params }) {
   // what it did until now.
   const seeds = await seedMapsFor(division, poolGames);
 
+  // Which bracket is each team in? A slot names its team either by seed
+  // ref ("A #1", before Apply seeding) or by the real name (after), so
+  // both are read and the name wins. This is what lets the picker at the
+  // top show a Gold team the Gold bracket and nothing else.
+  const bracketByTeam = {};
+  if (stages.length > 1) {
+    for (const g of await getBracketSeedSlots(stages.map((s) => s.id))) {
+      for (const side of ["team1", "team2"]) {
+        const ref = g[`${side}_seed_ref`];
+        if (ref && seeds) {
+          const parsed = parseSeedRef(ref);
+          const team = parsed && seeds.byRef.get(`${parsed.pool}${parsed.rank}`);
+          if (team && !bracketByTeam[team]) bracketByTeam[team] = g.division_id;
+        }
+        const name = g[`${side}_name`];
+        if (isRealTeamName(name)) bracketByTeam[name] = g.division_id;
+      }
+    }
+  }
+
   // Find my team (dispatch-brief-14) — one normalized games array feeding
   // TeamFinder, built the same way from either stage this division might
   // be in: pool play carries a real pool letter, the bracket list never
@@ -397,18 +374,20 @@ export default async function DivisionPage({ params }) {
         <h1 className="font-display text-2xl text-afa-navy">{renderedName}</h1>
       </div>
 
-      {finderTeams.length > 0 && (
-        <TeamFinder teams={finderTeams} games={finderGames} storageKey={`afa-team-${slug}`} chipPrefix="Pool" />
+      {(finderTeams.length > 0 || stages.length > 1) && (
+        <TeamFinder
+          teams={finderTeams}
+          games={finderGames}
+          storageKey={`afa-team-${slug}`}
+          chipPrefix="Pool"
+          stages={stages.map((st) => ({ id: st.id, name: st.display_name ?? st.name }))}
+          currentId={division.id}
+          bracketByTeam={bracketByTeam}
+          slug={slug}
+        />
       )}
 
       {hasPoolGames && <PoolPlaySection poolGames={poolGames} />}
-
-      <BracketStages
-        slug={slug}
-        stages={stages}
-        currentId={division.id}
-        poolPlayFeeds={hasPoolGames}
-      />
 
       {hasPlacements && (
         <div className="chalk-panel mb-6">
