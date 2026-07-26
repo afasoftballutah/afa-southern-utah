@@ -100,6 +100,21 @@ export default function TeamFinder({
     : [];
   const pool = teamGames.find((g) => g.pool)?.pool ?? null;
 
+  // Their record so far, across the WHOLE tournament — pool play and the
+  // bracket together (JD, 2026-07-26). A record split by stage is two
+  // numbers nobody adds up; this is the one a team says out loud.
+  const record = teamGames.reduce(
+    (acc, g) => {
+      if (!g.isFinal) return acc;
+      const mineScore = g.team1 === selected ? g.score1 : g.score2;
+      const theirScore = g.team1 === selected ? g.score2 : g.score1;
+      if (mineScore > theirScore) acc.w += 1;
+      else if (mineScore < theirScore) acc.l += 1;
+      return acc;
+    },
+    { w: 0, l: 0 }
+  );
+
   // Which bracket is the picked team in? Once we know, there is no reason
   // to offer them the other two — they are not in them. The others stay
   // one tap away rather than gone, because people do look up who they
@@ -130,6 +145,11 @@ export default function TeamFinder({
           <span className="truncate font-display text-lg text-afa-navy">
             {selected || "Find your team"}
           </span>
+          {selected && (record.w || record.l) > 0 && (
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-afa-ink/45">
+              ({record.w}&ndash;{record.l})
+            </span>
+          )}
           <span aria-hidden="true" className="shrink-0 text-sm text-afa-navy/50">
             ▾
           </span>
