@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getDivisionById, getPoolGames, getBracketSeedSlots, getTeamStatus } from "@/lib/data";
+import {
+  getDivisionById,
+  getPoolGames,
+  getBracketSeedSlots,
+  getTeamStatus,
+  getGamesForDivisions,
+} from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
-import TeamFinder from "@/components/TeamFinder";
+import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 
@@ -301,6 +307,37 @@ export default async function DivisionPage({ params }) {
   const seeds = await seedMapsFor(division, poolGames);
   const teamStatus = await getTeamStatus(tournament.id);
 
+  // The bracket children's own games, so this page can draw them inline
+  // rather than sending a team one more click away. Only fetched when
+  // there are children to draw.
+  const stageGames = stages.length
+    ? await getGamesForDivisions(stages.map((s) => s.id))
+    : {};
+  const playableStageGames = Object.fromEntries(
+    Object.entries(stageGames).map(([id, list]) => [
+      id,
+      list
+        .filter((g) => !g.is_bye && g.status !== "cancelled")
+        .sort(
+          (a, b) =>
+            String(a.scheduled_time ?? "").localeCompare(String(b.scheduled_time ?? "")) ||
+            (a.round ?? 0) - (b.round ?? 0)
+        ),
+    ])
+  );
+
+  // "Bracket play is live" means the bracket has actually started — a
+  // result is in, or a bracket game's time has come and gone. A drawn but
+  // unplayed bracket is not what anyone is at the page for on Friday
+  // night, so it does not take the default.
+  const now = Date.now();
+  const bracketLive = Object.values(playableStageGames).some((list) =>
+    list.some(
+      (g) =>
+        g.status === "final" || (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
+    )
+  );
+
   // Which bracket is each team in? A slot names its team either by seed
   // ref ("A #1", before Apply seeding) or by the real name (after), so
   // both are read and the name wins. This is what lets the picker at the
@@ -330,6 +367,7 @@ export default async function DivisionPage({ params }) {
     ...poolGames.map((g) => ({
       id: g.id,
       pool: g.pool,
+      when: g.scheduled_time,
       caption: formatFieldTime(g),
       team1: g.team1_name,
       team2: g.team2_name,
@@ -337,9 +375,31 @@ export default async function DivisionPage({ params }) {
       score2: g.team2_score,
       isFinal: g.status === "final",
     })),
+    // The bracket children's games too, so a team's card shows their whole
+    // tournament rather than stopping at pool play. Without these, picking
+    // a team on the parent page showed two Friday games and nothing since.
+    ...Object.entries(playableStageGames).flatMap(([id, list]) => {
+      const stageName = stages.find((st) => st.id === id)?.display_name ?? "";
+      return list
+        .filter(
+          (g) => isRealTeamName(g.team1_name) && isRealTeamName(g.team2_name) && g.division_id !== division.id
+        )
+        .map((g) => ({
+          id: g.id,
+          pool: null,
+          when: g.scheduled_time,
+          caption: [`${stageName} Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
+          team1: g.team1_name,
+          team2: g.team2_name,
+          score1: g.team1_score,
+          score2: g.team2_score,
+          isFinal: g.status === "final",
+        }));
+    }),
     ...bracketGames.map((g) => ({
       id: g.id,
       pool: null,
+      when: g.scheduled_time,
       caption: [`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
       team1: g.team1_name,
       team2: g.team2_name,
@@ -351,6 +411,7 @@ export default async function DivisionPage({ params }) {
   const finderTeams = [
     ...new Set(finderGames.flatMap((g) => [g.team1, g.team2]).filter(isRealTeamName)),
   ].sort((a, b) => a.localeCompare(b));
+  const showsFinder = finderTeams.length > 0 || stages.length > 1;
 
   return (
     <div className="space-y-6">
@@ -375,8 +436,8 @@ export default async function DivisionPage({ params }) {
         <h1 className="font-display text-2xl text-afa-navy">{renderedName}</h1>
       </div>
 
-      {(finderTeams.length > 0 || stages.length > 1) && (
-        <TeamFinder
+      {showsFinder && (
+        <DivisionView
           teams={finderTeams}
           games={finderGames}
           storageKey={`afa-team-${slug}`}
@@ -386,10 +447,23 @@ export default async function DivisionPage({ params }) {
           bracketByTeam={bracketByTeam}
           teamStatus={teamStatus}
           slug={slug}
+          bracketLive={bracketLive}
+          poolPane={hasPoolGames ? <PoolPlaySection poolGames={poolGames} /> : null}
+          bracketPanes={Object.fromEntries(
+            Object.entries(playableStageGames)
+              .filter(([, list]) => list.length > 0)
+              .map(([id, list]) => [
+                id,
+                <DrawnBracket
+                  key={id}
+                  games={list}
+                  division={stages.find((st) => st.id === id)?.name}
+                  seeds={seeds}
+                />,
+              ])
+          )}
         />
       )}
-
-      {hasPoolGames && <PoolPlaySection poolGames={poolGames} />}
 
       {hasPlacements && (
         <div className="chalk-panel mb-6">
@@ -427,7 +501,10 @@ export default async function DivisionPage({ params }) {
           heading named the same thing twice, and the drawing itself says it
           is drawn and scheduled — every game carries its time, its field
           and its provenance. */}
-      {!hasBracket && bracketGames.length > 0 && (
+      {/* Only when this page has no picker at all — otherwise the
+          bracket lives inside the Pool play / Bracket toggle above, and
+          drawing it twice would be two answers to one question. */}
+      {!hasBracket && bracketGames.length > 0 && !showsFinder && (
         <div>
           <DrawnBracket games={bracketGames} division={division?.name} seeds={seeds} />
         </div>

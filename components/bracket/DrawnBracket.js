@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Matchup from "@/components/ui/Matchup";
 import BracketMatchup from "@/components/bracket/BracketMatchup";
+import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
@@ -797,8 +798,14 @@ export default function DrawnBracket({
   onSelectGame,
   selectedRound = null,
   conflictRounds,
+  highlightTeam = null,
 }) {
+  // The page supplies it directly on the scorekeeper side; on the public
+  // side it arrives from the team picker through context.
+  const followed = useHighlightTeam();
+  const team = highlightTeam ?? followed;
   const layout = useMemo(() => computeLayout(games), [games]);
+  const scrollerRef = useRef(null);
   // Off by default (JD, 2026-07-25). The drop lines answer "where does a
   // loser go", which is a second question — the first is "who plays who",
   // and a dozen coloured curves across the sheet is not the first thing a
@@ -864,6 +871,39 @@ export default function DrawnBracket({
   const loseTo = focus ? layout.drops.find((d) => d.from === focus) : null;
   const focusRole = (round) =>
     round === focus || round === selectedRound ? "focus" : winTo && winTo.round === round ? "win" : loseTo && loseTo.to === round ? "lose" : focus ? "dim" : null;
+
+  // A team's own run through the bracket. Every game they are in is
+  // outlined; the earliest one still unplayed is their NEXT one and gets
+  // the brighter ring, because on a bracket this wide it is the single
+  // thing they opened the page to find.
+  const mine = useMemo(() => {
+    if (!team) return { rounds: new Set(), next: null };
+    const norm = (n) => String(n ?? "").trim().toLowerCase();
+    const target = norm(team);
+    const rounds = new Set();
+    let next = null;
+    for (const { round, game } of layout.cells) {
+      if (norm(game.team1_name) !== target && norm(game.team2_name) !== target) continue;
+      rounds.add(round);
+      if (game.status === "final") continue;
+      const when = game.scheduled_time ? new Date(game.scheduled_time).getTime() : Infinity;
+      if (!next || when < next.when) next = { round, when };
+    }
+    return { rounds, next: next?.round ?? null };
+  }, [team, layout.cells]);
+
+  // Bring that next game into view. The drawing is wider than any phone,
+  // and a highlight you have to go looking for is not much of a highlight.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || mine.next == null) return;
+    const cell = layout.cells.find((c) => c.round === mine.next);
+    if (!cell) return;
+    el.scrollTo({
+      left: Math.max(0, cell.x + CELL_W / 2 - el.clientWidth / 2),
+      behavior: "smooth",
+    });
+  }, [mine.next, layout.cells]);
   const isChampion = focus != null && !winTo;
 
   const endpoints = [
@@ -898,7 +938,7 @@ export default function DrawnBracket({
                 : "border-afa-ink/15 text-afa-ink/70",
             ].join(" ")}
           >
-            {showDrops ? "••• Loser drops on" : "Loser drops off"}
+            {showDrops ? "Hide loser paths" : "Show loser paths"}
           </button>
         </div>
       )}
@@ -909,6 +949,7 @@ export default function DrawnBracket({
           of bleeding into the page. Full-bleed on a phone, a panel from
           sm up. */}
       <div
+        ref={scrollerRef}
         className="-mx-4 sm:mx-0 bg-white sm:rounded-xl overflow-x-auto px-4 py-4"
         style={{
           WebkitOverflowScrolling: "touch",
@@ -1020,7 +1061,12 @@ export default function DrawnBracket({
             data-game-round={round}
             data-role={role || undefined}
             className="absolute cursor-pointer transition-opacity duration-200"
-            style={{ left: x, top: y, width: CELL_W, opacity: role === "dim" ? 0.22 : 1 }}
+            style={{
+              left: x,
+              top: y,
+              width: CELL_W,
+              opacity: role === "dim" && !mine.rounds.has(round) ? 0.22 : 1,
+            }}
             onClick={() =>
               onSelectGame ? onSelectGame(round) : setFocus((f) => (f === round ? null : round))
             }
@@ -1047,7 +1093,17 @@ export default function DrawnBracket({
               }
               resolveSeed={resolveSeed}
               seedTagFor={seedTagFor}
-              ring={role === "focus" ? "focus" : role === "win" || role === "lose" ? "dest" : null}
+              ring={
+                role === "focus"
+                  ? "focus"
+                  : role === "win" || role === "lose"
+                  ? "dest"
+                  : round === mine.next
+                  ? "next"
+                  : mine.rounds.has(round)
+                  ? "mine"
+                  : null
+              }
             />
           </div>
           );

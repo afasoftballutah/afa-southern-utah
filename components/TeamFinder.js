@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
@@ -37,9 +36,10 @@ export default function TeamFinder({
   bracketByTeam = {},
   teamStatus = {},
   slug,
+  onSelectedChange,
 }) {
   const [selected, setSelected] = useState("");
-  const [showAllBrackets, setShowAllBrackets] = useState(false);
+  const [details, setDetails] = useState(false);
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
   // downloading a frozen copy, and it needs an absolute host — which only
   // exists after mount. Until then the link is the plain https path,
@@ -60,6 +60,7 @@ export default function TeamFinder({
     if (!remembered) return;
     if (teams.includes(remembered)) {
       setSelected(remembered);
+      onSelectedChange?.(remembered);
     } else {
       try {
         window.localStorage.removeItem(storageKey);
@@ -87,16 +88,22 @@ export default function TeamFinder({
     const value = e.target.value;
     setSelected(value);
     remember(value);
+    onSelectedChange?.(value);
   }
 
   function handleClear() {
     setSelected("");
     remember("");
-    setShowAllBrackets(false);
+    onSelectedChange?.("");
   }
 
+  // Newest first (JD, 2026-07-26). During a tournament the game you just
+  // played is the one you are looking for; the one from Friday is
+  // history, and history goes underneath.
   const teamGames = selected
-    ? games.filter((g) => g.team1 === selected || g.team2 === selected)
+    ? games
+        .filter((g) => g.team1 === selected || g.team2 === selected)
+        .sort((a, b) => String(b.when ?? "").localeCompare(String(a.when ?? "")))
     : [];
   const pool = teamGames.find((g) => g.pool)?.pool ?? null;
 
@@ -106,7 +113,6 @@ export default function TeamFinder({
   // might meet in the final.
   const myStageId = selected ? bracketByTeam[selected] : null;
   const myStage = myStageId ? stages.find((st) => st.id === myStageId) : null;
-  const shownStages = myStage && !showAllBrackets ? [myStage] : stages;
 
   // Whether this team still has a game coming, worked out by the hourly
   // sync. No entry means they do — the common case, and the safe way to
@@ -132,51 +138,6 @@ export default function TeamFinder({
         ))}
       </select>
 
-      {stages.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {myStage && !showAllBrackets && (
-            <span className="text-sm text-afa-ink/70">
-              <b className="font-semibold text-afa-ink">{selected}</b> is in
-            </span>
-          )}
-          {shownStages.map((st) => {
-            const isCurrent = st.id === currentId;
-            return isCurrent ? (
-              <span
-                key={st.id}
-                aria-current="page"
-                className="flex min-h-11 items-center rounded-lg border border-afa-navy bg-afa-navy px-4 text-sm font-bold text-white"
-              >
-                {st.name}
-              </span>
-            ) : (
-              <Link
-                key={st.id}
-                href={`/tournaments/${slug}/division/${st.id}`}
-                className="flex min-h-11 items-center rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
-              >
-                {st.name}
-                {myStage && !showAllBrackets && <span className="pl-1.5 font-normal">&rarr;</span>}
-              </Link>
-            );
-          })}
-          {myStage && stages.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowAllBrackets((v) => !v)}
-              className="min-h-11 text-sm text-afa-navy underline"
-            >
-              {showAllBrackets ? "Just mine" : "All brackets"}
-            </button>
-          )}
-          {!selected && stages.length > 1 && (
-            <span className="text-sm text-afa-ink/70">
-              Pick your team to see just yours.
-            </span>
-          )}
-        </div>
-      )}
-
       {selected && (
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -198,6 +159,18 @@ export default function TeamFinder({
                   Their pool is how they GOT here and is still one line
                   down in the standings; what the chip slot is worth now
                   is saying they are finished. */}
+              {/* A team still playing gets its bracket here — the row that
+                  used to say "Backwards K is in Gold" was a whole line to
+                  carry one word (JD, 2026-07-26). */}
+              {!isOut && !isChampion && myStage && (
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                    TIER_CHIP[myStage.name] ?? "bg-afa-navy/[0.07] text-afa-ink/60"
+                  }`}
+                >
+                  {myStage.name}
+                </span>
+              )}
               {isOut || isChampion ? (
                 <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
               ) : (
@@ -217,20 +190,63 @@ export default function TeamFinder({
 
           <div className="mt-3">
             {teamGames.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {teamGames.map((g) => (
-                  <Matchup
-                    key={g.id}
-                    caption={g.caption}
-                    team1={g.team1}
-                    team2={g.team2}
-                    score1={g.score1}
-                    score2={g.score2}
-                    isFinal={g.isFinal}
-                    highlightTeam={selected}
-                  />
-                ))}
-              </div>
+              details ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {teamGames.map((g) => (
+                    <Matchup
+                      key={g.id}
+                      caption={g.caption}
+                      team1={g.team1}
+                      team2={g.team2}
+                      score1={g.score1}
+                      score2={g.score2}
+                      isFinal={g.isFinal}
+                      highlightTeam={selected}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Collapsed, a team's season is a column of results you can
+                   read in one go: who they played and what it finished. The
+                   time and the field are what expand (JD, 2026-07-26). */
+                <ul className="divide-y divide-afa-navy/10">
+                  {teamGames.map((g) => {
+                    const won =
+                      g.isFinal &&
+                      ((g.team1 === selected && g.score1 > g.score2) ||
+                        (g.team2 === selected && g.score2 > g.score1));
+                    const opponent = g.team1 === selected ? g.team2 : g.team1;
+                    const mine = g.team1 === selected ? g.score1 : g.score2;
+                    const theirs = g.team1 === selected ? g.score2 : g.score1;
+                    return (
+                      <li
+                        key={g.id}
+                        className="flex items-center gap-3 py-2 text-sm"
+                      >
+                        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                          <span className="text-afa-ink/50">vs </span>
+                          {opponent}
+                        </span>
+                        {g.isFinal ? (
+                          <span className="tabular-nums whitespace-nowrap">
+                            <b className={won ? "font-bold text-afa-ink" : "font-semibold text-afa-ink/60"}>
+                              {mine}
+                            </b>
+                            <span className="px-1 text-afa-ink/40">&ndash;</span>
+                            <span className={won ? "text-afa-ink/60" : "font-semibold text-afa-ink"}>
+                              {theirs}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="whitespace-nowrap text-xs text-afa-muted">
+                            {g.caption}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
             ) : (
               <p className="text-sm text-afa-ink/70">No games scheduled yet.</p>
             )}
@@ -254,13 +270,24 @@ export default function TeamFinder({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleClear}
-            className="mt-3 text-sm text-afa-navy underline min-h-11"
-          >
-            Clear
-          </button>
+          <div className="mt-3 flex items-center gap-4">
+            {teamGames.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDetails((v) => !v)}
+                className="min-h-11 text-sm text-afa-navy underline"
+              >
+                {details ? "Hide details" : "Show times and fields"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleClear}
+              className="min-h-11 text-sm text-afa-navy underline"
+            >
+              Clear
+            </button>
+          </div>
         </Card>
       )}
     </div>

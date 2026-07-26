@@ -187,7 +187,18 @@ export default function BracketMatchup({
           minHeight: BOX_H,
           background: CARD_BG[division] ?? "#f4f6f9",
           boxShadow:
-            ring === "focus"
+            ring === "mine"
+              ? // Every game a team plays, outlined and lit (JD, 2026-07-26:
+                // "surround all their games in the blue outline and have
+                // them glow a bit maybe?"). Same navy ring as focus, plus
+                // a soft halo so a run reads as a path through the
+                // drawing rather than as several unrelated highlights.
+                "0 0 0 2px var(--afa-navy), 0 0 20px rgba(30,58,110,.30), 0 6px 16px -6px rgba(22,35,61,.5)"
+              : ring === "next"
+              ? // Their NEXT game, the one thing they came to find. Same
+                // ring, brighter halo.
+                "0 0 0 2.5px var(--afa-navy), 0 0 28px rgba(30,58,110,.45), 0 6px 16px -6px rgba(22,35,61,.5)"
+              : ring === "focus"
               ? "0 0 0 2px var(--afa-navy), 0 6px 16px -6px rgba(22,35,61,.5)"
               : ring === "dest"
               ? "0 0 0 1.5px rgba(30,58,110,.35), 0 6px 14px -6px rgba(22,35,61,.4)"
