@@ -1,7 +1,9 @@
 import { Fragment } from "react";
+import { LEAGUE_TZ } from "@/lib/bracket/tree";
 import { notFound } from "next/navigation";
 import {
   getRecentScores,
+  getUpcomingGames,
   getTournamentBySlug,
   formatDateRange,
   formatFee,
@@ -13,7 +15,25 @@ import Poster from "@/components/ui/Poster";
 import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
-import RecentScores from "@/components/RecentScores";
+import GameFeed from "@/components/GameFeed";
+
+// Where and when, split so a list of games lines up in columns.
+function whenParts(scheduledTime) {
+  if (!scheduledTime) return { whenDay: "", whenTime: "TBD" };
+  const parts = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: LEAGUE_TZ,
+  }).formatToParts(new Date(scheduledTime));
+  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
+  const min = get("minute");
+  return {
+    whenDay: get("weekday"),
+    whenTime: `${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`,
+  };
+}
 
 export const revalidate = 30;
 
@@ -99,10 +119,12 @@ export default async function TournamentDetailPage({ params }) {
   // A game belongs to a tournament; a list of them a mile from anything
   // that named it was the wrong home. Scoped to THIS tournament's
   // divisions rather than the league.
-  const recentScores = await getRecentScores(
-    8,
-    (tournament.divisions ?? []).map((d) => d.id)
-  );
+  const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
+  const [recentScores, upcomingGames] = await Promise.all([
+    getRecentScores(8, divisionIds),
+    getUpcomingGames(8, divisionIds),
+  ]);
+  const withWhen = (list) => list.map((g) => ({ ...g, ...whenParts(g.scheduledTime) }));
 
   const divisions = tournament.divisions ?? [];
 
@@ -177,13 +199,23 @@ export default async function TournamentDetailPage({ params }) {
             used to sit on the right of each group card, in the spot that
             reads like the way through to that group's games — so people
             tapped it expecting a schedule and got a download. */}
+        {/* Two facts, each of which is also the thing you would do with
+            it (JD, 2026-07-26): the fields take you to directions, the
+            dates put the tournament in your calendar. The separate
+            Directions door below is gone — this IS it. */}
         <p className="text-sm text-afa-ink/70 mt-1">
-          {dateRange}
-          <span aria-hidden="true" className="px-2 text-afa-ink/30">
-            &middot;
-          </span>
+          {tournament.venue_name && (
+            <>
+              <a href={directionsHref} className="underline text-afa-navy">
+                {tournament.venue_name}
+              </a>
+              <span aria-hidden="true" className="px-2 text-afa-ink/30">
+                |
+              </span>
+            </>
+          )}
           <a href={`/tournaments/${tournament.slug}/calendar.ics`} className="underline text-afa-navy">
-            Add to Calendar
+            {dateRange}
           </a>
         </p>
         {tournament.is_placeholder && (
@@ -201,76 +233,58 @@ export default async function TournamentDetailPage({ params }) {
           compact bordered date-card unit (day_label + "Add to calendar"),
           one object, one tap, that IS the calendar link (JD ruling,
           2026-07-23). */}
+      {/* ONE group means the card IS "My Team" — a heading over a single
+          card named "Coed" was two labels for one door (JD, 2026-07-26).
+          Several groups keep their own names under the heading, because
+          then the name is the thing you are choosing between. */}
       {groupCards.length > 0 && (
         <div className="space-y-3">
-          <div>
-            <h2 className="text-lg font-bold text-afa-navy">My Team</h2>
-            <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
-          </div>
-          {groupCards.map((division) => {
-            return (
-              <Card key={division.id} className="hover:border-afa-navy/50">
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/tournaments/${tournament.slug}/division/${division.id}`}
-                    className="group flex-1 min-h-11"
-                  >
-                    <p className="font-display text-lg text-afa-navy group-hover:underline">
-                      {division.display_name ?? division.name}
-                    </p>
-                    {divisionChips.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {divisionChips.map((d) => (
-                          <Chip key={d}>{d}</Chip>
-                        ))}
-                      </div>
-                    )}
-                  </Link>
-                  {division.day_label && (
-                    <div className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right min-h-11">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
-                        {division.day_label}
-                      </span>
+          {groupCards.length > 1 && (
+            <div>
+              <h2 className="text-lg font-bold text-afa-navy">My Team</h2>
+              <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
+            </div>
+          )}
+          {groupCards.map((division) => (
+            <Card key={division.id} className="hover:border-afa-navy/50">
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/tournaments/${tournament.slug}/division/${division.id}`}
+                  className="group flex-1 min-h-11"
+                >
+                  <p className="font-display text-lg text-afa-navy group-hover:underline">
+                    {groupCards.length > 1
+                      ? (division.display_name ?? division.name)
+                      : "My Team"}
+                  </p>
+                  <p className="text-xs text-afa-ink/60 mt-0.5">
+                    Schedule and tournament updates
+                  </p>
+                  {divisionChips.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {divisionChips.map((d) => (
+                        <Chip key={d}>{d}</Chip>
+                      ))}
                     </div>
                   )}
-                </div>
-              </Card>
-            );
-          })}
+                </Link>
+                {division.day_label && (
+                  <div className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right min-h-11">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
+                      {division.day_label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Action row sits BELOW the division cards (JD, 2026-07-24).
-          Above them, people tapped "Schedule" looking for their own
-          team's games and hit a page with no team picker — the picker
-          lives on the division page. Leading with the division card
-          puts the finder in the path before the utility doors.
-          Original note follows.
-          Action row — facts that act (afa-product-plan.md, "Action links").
-          Directions only (JD ruling 2026-07-23): Text moved to Contacts at
-          the bottom, away from accidental thumbs; Calendar moved onto the
-          group cards below (one Door per group's day, not one whole-
-          tournament Door here). Schedule joins it as a second Door
-          (dispatch-brief-11) — the full field-by-field list, a door away
-          from the venue itself. */}
-      <div className="grid grid-cols-2 gap-2">
-        <Door
-          href={directionsHref}
-          title="Directions"
-          sub={`${tournament.venue_name}${tournament.venue_address ? `, ${tournament.venue_address}` : ""}`}
-        />
-        <Door
-          href={`/tournaments/${slug}/schedule`}
-          title="See Full Schedule"
-          sub="Every game, every field"
-        />
-      </div>
-
-      {recentScores.length > 0 && (
-        <section>
-          <h2 className="text-lg font-bold text-afa-navy mb-2">Recent Scores</h2>
-          <RecentScores scores={recentScores} />
-        </section>
+      {/* The games, in place of the "See Full Schedule" door (JD,
+          2026-07-26). A door to a list is a worse answer than the list. */}
+      {(recentScores.length > 0 || upcomingGames.length > 0) && (
+        <GameFeed results={withWhen(recentScores)} upcoming={withWhen(upcomingGames)} />
       )}
 
       {/* Registration (dispatch-brief-20) — sits directly below the action-
