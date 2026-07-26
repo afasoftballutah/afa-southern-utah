@@ -4,6 +4,7 @@ import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getPublicClient } from "@/lib/supabase";
 import { REGION_LABEL } from "@/lib/data";
 import PinPad from "@/components/scorekeeper/PinPad";
+import PullResults from "@/components/scorekeeper/PullResults";
 
 export const dynamic = "force-dynamic"; // never cache — this is a live tool, not a public page
 export const metadata = { title: "Scorekeeper" };
@@ -107,7 +108,10 @@ export default async function ScorekeeperPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-afa-navy">Scorekeeper</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-xl font-bold text-afa-navy">Scorekeeper</h1>
+      </div>
+      <PullResults />
       {upcoming.length === 0 && pastCount === 0 ? (
         <p className="text-afa-ink/70 text-sm">No tournaments on file yet.</p>
       ) : (
