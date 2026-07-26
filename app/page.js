@@ -7,7 +7,6 @@ import {
   formatFee,
 } from "@/lib/data";
 import Matchup from "@/components/ui/Matchup";
-import RecentScores from "@/components/RecentScores";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import Door from "@/components/ui/Door";

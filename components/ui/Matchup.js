@@ -40,7 +40,7 @@ export default function Matchup({
       )}
       <div className={`divide-y divide-afa-navy/10${caption ? " mt-2" : ""}`}>
         <div className="flex items-center justify-between gap-2 py-1.5">
-          <span className={`text-sm min-w-0 truncate ${team1Highlighted ? "font-semibold" : ""}`}>
+          <span className={`team-name text-sm min-w-0 truncate ${team1Highlighted ? "font-semibold" : "font-normal"}`}>
             {team1 ?? "TBD"}
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team1Won ? "font-semibold" : ""}`}>
@@ -48,7 +48,7 @@ export default function Matchup({
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 py-1.5">
-          <span className={`text-sm min-w-0 truncate ${team2Highlighted ? "font-semibold" : ""}`}>
+          <span className={`team-name text-sm min-w-0 truncate ${team2Highlighted ? "font-semibold" : "font-normal"}`}>
             {team2 ?? "TBD"}
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team2Won ? "font-semibold" : ""}`}>

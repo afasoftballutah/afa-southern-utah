@@ -136,8 +136,15 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             <span className="text-right">
               {me.next ? (
                 <>
-                  <span className="t-strong block">
-                    {me.next.opponent ? `vs ${me.next.opponent}` : me.next.label}
+                  <span className="block">
+                    {me.next.opponent ? (
+                      <>
+                        <span className="t-meta">vs </span>
+                        <span className="team-name font-semibold">{me.next.opponent}</span>
+                      </>
+                    ) : (
+                      <span className="t-strong">{me.next.label}</span>
+                    )}
                   </span>
                   <span className="t-meta block">
                     {whenLabel(me.next.scheduledTime, timeZone)}

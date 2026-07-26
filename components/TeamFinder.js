@@ -235,7 +235,7 @@ export default function TeamFinder({
                         not need. "vs" was a word's worth of that, and on a
                         phone it was the difference between one line and
                         two (JD, 2026-07-26). */}
-                    <span className="min-w-0 truncate" title={opponent}>
+                    <span className="team-name min-w-0 truncate font-semibold" title={opponent}>
                       {opponent}
                     </span>
                     <span className="whitespace-nowrap text-right text-xs text-afa-muted">
