@@ -75,10 +75,11 @@ function Row({ g, played }) {
 }
 
 export default function GameFeed({ results = [], upcoming = [] }) {
-  // One of the two is always on (JD, 2026-07-26) — the same rule as Pool
-  // play | Bracket. It opens on whichever has anything in it: Next during
-  // a tournament, Results once there is nothing left to play.
-  const [tab, setTab] = useState(upcoming.length > 0 ? "next" : "results");
+  // One of the two is always on — the same rule as Pool play | Bracket —
+  // and it opens on NEXT (JD, 2026-07-26). What is coming is the question
+  // a tournament page is open to answer; results are what you check
+  // afterwards.
+  const [tab, setTab] = useState("next");
   const shown = tab === "next" ? upcoming : results;
 
   return (

@@ -392,18 +392,26 @@ export default async function TournamentDetailPage({ params }) {
               {prizesLines.map((line, i) => {
                 const { place, medal, text } = parsePrize(line);
                 return (
-                  <div key={i} className="flex items-start gap-2">
+                  /* Every part of the row sits in a box of the SAME
+                     height and is centred in it, so the emoji, the pill
+                     and the text share one baseline. An emoji has its own
+                     ideas about line-height, which is why they were
+                     riding at three different levels (JD, 2026-07-26). */
+                  <div key={i} className="flex items-center gap-2">
                     {medal && (
-                      <span aria-hidden="true" className="leading-6">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center text-base leading-none"
+                      >
                         {medal}
                       </span>
                     )}
                     {place && (
-                      <span className="t-label mt-1 shrink-0 rounded-full bg-afa-navy/[0.07] px-2 py-1">
+                      <span className="t-label flex h-6 shrink-0 items-center rounded-full bg-afa-navy/[0.07] px-2">
                         {place}
                       </span>
                     )}
-                    <span className="t-body min-w-0">{text}</span>
+                    <span className="t-body flex min-w-0 items-center">{text}</span>
                   </div>
                 );
               })}
