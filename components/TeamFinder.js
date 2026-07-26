@@ -202,12 +202,10 @@ export default function TeamFinder({
           {/* Stated as a fact, not a verdict (JD, 2026-07-26: "You can just
               say No More Games Scheduled"). Nobody who has just lost wants
               ELIMINATED in red; what they want to know is whether to go
-              home, and where they finished. */}
+              home, and where they finished — which the chip already says,
+              so naming the last game as well was one clause too many. */}
           {(isOut || isChampion) && (
-            <p className="mt-1 text-sm text-afa-ink/70">
-              No more games scheduled.
-              {status.last_game_label ? ` ${status.last_game_label} was their last.` : ""}
-            </p>
+            <p className="mt-1 text-sm text-afa-ink/70">No more games scheduled.</p>
           )}
 
           <div className="mt-3">
