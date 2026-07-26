@@ -78,7 +78,7 @@ export default function PlacementsUpload({ divisionId, completion }) {
 
   return (
     <div className="chalk-panel space-y-3">
-      <h2 className="font-bold text-afa-navy">Record Champion &amp; Runner-Up</h2>
+      <h2 className="h-section">Record Champion &amp; Runner-Up</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="block text-xs font-semibold">Champion</label>

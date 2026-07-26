@@ -27,7 +27,7 @@ export default async function SignPage({ params }) {
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
-      <h1 className="text-2xl font-black text-afa-navy">Sign Your Waiver</h1>
+      <h1 className="h-page">Sign Your Waiver</h1>
       <p className="text-afa-ink/80">
         {member.registrations?.team_name} &mdash; {member.role === "coach" ? "Coach" : "Player"}
       </p>

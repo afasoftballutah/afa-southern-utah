@@ -68,10 +68,10 @@ export default function BracketScores({ games }) {
 
   return (
     <div className="chalk-panel space-y-4">
-      <h2 className="font-bold text-afa-navy">Bracket</h2>
+      <h2 className="h-section">Bracket</h2>
       {groups.map((group) => (
         <div key={group.time ?? "__tbd__"} className="space-y-2">
-          <h3 className="text-sm font-bold text-afa-navy">
+          <h3 className="text-sm h-section">
             {group.heading}{" "}
             <span className="font-normal text-afa-ink/50">
               ({group.games.length} game{group.games.length === 1 ? "" : "s"})

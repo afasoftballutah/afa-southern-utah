@@ -136,7 +136,7 @@ function RegionView({ groups }) {
     <div className="space-y-8">
       {groups.map((group) => (
         <section key={group.region}>
-          <h2 className="font-display text-lg text-afa-navy/80 mb-2 flex items-center gap-2">
+          <h2 className="h-section mb-2 flex items-center gap-2">
             {group.label}
             <Chip variant="muted">
               {group.tournaments.length} {group.tournaments.length === 1 ? "event" : "events"}
@@ -165,7 +165,7 @@ function MonthView({ months }) {
         prevYear = year;
         return (
           <section key={`${year}-${month}`}>
-            <h2 className="font-display text-lg text-afa-navy/80 mb-2">
+            <h2 className="h-section mb-2">
               {MONTH_LABEL[month]}
               {showYear ? ` ${year}` : ""}
             </h2>

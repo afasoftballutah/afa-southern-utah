@@ -38,7 +38,7 @@ export default function PinPad() {
 
   return (
     <div className="max-w-xs mx-auto space-y-4 text-center">
-      <h1 className="text-xl font-bold text-afa-navy">Scorekeeper</h1>
+      <h1 className="h-page">Scorekeeper</h1>
       <div className="text-3xl font-mono tracking-widest text-afa-navy min-h-10">
         {"•".repeat(pin.length) || <span className="text-afa-ink/30">Enter PIN</span>}
       </div>

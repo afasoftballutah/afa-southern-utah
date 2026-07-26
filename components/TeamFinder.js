@@ -140,7 +140,7 @@ export default function TeamFinder({
             have parked the caret a dozen characters past a short team
             name; this way the caret sits where the name ends and the
             display face renders exactly as it does anywhere else. */}
-        <span className="relative flex min-w-0 flex-1 items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
+        <span className="relative flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
           <span className="truncate font-display text-lg text-afa-navy">
             {selected || "Find your team"}
           </span>
@@ -156,7 +156,10 @@ export default function TeamFinder({
             aria-label="Find your team"
             value={selected}
             onChange={handleChange}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            // A <select> has a minimum intrinsic height — 44px against this
+            // span's 28 — so without appearance-none it spilled 16px below
+            // and swallowed clicks meant for the line underneath.
+            className="absolute inset-0 h-full min-h-0 w-full cursor-pointer appearance-none border-0 p-0 opacity-0"
           >
             <option value="">Find your team</option>
             {teams.map((team) => (
@@ -191,21 +194,12 @@ export default function TeamFinder({
                   "No more games"}
               </span>
             )}
-            {/* One letter in a square rather than the whole word. Said in
-                full to a screen reader, and on hover. */}
-            {isOut || isChampion ? (
-              <span
-                title={isChampion ? "Champion" : "Eliminated"}
-                className={`flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold ${
-                  isChampion ? "bg-[#f7edcd] text-[#7a5c12]" : "bg-afa-navy/[0.09] text-afa-ink/60"
-                }`}
-              >
-                <span aria-hidden="true">{isChampion ? "C" : "E"}</span>
-                <span className="sr-only">{isChampion ? "Champion" : "Eliminated"}</span>
-              </span>
-            ) : (
-              !myStage &&
-              pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
+            {/* No "E" (JD, 2026-07-26). Having no next game and carrying a
+                final standing already says eliminated; a badge repeating
+                it was a third telling. The pool chip is for a team still
+                in pool play, which is the only time it is the answer. */}
+            {!isOut && !isChampion && !myStage && pool && (
+              <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
             )}
           </div>
         )}

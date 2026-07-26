@@ -94,7 +94,7 @@ export default async function Home() {
           preference: real placements win, then whichever tournament the
           recent scores came from, then the one on deck. */}
       <section className="max-w-md mx-auto">
-        <h2 className="text-xl font-bold text-afa-navy mb-3">
+        <h2 className="h-section mb-3">
           {/* Not "Recent Scores" any more — the scores themselves live
               on the tournament page now, and this section is the finished
               result plus a way through to them. */}

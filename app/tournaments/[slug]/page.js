@@ -196,7 +196,7 @@ export default async function TournamentDetailPage({ params }) {
 
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 flex-wrap">
-          <h1 className="font-display text-3xl text-afa-navy">{tournament.name}</h1>
+          <h1 className="h-page">{tournament.name}</h1>
           {tournament.status === "complete" && <Chip variant="muted">Final</Chip>}
         </div>
         {/* The calendar link lives on the DATES now (JD, 2026-07-26). It
@@ -244,7 +244,7 @@ export default async function TournamentDetailPage({ params }) {
         <div className="space-y-3">
           {groupCards.length > 1 && (
             <div>
-              <h2 className="text-lg font-bold text-afa-navy">My Team</h2>
+              <h2 className="h-section">My Team</h2>
               <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
             </div>
           )}
@@ -257,7 +257,7 @@ export default async function TournamentDetailPage({ params }) {
             />
           ) : (
             groupCards.map((division) => (
-              <Card key={division.id} className="hover:border-afa-navy/50">
+              <Card key={division.id} className="hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)]">
                 <Link
                   href={`/tournaments/${tournament.slug}/division/${division.id}`}
                   className="group block min-h-11"
@@ -294,7 +294,7 @@ export default async function TournamentDetailPage({ params }) {
           site-wide "Register a Team" button is untouched and out of scope. */}
       {hasRegistrationBlock && !hasSchedule && (
         <Card className="space-y-3">
-          <h2 className="text-lg font-bold text-afa-navy">Registration</h2>
+          <h2 className="h-section">Registration</h2>
           <div>
             {registrationClosed ? (
               <>
@@ -342,7 +342,7 @@ export default async function TournamentDetailPage({ params }) {
           Omitted entirely if every part is empty. */}
       {hasSpecifics && (
         <Card>
-          <h2 className="font-display text-lg text-afa-navy">Specifics</h2>
+          <h2 className="h-section">Specifics</h2>
 
           {numberRows.length > 0 && (
             <>
@@ -359,7 +359,7 @@ export default async function TournamentDetailPage({ params }) {
 
           {divisionNotesLines.length > 0 && (
             <>
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
                 Divisions
               </h3>
               <div className="text-sm space-y-1">
@@ -372,7 +372,7 @@ export default async function TournamentDetailPage({ params }) {
 
           {prizesLines.length > 0 && (
             <>
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
                 Prizes
               </h3>
               <div className="text-sm space-y-1">
@@ -385,7 +385,7 @@ export default async function TournamentDetailPage({ params }) {
 
           {specialRulesLines.length > 0 && (
             <>
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-3 first:mt-0">
+              <h3 className="h-sub text-afa-muted mt-3 first:mt-0">
                 Tournament rules
               </h3>
               <div className="text-sm space-y-1">
@@ -402,7 +402,7 @@ export default async function TournamentDetailPage({ params }) {
         <>
           <div className="chalk-line" />
           <div>
-            <h2 className="text-lg font-bold text-afa-navy mb-2">Photos</h2>
+            <h2 className="h-section mb-2">Photos</h2>
             <a
               href={tournament.fb_album_url}
               target="_blank"
@@ -419,7 +419,7 @@ export default async function TournamentDetailPage({ params }) {
         <>
           <div className="chalk-line" />
           <div>
-            <h2 className="text-lg font-bold text-afa-navy mb-2">Contacts</h2>
+            <h2 className="h-section mb-2">Contacts</h2>
             <Card>
               <div className="space-y-2">
                 {contacts.map((c, i) => {

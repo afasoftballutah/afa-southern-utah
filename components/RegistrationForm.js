@@ -165,7 +165,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
   if (submitState === "done") {
     return (
       <div className="chalk-panel p-6 space-y-4">
-        <h2 className="text-xl font-black text-afa-navy">Registration saved</h2>
+        <h2 className="h-page">Registration saved</h2>
         <p className="text-afa-ink/80">
           {teamName} is on the books for {tournament?.name}.
         </p>

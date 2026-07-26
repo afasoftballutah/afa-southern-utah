@@ -60,11 +60,11 @@ function Row({ g, played }) {
   );
 
   const shell =
-    "block rounded-lg border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white";
+    "block rounded-xl bg-white shadow-[0_1px_2px_rgba(22,35,61,.05),0_10px_26px_-18px_rgba(22,35,61,.5)]";
   return to ? (
     <Link
       href={to}
-      className={`${shell} transition hover:border-afa-navy/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
+      className={`${shell} transition hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40`}
     >
       <p className="px-3 pt-2 text-[10.5px] font-bold uppercase tracking-wide text-afa-muted">
         {[g.divisionName, g.label].filter(Boolean).join(" · ")}
@@ -85,7 +85,7 @@ export default function GameFeed({ results = [], upcoming = [] }) {
 
   return (
     <Card className="space-y-3">
-      <h2 className="text-lg font-bold text-afa-navy">Schedule</h2>
+      <h2 className="h-section">Schedule</h2>
       <div className="inline-flex gap-0.5 rounded-lg bg-afa-navy/5 p-0.5">
         {[
           ["results", `Results${results.length ? ` (${results.length})` : ""}`],

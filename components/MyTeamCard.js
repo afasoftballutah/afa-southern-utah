@@ -64,18 +64,37 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
       : fallbackHref;
 
   return (
-    <Card className="hover:border-afa-navy/50">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <Card className="relative hover:shadow-[0_1px_2px_rgba(22,35,61,.06),0_14px_30px_-16px_rgba(22,35,61,.55)]">
+      {/* Once a team is set the whole card is the way through — every part
+          of it EXCEPT the dropdown (JD, 2026-07-26). The link is a layer
+          underneath; the content above it does not take clicks, and the
+          picker is the one thing that takes them back. */}
+      {me && (
+        <Link
+          href={href}
+          aria-label={`${me.team} — schedule and tournament updates`}
+          className="absolute inset-0 z-0 rounded-lg"
+        />
+      )}
+      <div className="pointer-events-none relative z-10 flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* The title IS the picker — the same control the division page
             uses, so setting your team in either place sets it in both. The
             card cannot be one big link any more or tapping the title would
             navigate instead of opening it; the summary on the right is the
             door through. */}
         <div className="min-w-0 flex-1">
-          <span className="relative inline-flex min-w-0 max-w-full items-center gap-1.5 rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
+          <span className="pointer-events-auto relative inline-flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
             <span className="truncate font-display text-lg text-afa-navy">
               {me ? me.team : "My Team"}
             </span>
+            {/* Same line as the division page's header — name, record,
+                caret — so a team reads identically in both places (JD,
+                2026-07-26). */}
+            {me && me.w + me.l > 0 && (
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-afa-ink/45">
+                ({me.w}&ndash;{me.l})
+              </span>
+            )}
             <span aria-hidden="true" className="shrink-0 text-sm text-afa-navy/50">
               ▾
             </span>
@@ -83,7 +102,10 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
               aria-label="Pick your team"
               value={team}
               onChange={(e) => pick(e.target.value)}
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              // A <select> has a minimum intrinsic height — 44px against this
+              // span's 28 — so without appearance-none it spilled 16px below
+              // and swallowed clicks meant for the line underneath.
+              className="absolute inset-0 h-full min-h-0 w-full cursor-pointer appearance-none border-0 p-0 opacity-0"
             >
               <option value="">Find your team</option>
               {teams.map((t) => (
@@ -99,7 +121,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
         </div>
 
         {me && (
-          <Link href={href} className="flex min-h-11 items-center gap-3">
+          <div className="flex min-h-11 items-center gap-3">
             {me.stage && (
               <span
                 className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
@@ -120,7 +142,6 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
                   <span className="block text-xs text-afa-muted">
                     {whenLabel(me.next.scheduledTime, timeZone)}
                     {me.next.field ? ` · ${String(me.next.field).replace(/^Field\s*/i, "F")}` : ""}
-                    {me.w + me.l > 0 ? ` · ${me.w}\u2013${me.l}` : ""}
                   </span>
                 </>
               ) : me.result ? (
@@ -132,9 +153,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
                         ? `Finished ${me.result.placement}`
                         : "Done"}
                   </span>
-                  <span className="block text-xs text-afa-muted tabular-nums">
-                    {me.w}&ndash;{me.l}
-                  </span>
+
                 </>
               ) : (
                 <span className="block text-xs text-afa-muted">No games scheduled</span>
@@ -143,7 +162,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
             <span aria-hidden="true" className="text-afa-navy/50">
               &rarr;
             </span>
-          </Link>
+          </div>
         )}
       </div>
     </Card>

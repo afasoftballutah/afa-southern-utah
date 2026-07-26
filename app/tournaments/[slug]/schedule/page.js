@@ -81,7 +81,7 @@ export default async function SchedulePage({ params }) {
       </Link>
 
       <div className="text-center">
-        <h1 className="font-display text-2xl text-afa-navy">Schedule</h1>
+        <h1 className="h-page">Schedule</h1>
         <p className="text-sm text-afa-ink/70 mt-1">{tournament.name}</p>
       </div>
 
