@@ -82,9 +82,19 @@ export default function MatchupCard({
   const won2 = isFinal && !tie && score2 > score1;
   const seedOf = (n) => (n && seeds ? seeds[n] ?? null : null);
 
+  // When and where go ABOVE the card, on one line, the way the bracket
+  // does it (JD, 2026-07-26: "I like how we did that for the bracket").
+  // A left-hand column was a second grammar for the same fact, and it
+  // took width the names wanted on a phone.
+  const line = [caption, meta?.day, meta?.time, meta?.field].filter(Boolean).join(" \u00b7 ");
+
   const card = (
     <div className="min-w-0">
-      {caption && <p className="t-label mb-1 truncate">{caption}</p>}
+      {line && (
+        <p className="mb-1 truncate text-center text-[10.5px] font-semibold uppercase tracking-[.03em] text-afa-ink">
+          {line}
+        </p>
+      )}
       <div
         className="card flex flex-col gap-1 rounded-[11px] px-2 py-2.5"
         style={{ background: GROUND[division] ?? "#fff" }}
@@ -95,18 +105,6 @@ export default function MatchupCard({
     </div>
   );
 
-  if (!meta) return <div className={`min-w-0 ${className}`}>{card}</div>;
-
-  return (
-    <div className={`grid grid-cols-[52px_minmax(0,1fr)] items-center gap-3 ${className}`}>
-      {/* Field, day, time — one under the other in a fixed column, so a
-          list of games lines up and can be read at a glance. */}
-      <div className="t-meta leading-tight">
-        {meta.field && <div className="font-bold">{meta.field}</div>}
-        {meta.day && <div>{meta.day}</div>}
-        {meta.time && <div>{meta.time}</div>}
-      </div>
-      {card}
-    </div>
-  );
+  return <div className={`min-w-0 ${className}`}>{card}</div>;
 }
+
