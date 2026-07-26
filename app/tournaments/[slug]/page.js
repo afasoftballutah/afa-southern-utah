@@ -67,10 +67,6 @@ function splitSentences(text) {
     .map((line, i, arr) => (i < arr.length - 1 && !line.endsWith(".") ? `${line}.` : line));
 }
 
-function calendarHrefForDivision(slug, dayDate) {
-  if (!dayDate) return null;
-  return `/tournaments/${slug}/calendar.ics?date=${dayDate.replaceAll("-", "")}`;
-}
 
 // Registration block (dispatch-brief-20) — true once registration_closes
 // is strictly before today. Page is ISR (revalidate = 30 above), so this
@@ -177,7 +173,19 @@ export default async function TournamentDetailPage({ params }) {
           <h1 className="font-display text-3xl text-afa-navy">{tournament.name}</h1>
           {tournament.status === "complete" && <Chip variant="muted">Final</Chip>}
         </div>
-        <p className="text-sm text-afa-ink/70 mt-1">{dateRange}</p>
+        {/* The calendar link lives on the DATES now (JD, 2026-07-26). It
+            used to sit on the right of each group card, in the spot that
+            reads like the way through to that group's games — so people
+            tapped it expecting a schedule and got a download. */}
+        <p className="text-sm text-afa-ink/70 mt-1">
+          {dateRange}
+          <span aria-hidden="true" className="px-2 text-afa-ink/30">
+            &middot;
+          </span>
+          <a href={`/tournaments/${tournament.slug}/calendar.ics`} className="underline text-afa-navy">
+            Add to Calendar
+          </a>
+        </p>
         {tournament.is_placeholder && (
           <p className="text-sm text-afa-ink/60 mt-1">
             Shown for reference — not a confirmed date.
@@ -195,8 +203,11 @@ export default async function TournamentDetailPage({ params }) {
           2026-07-23). */}
       {groupCards.length > 0 && (
         <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold text-afa-navy">My Team</h2>
+            <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
+          </div>
           {groupCards.map((division) => {
-            const calendarHref = calendarHrefForDivision(tournament.slug, division.day_date);
             return (
               <Card key={division.id} className="hover:border-afa-navy/50">
                 <div className="flex items-center gap-3">
@@ -207,13 +218,6 @@ export default async function TournamentDetailPage({ params }) {
                     <p className="font-display text-lg text-afa-navy group-hover:underline">
                       {division.display_name ?? division.name}
                     </p>
-                    {/* Names what this door is FOR (JD, 2026-07-24). Without
-                        it people tapped "Schedule" hunting their own team's
-                        games and landed on the all-games list; the team
-                        picker lives through here. */}
-                    <p className="text-xs text-afa-ink/60 mt-0.5">
-                      My team&rsquo;s schedule and tournament updates
-                    </p>
                     {divisionChips.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {divisionChips.map((d) => (
@@ -222,24 +226,13 @@ export default async function TournamentDetailPage({ params }) {
                       </div>
                     )}
                   </Link>
-                  {division.day_label &&
-                    (calendarHref ? (
-                      <a
-                        href={calendarHref}
-                        className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right hover:border-afa-navy/60 min-h-11"
-                      >
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
-                          {division.day_label}
-                        </span>
-                        <span className="text-[10px] text-afa-muted">Add to calendar</span>
-                      </a>
-                    ) : (
-                      <div className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right min-h-11">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
-                          {division.day_label}
-                        </span>
-                      </div>
-                    ))}
+                  {division.day_label && (
+                    <div className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right min-h-11">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
+                        {division.day_label}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Card>
             );
