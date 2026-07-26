@@ -193,8 +193,15 @@ export default function TeamFinder({
                     .join(" \u00b7 ") || "No more games"}
                 </span>
               )}
-              {pool && (
-                <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
+              {/* Once a team is done, "Eliminated" takes the pool chip's
+                  place rather than sitting beside it (JD, 2026-07-26).
+                  Their pool is how they GOT here and is still one line
+                  down in the standings; what the chip slot is worth now
+                  is saying they are finished. */}
+              {isOut || isChampion ? (
+                <Chip variant="muted">{isChampion ? "Champion" : "Eliminated"}</Chip>
+              ) : (
+                pool && <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
               )}
             </div>
           </div>
