@@ -898,6 +898,33 @@ export default function DrawnBracket({
     return { rounds, next: next?.round ?? null };
   }, [team, layout.cells]);
 
+  // The segments that trace their run (JD, 2026-07-26: "can we actually
+  // show the lines that trace a team through the bracket, win or lose").
+  // A connector belongs to a team when they played BOTH ends of it —
+  // advancement lines for the games they won, drop lines for the ones
+  // they lost. The drop half is drawn for them even when loser paths are
+  // off: that is their path, not the general answer to "where do losers
+  // go", and it is half the story of how they got where they are.
+  // Blue for the wins, red for the loss (JD, 2026-07-26). The advancement
+  // line a team rode forward and the dotted line they fell down are two
+  // different things that happened to them, and colouring them the same
+  // navy made a run read as one continuous march.
+  const WIN_GLOW = "drop-shadow(0 0 5px rgba(30,58,110,.65))";
+  const LOSS_GLOW = "drop-shadow(0 0 5px rgba(200,42,54,.6))";
+
+  const minePath = useMemo(() => {
+    if (mine.rounds.size === 0) return { connectors: new Set(), drops: new Set() };
+    const connectors = new Set();
+    layout.connectorEnds.forEach((e, i) => {
+      if (mine.rounds.has(e.fromRound) && mine.rounds.has(e.toRound)) connectors.add(i);
+    });
+    const drops = new Set();
+    layout.drops.forEach((d, i) => {
+      if (mine.rounds.has(d.from) && mine.rounds.has(d.to)) drops.add(i);
+    });
+    return { connectors, drops };
+  }, [mine.rounds, layout.connectorEnds, layout.drops]);
+
   // Bring that next game into view. The drawing is wider than any phone,
   // and a highlight you have to go looking for is not much of a highlight.
   useEffect(() => {
@@ -973,15 +1000,46 @@ export default function DrawnBracket({
               <path
                 key={`drop-${i}`}
                 d={d.d}
-                stroke={d.color}
+                stroke={minePath.drops.has(i) ? "var(--afa-red)" : d.color}
                 strokeWidth={1.6}
                 strokeDasharray="0.1 4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity={focus != null ? (d.from === focus ? 1 : 0.07) : 0.85}
+                strokeWidth={minePath.drops.has(i) ? 2.5 : 1.6}
+                opacity={
+                  focus != null
+                    ? d.from === focus
+                      ? 1
+                      : 0.07
+                    : minePath.drops.has(i)
+                      ? 1
+                      : minePath.drops.size > 0
+                        ? 0.35
+                        : 0.85
+                }
+                style={minePath.drops.has(i) ? { filter: LOSS_GLOW } : undefined}
                 fill="none"
               />
             ))}
+          {/* Their own drops, drawn whether or not the general loser
+              paths are on — same glow the advancement half gets. */}
+          {minePath.drops.size > 0 &&
+            layout.drops.map((d, i) =>
+              minePath.drops.has(i) && !showDrops ? (
+                <path
+                  key={`mine-drop-${i}`}
+                  d={d.d}
+                  stroke="var(--afa-red)"
+                  strokeWidth={2.5}
+                  strokeDasharray="0.1 5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={focus != null ? 0.12 : 1}
+                  fill="none"
+                  style={{ filter: LOSS_GLOW }}
+                />
+              ) : null
+            )}
           {showDrops &&
             layout.rematches.map((d, i) => (
               <path
@@ -999,15 +1057,21 @@ export default function DrawnBracket({
           {layout.connectors.map((d, i) => {
             const from = layout.connectorEnds[i]?.fromRound;
             const lit = focus != null && from === focus;
+            // A followed team's own segment: thicker, and the rest of the
+            // drawing steps back so the path reads as a line you can
+            // follow rather than as one line among forty.
+            const isMine = minePath.connectors.has(i);
+            const stepBack = focus == null && minePath.connectors.size > 0 && !isMine;
             return (
               <path
                 key={i}
                 d={d}
                 stroke="var(--afa-navy)"
-                strokeWidth={lit ? 2 : 1}
-                opacity={focus != null && !lit ? 0.08 : 1}
+                strokeWidth={lit || isMine ? 2.5 : 1}
+                opacity={focus != null && !lit ? 0.08 : stepBack ? 0.25 : 1}
                 fill="none"
-                shapeRendering={lit ? undefined : "crispEdges"}
+                style={isMine ? { filter: WIN_GLOW } : undefined}
+                shapeRendering={lit || isMine ? undefined : "crispEdges"}
               />
             );
           })}
