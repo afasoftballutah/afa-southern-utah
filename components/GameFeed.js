@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Card from "@/components/ui/Card";
 
 // The tournament's games, in the two states anyone asks about (JD,
 // 2026-07-26: "Should have a Results | Next toggle").
@@ -76,13 +77,15 @@ function Row({ g, played }) {
 }
 
 export default function GameFeed({ results = [], upcoming = [] }) {
-  // Open on whichever one has something in it. During a tournament that
-  // is Next; afterwards there is no Next left and Results is the answer.
-  const [tab, setTab] = useState(upcoming.length > 0 ? "next" : "results");
-  const shown = tab === "next" ? upcoming : results;
+  // The two buttons ARE the expander (JD, 2026-07-26). Nothing is open
+  // until you ask for one, pressing the open one closes it, and the card
+  // is a heading and two choices until then.
+  const [tab, setTab] = useState(null);
+  const shown = tab === "next" ? upcoming : tab === "results" ? results : [];
 
   return (
-    <section className="space-y-3">
+    <Card className="space-y-3">
+      <h2 className="text-lg font-bold text-afa-navy">Schedule</h2>
       <div className="inline-flex gap-0.5 rounded-lg bg-afa-navy/5 p-0.5">
         {[
           ["results", `Results${results.length ? ` (${results.length})` : ""}`],
@@ -91,8 +94,8 @@ export default function GameFeed({ results = [], upcoming = [] }) {
           <button
             key={key}
             type="button"
-            aria-current={tab === key}
-            onClick={() => setTab(key)}
+            aria-expanded={tab === key}
+            onClick={() => setTab((v) => (v === key ? null : key))}
             className={`min-h-11 rounded-md px-4 text-sm font-semibold ${
               tab === key ? "bg-white text-afa-navy shadow-sm" : "text-afa-ink/70"
             }`}
@@ -102,17 +105,18 @@ export default function GameFeed({ results = [], upcoming = [] }) {
         ))}
       </div>
 
-      {shown.length === 0 ? (
-        <p className="text-sm text-afa-ink/70">
-          {tab === "next" ? "Nothing left to play." : "No results yet."}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {shown.map((g) => (
-            <Row key={g.id} g={g} played={tab === "results"} />
-          ))}
-        </div>
-      )}
-    </section>
+      {tab &&
+        (shown.length === 0 ? (
+          <p className="text-sm text-afa-ink/70">
+            {tab === "next" ? "Nothing left to play." : "No results yet."}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {shown.map((g) => (
+              <Row key={g.id} g={g} played={tab === "results"} />
+            ))}
+          </div>
+        ))}
+    </Card>
   );
 }

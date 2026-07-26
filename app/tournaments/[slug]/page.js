@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   getRecentScores,
   getUpcomingGames,
+  getTeamSummaries,
   getTournamentBySlug,
   formatDateRange,
   formatFee,
@@ -16,6 +17,7 @@ import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
+import MyTeamCard from "@/components/MyTeamCard";
 
 // Where and when, split so a list of games lines up in columns.
 function whenParts(scheduledTime) {
@@ -125,6 +127,8 @@ export default async function TournamentDetailPage({ params }) {
     getUpcomingGames(8, divisionIds),
   ]);
   const withWhen = (list) => list.map((g) => ({ ...g, ...whenParts(g.scheduledTime) }));
+  const hasSchedule = recentScores.length > 0 || upcomingGames.length > 0;
+  const teamSummaries = await getTeamSummaries(tournament);
 
   const divisions = tournament.divisions ?? [];
 
@@ -233,10 +237,9 @@ export default async function TournamentDetailPage({ params }) {
           compact bordered date-card unit (day_label + "Add to calendar"),
           one object, one tap, that IS the calendar link (JD ruling,
           2026-07-23). */}
-      {/* ONE group means the card IS "My Team" — a heading over a single
-          card named "Coed" was two labels for one door (JD, 2026-07-26).
-          Several groups keep their own names under the heading, because
-          then the name is the thing you are choosing between. */}
+      {/* The door into a team's own tournament. Once someone has picked a
+          team — the same pick the division page remembers — the card says
+          where they are and what is next, or where they finished. */}
       {groupCards.length > 0 && (
         <div className="space-y-3">
           {groupCards.length > 1 && (
@@ -245,47 +248,42 @@ export default async function TournamentDetailPage({ params }) {
               <p className="text-sm text-afa-ink/70">Schedule and tournament updates</p>
             </div>
           )}
-          {groupCards.map((division) => (
-            <Card key={division.id} className="hover:border-afa-navy/50">
-              <div className="flex items-center gap-3">
+          {groupCards.length === 1 ? (
+            <MyTeamCard
+              slug={tournament.slug}
+              summaries={teamSummaries}
+              timeZone={LEAGUE_TZ}
+              fallbackHref={`/tournaments/${tournament.slug}/division/${groupCards[0].id}`}
+            />
+          ) : (
+            groupCards.map((division) => (
+              <Card key={division.id} className="hover:border-afa-navy/50">
                 <Link
                   href={`/tournaments/${tournament.slug}/division/${division.id}`}
-                  className="group flex-1 min-h-11"
+                  className="group block min-h-11"
                 >
                   <p className="font-display text-lg text-afa-navy group-hover:underline">
-                    {groupCards.length > 1
-                      ? (division.display_name ?? division.name)
-                      : "My Team"}
+                    {division.display_name ?? division.name}
                   </p>
                   <p className="text-xs text-afa-ink/60 mt-0.5">
                     Schedule and tournament updates
                   </p>
-                  {divisionChips.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {divisionChips.map((d) => (
-                        <Chip key={d}>{d}</Chip>
-                      ))}
-                    </div>
-                  )}
                 </Link>
-                {division.day_label && (
-                  <div className="flex flex-col justify-center rounded border border-afa-navy/25 bg-white px-2.5 py-1.5 text-right min-h-11">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
-                      {division.day_label}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
       )}
 
       {/* The games, in place of the "See Full Schedule" door (JD,
           2026-07-26). A door to a list is a worse answer than the list. */}
-      {(recentScores.length > 0 || upcomingGames.length > 0) && (
+      {/* One card, and which one depends on where the tournament is (JD,
+          2026-07-26). Registration is the live question until there is a
+          schedule; the moment there is, the schedule is. They never both
+          hold the same spot. */}
+      {hasSchedule ? (
         <GameFeed results={withWhen(recentScores)} upcoming={withWhen(upcomingGames)} />
-      )}
+      ) : null}
 
       {/* Registration (dispatch-brief-20) — sits directly below the action-
           row doors. St. George City runs registration for this tournament,
@@ -294,10 +292,10 @@ export default async function TournamentDetailPage({ params }) {
           a late arrival reads "closed" rather than "broken link"; open, it
           points out to the city's page. No red here — the home page's
           site-wide "Register a Team" button is untouched and out of scope. */}
-      {hasRegistrationBlock && (
-        <div>
-          <h2 className="text-lg font-bold text-afa-navy mb-2">Registration</h2>
-          <Card>
+      {hasRegistrationBlock && !hasSchedule && (
+        <Card className="space-y-3">
+          <h2 className="text-lg font-bold text-afa-navy">Registration</h2>
+          <div>
             {registrationClosed ? (
               <>
                 <p className="font-bold text-afa-ink/60">
@@ -335,8 +333,8 @@ export default async function TournamentDetailPage({ params }) {
                 </>
               )
             )}
-          </Card>
-        </div>
+          </div>
+        </Card>
       )}
 
       {/* Specifics — organized, on-brand (dispatch-brief-6, JD ruling):
