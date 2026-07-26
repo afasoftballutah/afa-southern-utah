@@ -36,24 +36,24 @@ function poolLetters(byPool) {
   );
 }
 
-// Row-level time (dispatch-brief-25): hour only, no weekday — paired with
-// the short field abbreviation below, same convention the scorekeeper's
-// PoolPlayManager rows use (components/scorekeeper/PoolPlayManager.js).
-function shortTimeLabel(scheduledTime) {
-  if (!scheduledTime) return null;
+// "Fri 9p" — weekday plus hour, the sample sheet's convention. Minutes
+// only appear when a game is not on the hour, which at this league is
+// never, so the column stays two short lines.
+function shortTime(scheduledTime) {
+  if (!scheduledTime) return "TBD";
   const d = new Date(scheduledTime);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ });
-}
-
-// Split "11:00 PM" into its own two lines (dispatch-brief-25 grid
-// correction) — meta is the column that SHRINKS, so its widest line
-// should be "11:00" (5 chars), not "11:00 PM" (8) — same helper as the
-// scorekeeper's compact row.
-function shortTimeParts(scheduledTime) {
-  const label = shortTimeLabel(scheduledTime);
-  if (!label) return null;
-  const [hm, ampm] = label.split(" ");
-  return { hm, ampm };
+  const parts = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: LEAGUE_TZ,
+  }).formatToParts(d);
+  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
+  const min = get("minute");
+  return `${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""}${
+    get("dayPeriod").toLowerCase().startsWith("a") ? "a" : "p"
+  }`;
 }
 
 // "Field 3" -> "F3" — same helper as the scorekeeper's compact row.
@@ -63,55 +63,48 @@ function fieldAbbrev(field) {
   return m ? `F${m[0]}` : field;
 }
 
-// Compact game row (dispatch-brief-25, corrected) — score-centered grid:
-// meta (field+time) shrinks to its content, the two team-name columns
-// split whatever's left EQUALLY and only truncate as a last resort — the
-// names are the only thing anyone reads here. Score is the fixed centre
-// axis, tabular-nums, so it lines up down the page; winner's name AND
-// its own score digits go font-semibold, loser plain, a tie leaves both
-// plain (matching Matchup's convention). Unplayed: no score at all (the
-// existing no-0-0-lies rule) — the score column is simply empty.
+// One game, one row per team, that team's score on its own row — the same
+// unit the scorekeeper scores into (components/scorekeeper/SeedBrackets.js).
+// Two names either side of a shared "12-10" made you work out which score
+// belonged to whom, and it truncated both names to do it. Here the name has
+// the whole row and wraps if it needs to; nothing is ever cut off.
 function PoolGameRow({ game }) {
   const isFinal = game.status === "final";
   const isTie = isFinal && game.team1_score === game.team2_score;
-  const team1Won = isFinal && !isTie && game.team1_score > game.team2_score;
-  const team2Won = isFinal && !isTie && game.team2_score > game.team1_score;
+  const won1 = isFinal && !isTie && game.team1_score > game.team2_score;
+  const won2 = isFinal && !isTie && game.team2_score > game.team1_score;
+
+  const side = (name, score, won) => (
+    <div className="grid grid-cols-[minmax(0,1fr)_56px] items-center gap-2 py-[5px] pl-2.5 pr-1.5">
+      <span
+        className={`text-sm leading-tight [overflow-wrap:anywhere] ${
+          won ? "font-semibold text-afa-ink" : "text-afa-ink/[0.58]"
+        }`}
+      >
+        {name}
+      </span>
+      <span
+        className={`flex h-[34px] items-center justify-center rounded-[7px] bg-afa-navy/[0.035] text-[15px] font-semibold tabular-nums ${
+          won ? "text-afa-ink" : "text-afa-ink/[0.55]"
+        }`}
+      >
+        {/* No 0-0 lies: an unplayed game shows a dash, not a score. */}
+        {isFinal ? score : "\u2013"}
+      </span>
+    </div>
+  );
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-0 py-1.5">
-      <div className="whitespace-nowrap text-[11px] leading-tight text-afa-muted">
-        <div>{fieldAbbrev(game.field)}</div>
-        {(() => {
-          const parts = shortTimeParts(game.scheduled_time);
-          return parts ? (
-            <>
-              <div>{parts.hm}</div>
-              <div>{parts.ampm}</div>
-            </>
-          ) : (
-            <div>TBD</div>
-          );
-        })()}
+    <div className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-2 py-1">
+      <div className="text-[10px] font-medium leading-tight text-afa-muted">
+        <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
+        <br />
+        {shortTime(game.scheduled_time)}
       </div>
-      <span
-        className={`min-w-0 truncate text-right text-sm ${team1Won ? "font-semibold text-afa-navy" : ""}`}
-      >
-        {game.team1_name}
-      </span>
-      <span className="whitespace-nowrap px-1 text-center text-sm tabular-nums text-afa-ink/60">
-        {isFinal && (
-          <>
-            <span className={team1Won ? "font-semibold text-afa-navy" : ""}>{game.team1_score}</span>
-            {"–"}
-            <span className={team2Won ? "font-semibold text-afa-navy" : ""}>{game.team2_score}</span>
-          </>
-        )}
-      </span>
-      <span
-        className={`min-w-0 truncate text-left text-sm ${team2Won ? "font-semibold text-afa-navy" : ""}`}
-      >
-        {game.team2_name}
-      </span>
+      <div className="overflow-hidden rounded-[10px] border border-afa-navy/15 divide-y divide-afa-navy/[0.07] bg-white">
+        {side(game.team1_name, game.team1_score, won1)}
+        {side(game.team2_name, game.team2_score, won2)}
+      </div>
     </div>
   );
 }
@@ -122,79 +115,97 @@ function PoolGameRow({ game }) {
 // are broken by the director at seeding, not computed here — the shared
 // poolFinishOrder (lib/bracket/seed.js) marks a genuine tie and leaves it
 // tied, it never resolves one.
+//
+// One card per pool holds BOTH the standings and the games that produced
+// them, in the same grammar as the scorekeeper's screen. Two cards stacked
+// per pool read as two unrelated things, and PCT restates W-L in a
+// two-game pool while stealing the width the names needed.
 function PoolPlaySection({ poolGames }) {
   if (!poolGames || poolGames.length === 0) return null;
 
   const byPool = {};
   for (const g of poolGames) (byPool[g.pool] ??= []).push(g);
+  // Chronological. The rows came back newest-first, so Pool A read 11p,
+  // 10p, 9p — the reverse of the order the games were played in.
+  for (const list of Object.values(byPool))
+    list.sort((a, b) => String(a.scheduled_time ?? "").localeCompare(String(b.scheduled_time ?? "")));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <h2 className="text-lg font-bold text-afa-navy">Pool Play</h2>
-      {/* Three pools per line on desktop, one per line on a phone
-          (dispatch-brief-26) — layout only. This is the public standings
-          view: no controls, no dropdowns, no reorder — those live only on
-          the scorekeeper's seeding screen. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-      {poolLetters(byPool).map((letter) => {
-        const games = byPool[letter];
-        const { standings } = poolFinishOrder(games);
-        return (
-          <div key={letter} className="space-y-2">
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-              Pool {letter}
-            </h3>
+      {/* Cards find their own width at a 372px minimum rather than being
+          forced three across — three-up left the name column ~73px, which
+          is what was cutting "Band of Randoms" to "Band of R...". */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(372px,1fr))] gap-4 items-start">
+        {poolLetters(byPool).map((letter) => {
+          const games = byPool[letter];
+          const { standings } = poolFinishOrder(games);
+          const left = games.filter((g) => g.status !== "final").length;
+          return (
+            <Card key={letter} className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2 pb-2">
+                <h3 className="text-[11px] font-bold uppercase tracking-[.09em] text-afa-navy">
+                  Pool {letter}
+                </h3>
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-afa-muted">
+                  {left === 0 ? (
+                    <>
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#46a06a]" />
+                      Final
+                    </>
+                  ) : (
+                    `${left} game${left === 1 ? "" : "s"} left`
+                  )}
+                </span>
+              </div>
 
-            <Card>
-              <table className="w-full table-fixed text-sm divide-y divide-afa-navy/10">
-                <thead>
-                  <tr className="text-left divide-y divide-afa-navy/10">
-                    <th className="py-1 text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                      Team
-                    </th>
-                    <th className="w-14 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                      W-L
-                    </th>
-                    <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                      PCT
-                    </th>
-                    <th className="w-12 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-afa-muted">
-                      RA
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-afa-navy/10">
-                  {standings.map((t) => (
-                    <tr key={t.team}>
-                      <td className="py-1 pr-2">
-                        <span className="block truncate">
-                          {t.team}
-                          {t.tied && (
-                            <span className="ml-1.5 rounded bg-afa-muted/15 px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
-                              tied
-                            </span>
-                          )}
+              {/* Units are named once at the top of the pool, which is what
+                  lets a team's line stay a single line. */}
+              <div className="grid grid-cols-[17px_minmax(0,1fr)_34px_26px] items-center gap-x-2 border-b border-afa-navy/10 pb-1.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-muted">
+                <span />
+                <span>Team</span>
+                <span className="text-right">W&ndash;L</span>
+                <span className="text-right">RA</span>
+              </div>
+
+              <div>
+                {standings.map((t, i) => (
+                  <div
+                    key={t.team}
+                    className="grid min-h-11 grid-cols-[17px_minmax(0,1fr)_34px_26px] items-center gap-x-2 border-b border-afa-navy/[0.07] py-1.5 last:border-0"
+                  >
+                    <span className="text-right text-[12.5px] font-bold text-afa-navy/50 tabular-nums">
+                      {left === 0 ? i + 1 : "\u00b7"}
+                    </span>
+                    <span className="text-[15px] font-semibold leading-tight [overflow-wrap:anywhere]">
+                      {t.team}
+                      {t.tied && (
+                        <span className="ml-1.5 rounded bg-afa-navy/[0.08] px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
+                          tied
                         </span>
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {t.w}-{t.l}
-                      </td>
-                      <td className="py-1 text-right tabular-nums">{t.pct}</td>
-                      <td className="py-1 text-right tabular-nums">{t.ra}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
+                      )}
+                    </span>
+                    <span className="text-right text-[13.5px] font-semibold text-afa-ink/[0.78] tabular-nums">
+                      {t.w}&ndash;{t.l}
+                    </span>
+                    <span className="text-right text-[13px] text-afa-muted tabular-nums">{t.ra}</span>
+                  </div>
+                ))}
+              </div>
 
-            <div className="divide-y divide-afa-navy/10 rounded-lg border border-afa-navy/15 border-t-2 border-t-afa-navy bg-white px-3">
-              {games.map((g) => (
-                <PoolGameRow key={g.id} game={g} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+              <div>
+                <p className="pt-3.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[.07em] text-afa-muted">
+                  Games
+                </p>
+                <div className="space-y-1">
+                  {games.map((g) => (
+                    <PoolGameRow key={g.id} game={g} />
+                  ))}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
