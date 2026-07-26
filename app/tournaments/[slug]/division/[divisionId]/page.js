@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getDivisionById, getPoolGames, getBracketSeedSlots } from "@/lib/data";
+import { getDivisionById, getPoolGames, getBracketSeedSlots, getTeamStatus } from "@/lib/data";
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
@@ -299,6 +299,7 @@ export default async function DivisionPage({ params }) {
   // who [D1] is. Without this a propagated name renders bare, which is
   // what it did until now.
   const seeds = await seedMapsFor(division, poolGames);
+  const teamStatus = await getTeamStatus(tournament.id);
 
   // Which bracket is each team in? A slot names its team either by seed
   // ref ("A #1", before Apply seeding) or by the real name (after), so
@@ -383,6 +384,7 @@ export default async function DivisionPage({ params }) {
           stages={stages.map((st) => ({ id: st.id, name: st.display_name ?? st.name }))}
           currentId={division.id}
           bracketByTeam={bracketByTeam}
+          teamStatus={teamStatus}
           slug={slug}
         />
       )}

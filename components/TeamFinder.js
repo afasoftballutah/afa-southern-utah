@@ -26,6 +26,7 @@ export default function TeamFinder({
   stages = [],
   currentId = null,
   bracketByTeam = {},
+  teamStatus = {},
   slug,
 }) {
   const [selected, setSelected] = useState("");
@@ -98,6 +99,14 @@ export default function TeamFinder({
   const myStage = myStageId ? stages.find((st) => st.id === myStageId) : null;
   const shownStages = myStage && !showAllBrackets ? [myStage] : stages;
 
+  // Whether this team still has a game coming, worked out by the hourly
+  // sync. No entry means they do — the common case, and the safe way to
+  // be wrong. Said plainly but without a fanfare: nobody wants ELIMINATED
+  // in red when they have just lost.
+  const status = selected ? teamStatus[selected] : null;
+  const isOut = status?.state === "eliminated";
+  const isChampion = status?.state === "champion";
+
   return (
     <div className="space-y-2">
       <select
@@ -161,12 +170,40 @@ export default function TeamFinder({
 
       {selected && (
         <Card>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg text-afa-navy">{selected}</h2>
-            {pool && (
-              <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
-            )}
+            <div className="flex items-center gap-2">
+              {isChampion && (
+                <span className="rounded-full bg-[#f7edcd] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-[#7a5c12]">
+                  Champion
+                </span>
+              )}
+              {isOut && (
+                <span className="rounded-full bg-afa-navy/[0.07] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-afa-ink/60">
+                  Eliminated
+                </span>
+              )}
+              {pool && (
+                <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
+              )}
+            </div>
           </div>
+
+          {(isOut || isChampion) && (
+            <p className="mt-1 text-sm text-afa-ink/70">
+              {isChampion ? (
+                <>
+                  Won it at <b className="font-semibold text-afa-ink">{status.last_game_label}</b>.
+                  Congratulations.
+                </>
+              ) : (
+                <>
+                  <b className="font-semibold text-afa-ink">{status.last_game_label}</b> was their
+                  last game — nothing more is scheduled. Thanks for coming out.
+                </>
+              )}
+            </p>
+          )}
 
           <div className="mt-3">
             {teamGames.length > 0 ? (
@@ -193,7 +230,7 @@ export default function TeamFinder({
               bracket game whose opponent only exists once pool play is
               applied — all of it updates in your calendar by itself.
               Downloading gets you tonight's schedule frozen. */}
-          {slug && (
+          {slug && !isOut && !isChampion && (
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
                 href={`${host ? `webcal://${host}` : ""}/tournaments/${slug}/games.ics?team=${encodeURIComponent(selected)}`}

@@ -6,6 +6,7 @@ import {
   normalizeTeam,
   isPlaceholderName,
 } from "@/lib/quickscores";
+import { computeTeamStatus } from "@/lib/elimination";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -242,6 +243,77 @@ async function syncBracketDivision(supabase, division, html, dryRun, report) {
   }
 }
 
+
+/**
+ * Recompute who is still playing, for every tournament that has a synced
+ * division. Stored rather than derived per render because the answer only
+ * changes when a score does, and because a public page should not have to
+ * load an entire tournament to tell one team they are out.
+ *
+ * The whole table is rewritten each pass. It is derived data — a few dozen
+ * rows — and reconciling it row by row would be more code and more ways to
+ * leave a stale "eliminated" on a team that is very much still playing.
+ */
+async function refreshTeamStatus(supabase, dryRun, report) {
+  const { data: synced } = await supabase
+    .from("divisions")
+    .select("tournament_id")
+    .not("source_url", "is", null);
+  const tournamentIds = [...new Set((synced ?? []).map((d) => d.tournament_id))];
+
+  for (const tournamentId of tournamentIds) {
+    const { data: divisions } = await supabase
+      .from("divisions")
+      .select("id, name, display_name")
+      .eq("tournament_id", tournamentId);
+    const ids = (divisions ?? []).map((d) => d.id);
+    if (ids.length === 0) continue;
+    const names = new Map((divisions ?? []).map((d) => [d.id, d.display_name ?? d.name]));
+
+    const [{ data: games }, { data: poolGames }] = await Promise.all([
+      supabase
+        .from("games")
+        .select(
+          "id, division_id, round, team1_name, team2_name, team1_score, team2_score, status, scheduled_time, is_bye"
+        )
+        .in("division_id", ids),
+      supabase
+        .from("pool_games")
+        .select("id, division_id, team1_name, team2_name, team1_score, team2_score, status, scheduled_time")
+        .in("division_id", ids),
+    ]);
+
+    const rows = computeTeamStatus(games ?? [], poolGames ?? [], names).map((r) => ({
+      ...r,
+      tournament_id: tournamentId,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { data: existing } = await supabase
+      .from("team_status")
+      .select("team_name, state")
+      .eq("tournament_id", tournamentId);
+    const before = new Map((existing ?? []).map((r) => [r.team_name, r.state]));
+
+    for (const r of rows) {
+      if (before.get(r.team_name) !== r.state) {
+        report.status.push({ team: r.team_name, state: r.state, after: r.last_game_label });
+      }
+    }
+    const now = new Set(rows.map((r) => r.team_name));
+    for (const [team, state] of before) {
+      if (!now.has(team)) report.status.push({ team, state: "still playing", was: state });
+    }
+
+    if (dryRun) continue;
+    await supabase.from("team_status").delete().eq("tournament_id", tournamentId);
+    if (rows.length) {
+      const { error } = await supabase.from("team_status").insert(rows);
+      if (error) report.errors.push(`team status: ${error.message}`);
+    }
+  }
+}
+
 export async function GET(request) {
   if (!authorized(request)) {
     return Response.json({ error: "Not authorized" }, { status: 401 });
@@ -264,6 +336,7 @@ export async function GET(request) {
     applied: 0,
     changes: [],
     unmatched: [],
+    status: [],
     errors: [],
   };
 
@@ -294,6 +367,16 @@ export async function GET(request) {
     } catch (err) {
       report.errors.push(`${division.name}: ${err.message}`);
     }
+  }
+
+  // Whose weekend is over (JD: "that should be part of the cron"). Runs
+  // after the writes above, on every pass rather than only when something
+  // changed — a team also becomes eliminated when a game they were
+  // waiting on gets scored somewhere else entirely.
+  try {
+    await refreshTeamStatus(supabase, dryRun, report);
+  } catch (err) {
+    report.errors.push(`team status: ${err.message}`);
   }
 
   // Worth reading in the Vercel log even when nothing changed — a sync
