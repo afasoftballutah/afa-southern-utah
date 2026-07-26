@@ -10,14 +10,21 @@
 # safeguard, lives in app/api/sync/quickscores/route.js.
 name: Sync results from QuickScores
 
+# The hourly schedule is OFF (JD, 2026-07-26: "hae the cron stop checking
+# for results, tournament is over"). Both halves are off: the primary
+# schedule lived in Postgres and its pg_cron job is unscheduled, and the
+# backup `schedule:` block that sat here is removed.
+#
+# Nothing else changed. The "Pull results from QuickScores" button on
+# /scorekeeper still works, and so does Run workflow below. To put the
+# hourly back for the next tournament that the league also runs on
+# QuickScores:
+#
+#   1. Re-add:  schedule:\n    - cron: "47 * * * *"
+#   2. Re-run supabase/migration-2026-07-26-sync-cron.sql with the real
+#      CRON_SECRET substituted (it schedules the :23 database job).
+#   3. Set divisions.source_url on that tournament's divisions.
 on:
-  schedule:
-    # A BACKUP schedule. The primary one lives in Postgres (pg_cron, see
-    # supabase/migration-2026-07-26-sync-cron.sql) because GitHub's shared
-    # cron queue is best-effort — the 06:05 run had still not fired by
-    # 06:36. :47 keeps this off the same minute as the database's :23, and
-    # off the top of the hour, which is the queue's worst slot.
-    - cron: "47 * * * *"
   workflow_dispatch:
     inputs:
       dryRun:
