@@ -901,19 +901,32 @@ export default function DrawnBracket({
   // the brighter ring, because on a bracket this wide it is the single
   // thing they opened the page to find.
   const mine = useMemo(() => {
-    if (!team) return { rounds: new Set(), next: null };
+    if (!team) return { rounds: new Set(), won: new Set(), lost: new Set(), next: null };
     const norm = (n) => String(n ?? "").trim().toLowerCase();
     const target = norm(team);
     const rounds = new Set();
+    const won = new Set();
+    const lost = new Set();
     let next = null;
     for (const { round, game } of layout.cells) {
-      if (norm(game.team1_name) !== target && norm(game.team2_name) !== target) continue;
+      const isOne = norm(game.team1_name) === target;
+      const isTwo = norm(game.team2_name) === target;
+      if (!isOne && !isTwo) continue;
       rounds.add(round);
-      if (game.status === "final") continue;
+      if (game.status === "final") {
+        // Which way it went decides which LINE they rode out of it.
+        const s1 = game.team1_score;
+        const s2 = game.team2_score;
+        if (s1 !== null && s2 !== null && s1 !== s2) {
+          const theyWon = isOne ? s1 > s2 : s2 > s1;
+          (theyWon ? won : lost).add(round);
+        }
+        continue;
+      }
       const when = game.scheduled_time ? new Date(game.scheduled_time).getTime() : Infinity;
       if (!next || when < next.when) next = { round, when };
     }
-    return { rounds, next: next?.round ?? null };
+    return { rounds, won, lost, next: next?.round ?? null };
   }, [team, layout.cells]);
 
   // The segments that trace their run (JD, 2026-07-26: "can we actually
@@ -932,16 +945,23 @@ export default function DrawnBracket({
 
   const minePath = useMemo(() => {
     if (mine.rounds.size === 0) return { connectors: new Set(), drops: new Set() };
+    // A line belongs to a team only if THEY are the one who travelled it.
+    // "Played both ends" was not enough: The Pliggas lost Silver game 15
+    // and came back through the losers side, but 15 -> 18 is the WINNERS
+    // advancement line — GWZ's route — and they played both games, so it
+    // lit up as theirs (JD, 2026-07-26). An advancement line is only
+    // yours if you WON the game it leaves; a drop is only yours if you
+    // lost it.
     const connectors = new Set();
     layout.connectorEnds.forEach((e, i) => {
-      if (mine.rounds.has(e.fromRound) && mine.rounds.has(e.toRound)) connectors.add(i);
+      if (mine.won.has(e.fromRound) && mine.rounds.has(e.toRound)) connectors.add(i);
     });
     const drops = new Set();
     layout.drops.forEach((d, i) => {
-      if (mine.rounds.has(d.from) && mine.rounds.has(d.to)) drops.add(i);
+      if (mine.lost.has(d.from) && mine.rounds.has(d.to)) drops.add(i);
     });
     return { connectors, drops };
-  }, [mine.rounds, layout.connectorEnds, layout.drops]);
+  }, [mine.won, mine.lost, mine.rounds, layout.connectorEnds, layout.drops]);
 
   // Bring that next game into view. The drawing is wider than any phone,
   // and a highlight you have to go looking for is not much of a highlight.
