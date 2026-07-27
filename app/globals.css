@@ -170,6 +170,28 @@ button {
     display: inline-block;
     vertical-align: -0.13em;
   }
+  /* A pill that fits inside a table row. .btn is 44px tall — right for a
+     thumb at a ballpark, twice the height of a 37px row here. JD, 2026-07-27:
+     "these shouldnt be underlined links, they should be pills." */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 0;
+    padding: 0.15rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(30, 58, 110, 0.25);
+    background: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    color: var(--afa-navy);
+  }
+  .pill:hover {
+    border-color: rgba(30, 58, 110, 0.55);
+    background: rgba(30, 58, 110, 0.05);
+  }
   .t-label {
     font-size: 0.6875rem;
     font-weight: 700;

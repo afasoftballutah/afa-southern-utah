@@ -16,7 +16,7 @@ export default function ContactButton({ name, phone, email, via }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="t-label text-afa-navy underline decoration-afa-navy/30 underline-offset-2 min-h-0 py-0"
+        className="pill"
       >
         Contact
       </button>
