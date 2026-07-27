@@ -46,8 +46,11 @@ export default async function TeamsPage() {
       href: `/scorekeeper/teams/${t.id}`,
       label: t.name,
       sub: scope || "No division scope",
-      right: String(t.registrations.length),
-      rightSub: unpaid > 0 ? `${unpaid} unpaid` : "paid up",
+      stats: [
+        { label: t.registrations.length === 1 ? "tournament" : "tournaments", value: String(t.registrations.length) },
+        { label: "unpaid", value: String(unpaid), alert: unpaid > 0 },
+      ],
+      footer: t.registrations[0]?.managerName ? `Manager ${t.registrations[0].managerName}` : null,
       haystack: `${t.name} ${scope} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       tags,
       sortValues: { name: t.name, entries: t.registrations.length },

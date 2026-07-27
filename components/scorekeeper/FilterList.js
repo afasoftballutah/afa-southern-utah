@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import DirectorCard, { CardGrid } from "./DirectorCard";
 
 // The one list control. Every director list uses it, so search, filter and
 // sort are in the same place, look the same and behave the same everywhere.
@@ -14,8 +14,9 @@ import Link from "next/link";
 // tags, and this file owns all the comparing. Callers describe, they do not
 // compute.
 //
-//   rows    [{ key, href, label, sub, right, rightSub, haystack,
-//              tags: string[], sortValues: { [sortKey]: string|number } }]
+//   rows    [{ key, href, label, sub, stats: [{label, value, alert?}],
+//              footer, haystack, tags: string[],
+//              sortValues: { [sortKey]: string|number } }]
 //   sorts   [{ key, label, dir?: "asc"|"desc" }]   first is the default
 //   filters [{ key, label, tag }]                  matches a row's tags
 //
@@ -120,25 +121,19 @@ export default function FilterList({ rows, sorts = [], filters = [], empty }) {
           <p className="t-meta">{empty ?? "Nothing matches that."}</p>
         </div>
       ) : (
-        <ul className="card divide-y divide-black/5">
+        <CardGrid>
           {visible.map((r) => (
-            <li key={r.key}>
-              <Link
-                href={r.href}
-                className="flex items-center justify-between gap-3 px-4 py-3 min-h-[52px]"
-              >
-                <span className="min-w-0">
-                  <span className="t-body block truncate">{r.label}</span>
-                  {r.sub && <span className="t-meta block truncate">{r.sub}</span>}
-                </span>
-                <span className="shrink-0 text-right">
-                  {r.right && <span className="t-strong block">{r.right}</span>}
-                  {r.rightSub && <span className="t-meta block">{r.rightSub}</span>}
-                </span>
-              </Link>
-            </li>
+            <DirectorCard
+              key={r.key}
+              href={r.href}
+              title={r.label}
+              subtitle={r.sub}
+              stats={r.stats}
+              footer={r.footer}
+              tone={r.tone}
+            />
           ))}
-        </ul>
+        </CardGrid>
       )}
     </div>
   );

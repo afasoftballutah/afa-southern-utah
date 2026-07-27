@@ -7,7 +7,7 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import FilterList from "@/components/scorekeeper/FilterList";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
-export const metadata = { title: "People — Control Center" };
+export const metadata = { title: "Players — Control Center" };
 
 // Plain data only — a server component cannot hand a function to a client
 // one, so rows carry their own sort values and tags and FilterList does the
@@ -31,7 +31,7 @@ export default async function PeoplePage() {
   if (!hasValidScorekeeperSession(store)) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
-        <h1 className="t-title">People</h1>
+        <h1 className="t-title">Players</h1>
         <PinPad />
       </div>
     );
@@ -51,8 +51,11 @@ export default async function PeoplePage() {
       href: `/scorekeeper/players/${p.id}`,
       label: p.full_name,
       sub: teams.join(", ") || "No team yet",
-      right: String(p.appearances.length),
-      rightSub: waiting > 0 ? `${waiting} to sign` : "all signed",
+      stats: [
+        { label: p.appearances.length === 1 ? "tournament" : "tournaments", value: String(p.appearances.length) },
+        { label: "waiting to sign", value: String(waiting), alert: waiting > 0 },
+      ],
+      footer: p.birth_date ? `Born ${p.birth_date}` : "No birth date — not matched across tournaments",
       haystack: `${p.full_name} ${teams.join(" ")}`,
       tags,
       sortValues: { name: p.full_name, appearances: p.appearances.length, waiting },
@@ -60,7 +63,7 @@ export default async function PeoplePage() {
   });
 
   return (
-    <DirectorShell title="People" count={`${players.length} on file`}>
+    <DirectorShell title="Players" count={`${players.length} on file`}>
       {unmatched.length > 0 && (
         <div className="card p-4">
           <p className="t-strong">{unmatched.length} roster {unmatched.length === 1 ? "entry has" : "entries have"} no person record</p>

@@ -50,9 +50,17 @@ export default async function TournamentsPage() {
       key: t.id,
       href: `/scorekeeper/tournaments/${t.id}`,
       label: t.name,
-      sub: `${t.start_date} · ${t.venue_name ?? "No venue"} · ${(t.divisions ?? []).length} divisions`,
-      right: String((t.registrations ?? []).length),
-      rightSub: open ? "open" : "closed",
+      sub: `${t.start_date} · ${t.venue_name ?? "No venue"}`,
+      stats: [
+        { label: "teams", value: String((t.registrations ?? []).length) },
+        { label: "divisions", value: String((t.divisions ?? []).length) },
+      ],
+      footer: open
+        ? t.registration_closes
+          ? `Open · closes ${String(t.registration_closes).slice(0, 10)}`
+          : "Open · no deadline set"
+        : "Registration closed",
+      tone: open ? undefined : "quiet",
       haystack: `${t.name} ${t.venue_name ?? ""} ${t.start_date}`,
       tags,
       sortValues: { date: t.start_date, dateDesc: t.start_date, name: t.name },
