@@ -19,12 +19,14 @@ import Link from "next/link";
 // and this file owns sorting and filtering.
 //
 //   columns [{ key, label, align?, width?, type?: "check"|"text", hideBelow? }]
-//   rows    [{ key, href, detail?, cells: {…}, sortValues: {…}, tags: [], search }]
+//   rows    [{ key, href, detailRows?, detailActions?, cells: {…},
+//              sortValues: {…}, tags: [], search }]
 //
-// A row with `detail` opens in place instead of navigating. JD, 2026-07-27:
-// "youre reinventing formats over and over. just have an accordion dropdown
-// on the player list, thats easier." He is right — a second page shape for
-// what is one more row of the same record was churn.
+// A row with `detailRows` opens in place instead of navigating, and the rows
+// it opens use THE SAME COLUMNS. JD, 2026-07-27: "youre reinventing formats
+// over and over... have the accordion open in the same columns." A nested
+// table with its own headings was a third layout to read; aligned rows are
+// just more of the record you are already looking at.
 
 function Arrow({ dir }) {
   return <span className="text-afa-navy/60">{dir === "desc" ? "▼" : "▲"}</span>;
@@ -143,17 +145,18 @@ export default function DirectorTable({
             </thead>
             <tbody>
               {visible.map((r) => {
-                const isOpen = r.detail && openKey === r.key;
+                const expandable = Boolean(r.detailRows?.length || r.detailActions);
+                const isOpen = expandable && openKey === r.key;
                 return (
                   <Fragment key={r.key}>
                     <tr
                       className={
                         "border-b border-black/5 " +
-                        (r.detail ? "cursor-pointer " : "") +
+                        (expandable ? "cursor-pointer " : "") +
                         (isOpen ? "bg-afa-navy/[0.05]" : "hover:bg-afa-navy/[0.03]")
                       }
                       onClick={
-                        r.detail
+                        expandable
                           ? (e) => {
                               // A click on a control inside the row is for
                               // that control, not for opening the row.
@@ -187,12 +190,12 @@ export default function DirectorTable({
                               (i === 0 ? "font-semibold text-afa-navy max-w-0 truncate" : "text-afa-ink")
                             }
                           >
-                            {i === 0 && r.detail && (
+                            {i === 0 && expandable && (
                               <span className="text-afa-navy/40 mr-1.5 inline-block w-2">
                                 {isOpen ? "▾" : "▸"}
                               </span>
                             )}
-                            {i === 0 && r.href && !r.detail ? (
+                            {i === 0 && r.href && !expandable ? (
                               <Link href={r.href} className="hover:underline">
                                 {content}
                               </Link>
@@ -203,10 +206,42 @@ export default function DirectorTable({
                         );
                       })}
                     </tr>
-                    {isOpen && (
+                    {isOpen &&
+                      (r.detailRows ?? []).map((d) => (
+                        <tr key={d.key} className="border-b border-black/5 bg-afa-navy/[0.03]">
+                          {columns.map((c, i) => (
+                            <td
+                              key={c.key}
+                              className={
+                                "px-3 py-1 whitespace-nowrap text-afa-ink/80 " +
+                                (c.align === "right"
+                                  ? "text-right tabular-nums "
+                                  : c.align === "center"
+                                    ? "text-center "
+                                    : "") +
+                                (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
+                                (i === 0 ? "pl-8 max-w-0 truncate" : "")
+                              }
+                            >
+                              {c.type === "check" && typeof d.cells[c.key] === "boolean" ? (
+                                <span
+                                  className={
+                                    "tick " + (d.cells[c.key] ? "text-afa-go" : "text-afa-muted/50")
+                                  }
+                                >
+                                  {d.cells[c.key] ? "☑" : "☐"}
+                                </span>
+                              ) : (
+                                (d.cells[c.key] ?? "")
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    {isOpen && r.detailActions && (
                       <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
-                        <td colSpan={columns.length} className="px-3 py-3">
-                          {r.detail}
+                        <td colSpan={columns.length} className="px-3 pl-8 py-2">
+                          {r.detailActions}
                         </td>
                       </tr>
                     )}

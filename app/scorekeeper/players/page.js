@@ -25,7 +25,8 @@ const COLUMNS = [
   { key: "dob", label: "Born", width: "9rem" },
   { key: "rating", label: "Rating", align: "center", width: "5rem" },
   { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
-  { key: "team", label: "Last team" },
+  { key: "tournament", label: "Tournament" },
+  { key: "team", label: "Team" },
   { key: "events", label: "#", align: "right", width: "3.5rem" },
 ];
 
@@ -83,7 +84,25 @@ export default async function PlayersPage() {
 
     return {
       key: p.id,
-      detail: (
+      // Every event, in the same columns as the row above. The waiver tick
+      // is per event, because that is what a signature actually is.
+      detailRows: active.map((a) => ({
+        key: a.memberId,
+        cells: {
+          name: a.className ? `${a.className} class` : "",
+          waiver: a.signed,
+          tournament: a.tournamentName,
+          team: (
+            <Link
+              href={`/scorekeeper/registrations/${a.registrationId}`}
+              className="text-afa-navy hover:underline"
+            >
+              {a.teamName}
+            </Link>
+          ),
+        },
+      })),
+      detailActions: (
         <PlayerDetail
           person={{ id: p.id, name: p.full_name }}
           appearances={active}
@@ -97,13 +116,12 @@ export default async function PlayersPage() {
         />
       ),
       tags,
-      search: `${p.full_name} ${teams.join(" ")} ${p.rating ?? ""}`,
+      search: `${p.full_name} ${teams.join(" ")} ${active.map((a) => a.tournamentName).join(" ")} ${p.rating ?? ""}`,
       cells: {
         name: lastNameFirst(p.full_name),
-        // The most recent team, not every team they have ever been on — a
-        // list of six wraps to two lines and answers nothing at a glance.
-        // Links to that team AT THAT EVENT, which is the roster a director
-        // actually wants when they see a name here.
+        // The MOST RECENT event only. Every event this person played opens
+        // underneath, in these same columns.
+        tournament: lastAppearance?.tournamentName ?? "—",
         team: lastAppearance ? (
           <Link
             href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}
@@ -146,6 +164,7 @@ export default async function PlayersPage() {
         name: lastNameKey(p.full_name),
         dob: p.birth_date ?? "",
         team: lastAppearance?.teamName ?? "",
+        tournament: lastAppearance?.tournamentName ?? "",
         events: active.length,
         rating: ratingRank(p.rating),
         gender: p.gender ?? "",
