@@ -4,7 +4,6 @@ import { getDirectorCounts } from "@/lib/director";
 import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen, stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
-import PullResults from "@/components/scorekeeper/PullResults";
 import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 
 export const dynamic = "force-dynamic"; // live tool, reads PII — never cached
@@ -66,7 +65,11 @@ export default async function ScorekeeperPage() {
           stats={[
             { label: "on file", value: String(counts.tournaments) },
             { label: "taking teams", value: String(headline.openForRegistration) },
-            { label: "games to score", value: String(headline.toScore), alert: headline.toScore > 0 },
+            {
+              label: headline.toScore === 1 ? "game to score" : "games to score",
+              value: String(headline.toScore),
+              alert: headline.toScore > 0,
+            },
           ]}
         />
         <DirectorCard
@@ -75,7 +78,10 @@ export default async function ScorekeeperPage() {
           subtitle="Every team, and the tournaments they entered"
           stats={[
             { label: "on file", value: String(counts.teams) },
-            { label: "registrations", value: String(counts.registrations) },
+            {
+              label: counts.registrations === 1 ? "registration" : "registrations",
+              value: String(counts.registrations),
+            },
           ]}
         />
         <DirectorCard
@@ -93,7 +99,6 @@ export default async function ScorekeeperPage() {
         />
       </CardGrid>
 
-      <PullResults />
     </div>
   );
 }

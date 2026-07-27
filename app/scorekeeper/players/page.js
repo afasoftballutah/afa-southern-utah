@@ -1,32 +1,37 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { listPeople } from "@/lib/director";
+import { listPeople, scopeLabel } from "@/lib/director";
+import { lastNameFirst, lastNameKey } from "@/lib/names";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import FilterList from "@/components/scorekeeper/FilterList";
+import DirectorTable from "@/components/scorekeeper/DirectorTable";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 export const metadata = { title: "Players — Control Center" };
 
-// Plain data only — a server component cannot hand a function to a client
-// one, so rows carry their own sort values and tags and FilterList does the
-// comparing.
-const SORTS = [
-  { key: "name", label: "Name (A–Z)" },
-  { key: "appearances", label: "Most tournaments first", dir: "desc" },
-  { key: "waiting", label: "Waiting to sign first", dir: "desc" },
+// One line per player, sorted by last name, sorted by clicking a heading.
+// JD, 2026-07-27: "We dont want player cards, we want a list... alphabetized
+// by last name, sortable and filterable... Waiting to Sign is way verbose.
+// Waiver with a checkbox is more realistic... Class is important - Fallen D
+// is different than Fallen E."
+const COLUMNS = [
+  { key: "name", label: "Name" },
+  { key: "team", label: "Team" },
+  { key: "class", label: "Class", width: "5rem" },
+  { key: "division", label: "Division", width: "6rem", hideBelow: "sm" },
+  { key: "events", label: "Events", align: "right", width: "5rem" },
+  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
+  { key: "dob", label: "Born", width: "7rem", hideBelow: "sm" },
 ];
 
 const FILTERS = [
-  { key: "waiting", label: "Waiting to sign", tag: "waiting" },
+  { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
   { key: "managers", label: "Managers", tag: "manager" },
   { key: "nodob", label: "No birth date", tag: "nodob" },
 ];
 
-const unsigned = (p) => p.appearances.filter((a) => !a.removed && !a.signed).length;
-
-export default async function PeoplePage() {
+export default async function PlayersPage() {
   const store = await cookies();
   if (!hasValidScorekeeperSession(store)) {
     return (
@@ -40,57 +45,63 @@ export default async function PeoplePage() {
   const { players, unmatched } = await listPeople();
 
   const rows = players.map((p) => {
-    const teams = [...new Set(p.appearances.filter((a) => !a.removed).map((a) => a.teamName))];
-    const waiting = unsigned(p);
+    const active = p.appearances.filter((a) => !a.removed);
+    const latest = active[active.length - 1] ?? null;
+    const unsigned = active.filter((a) => !a.signed).length;
+    const teams = [...new Set(active.map((a) => a.teamName))];
+
     const tags = [];
-    if (waiting > 0) tags.push("waiting");
-    if (p.appearances.some((a) => a.role === "manager")) tags.push("manager");
+    if (unsigned > 0) tags.push("unsigned");
+    if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
+
     return {
       key: p.id,
       href: `/scorekeeper/players/${p.id}`,
-      label: p.full_name,
-      sub: teams.join(", ") || "No team yet",
-      stats: [
-        { label: p.appearances.length === 1 ? "tournament" : "tournaments", value: String(p.appearances.length) },
-        { label: "waiting to sign", value: String(waiting), alert: waiting > 0 },
-      ],
-      footer: p.birth_date ? `Born ${p.birth_date}` : "No birth date — not matched across tournaments",
-      haystack: `${p.full_name} ${teams.join(" ")}`,
       tags,
-      sortValues: { name: p.full_name, appearances: p.appearances.length, waiting },
+      search: `${p.full_name} ${teams.join(" ")} ${latest?.className ?? ""}`,
+      cells: {
+        name: lastNameFirst(p.full_name),
+        team: teams.join(", ") || "—",
+        class: latest?.className ?? "—",
+        division: scopeLabel(latest?.gender, null) || "—",
+        events: active.length,
+        // Ticked when every roster they are on is signed. A paper roster is
+        // marked off the same way, and it scans far faster than a sentence.
+        waiver: active.length > 0 && unsigned === 0,
+        dob: p.birth_date ?? "—",
+      },
+      sortValues: { name: lastNameKey(p.full_name), events: active.length },
     };
   });
 
   return (
-    <DirectorShell title="Players" count={`${players.length} on file`}>
+    <DirectorShell title="Players" count={`${rows.length} on file`}>
       {unmatched.length > 0 && (
         <div className="card p-4">
-          <p className="t-strong">{unmatched.length} roster {unmatched.length === 1 ? "entry has" : "entries have"} no person record</p>
-          <p className="t-meta">
-            They have no birth date, so there is nothing safe to match them on.
-            Add one on the team and they join the list.
+          <p className="t-strong">
+            {unmatched.length} roster {unmatched.length === 1 ? "entry has" : "entries have"} no
+            player record
           </p>
-          <ul className="mt-2">
-            {unmatched.map((m) => (
-              <li key={m.memberId} className="t-meta">
-                {m.name} — {m.teamName}, {m.tournamentName}
-              </li>
-            ))}
-          </ul>
+          <p className="t-meta">
+            No birth date, so there is nothing safe to match them on:{" "}
+            {unmatched.map((m) => `${m.name} (${m.teamName})`).join(", ")}
+          </p>
         </div>
       )}
 
-      <FilterList
+      <DirectorTable
+        columns={COLUMNS}
         rows={rows}
-        sorts={SORTS}
         filters={FILTERS}
+        defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody matches that."
+        searchPlaceholder="Name, team or class…"
       />
 
       <p className="t-meta">
-        A person is a name plus a birth date. Two people with the same name are
-        two rows. <Link href="/scorekeeper/teams" className="underline">Teams</Link>
+        A player is a name plus a birth date, so two people with the same name
+        stay apart. <Link href="/scorekeeper/teams" className="underline">Teams</Link>
       </p>
     </DirectorShell>
   );

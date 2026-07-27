@@ -4,16 +4,21 @@ import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import FilterList from "@/components/scorekeeper/FilterList";
+import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import NewTournament from "@/components/scorekeeper/NewTournament";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tournaments — Control Center" };
 
-const SORTS = [
-  { key: "date", label: "Soonest first" },
-  { key: "dateDesc", label: "Newest first", dir: "desc" },
-  { key: "name", label: "Name (A–Z)" },
+const COLUMNS = [
+  { key: "name", label: "Tournament" },
+  { key: "date", label: "Starts", width: "7rem" },
+  { key: "venue", label: "Where", hideBelow: "sm" },
+  { key: "divisions", label: "Divs", align: "right", width: "4.5rem" },
+  { key: "teams", label: "Teams", align: "right", width: "5rem" },
+  { key: "fee", label: "Fee", align: "right", width: "5rem" },
+  { key: "closes", label: "Closes", width: "7rem" },
+  { key: "open", label: "Open", type: "check", align: "center", width: "5rem" },
 ];
 const FILTERS = [
   { key: "open", label: "Open for registration", tag: "open" },
@@ -49,21 +54,27 @@ export default async function TournamentsPage() {
     return {
       key: t.id,
       href: `/scorekeeper/tournaments/${t.id}`,
-      label: t.name,
-      sub: `${t.start_date} · ${t.venue_name ?? "No venue"}`,
-      stats: [
-        { label: "teams", value: String((t.registrations ?? []).length) },
-        { label: "divisions", value: String((t.divisions ?? []).length) },
-      ],
-      footer: open
-        ? t.registration_closes
-          ? `Open · closes ${String(t.registration_closes).slice(0, 10)}`
-          : "Open · no deadline set"
-        : "Registration closed",
-      tone: open ? undefined : "quiet",
-      haystack: `${t.name} ${t.venue_name ?? ""} ${t.start_date}`,
       tags,
-      sortValues: { date: t.start_date, dateDesc: t.start_date, name: t.name },
+      search: `${t.name} ${t.venue_name ?? ""} ${t.start_date}`,
+      cells: {
+        name: t.name,
+        date: t.start_date,
+        venue: t.venue_name ?? "—",
+        divisions: (t.divisions ?? []).length,
+        teams: (t.registrations ?? []).length,
+        // A blank fee is not a free tournament, it is one nobody has priced.
+        fee: t.entry_fee_cents == null ? "—" : `$${t.entry_fee_cents / 100}`,
+        closes: t.registration_closes ? String(t.registration_closes).slice(0, 10) : "—",
+        open,
+      },
+      sortValues: {
+        name: t.name.toLowerCase(),
+        date: t.start_date,
+        divisions: (t.divisions ?? []).length,
+        teams: (t.registrations ?? []).length,
+        fee: t.entry_fee_cents ?? -1,
+        closes: t.registration_closes ?? "",
+      },
     };
   });
 
@@ -83,7 +94,14 @@ export default async function TournamentsPage() {
         </div>
       )}
       <NewTournament />
-      <FilterList rows={rows} sorts={SORTS} filters={FILTERS} empty="No tournament matches that." />
+      <DirectorTable
+        columns={COLUMNS}
+        rows={rows}
+        filters={FILTERS}
+        defaultSort={{ key: "date", dir: "asc" }}
+        empty="No tournament matches that."
+        searchPlaceholder="Tournament or venue…"
+      />
     </DirectorShell>
   );
 }
