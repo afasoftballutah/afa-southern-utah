@@ -105,3 +105,30 @@ test("leagueToday reads the league clock, not the server's", () => {
   assert.equal(leagueToday(new Date("2026-07-28T03:00:00Z")), "2026-07-27");
   assert.equal(leagueToday(new Date("2026-07-28T07:00:00Z")), "2026-07-28");
 });
+
+// --- Age on a roster sheet -------------------------------------------------
+import { ageFrom, bornWithAge } from "@/lib/names.js";
+
+test("age is whole years, and a birthday later this year has not happened yet", () => {
+  assert.equal(ageFrom("1985-01-20", "2026-07-27"), 41, "birthday passed");
+  assert.equal(ageFrom("1985-12-20", "2026-07-27"), 40, "birthday still ahead");
+});
+
+test("age on the birthday itself counts", () => {
+  assert.equal(ageFrom("2000-07-27", "2026-07-27"), 26);
+  assert.equal(ageFrom("2000-07-28", "2026-07-27"), 25);
+});
+
+test("age survives a timestamp rather than a bare date", () => {
+  assert.equal(ageFrom("1985-01-20T00:00:00+00:00", "2026-07-27"), 41);
+});
+
+test("no birth date means no age, not zero", () => {
+  assert.equal(ageFrom(null, "2026-07-27"), null);
+  assert.equal(ageFrom("not a date", "2026-07-27"), null);
+});
+
+test("bornWithAge reads the way a roster sheet does", () => {
+  assert.equal(bornWithAge("1985-01-20", "2026-07-27"), "1985-01-20 [41]");
+  assert.equal(bornWithAge(null, "2026-07-27"), "—");
+});

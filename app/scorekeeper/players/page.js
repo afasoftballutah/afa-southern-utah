@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { listPeople } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
-import { lastNameFirst, lastNameKey } from "@/lib/names";
+import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
+import { leagueToday } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
@@ -18,12 +18,12 @@ export const metadata = { title: "Players — Control Center" };
 // is different than Fallen E."
 const COLUMNS = [
   { key: "name", label: "Name" },
-  { key: "team", label: "Team" },
-  { key: "rating", label: "Rating", width: "5rem" },
   { key: "gender", label: "M/F", align: "center", width: "4rem" },
-  { key: "events", label: "Events", align: "right", width: "5rem" },
+  { key: "dob", label: "Born", width: "9rem" },
+  { key: "rating", label: "Rating", align: "center", width: "5rem" },
   { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
-  { key: "dob", label: "Born", width: "7rem", hideBelow: "sm" },
+  { key: "team", label: "Last team" },
+  { key: "events", label: "#", align: "right", width: "3.5rem" },
 ];
 
 const FILTERS = [
@@ -53,6 +53,8 @@ export default async function PlayersPage() {
   }
 
   const { players, unmatched } = await listPeople();
+  // One clock for the whole table, so two rows can never disagree about today.
+  const today = leagueToday();
 
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
@@ -73,7 +75,9 @@ export default async function PlayersPage() {
       search: `${p.full_name} ${teams.join(" ")} ${p.rating ?? ""}`,
       cells: {
         name: lastNameFirst(p.full_name),
-        team: teams.join(", ") || "—",
+        // The most recent team, not every team they have ever been on — a
+        // list of six wraps to two lines and answers nothing at a glance.
+        team: active[active.length - 1]?.teamName ?? "—",
         // A person's RATING. A team's class is derived from these — see
         // lib/class.js. They are different ladders: there is no C class.
         rating: p.rating ?? "—",
@@ -82,10 +86,12 @@ export default async function PlayersPage() {
         // Ticked when every roster they are on is signed. A paper roster is
         // marked off the same way, and it scans far faster than a sentence.
         waiver: active.length > 0 && unsigned === 0,
-        dob: p.birth_date ?? "—",
+        dob: bornWithAge(p.birth_date, today),
       },
       sortValues: {
         name: lastNameKey(p.full_name),
+        dob: p.birth_date ?? "",
+        team: active[active.length - 1]?.teamName ?? "",
         events: active.length,
         rating: ratingRank(p.rating),
       },
@@ -116,10 +122,6 @@ export default async function PlayersPage() {
         searchPlaceholder="Name, team or class…"
       />
 
-      <p className="t-meta">
-        A player is a name plus a birth date, so two people with the same name
-        stay apart. <Link href="/scorekeeper/teams" className="underline">Teams</Link>
-      </p>
     </DirectorShell>
   );
 }
