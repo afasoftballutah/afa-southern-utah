@@ -31,6 +31,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
   const [submitError, setSubmitError] = useState("");
   const [signers, setSigners] = useState([]);
   const [rosterLink, setRosterLink] = useState("");
+  const [manageLink, setManageLink] = useState("");
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   // Series filter (dispatch-brief-17) — "All" plus only the regions that
@@ -153,6 +154,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
       if (!res.ok) throw new Error(json.error || "Registration failed");
       setSigners(json.signers ?? []);
       setRosterLink(json.rosterLink ?? "");
+      setManageLink(json.manageLink ?? "");
       setSubmitState("done");
     } catch (err) {
       setSubmitState("error");
@@ -186,6 +188,19 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               className="btn w-full"
             >
               {copiedIndex === "roster" ? "Copied" : "Copy team link"}
+            </button>
+          </div>
+        )}
+        {manageLink && (
+          <div className="rounded-xl border border-afa-navy/20 p-4 space-y-2">
+            <p className="t-strong">Keep this one to yourself</p>
+            <p className="text-sm text-afa-ink/80">
+              Your own link, for adding a player who turns up on Saturday or
+              taking someone off. Do not put it in the team chat &mdash; anyone
+              who has it can change the roster.
+            </p>
+            <button type="button" onClick={() => copyLink(manageLink, "manage")} className="btn-quiet w-full">
+              {copiedIndex === "manage" ? "Copied" : "Copy my roster link"}
             </button>
           </div>
         )}

@@ -80,7 +80,7 @@ export async function POST(request) {
       manager_signed_at: signaturePng ? new Date().toISOString() : null,
       release_text_version: RELEASE_TEXT_VERSION,
     })
-    .select("id, roster_token")
+    .select("id, roster_token, manage_token")
     .single();
 
   if (insertError) {
@@ -203,9 +203,10 @@ export async function POST(request) {
     signLink: `${origin}/register/sign/${r.signing_token}`,
   }));
 
-  // One link the manager shares with her whole team, instead of sending each
-  // of the links above to the right person by hand.
+  // Two links, two audiences. Sharing the wrong one hands the whole team the
+  // ability to remove each other, so they are never presented the same way.
   const rosterLink = `${origin}/register/roster/${inserted.roster_token}`;
+  const manageLink = `${origin}/register/manage/${inserted.manage_token}`;
 
-  return Response.json({ ok: true, registrationId, rosterLink, signers });
+  return Response.json({ ok: true, registrationId, rosterLink, manageLink, signers });
 }

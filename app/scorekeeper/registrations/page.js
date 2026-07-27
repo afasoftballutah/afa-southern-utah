@@ -20,7 +20,7 @@ async function getRegistrations() {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, status, paid_at, amount_paid_cents, director_notes, roster_token, pdf_storage_path, submitted_at, manager_name, manager_email, manager_phone, team_id, tournaments(id, name, slug, start_date), divisions(name, display_name)"
+      "id, team_name, class, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, submitted_at, manager_name, manager_email, manager_phone, team_id, tournaments(id, name, slug, start_date), divisions(name, display_name)"
     )
     .order("submitted_at", { ascending: false });
   if (error) throw error;

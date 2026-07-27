@@ -14,7 +14,7 @@ export default function RegistrationCard({ registration }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState("");
 
   const { active_members: active, signed_members: signed, is_official: official } = reg.progress;
   const outstanding = active - signed;
@@ -41,10 +41,12 @@ export default function RegistrationCard({ registration }) {
     }
   }
 
-  function copyRosterLink() {
-    navigator.clipboard?.writeText(`${window.location.origin}/register/roster/${reg.roster_token}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  function copyLink(kind) {
+    const path = kind === "manage" ? "manage" : "roster";
+    const tok = kind === "manage" ? reg.manage_token : reg.roster_token;
+    navigator.clipboard?.writeText(`${window.location.origin}/register/${path}/${tok}`);
+    setCopied(kind);
+    setTimeout(() => setCopied(""), 1500);
   }
 
   return (
@@ -116,8 +118,13 @@ export default function RegistrationCard({ registration }) {
             Reinstate
           </button>
         )}
-        <button className="btn-quiet" onClick={copyRosterLink}>
-          {copied ? "Copied" : "Team link"}
+        <button className="btn-quiet" onClick={() => copyLink("roster")}>
+          {copied === "roster" ? "Copied" : "Team link"}
+        </button>
+        {/* The manager's private link. A director resends it when she loses
+            it — which is the only way she gets it back. */}
+        <button className="btn-quiet" onClick={() => copyLink("manage")}>
+          {copied === "manage" ? "Copied" : "Manager link"}
         </button>
         {reg.pdf_storage_path && (
           <a
