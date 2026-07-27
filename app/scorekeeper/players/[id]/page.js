@@ -63,49 +63,52 @@ export default async function PersonPage({ params }) {
     .map((p) => ({ id: p.id, label: `${p.full_name}${p.birth_date ? ` (${p.birth_date})` : ""}` }));
 
   return (
-    <DirectorShell title={person.full_name} count={bornWithAge(person.birth_date, today)} back="/scorekeeper/players">
-      {/* One row of facts, editable where they sit. */}
-      <div className="card p-3 dense-controls flex flex-wrap items-center gap-x-6 gap-y-2">
-        <label className="flex items-center gap-2">
-          <span className="t-label">M/F</span>
-          <span className="w-14">
-            <InlineSelect
-              label="M/F"
-              action="setPlayerGender"
-              valueKey="gender"
-              payload={{ playerId: person.id }}
-              value={person.gender ?? ""}
-              options={["M", "F"]}
-            />
+    <DirectorShell
+      title={person.full_name}
+      count={bornWithAge(person.birth_date, today)}
+      back="/scorekeeper/players"
+      inline={
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 dense-controls">
+          <span className="flex items-center gap-1.5">
+            <span className="t-label">M/F</span>
+            <span className="w-12">
+              <InlineSelect
+                label="M/F"
+                action="setPlayerGender"
+                valueKey="gender"
+                payload={{ playerId: person.id }}
+                value={person.gender ?? ""}
+                options={["M", "F"]}
+              />
+            </span>
           </span>
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="t-label">Rating</span>
-          <span className="w-14">
-            <InlineSelect
-              label="Rating"
-              action="setPlayerRating"
-              valueKey="rating"
-              payload={{ playerId: person.id }}
-              value={person.rating ?? ""}
-              options={RATINGS}
-            />
+          <span className="flex items-center gap-1.5">
+            <span className="t-label">Rating</span>
+            <span className="w-12">
+              <InlineSelect
+                label="Rating"
+                action="setPlayerRating"
+                valueKey="rating"
+                payload={{ playerId: person.id }}
+                value={person.rating ?? ""}
+                options={RATINGS}
+              />
+            </span>
           </span>
-        </label>
-        {contact?.phone && (
-          <span className="flex items-center gap-2">
-            <a className="t-label text-afa-navy underline" href={`sms:${digits(contact.phone)}`}>Text</a>
-            <a className="t-label text-afa-navy underline" href={`tel:${digits(contact.phone)}`}>Call</a>
-            <span className="t-meta">{contact.phone}</span>
-          </span>
-        )}
-        {contact?.email && (
-          <a className="t-label text-afa-navy underline" href={`mailto:${contact.email}`}>
-            {contact.email}
-          </a>
-        )}
-      </div>
-
+          {contact?.phone && (
+            <>
+              <a className="t-label text-afa-navy underline" href={`sms:${digits(contact.phone)}`}>Text</a>
+              <a className="t-label text-afa-navy underline" href={`tel:${digits(contact.phone)}`}>Call</a>
+            </>
+          )}
+          {contact?.email && (
+            <a className="t-label text-afa-navy underline truncate max-w-[16rem]" href={`mailto:${contact.email}`}>
+              {contact.email}
+            </a>
+          )}
+        </span>
+      }
+    >
       <h2 className="t-heading">History</h2>
       {active.length === 0 ? (
         <div className="card p-4 text-center">

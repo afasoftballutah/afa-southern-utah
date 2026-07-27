@@ -13,13 +13,19 @@ import Link from "next/link";
 //   - A count is always visible, so "is this everything?" never needs asking.
 //   - Nothing here invents a font size or a colour. t-title, t-heading,
 //     t-body, t-meta, t-label and .card only.
-export default function DirectorShell({ title, count, back = "/scorekeeper", children, action }) {
+export default function DirectorShell({ title, count, inline, back = "/scorekeeper", children, action }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
+      {/* One line: who this is, the facts about them, and the way back. A
+          stacked header pushed the first real row of data below the fold on
+          a laptop for no gain (JD, 2026-07-27: "not sure why all of this
+          isnt on the same line?"). It wraps only when the screen is too
+          narrow to hold it. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 min-w-0">
           <h1 className="t-title">{title}</h1>
-          {count != null && <p className="t-meta">{count}</p>}
+          {count != null && <span className="t-meta whitespace-nowrap">{count}</span>}
+          {inline}
         </div>
         {back && (
           <Link href={back} className="t-meta underline shrink-0">
