@@ -6,6 +6,8 @@ import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waive
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
+const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
+
 // Same region ordering as the Tournaments page (lib/data.js REGION_ORDER) —
 // Southern Utah/Nevada first (home base), then Northern Utah, then the
 // Series circuit. Kept local here since only region LABELS are shared
@@ -395,6 +397,26 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               player signs their own copy later, on their own link — you&rsquo;re
               just listing them here.
             </p>
+            {/* Managers play. If she has not listed herself, offer it rather
+                than adding it behind her back — the route adds her either
+                way, but doing it here means she can fill in her birth date. */}
+            {manager.name.trim() && !players.some((p) => sameName(p.name, manager.name)) && (
+              <button
+                type="button"
+                onClick={() =>
+                  setPlayers((prev) => [{ ...emptyPlayer(), name: manager.name.trim() }, ...prev])
+                }
+                className="w-full text-left rounded border border-afa-navy/20 bg-afa-navy/5 px-3 py-2 text-sm"
+              >
+                <span className="font-semibold text-afa-navy">
+                  Add {manager.name.trim()} to the roster
+                </span>
+                <span className="block text-afa-ink/70">
+                  Managers are normally on their own team. You sign one waiver
+                  either way.
+                </span>
+              </button>
+            )}
             {players.map((p, i) => (
               <div key={i} className="border border-afa-navy/10 rounded p-3 space-y-2">
                 <div className="flex justify-between items-center">
@@ -517,9 +539,9 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               it as the team&rsquo;s manager.
             </label>
             <p className="text-xs text-afa-ink/60">
-              This is your own signature as manager. Every player and coach
-              signs their own copy separately, on their own link, after you
-              submit.
+              You sign once, as a member of this roster. That signature covers
+              the manager line on the form too. Everyone else signs their own
+              copy on their own link.
             </p>
             <div>
               <p className="font-semibold text-sm mb-1">

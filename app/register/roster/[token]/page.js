@@ -22,7 +22,7 @@ async function getRoster(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, manager_name, manager_signing_token, manager_signed_at, tournaments(name, slug, start_date), divisions(name, display_name)"
+      "id, team_name, class, manager_member_id, tournaments(name, slug), divisions(name, display_name)"
     )
     .eq("roster_token", token)
     .maybeSingle();
@@ -31,25 +31,19 @@ async function getRoster(token) {
 
   const { data: members } = await supabase
     .from("roster_members")
-    .select("name, role, signing_token, signed_at")
+    .select("id, name, role, signing_token, signed_at")
     .eq("registration_id", registration.id)
     .is("removed_at", null)
     .order("created_at", { ascending: true });
 
-  const signers = [
-    {
-      name: registration.manager_name,
-      role: "manager",
-      token: registration.manager_signing_token,
-      signed: Boolean(registration.manager_signed_at),
-    },
-    ...(members ?? []).map((m) => ({
-      name: m.name,
-      role: m.role,
-      token: m.signing_token,
-      signed: Boolean(m.signed_at),
-    })),
-  ];
+  // One row per person. The manager is on the roster and signs once, so she
+  // is a LABEL on an existing row, not an extra entry.
+  const signers = (members ?? []).map((m) => ({
+    name: m.name,
+    role: m.id === registration.manager_member_id ? "manager" : m.role,
+    token: m.signing_token,
+    signed: Boolean(m.signed_at),
+  }));
 
   return {
     teamName: registration.team_name,
@@ -66,14 +60,7 @@ export default async function RosterSigningPage({ params }) {
   const roster = await getRoster(token);
   if (!roster) notFound();
 
-  // A manager who is also on the roster gets two rows — one waiver as a
-  // player, one as the team's manager. That is correct, but two identical
-  // lines read as a bug, so label the role on every row of a repeated name.
-  const nameCounts = roster.signers.reduce(
-    (acc, s) => acc.set(s.name, (acc.get(s.name) ?? 0) + 1),
-    new Map()
-  );
-  const needsRole = (s) => s.role !== "player" || nameCounts.get(s.name) > 1;
+  const needsRole = (s) => s.role !== "player";
 
   const signed = roster.signers.filter((s) => s.signed).length;
   const total = roster.signers.length;

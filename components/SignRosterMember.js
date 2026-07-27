@@ -49,7 +49,9 @@ export default function SignRosterMember({ token, member }) {
       <dl className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
         <dt className="font-semibold">Name</dt>
         <dd>{member.name}</dd>
-        {member.role === "player" && (
+        {/* Driven by what this person actually has, not by their role — a
+            manager who plays for her own team carries both sets. */}
+        {(member.birthDate || member.address) && (
           <>
             <dt className="font-semibold">Birth Date</dt>
             <dd>{member.birthDate || "—"}</dd>
@@ -57,7 +59,7 @@ export default function SignRosterMember({ token, member }) {
             <dd>{member.address || "—"}</dd>
           </>
         )}
-        {member.role !== "player" && (
+        {(member.email || member.phone) && (
           <>
             <dt className="font-semibold">Email</dt>
             <dd>{member.email || "—"}</dd>

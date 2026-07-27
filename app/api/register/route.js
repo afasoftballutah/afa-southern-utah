@@ -79,10 +79,19 @@ export async function POST(request) {
       manager_signed_at: signaturePng ? new Date().toISOString() : null,
       release_text_version: RELEASE_TEXT_VERSION,
     })
-    .select("id, roster_token, manager_signing_token")
+    .select("id, roster_token")
     .single();
 
   if (insertError) {
+    // 23505 is registrations_one_live_per_division — she already registered
+    // this team, or tapped submit twice. Say so; a 500 makes her try again
+    // and again against an index that will never let her through.
+    if (insertError.code === "23505") {
+      return bad(
+        `${teamName.trim()} is already registered for this division. Check with whoever signed the team up — they have the link everyone signs from.`,
+        409
+      );
+    }
     console.error("registrations insert failed", insertError);
     return bad("Could not save registration — please try again", 500);
   }
@@ -110,6 +119,22 @@ export async function POST(request) {
       })),
   ];
 
+  // The manager is on the roster. JD, 2026-07-27: "all managers should be on
+  // their teams roster - this is regular. Dont need two waivers." Normally
+  // she is already in the player list and this finds her; if she left herself
+  // out, add her rather than let the roster disagree with the form. Either
+  // way she ends up with ONE row, ONE link and ONE signature.
+  const same = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
+  if (!rosterRows.some((r) => same(r.name, manager.name))) {
+    rosterRows.push({
+      registration_id: registrationId,
+      role: "manager",
+      name: manager.name.trim(),
+      email: manager.email || null,
+      phone: manager.phone || null,
+    });
+  }
+
   const { data: insertedRoster, error: rosterError } = await supabase
     .from("roster_members")
     .insert(rosterRows)
@@ -117,7 +142,30 @@ export async function POST(request) {
 
   if (rosterError) {
     console.error("roster_members insert failed", rosterError);
+    // Take the registration back out. A team row with no roster is invisible
+    // to every surface, but it still holds the unique index on the team name,
+    // so the manager's next attempt would be rejected as a duplicate of
+    // something she cannot see. There is no transaction across these two
+    // inserts, so undo it by hand.
+    await supabase.from("registrations").delete().eq("id", registrationId);
     return bad("Could not save the roster — please try again", 500);
+  }
+
+  // Point the registration at the manager's roster row. That row's signature
+  // is what fills the "Manager's Signature" line on the AFA form, so there is
+  // never a second waiver to chase.
+  const managerRow = insertedRoster.find((r) => same(r.name, manager.name));
+  if (managerRow) {
+    const patch = { manager_member_id: managerRow.id };
+    if (signaturePng) {
+      // She signed while submitting: put it on her roster row too, so the
+      // roster page and the form agree.
+      await supabase
+        .from("roster_members")
+        .update({ signature_png: signaturePng, signed_at: new Date().toISOString() })
+        .eq("id", managerRow.id);
+    }
+    await supabase.from("registrations").update(patch).eq("id", registrationId);
   }
 
   try {
@@ -129,24 +177,11 @@ export async function POST(request) {
   }
 
   const origin = new URL(request.url).origin;
-  const signers = [
-    // The manager is a signer too, and first in the list — she is the one
-    // person guaranteed to be looking at this screen.
-    ...(signaturePng
-      ? []
-      : [
-          {
-            name: manager.name,
-            role: "manager",
-            signLink: `${origin}/register/sign/${inserted.manager_signing_token}`,
-          },
-        ]),
-    ...insertedRoster.map((r) => ({
-      name: r.name,
-      role: r.role,
-      signLink: `${origin}/register/sign/${r.signing_token}`,
-    })),
-  ];
+  const signers = insertedRoster.map((r) => ({
+    name: r.name,
+    role: r.id === managerRow?.id ? "manager" : r.role,
+    signLink: `${origin}/register/sign/${r.signing_token}`,
+  }));
 
   // One link the manager shares with her whole team, instead of sending each
   // of the links above to the right person by hand.

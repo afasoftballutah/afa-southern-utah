@@ -11,51 +11,44 @@ export const dynamic = "force-dynamic";
 
 const ROLE_LABEL = { coach: "Coach", manager: "Manager", player: "Player" };
 
-// A token is either a roster member's or the manager's — same shape, same
-// trust model, neither listed anywhere. Try the roster, then the manager.
-// JD, 2026-07-27: the manager signs whenever, like everyone else.
+// One kind of token. The manager is a roster member like anyone else, so
+// there is no separate manager lookup — only a manager LABEL on her row.
 async function getSignerByToken(token) {
   const supabase = getServiceClient();
 
-  const { data: member } = await supabase
+  // Relationship named on purpose: two foreign keys join these tables now, so
+  // a bare `registrations(...)` embed is ambiguous and fails.
+  const { data: member, error } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, birth_date, address, email, phone, signed_at, removed_at, registrations(team_name)"
+      "id, role, name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id)"
     )
     .eq("signing_token", token)
     .maybeSingle();
 
+  if (error) {
+    console.error("signing page lookup failed", error);
+    return null;
+  }
+  if (!member) return null;
+
   // A removed player keeps their link but it stops working. Gone from the
   // roster means gone — they must not be able to sign back on.
-  if (member) {
-    if (member.removed_at) return null;
-    return {
-      teamName: member.registrations?.team_name,
-      role: member.role,
-      name: member.name,
-      birthDate: member.birth_date,
-      address: member.address,
-      email: member.email,
-      phone: member.phone,
-      alreadySigned: Boolean(member.signed_at),
-    };
-  }
+  if (member.removed_at) return null;
 
-  const { data: registration } = await supabase
-    .from("registrations")
-    .select("team_name, manager_name, manager_email, manager_phone, manager_signed_at")
-    .eq("manager_signing_token", token)
-    .maybeSingle();
-
-  if (!registration) return null;
+  const isManager = member.registrations?.manager_member_id === member.id;
 
   return {
-    teamName: registration.team_name,
-    role: "manager",
-    name: registration.manager_name,
-    email: registration.manager_email,
-    phone: registration.manager_phone,
-    alreadySigned: Boolean(registration.manager_signed_at),
+    teamName: member.registrations?.team_name,
+    role: isManager ? "manager" : member.role,
+    name: member.name,
+    // A manager who plays is still a player on the form — her birth date and
+    // address belong on her waiver like anyone else's.
+    birthDate: member.birth_date,
+    address: member.address,
+    email: member.email,
+    phone: member.phone,
+    alreadySigned: Boolean(member.signed_at),
   };
 }
 
