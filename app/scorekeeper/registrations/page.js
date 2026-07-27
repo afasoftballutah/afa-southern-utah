@@ -88,9 +88,13 @@ export default async function RegistrationsPage() {
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="t-title">Registrations</h1>
         <Link href="/scorekeeper" className="t-meta underline">
-          Scorekeeper
+          Back
         </Link>
       </div>
+
+      <Link href="/scorekeeper/registrations/new" className="btn-quiet w-full block text-center">
+        Add a team yourself
+      </Link>
 
       {total === 0 ? (
         <div className="card p-6 text-center space-y-1">

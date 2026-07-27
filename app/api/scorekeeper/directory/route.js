@@ -1,6 +1,8 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
+import { resolvePlayer, resolveTeam } from "@/lib/identity";
+import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
 
 export const runtime = "nodejs";
 
@@ -169,6 +171,236 @@ export async function POST(request) {
         return bad(error.message || "Could not merge — please try again", 500);
       }
       return Response.json({ ok: true });
+    }
+
+    // ---- Create a tournament -----------------------------------------
+    case "createTournament": {
+      const { name, startDate, endDate, venueName, region } = body;
+      if (!name?.trim()) return bad("A name is required");
+      if (!startDate) return bad("A start date is required");
+
+      // slug is NOT NULL and is what every public URL hangs off, so it is
+      // derived here rather than typed — a director should never have to
+      // think about URLs, and a hand-typed one goes wrong quietly.
+      const base = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const year = String(startDate).slice(0, 4);
+      let slug = `${year}-${base}`;
+
+      const { data: taken } = await supabase.from("tournaments").select("slug").like("slug", `${slug}%`);
+      if ((taken ?? []).some((t) => t.slug === slug)) {
+        let n = 2;
+        while ((taken ?? []).some((t) => t.slug === `${slug}-${n}`)) n += 1;
+        slug = `${slug}-${n}`;
+      }
+
+      const { data, error } = await supabase
+        .from("tournaments")
+        .insert({
+          name: name.trim(),
+          slug,
+          start_date: startDate,
+          end_date: endDate || startDate,
+          venue_name: venueName?.trim() || "TBD",
+          region: region || "southern_utah",
+          status: "upcoming",
+          is_placeholder: false,
+          contacts: [],
+        })
+        .select("id, slug")
+        .single();
+      if (error) {
+        console.error("create tournament failed", error);
+        return bad("Could not create that tournament — please try again", 500);
+      }
+      return Response.json({ ok: true, tournament: data });
+    }
+
+    // ---- Edit a tournament's terms -----------------------------------
+    case "updateTournament": {
+      const { tournamentId, patch: fields } = body;
+      if (!tournamentId || !fields) return bad("Which tournament, and what changed?");
+
+      // Only these. A whitelist rather than a spread, so a stray key from the
+      // form can never reach a column nobody meant to expose.
+      const ALLOWED = [
+        "name",
+        "start_date",
+        "end_date",
+        "venue_name",
+        "venue_address",
+        "entry_fee_cents",
+        "deposit_cents",
+        "ump_fee_cents",
+        "game_guarantee",
+        "registration_closes",
+        "registration_note",
+        "notes",
+      ];
+      const patch = {};
+      for (const key of ALLOWED) {
+        if (key in fields) patch[key] = fields[key] === "" ? null : fields[key];
+      }
+      if (Object.keys(patch).length === 0) return bad("Nothing to change");
+
+      for (const key of ["entry_fee_cents", "deposit_cents", "ump_fee_cents"]) {
+        const v = patch[key];
+        if (v != null && (!Number.isInteger(v) || v < 0)) {
+          return bad("Money must be a whole number of cents");
+        }
+      }
+
+      const { error } = await supabase.from("tournaments").update(patch).eq("id", tournamentId);
+      if (error) {
+        console.error("update tournament failed", error);
+        return bad("Could not save — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // ---- Add a division ----------------------------------------------
+    case "addDivision": {
+      const { tournamentId, name, gender, classId } = body;
+      if (!tournamentId || !name?.trim()) return bad("Which tournament, and what division?");
+
+      const { data: existing } = await supabase
+        .from("divisions")
+        .select("sort_order")
+        .eq("tournament_id", tournamentId);
+      const nextOrder = Math.max(0, ...(existing ?? []).map((d) => d.sort_order ?? 0)) + 10;
+
+      const { error } = await supabase.from("divisions").insert({
+        tournament_id: tournamentId,
+        name: name.trim(),
+        display_name: name.trim(),
+        bracket_type: "double_elimination",
+        sort_order: nextOrder,
+        gender: gender || null,
+        class_id: classId || null,
+      });
+      if (error) {
+        console.error("add division failed", error);
+        return bad("Could not add that division — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // ---- Enter a team the director took by hand -----------------------
+    case "createRegistration": {
+      const { tournamentId, divisionId, teamName, managerName, managerEmail, managerPhone, players } =
+        body;
+      if (!tournamentId || !divisionId) return bad("Which tournament and division?");
+      if (!teamName?.trim()) return bad("A team name is required");
+      if (!managerName?.trim()) return bad("A manager name is required");
+
+      const { data: division } = await supabase
+        .from("divisions")
+        .select("id, tournament_id")
+        .eq("id", divisionId)
+        .maybeSingle();
+      if (!division || division.tournament_id !== tournamentId) {
+        return bad("That division is not in that tournament", 404);
+      }
+
+      // manager_email is NOT NULL and the director may genuinely not have
+      // one yet. A reserved .invalid address is honest — it cannot be
+      // delivered to, so nobody will ever mistake it for a real contact.
+      const email = managerEmail?.trim() || `unknown@example.invalid`;
+
+      const { data: registration, error } = await supabase
+        .from("registrations")
+        .insert({
+          tournament_id: tournamentId,
+          division_id: divisionId,
+          team_name: teamName.trim(),
+          manager_name: managerName.trim(),
+          manager_email: email,
+          manager_phone: managerPhone?.trim() || null,
+          release_text_version: RELEASE_TEXT_VERSION,
+          director_notes: "Entered by a director, not through the public form.",
+        })
+        .select("id, roster_token, manage_token")
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          return bad(`${teamName.trim()} is already registered in that division`, 409);
+        }
+        console.error("director registration failed", error);
+        return bad("Could not save that team — please try again", 500);
+      }
+
+      const names = (players ?? [])
+        .map((p) => ({ name: String(p.name ?? "").trim(), birthDate: p.birthDate || null }))
+        .filter((p) => p.name);
+      if (!names.some((p) => p.name.toLowerCase() === managerName.trim().toLowerCase())) {
+        names.unshift({ name: managerName.trim(), birthDate: null });
+      }
+
+      const { data: roster, error: rosterError } = await supabase
+        .from("roster_members")
+        .insert(
+          names.map((p) => ({
+            registration_id: registration.id,
+            role: "player",
+            name: p.name,
+            birth_date: p.birthDate,
+          }))
+        )
+        .select("id, name");
+
+      if (rosterError) {
+        console.error("director roster insert failed", rosterError);
+        await supabase.from("registrations").delete().eq("id", registration.id);
+        return bad("Could not save the roster — please try again", 500);
+      }
+
+      const managerRow = (roster ?? []).find(
+        (r) => r.name.toLowerCase() === managerName.trim().toLowerCase()
+      );
+
+      // Same identity resolution the public form does, so a team the director
+      // typed in is the same team next season. Soft — a failure here leaves
+      // nulls to fix, never a lost registration.
+      try {
+        const teamId = await resolveTeam(supabase, { teamName: teamName.trim(), divisionId });
+        await supabase
+          .from("registrations")
+          .update({ team_id: teamId, manager_member_id: managerRow?.id ?? null })
+          .eq("id", registration.id);
+
+        await Promise.all(
+          (roster ?? []).map(async (row) => {
+            const source = names.find((p) => p.name === row.name);
+            const playerId = await resolvePlayer(supabase, {
+              name: row.name,
+              birthDate: source?.birthDate ?? null,
+            });
+            if (playerId) {
+              await supabase.from("roster_members").update({ player_id: playerId }).eq("id", row.id);
+            }
+          })
+        );
+      } catch (err) {
+        console.error("identity resolution failed on director entry", err);
+      }
+
+      try {
+        await regenerateAndStoreWaiverPdf(registration.id);
+      } catch (err) {
+        console.error("PDF snapshot failed on director entry", err);
+      }
+
+      const origin = new URL(request.url).origin;
+      return Response.json({
+        ok: true,
+        registrationId: registration.id,
+        rosterLink: `${origin}/register/roster/${registration.roster_token}`,
+        manageLink: `${origin}/register/manage/${registration.manage_token}`,
+      });
     }
 
     default:

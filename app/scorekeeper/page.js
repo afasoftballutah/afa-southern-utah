@@ -10,87 +10,73 @@ import { getDirectorCounts } from "@/lib/director";
 export const dynamic = "force-dynamic"; // never cache — this is a live tool, not a public page
 export const metadata = { title: "Scorekeeper" };
 
-// Ordered the way the public Tournaments page orders things (JD,
-// 2026-07-24). Flat newest-first put December on top and buried the
-// tournament actually being scored tonight: upcoming come first, SOONEST
-// first, grouped by region with Southern UT/NV leading; everything already
-// played collapses behind an expander, still reachable for fixing a score.
-const REGION_ORDER = ["southern_utah", "northern_utah", "series"];
-
-async function getTournamentsWithDivisions() {
+// What can be scored, as a flat list of DIVISIONS — because that is the
+// unit of work. A director standing at a field is not looking for a
+// tournament, they are looking for the sheet they are about to fill in.
+// The old shape was tournaments grouped by region, each with a nested list of
+// underlined links; it read like a sitemap, not a job.
+async function getScoreableDivisions() {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("tournaments")
     .select(
-      "id, name, start_date, status, region, is_placeholder, divisions(id, name, display_name, sort_order, parent_division_id, pool_games(id))"
+      "id, name, start_date, status, region, is_placeholder, divisions(id, name, display_name, sort_order, parent_division_id, pool_games(id), games(id, status))"
     )
     .order("start_date", { ascending: true });
   if (error) throw error;
-  const rows = (data ?? []).filter((t) => !t.is_placeholder);
 
-  const groupByRegion = (list) =>
-    REGION_ORDER.map((region) => ({
-      region,
-      label: REGION_LABEL[region] ?? region,
-      tournaments: list.filter((t) => t.region === region),
-    })).filter((g) => g.tournaments.length > 0);
-
+  const rows = [];
+  for (const t of (data ?? []).filter((x) => !x.is_placeholder)) {
+    for (const d of (t.divisions ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)) {
+      const pool = (d.pool_games ?? []).length;
+      const bracket = (d.games ?? []).length;
+      if (pool + bracket === 0 && d.parent_division_id) continue;
+      const unplayed = (d.games ?? []).filter((g) => g.status !== "final").length;
+      rows.push({
+        id: d.id,
+        // A division with pool games is where pool play is scored, so it is
+        // named by what happens there rather than by the division's own name.
+        label: pool > 0 ? "Pool Play" : (d.display_name ?? d.name),
+        tournamentName: t.name,
+        startDate: t.start_date,
+        complete: t.status === "complete",
+        region: REGION_LABEL[t.region] ?? t.region,
+        games: pool + bracket,
+        unplayed,
+      });
+    }
+  }
   return {
-    upcoming: groupByRegion(rows.filter((t) => t.status !== "complete")),
-    past: groupByRegion(
-      rows.filter((t) => t.status === "complete").slice().reverse()
-    ),
-    pastCount: rows.filter((t) => t.status === "complete").length,
+    live: rows.filter((r) => !r.complete),
+    past: rows.filter((r) => r.complete).reverse(),
   };
 }
 
-function TournamentList({ groups }) {
+function ScoreList({ rows }) {
   return (
-    <div className="space-y-5">
-      {groups.map((group) => (
-        <section key={group.region}>
-          <h2 className="t-label mb-1">
-            {group.label}
-          </h2>
-          {group.tournaments.map((t, i) => (
-            <div key={t.id}>
-              <div className="py-2">
-                <p className="font-semibold text-afa-navy">{t.name}</p>
-                <ul className="mt-1 space-y-1">
-                  {(t.divisions ?? [])
-                    .slice()
-                    .sort((a, b) => a.sort_order - b.sort_order)
-                    .map((d) => {
-                      // A division with pool games is where the director
-                      // scores pool play, so it reads by what he'll DO
-                      // there (dispatch-brief-21) — scorekeeper-only, the
-                      // public site keeps calling it Coed. Bracket-stage
-                      // children (Gold/Silver/Bronze) have no pool_games
-                      // rows, so they fall through to their own name
-                      // unchanged, same as a division with neither stage.
-                      const hasPoolGames = (d.pool_games ?? []).length > 0;
-                      const label = hasPoolGames ? "Pool Play" : d.display_name ?? d.name;
-                      return (
-                        <li key={d.id} className={d.parent_division_id ? "ml-4" : ""}>
-                          <Link
-                            href={`/scorekeeper/division/${d.id}`}
-                            className="text-afa-navy underline text-sm"
-                          >
-                            {label}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  {(t.divisions ?? []).length === 0 && (
-                    <li className="text-sm text-afa-ink/50">No divisions yet</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </section>
+    <ul className="card divide-y divide-black/5">
+      {rows.map((r) => (
+        <li key={r.id}>
+          <Link
+            href={`/scorekeeper/division/${r.id}`}
+            className="flex items-center justify-between gap-3 px-4 py-3 min-h-[56px]"
+          >
+            <span className="min-w-0">
+              <span className="t-body block truncate">{r.label}</span>
+              <span className="t-meta block truncate">
+                {r.tournamentName} · {r.startDate}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="t-strong block">{r.games}</span>
+              <span className="t-meta block">
+                {r.games === 0 ? "no games" : r.unplayed > 0 ? `${r.unplayed} to score` : "all scored"}
+              </span>
+            </span>
+          </Link>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -104,8 +90,8 @@ export default async function ScorekeeperPage() {
     );
   }
 
-  const [{ upcoming, past, pastCount }, counts] = await Promise.all([
-    getTournamentsWithDivisions(),
+  const [{ live, past }, counts] = await Promise.all([
+    getScoreableDivisions(),
     getDirectorCounts(),
   ]);
 
@@ -137,6 +123,13 @@ export default async function ScorekeeperPage() {
             rightSub: "on file",
           },
           {
+            href: "/scorekeeper/tournaments",
+            label: "Tournaments",
+            sub: "Dates, fees, deadlines and divisions",
+            right: String(counts.tournaments),
+            rightSub: "on file",
+          },
+          {
             href: "/scorekeeper/teams",
             label: "Teams",
             sub: "Every team, and the tournaments they entered",
@@ -164,26 +157,30 @@ export default async function ScorekeeperPage() {
 
       <h2 className="t-heading">Scores</h2>
       <PullResults />
-      {upcoming.length === 0 && pastCount === 0 ? (
-        <p className="text-afa-ink/70 text-sm">No tournaments on file yet.</p>
+
+      {live.length === 0 ? (
+        <div className="card p-6 text-center space-y-1">
+          <p className="t-strong">Nothing to score right now.</p>
+          <p className="t-meta">
+            A division shows up here once it has games.{" "}
+            <Link href="/scorekeeper/tournaments" className="underline">
+              Tournaments
+            </Link>
+          </p>
+        </div>
       ) : (
-        <>
-          {upcoming.length > 0 ? (
-            <TournamentList groups={upcoming} />
-          ) : (
-            <p className="text-afa-ink/70 text-sm">Nothing upcoming.</p>
-          )}
-          {pastCount > 0 && (
-            <details className="pt-2">
-              <summary className="cursor-pointer list-none min-h-11 flex items-center text-sm text-afa-navy underline [&::-webkit-details-marker]:hidden">
-                Past tournaments ({pastCount})
-              </summary>
-              <div className="mt-3">
-                <TournamentList groups={past} />
-              </div>
-            </details>
-          )}
-        </>
+        <ScoreList rows={live} />
+      )}
+
+      {past.length > 0 && (
+        <details>
+          <summary className="t-meta cursor-pointer list-none min-h-11 flex items-center underline [&::-webkit-details-marker]:hidden">
+            Finished tournaments ({past.length}) — still editable
+          </summary>
+          <div className="mt-2">
+            <ScoreList rows={past} />
+          </div>
+        </details>
       )}
     </div>
   );
