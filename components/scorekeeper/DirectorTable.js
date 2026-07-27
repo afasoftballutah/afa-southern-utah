@@ -64,7 +64,7 @@ export default function DirectorTable({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"
@@ -108,15 +108,15 @@ export default function DirectorTable({
       ) : (
         // Scrolls inside itself rather than pushing the page sideways. On a
         // laptop nothing scrolls; on a phone the table survives.
-        <div className="card overflow-x-auto">
-          <table className="w-full text-[15px] leading-tight">
+        <div className="card overflow-x-auto dense-controls">
+          <table className="w-full text-[15px] leading-snug">
             <thead>
               <tr className="border-b border-afa-navy/15">
                 {columns.map((c) => (
                   <th
                     key={c.key}
                     className={
-                      "px-3 py-2 font-normal " +
+                      "px-3 py-1.5 font-normal " +
                       (c.align === "right" ? "text-right " : c.align === "center" ? "text-center " : "text-left ") +
                       (c.hideBelow === "sm" ? "hidden sm:table-cell " : "")
                     }
@@ -143,7 +143,7 @@ export default function DirectorTable({
                       c.type === "check" ? (
                         // A tick or an empty box, the way a paper roster marks
                         // one off. Far faster to scan than "8 waiting to sign".
-                        <span className={value ? "text-afa-navy" : "text-afa-muted/50"}>
+                        <span className={"tick " + (value ? "text-afa-go" : "text-afa-muted/50")}>
                           {value ? "☑" : "☐"}
                         </span>
                       ) : (
@@ -153,7 +153,7 @@ export default function DirectorTable({
                       <td
                         key={c.key}
                         className={
-                          "px-3 py-2 whitespace-nowrap " +
+                          "px-3 py-1.5 whitespace-nowrap " +
                           (c.align === "right" ? "text-right tabular-nums " : c.align === "center" ? "text-center " : "") +
                           (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
                           (i === 0 ? "font-semibold text-afa-navy max-w-0 truncate" : "text-afa-ink")

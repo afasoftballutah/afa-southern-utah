@@ -7,7 +7,7 @@ import { leagueToday } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
-import InlineRating from "@/components/scorekeeper/InlineRating";
+import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
@@ -92,10 +92,28 @@ export default async function PlayersPage() {
         ) : (
           "—"
         ),
-        // Editable in place. A director rating a roster of twelve should not
-        // have to open twelve pages.
-        rating: <InlineRating playerId={p.id} value={p.rating ?? ""} />,
-        gender: p.gender ?? "—",
+        // Editable in place. A director working down a roster of twelve
+        // should not have to open twelve pages.
+        rating: (
+          <InlineSelect
+            label="Rating"
+            action="setPlayerRating"
+            valueKey="rating"
+            payload={{ playerId: p.id }}
+            value={p.rating ?? ""}
+            options={RATINGS}
+          />
+        ),
+        gender: (
+          <InlineSelect
+            label="M/F"
+            action="setPlayerGender"
+            valueKey="gender"
+            payload={{ playerId: p.id }}
+            value={p.gender ?? ""}
+            options={["M", "F"]}
+          />
+        ),
         events: active.length,
         // Ticked when every roster they are on is signed. A paper roster is
         // marked off the same way, and it scans far faster than a sentence.
@@ -108,6 +126,7 @@ export default async function PlayersPage() {
         team: lastAppearance?.teamName ?? "",
         events: active.length,
         rating: ratingRank(p.rating),
+        gender: p.gender ?? "",
       },
     };
   });

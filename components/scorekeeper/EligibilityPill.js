@@ -39,7 +39,7 @@ export default function EligibilityPill({ teamName, enteredClass, suggestedClass
         className={
           "px-3 py-1 rounded-full t-label border " +
           (ok
-            ? "bg-afa-navy/5 border-afa-navy/20 text-afa-navy"
+            ? "bg-afa-go/10 border-afa-go/30 text-afa-go"
             : "bg-afa-red text-white border-afa-red")
         }
       >
@@ -68,15 +68,15 @@ export default function EligibilityPill({ teamName, enteredClass, suggestedClass
               </button>
             </div>
 
-            <div className={"rounded-lg p-3 space-y-1 " + (ok ? "bg-afa-navy/[0.05]" : "bg-afa-red/10")}>
+            <div className={"rounded-lg p-3 space-y-1 " + (ok ? "bg-afa-go/[0.08]" : "bg-afa-red/10")}>
               <p className={classOk ? "t-body" : "t-strong"}>
-                {classOk ? "☑" : "☐"} {enteredClass ?? suggestedClass ?? "Class"} allows{" "}
+                <span className="tick">{classOk ? "☑" : "☐"}</span> {enteredClass ?? suggestedClass ?? "Class"} allows{" "}
                 {check?.limit ?? "this roster"}
                 {!classOk && check.over.length > 0 && ` — too many ${check.over.join(", ")}`}
               </p>
               {composition && (composition.minMen != null || composition.minWomen != null) && (
                 <p className={compOk ? "t-body" : "t-strong"}>
-                  {compOk ? "☑" : "☐"} Needs {composition.minMen ?? 0} men and{" "}
+                  <span className="tick">{compOk ? "☑" : "☐"}</span> Needs {composition.minMen ?? 0} men and{" "}
                   {composition.minWomen ?? 0} women — has {composition.men} and {composition.women}
                   {composition.unknown > 0 && `, ${composition.unknown} not recorded`}
                 </p>

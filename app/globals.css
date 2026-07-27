@@ -3,6 +3,9 @@
 :root {
   --afa-navy: #1e3a6e;
   --afa-red: #c8102e;
+  /* Ticked, done, cleared. Only ever used for a completed state — a green
+     that means anything else would stop meaning this one. */
+  --afa-go: #167d4a;
   --afa-cream: #fdfaf3;
   --afa-ink: #16233d;
   /* Solid muted value — the flattened result of afa-ink at ~45% over
@@ -19,6 +22,7 @@
 @theme inline {
   --color-afa-navy: var(--afa-navy);
   --color-afa-red: var(--afa-red);
+  --color-afa-go: var(--afa-go);
   --color-afa-cream: var(--afa-cream);
   --color-afa-ink: var(--afa-ink);
   --color-afa-muted: var(--afa-muted);
@@ -46,6 +50,17 @@ select,
 textarea {
   font-size: 16px; /* prevents iOS auto-zoom on focus */
   min-height: 44px; /* Apple/Google thumb-target minimum */
+}
+
+/* Except inside a director table, which is read at a desk on a mouse. A
+   44px thumb target per cell made every row 57px tall and turned a
+   twelve-person roster into a page of scrolling (JD, 2026-07-27: "can you
+   keep the vertical spacing tighter?"). The whole ROW stays comfortably
+   clickable; only the control shrinks. */
+.dense-controls select,
+.dense-controls input {
+  min-height: 0;
+  font-size: 15px;
 }
 
 button {
@@ -144,6 +159,16 @@ button {
     font-size: 0.8125rem;
     line-height: 1.4;
     color: var(--afa-muted);
+  }
+  /* ☑ and ☐ draw noticeably smaller than a capital letter at the same font
+     size, so a waiver column next to a team name looked like an afterthought
+     (JD, 2026-07-27: "needs to match the capital letter size"). Sized up and
+     pulled back onto the baseline. */
+  .tick {
+    font-size: 1.45em;
+    line-height: 1;
+    display: inline-block;
+    vertical-align: -0.13em;
   }
   .t-label {
     font-size: 0.6875rem;

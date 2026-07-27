@@ -149,13 +149,13 @@ export default async function RegistrationPage({ params }) {
 
       <h2 className="t-heading">Roster</h2>
       <div className="card overflow-x-auto">
-        <table className="w-full text-[15px] leading-tight">
+        <table className="w-full text-[15px] leading-snug">
           <thead>
             <tr className="border-b border-afa-navy/15">
               {["Name", "M/F", "Born", "Rating", "Waiver"].map((h, i) => (
                 <th
                   key={h}
-                  className={"px-3 py-2 t-label font-normal " + (i > 0 ? "text-center" : "text-left")}
+                  className={"px-3 py-1.5 t-label font-normal " + (i > 0 ? "text-center" : "text-left")}
                 >
                   {h}
                 </th>
@@ -165,7 +165,7 @@ export default async function RegistrationPage({ params }) {
           <tbody>
             {sorted.map((m) => (
               <tr key={m.id} className="border-b border-black/5 last:border-0">
-                <td className="px-3 py-2 font-semibold text-afa-navy whitespace-nowrap">
+                <td className="px-3 py-1.5 font-semibold text-afa-navy whitespace-nowrap">
                   {m.playerId ? (
                     <Link href={`/scorekeeper/players/${m.playerId}`} className="hover:underline">
                       {lastNameFirst(m.name)}
@@ -175,13 +175,13 @@ export default async function RegistrationPage({ params }) {
                   )}
                   {m.role !== "player" && <span className="t-meta"> · {m.role}</span>}
                 </td>
-                <td className="px-3 py-2 text-center">{m.gender ?? "—"}</td>
-                <td className="px-3 py-2 text-center whitespace-nowrap tabular-nums">
+                <td className="px-3 py-1.5 text-center">{m.gender ?? "—"}</td>
+                <td className="px-3 py-1.5 text-center whitespace-nowrap tabular-nums">
                   {bornWithAge(m.birthDate, today)}
                 </td>
-                <td className="px-3 py-2 text-center">{m.rating ?? "—"}</td>
-                <td className="px-3 py-2 text-center">
-                  <span className={m.signed ? "text-afa-navy" : "text-afa-muted/50"}>
+                <td className="px-3 py-1.5 text-center">{m.rating ?? "—"}</td>
+                <td className="px-3 py-1.5 text-center">
+                  <span className={"tick " + (m.signed ? "text-afa-go" : "text-afa-muted/50")}>
                     {m.signed ? "☑" : "☐"}
                   </span>
                 </td>

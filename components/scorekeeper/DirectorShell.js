@@ -15,7 +15,7 @@ import Link from "next/link";
 //     t-body, t-meta, t-label and .card only.
 export default function DirectorShell({ title, count, back = "/scorekeeper", children, action }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <h1 className="t-title">{title}</h1>
