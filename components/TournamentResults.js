@@ -66,14 +66,16 @@ function DivisionColumn({ column, slug }) {
   );
 }
 
-export default function TournamentResults({ results = [], slug, unfinished = false }) {
+export default function TournamentResults({ results = [], slug, unfinished = false, compact = false }) {
   if (!results.length) return null;
   return (
     <Card className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="t-heading">Results</h2>
-        <span className="t-meta">{unfinished ? "Unfinished" : "Final"}</span>
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="t-heading">Results</h2>
+          <span className="t-meta">{unfinished ? "Unfinished" : "Final"}</span>
+        </div>
+      )}
       <div
         className={`grid gap-6 ${
           results.length === 1

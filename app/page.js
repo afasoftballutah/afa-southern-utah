@@ -2,10 +2,12 @@ import Link from "next/link";
 import {
   getHeroTournament,
   getLastCompletedTournamentResults,
+  getTournamentResults,
   getRecentScores,
   formatDateRange,
   formatFee,
 } from "@/lib/data";
+import TournamentResults from "@/components/TournamentResults";
 import Matchup from "@/components/ui/Matchup";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
@@ -26,13 +28,22 @@ export default async function Home() {
   ]);
 
   // Which tournament does this results section actually describe?
+  // Prefer a finished tournament with photos or a derived podium over a
+  // live weekend's recent scores (scores live on the tournament page now).
   const hasPlacements = (lastResults?.divisions ?? []).some(
     (d) => (d.placements ?? []).length > 0
   );
-  const resultsTournamentName = hasPlacements
-    ? lastResults?.name
-    : (recentScores[0]?.tournamentName ?? tournament?.name ?? lastResults?.name ?? null);
-  const resultsTournamentSlug = recentScores[0]?.tournamentSlug ?? tournament?.slug ?? null;
+  const podiumResults = lastResults ? await getTournamentResults(lastResults) : [];
+  const hasPodium = podiumResults.some((col) => (col.podium ?? []).length > 0);
+  const resultsTournamentName =
+    hasPlacements || hasPodium
+      ? lastResults?.name
+      : (recentScores[0]?.tournamentName ?? tournament?.name ?? lastResults?.name ?? null);
+  const resultsTournamentSlug =
+    lastResults?.slug ??
+    recentScores[0]?.tournamentSlug ??
+    tournament?.slug ??
+    null;
 
   return (
     <div className="space-y-6">
@@ -108,6 +119,22 @@ export default async function Home() {
             the thing worth putting on a poster. */}
         {hasPlacements ? (
           <ResultsGallery tournament={lastResults} showName={false} />
+        ) : hasPodium ? (
+          <div className="space-y-3">
+            <TournamentResults
+              results={podiumResults}
+              slug={lastResults.slug}
+              compact
+            />
+            {resultsTournamentSlug && (
+              <Link
+                href={`/tournaments/${resultsTournamentSlug}`}
+                className="t-meta inline-block text-afa-navy underline decoration-afa-navy/30 underline-offset-2"
+              >
+                Full tournament &rsaquo;
+              </Link>
+            )}
+          </div>
         ) : (
           <p className="text-afa-ink/70">
             {resultsTournamentSlug ? (

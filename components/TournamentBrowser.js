@@ -63,13 +63,19 @@ export default function TournamentBrowser({ groups }) {
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, next);
   }
 
+  // Past is derived: status is rarely written, so a finished tournament
+  // (games settled, moot if-games excluded) counts as past even when the
+  // row still says "upcoming". status === "complete" still covers older
+  // seed rows with no game data.
+  const isPast = (t) => t.status === "complete" || t.finished === true;
+
   const upcomingByRegion = groups
-    .map((g) => ({ ...g, tournaments: g.tournaments.filter((t) => t.status !== "complete") }))
+    .map((g) => ({ ...g, tournaments: g.tournaments.filter((t) => !isPast(t)) }))
     .filter((g) => g.tournaments.length > 0)
     .map((g) => ({ ...g, tournaments: [...g.tournaments].sort(byStartDateAsc) }));
 
   const pastByRegion = groups
-    .map((g) => ({ ...g, tournaments: g.tournaments.filter((t) => t.status === "complete") }))
+    .map((g) => ({ ...g, tournaments: g.tournaments.filter(isPast) }))
     .filter((g) => g.tournaments.length > 0)
     .map((g) => ({ ...g, tournaments: [...g.tournaments].sort(byStartDateDesc) }));
 
@@ -79,7 +85,7 @@ export default function TournamentBrowser({ groups }) {
     groups
       .flatMap((g) =>
         g.tournaments
-          .filter((t) => t.status !== "complete")
+          .filter((t) => !isPast(t))
           .map((t) => ({ ...t, regionLabel: g.label }))
       )
       .sort(byStartDateAsc)
@@ -180,6 +186,31 @@ function MonthView({ months }) {
   );
 }
 
+
+/** Trophy + team + division, capped at 3 with "+N more". */
+function ChampionLine({ champions }) {
+  const list = champions ?? [];
+  if (list.length === 0) return null;
+  const shown = list.slice(0, 3);
+  const more = list.length - shown.length;
+  return (
+    <div className="mt-1.5 space-y-0.5">
+      {shown.map((c) => (
+        <p
+          key={`${c.divisionName}-${c.team}`}
+          className="text-sm font-semibold text-afa-ink/85"
+        >
+          <span aria-hidden="true">🏆</span> {c.team}
+          <span className="font-normal text-afa-ink/55"> · {c.divisionName}</span>
+        </p>
+      ))}
+      {more > 0 && (
+        <p className="text-xs font-semibold text-afa-muted">+{more} more</p>
+      )}
+    </div>
+  );
+}
+
 function TournamentRowCard({ t, showRegionChip }) {
   // Southern Utah tournaments run brackets/registration on this site;
   // other regions are published schedule only — plain text, not a link,
@@ -244,6 +275,7 @@ function TournamentRow({ t, linked, showRegionChip }) {
           </div>
         </div>
         <p className="text-sm text-afa-ink/80 mt-1">{factsParts.join(" · ")}</p>
+        <ChampionLine champions={t.champions} />
         {groupNames.length > 0 && (
           <p className="text-[11px] font-bold uppercase tracking-wide text-afa-muted mt-1.5">
             {groupNames.join(" · ")}
