@@ -5,6 +5,7 @@ import { getPublicClient } from "@/lib/supabase";
 import { REGION_LABEL } from "@/lib/data";
 import PinPad from "@/components/scorekeeper/PinPad";
 import PullResults from "@/components/scorekeeper/PullResults";
+import { getDirectorCounts } from "@/lib/director";
 
 export const dynamic = "force-dynamic"; // never cache — this is a live tool, not a public page
 export const metadata = { title: "Scorekeeper" };
@@ -103,16 +104,65 @@ export default async function ScorekeeperPage() {
     );
   }
 
-  const { upcoming, past, pastCount } = await getTournamentsWithDivisions();
+  const [{ upcoming, past, pastCount }, counts] = await Promise.all([
+    getTournamentsWithDivisions(),
+    getDirectorCounts(),
+  ]);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="t-title">Scorekeeper</h1>
-        <Link href="/scorekeeper/registrations" className="t-meta underline">
-          Registrations
-        </Link>
-      </div>
+      <h1 className="t-title">Control Center</h1>
+
+      {/* The four doors, always in this order, always with a count. JD,
+          2026-07-27: "a master control center... super intuitive... like a
+          7th grader could use it." A count on every door answers "is there
+          anything in there" before it is opened. */}
+      <ul className="card divide-y divide-black/5">
+        {[
+          {
+            href: "/scorekeeper/registrations",
+            label: "Registrations",
+            sub: "Who signed up, who paid, who still owes a signature",
+            right: String(counts.registrations),
+            rightSub:
+              counts.outstandingSignatures > 0
+                ? `${counts.outstandingSignatures} waiting`
+                : "all signed",
+          },
+          {
+            href: "/scorekeeper/players",
+            label: "People",
+            sub: "Every player and manager, across every tournament",
+            right: String(counts.players),
+            rightSub: "on file",
+          },
+          {
+            href: "/scorekeeper/teams",
+            label: "Teams",
+            sub: "Every team, and the tournaments they entered",
+            right: String(counts.teams),
+            rightSub: "on file",
+          },
+        ].map((d) => (
+          <li key={d.href}>
+            <Link
+              href={d.href}
+              className="flex items-center justify-between gap-3 px-4 py-3 min-h-[56px]"
+            >
+              <span className="min-w-0">
+                <span className="t-body block">{d.label}</span>
+                <span className="t-meta block truncate">{d.sub}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="t-strong block">{d.right}</span>
+                <span className="t-meta block">{d.rightSub}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <h2 className="t-heading">Scores</h2>
       <PullResults />
       {upcoming.length === 0 && pastCount === 0 ? (
         <p className="text-afa-ink/70 text-sm">No tournaments on file yet.</p>
