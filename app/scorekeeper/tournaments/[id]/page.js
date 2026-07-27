@@ -9,8 +9,9 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
+import DivisionMinimums from "@/components/scorekeeper/DivisionMinimums";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
-import { suggestClass } from "@/lib/class";
+import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ async function load(id) {
     supabase
       .from("tournaments")
       .select(
-        "*, divisions(id, name, display_name, sort_order, parent_division_id, gender, class_id, games(id, status, is_bye, round), pool_games(id, status))"
+        "*, divisions(id, name, display_name, sort_order, parent_division_id, gender, class_id, min_men, min_women, games(id, status, is_bye, round), pool_games(id, status))"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -39,15 +40,16 @@ async function load(id) {
       )
       .eq("tournament_id", id),
     supabase.from("registration_signing_progress").select("*"),
-    supabase.from("roster_members").select("registration_id, name, role, signed_at, removed_at, player_id"),
+    supabase.from("roster_members").select("id, registration_id, name, role, signed_at, removed_at, player_id"),
   ]);
 
   // Class is a property of a PERSON, so a team's class is worked out from who
   // is on it. JD, 2026-07-27: "The team registers for the tournament with the
   // players and then gets put into a suggested class based on the tournament."
-  const { data: allPlayers } = await supabase.from("players").select("id, rating");
+  const { data: allPlayers } = await supabase.from("players").select("id, rating, gender");
   const { data: allClasses } = await supabase.from("classes").select("id, name, sort_order").order("sort_order");
-  const ratingOf = new Map((allPlayers ?? []).map((p) => [p.id, p.rating]));
+  const playerBy = new Map((allPlayers ?? []).map((p) => [p.id, p]));
+  const divisionBy = new Map((tournament.divisions ?? []).map((d) => [d.id, d]));
 
   // What this tournament actually runs — a D team at a Rec/E event plays E.
   const offeredClassIds = [
@@ -67,14 +69,28 @@ async function load(id) {
     classes: classes ?? [],
     classes: allClasses ?? [],
     registrations: (registrations ?? []).map((r) => {
-      const roster = (membersBy.get(r.id) ?? []).map((m) => ({
-        rating: m.player_id ? (ratingOf.get(m.player_id) ?? null) : null,
-      }));
+      const roster = (membersBy.get(r.id) ?? []).map((m) => {
+        const person = m.player_id ? playerBy.get(m.player_id) : null;
+        return { id: m.id, name: m.name, rating: person?.rating ?? null, gender: person?.gender ?? null };
+      });
+      const div = divisionBy.get(r.division_id);
+      const enteredClass = (allClasses ?? []).find((c) => c.id === r.class_id)?.name ?? null;
       return {
         ...r,
         progress: progressBy.get(r.id) ?? { active_members: 0, signed_members: 0, is_official: false },
         members: membersBy.get(r.id) ?? [],
         suggestion: suggestClass(roster, allClasses ?? [], offeredClassIds),
+        roster,
+        // Checked against what they were ACTUALLY entered as, not against the
+        // suggestion — a director who overrode it still needs to see the cost.
+        // With no class entered yet, check the suggestion instead.
+        check: checkEligibility(
+          roster,
+          enteredClass ?? suggestClass(roster, allClasses ?? [], offeredClassIds).className
+        ),
+        // The other half of "can this team compete": enough men and women for
+        // the division they are in. JD, 2026-07-27.
+        composition: checkRoster(roster, { minMen: div?.min_men, minWomen: div?.min_women }),
       };
     }),
   };
@@ -126,18 +142,30 @@ export default async function TournamentPage({ params }) {
             ).length;
             const pool = (d.pool_games ?? []).length > 0;
             return (
-              <DirectorCard
-                key={d.id}
-                href={`/scorekeeper/division/${d.id}`}
-                title={pool ? "Pool Play" : (d.display_name ?? d.name)}
-                subtitle={genderLabel(d.gender) ?? "No gender set"}
-                stats={[
-                  { label: "games", value: String(games.length) },
-                  { label: "to score", value: String(left), alert: left > 0 },
-                  { label: "teams", value: String(teams) },
-                ]}
-                footer={games.length === 0 ? "No schedule yet" : null}
-              />
+              <div key={d.id} className="space-y-2">
+                <DirectorCard
+                  href={`/scorekeeper/division/${d.id}`}
+                  title={pool ? "Pool Play" : (d.display_name ?? d.name)}
+                  subtitle={genderLabel(d.gender) ?? "No gender set"}
+                  stats={[
+                    { label: "games", value: String(games.length) },
+                    { label: "to score", value: String(left), alert: left > 0 },
+                    { label: "teams", value: String(teams) },
+                  ]}
+                  footer={games.length === 0 ? "No schedule yet" : null}
+                />
+                {/* Only coed has a split to meet. */}
+                {d.gender === "coed" && (
+                  <div className="card p-3">
+                    <p className="t-label mb-2">Roster must have at least</p>
+                    <DivisionMinimums
+                      divisionId={d.id}
+                      minMen={d.min_men}
+                      minWomen={d.min_women}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
         </CardGrid>

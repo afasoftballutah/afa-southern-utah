@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import EligibilityPill from "./EligibilityPill";
 
 const STATUS_LABEL = { submitted: "Submitted", confirmed: "Confirmed", withdrawn: "Withdrawn" };
 
@@ -90,19 +91,20 @@ export default function RegistrationCard({ registration, classes = [] }) {
 
       {sug && (
         <div className="rounded-lg bg-afa-navy/[0.04] p-3 space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="t-label">Suggested class</p>
-            <p className="t-strong">{sug.className ?? "—"}</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="t-label">Class</p>
+            <div className="flex items-center gap-2">
+              <span className="t-strong">{enteredClass ?? sug.className ?? "—"}</span>
+              <EligibilityPill
+                teamName={reg.team_name}
+                enteredClass={enteredClass}
+                suggestedClass={sug.className}
+                check={reg.check}
+                composition={reg.composition}
+                roster={reg.roster ?? []}
+              />
+            </div>
           </div>
-          <p className="t-meta">{sug.reason}</p>
-          {sug.counts.length > 0 && (
-            <p className="t-meta">
-              Roster: {sug.counts.map((c) => `${c.count} ${c.name}`).join(" · ")}
-              {sug.unranked > 0 && ` · ${sug.unranked} unranked`}
-            </p>
-          )}
-          {/* A suggestion never sets anything. The director enters the team,
-              because they know things a roster does not say. */}
           <div className="flex flex-wrap gap-2">
             {[{ id: "", name: "Not set" }, ...classes].map((c) => (
               <button
@@ -124,9 +126,9 @@ export default function RegistrationCard({ registration, classes = [] }) {
             ))}
           </div>
           <p className="t-meta">
-            {enteredClass
-              ? `Entered as ${enteredClass}.`
-              : "Not entered at a class yet — the outlined one is the suggestion."}
+            {sug.counts.map((c) => `${c.count} ${c.name}`).join(" · ") || "nobody rated"}
+            {sug.unranked > 0 && ` · ${sug.unranked} unranked`}
+            {!enteredClass && sug.className && ` · outlined is suggested`}
           </p>
         </div>
       )}

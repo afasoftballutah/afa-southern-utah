@@ -281,6 +281,11 @@ export async function POST(request) {
         sort_order: nextOrder,
         gender: gender || null,
         class_id: classId || null,
+        // A coed division has a split to meet. 5/5 is the league's normal
+        // one; 7/3 and 6/4 happen, and the director edits those. JD,
+        // 2026-07-27.
+        min_men: gender === "coed" ? 5 : null,
+        min_women: gender === "coed" ? 5 : null,
       });
       if (error) {
         console.error("add division failed", error);
@@ -418,6 +423,42 @@ export async function POST(request) {
       if (error) {
         console.error("set player rating failed", error);
         return bad("Could not save that rating — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // ---- Change a division's coed split ------------------------------
+    case "setDivisionMinimums": {
+      const { divisionId, minMen, minWomen } = body;
+      if (!divisionId) return bad("Which division?");
+      for (const v of [minMen, minWomen]) {
+        if (v != null && (!Number.isInteger(v) || v < 0)) {
+          return bad("Minimums must be whole numbers, or blank for no requirement");
+        }
+      }
+      const { error } = await supabase
+        .from("divisions")
+        .update({ min_men: minMen ?? null, min_women: minWomen ?? null })
+        .eq("id", divisionId);
+      if (error) {
+        console.error("set division minimums failed", error);
+        return bad("Could not save — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // ---- Record a player's gender ------------------------------------
+    case "setPlayerGender": {
+      const { playerId, gender } = body;
+      if (!playerId) return bad("Which player?");
+      if (gender && !["M", "F"].includes(gender)) return bad("Gender must be M or F, or blank");
+      const { error } = await supabase
+        .from("players")
+        .update({ gender: gender || null })
+        .eq("id", playerId);
+      if (error) {
+        console.error("set player gender failed", error);
+        return bad("Could not save that — please try again", 500);
       }
       return Response.json({ ok: true });
     }

@@ -146,3 +146,55 @@ test("formatCounts survives nothing", () => {
 test("RATINGS is strongest first, which everything else assumes", () => {
   assert.deepEqual(RATINGS, ["A", "B", "C", "D", "E"]);
 });
+
+// --- Coed minimums ---------------------------------------------------------
+// JD, 2026-07-27: "5 and 5 should be default for Coed (sometimes it will be
+// 7/3 or 6/4)... more than the required is fine, but less than is a flag."
+
+import { checkRoster } from "@/lib/class.js";
+
+const people = (m, f, unknown = 0) => [
+  ...Array(m).fill({ gender: "M" }),
+  ...Array(f).fill({ gender: "F" }),
+  ...Array(unknown).fill({ gender: null }),
+];
+
+test("a 5/5 division is happy with exactly 5 and 5", () => {
+  const r = checkRoster(people(5, 5), { minMen: 5, minWomen: 5 });
+  assert.equal(r.ok, true);
+});
+
+test("more than the minimum is fine", () => {
+  assert.equal(checkRoster(people(9, 6), { minMen: 5, minWomen: 5 }).ok, true);
+});
+
+test("one short of the women is flagged, and says which", () => {
+  const r = checkRoster(people(7, 4), { minMen: 5, minWomen: 5 });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.short, [{ what: "women", have: 4, need: 5 }]);
+});
+
+test("short on both is reported as both", () => {
+  const r = checkRoster(people(2, 2), { minMen: 5, minWomen: 5 });
+  assert.deepEqual(r.short.map((s) => s.what), ["men", "women"]);
+});
+
+test("a 7/3 split is honoured, not assumed to be 5/5", () => {
+  assert.equal(checkRoster(people(7, 3), { minMen: 7, minWomen: 3 }).ok, true);
+  assert.equal(checkRoster(people(5, 5), { minMen: 7, minWomen: 3 }).ok, false);
+});
+
+test("unrecorded gender is counted apart from a real shortfall", () => {
+  const r = checkRoster(people(5, 3, 4), { minMen: 5, minWomen: 5 });
+  assert.equal(r.unknown, 4);
+  assert.equal(r.ok, false, "4 unknown could cover it, but on what is recorded they are short");
+});
+
+test("a division with no minimums never flags", () => {
+  assert.equal(checkRoster(people(1, 0), {}).ok, true);
+  assert.equal(checkRoster(people(1, 0), { minMen: null, minWomen: null }).ok, true);
+});
+
+test("an empty roster against a 5/5 division is short, not silently fine", () => {
+  assert.equal(checkRoster([], { minMen: 5, minWomen: 5 }).ok, false);
+});

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { listPeople, scopeLabel } from "@/lib/director";
+import { listPeople } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
 import { lastNameFirst, lastNameKey } from "@/lib/names";
 import PinPad from "@/components/scorekeeper/PinPad";
@@ -20,7 +20,7 @@ const COLUMNS = [
   { key: "name", label: "Name" },
   { key: "team", label: "Team" },
   { key: "rating", label: "Rating", width: "5rem" },
-  { key: "division", label: "Division", width: "6rem", hideBelow: "sm" },
+  { key: "gender", label: "M/F", align: "center", width: "4rem" },
   { key: "events", label: "Events", align: "right", width: "5rem" },
   { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
   { key: "dob", label: "Born", width: "7rem", hideBelow: "sm" },
@@ -30,6 +30,7 @@ const FILTERS = [
   { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
   { key: "managers", label: "Managers", tag: "manager" },
   { key: "norating", label: "Unranked", tag: "norating" },
+  { key: "nogender", label: "No M/F", tag: "nogender" },
   { key: "nodob", label: "No birth date", tag: "nodob" },
 ];
 
@@ -55,7 +56,6 @@ export default async function PlayersPage() {
 
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
-    const latest = active[active.length - 1] ?? null;
     const unsigned = active.filter((a) => !a.signed).length;
     const teams = [...new Set(active.map((a) => a.teamName))];
 
@@ -64,6 +64,7 @@ export default async function PlayersPage() {
     if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
     if (!p.rating) tags.push("norating");
+    if (!p.gender) tags.push("nogender");
 
     return {
       key: p.id,
@@ -76,7 +77,7 @@ export default async function PlayersPage() {
         // A person's RATING. A team's class is derived from these — see
         // lib/class.js. They are different ladders: there is no C class.
         rating: p.rating ?? "—",
-        division: scopeLabel(latest?.gender, null) || "—",
+        gender: p.gender ?? "—",
         events: active.length,
         // Ticked when every roster they are on is signed. A paper roster is
         // marked off the same way, and it scans far faster than a sentence.

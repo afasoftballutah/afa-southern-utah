@@ -51,6 +51,7 @@ export default async function PersonPage({ params }) {
       count={[
         person.birth_date ? `Born ${person.birth_date}` : "No birth date on file",
         person.rating ? `Rated ${person.rating}` : "Unranked",
+        person.gender ?? "M/F not recorded",
       ].join(" · ")}
       back="/scorekeeper/players"
     >
@@ -62,6 +63,20 @@ export default async function PersonPage({ params }) {
         valueKey="rating"
         payload={{ playerId: person.id }}
         hint="What this person is rated. A team's CLASS is worked out from the ratings on its roster — Rec takes nobody letter-ranked, E takes up to three D or one C and one D, D takes up to three C, Open takes anyone."
+      />
+
+      <ClassPicker
+        label="Gender"
+        options={[
+          { id: "", name: "Not recorded" },
+          { id: "M", name: "M" },
+          { id: "F", name: "F" },
+        ]}
+        value={person.gender ?? ""}
+        action="setPlayerGender"
+        valueKey="gender"
+        payload={{ playerId: person.id }}
+        hint="A person's gender. A team's division — Men's, Women's, Coed — is a separate thing and belongs to the team."
       />
 
       {contact && (
