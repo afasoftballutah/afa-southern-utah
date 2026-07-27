@@ -262,6 +262,49 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    // ---- Upload a tournament poster ----------------------------------
+    case "setPoster": {
+      const { tournamentId, dataUrl } = body;
+      if (!tournamentId) return bad("Which tournament?");
+
+      // Clearing is as valid as setting — a wrong poster on the public page
+      // needs to come off without a database trip.
+      if (!dataUrl) {
+        const { error } = await supabase
+          .from("tournaments")
+          .update({ poster_url: null })
+          .eq("id", tournamentId);
+        if (error) return bad("Could not remove the poster — please try again", 500);
+        return Response.json({ ok: true, posterUrl: null });
+      }
+
+      const match = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/.exec(dataUrl);
+      if (!match) return bad("That file is not a PNG, JPEG or WebP image");
+      const contentType = match[1];
+      const buffer = Buffer.from(match[3], "base64");
+      // 8 MB. A phone photo of a flyer is a megabyte or two; anything much
+      // larger is a mistake, and the public page has to load it.
+      if (buffer.length > 8 * 1024 * 1024) return bad("That image is over 8 MB — use a smaller one");
+
+      const ext = contentType.split("/")[1].replace("jpeg", "jpg");
+      const path = `${tournamentId}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("posters")
+        .upload(path, buffer, { contentType, upsert: true });
+      if (uploadError) {
+        console.error("poster upload failed", uploadError);
+        return bad("Could not upload that poster — please try again", 500);
+      }
+
+      const { data: pub } = supabase.storage.from("posters").getPublicUrl(path);
+      const { error } = await supabase
+        .from("tournaments")
+        .update({ poster_url: pub.publicUrl })
+        .eq("id", tournamentId);
+      if (error) return bad("Uploaded, but could not save the link — please try again", 500);
+      return Response.json({ ok: true, posterUrl: pub.publicUrl });
+    }
+
     // ---- Add a division ----------------------------------------------
     case "addDivision": {
       const { tournamentId, name, gender, classId } = body;

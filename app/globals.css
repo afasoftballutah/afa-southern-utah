@@ -191,6 +191,18 @@ button:not(.pill) {
     white-space: nowrap;
     color: var(--afa-navy);
   }
+  /* The three things you DO to a division. Solid, so they read as actions
+     against the outlined pills that are merely links (JD, 2026-07-27: "have
+     them be dark buttons with light font"). */
+  .pill-solid {
+    background: var(--afa-navy);
+    border-color: var(--afa-navy);
+    color: #fff;
+  }
+  .pill-solid:hover {
+    background: #16305c;
+    border-color: #16305c;
+  }
   .pill:hover {
     border-color: rgba(30, 58, 110, 0.55);
     background: rgba(30, 58, 110, 0.05);

@@ -10,9 +10,9 @@ import ConfirmDialog from "./ConfirmDialog";
 // JD, 2026-07-27: "very obvious, very consistent fonts and UI/UX... like a
 // 7th grader could use it."
 
-export function Field({ label, hint, children }) {
+export function Field({ label, hint, children, width }) {
   return (
-    <label className="block">
+    <label className={"block " + (width ?? "")}>
       <span className="t-label block mb-1">{label}</span>
       {children}
       {hint && <span className="t-meta block mt-1">{hint}</span>}
@@ -59,7 +59,11 @@ export function fromCents(cents) {
 }
 
 /** Collapsible panel with a single submit. `onSubmit` returns an error string or null. */
-export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, open: initiallyOpen = false }) {
+// `row` lays the fields out on one line instead of stacking them. JD,
+// 2026-07-27: "when we add a division, it should be a single line, not a
+// stacked vertical list." A form of four short fields down the page is a
+// scroll for no reason.
+export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, row = false, open: initiallyOpen = false }) {
   const [open, setOpen] = useState(initiallyOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -96,10 +100,14 @@ export default function DirectorForm({ heading, note, submitLabel, confirmMessag
         </button>
       </div>
       {note && <p className="t-meta">{note}</p>}
-      {children}
+      {row ? (
+        <div className="flex flex-wrap items-end gap-3 dense-controls">{children}</div>
+      ) : (
+        children
+      )}
       <button
         type="button"
-        className="btn w-full"
+        className={row ? "btn" : "btn w-full"}
         disabled={busy}
         onClick={() => (confirmMessage ? setAsk(true) : go())}
       >

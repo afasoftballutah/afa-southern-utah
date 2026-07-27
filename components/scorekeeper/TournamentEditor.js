@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DirectorForm, { Field, Input, Select, directorPost, toCents, fromCents } from "./DirectorForm";
+import PosterUpload from "./PosterUpload";
 
 const GENDERS = [
   { value: "", label: "Not set" },
@@ -32,8 +33,9 @@ export default function TournamentEditor({ tournament, classes }) {
     <div className="space-y-3">
       <DirectorForm
         heading="Edit the terms"
-        note="Anything left blank stays off the public page. A blank fee is not a free tournament — it is a fee nobody has set yet."
+        note="Money in dollars. Anything left blank stays off the public page — a blank fee is not a free tournament, it is one nobody has priced."
         submitLabel="Save terms"
+        row
         confirmMessage="Save these terms? Anything left blank stays off the public page."
         onSubmit={async () => {
           const res = await directorPost({
@@ -54,30 +56,34 @@ export default function TournamentEditor({ tournament, classes }) {
           window.location.reload();
         }}
       >
-        <Field label="Starts"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-        <Field label="Ends"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
-        <Field label="Where"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
-        <Field label="Entry fee" hint="Dollars. Type 300, not 30000.">
+        <Field label="Starts" width="w-40"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="Ends" width="w-40"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="Where" width="w-64"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
+        <Field label="Entry fee" width="w-28">
           <Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="300" />
         </Field>
-        <Field label="Deposit">
+        <Field label="Deposit" width="w-28">
           <Input inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="100" />
         </Field>
-        <Field label="Ump fee per game">
+        <Field label="Ump fee" width="w-28">
           <Input inputMode="decimal" value={umpFee} onChange={(e) => setUmpFee(e.target.value)} placeholder="10" />
         </Field>
-        <Field label="Game guarantee" hint="3GG or 4GG.">
+        <Field label="Guarantee" width="w-28">
           <Input value={guarantee} onChange={(e) => setGuarantee(e.target.value)} placeholder="3GG" />
         </Field>
-        <Field label="Registration closes" hint="The last day a team can sign up. Leave blank and it stays open until the tournament starts.">
+        <Field label="Closes" width="w-40">
           <Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} />
+        </Field>
+        <Field label="Poster">
+          <PosterUpload tournamentId={t.id} posterUrl={t.poster_url} />
         </Field>
       </DirectorForm>
 
       <DirectorForm
         heading="Add a division"
-        note="Men's, Women's or Coed. Gender and class are what keep two teams with the same name apart, so set them if you know them."
+        note="Gender and class are what keep two teams with the same name apart."
         submitLabel="Add division"
+        row
         confirmMessage="Add this division? Teams can be entered into it straight away."
         onSubmit={async () => {
           const res = await directorPost({
@@ -91,13 +97,13 @@ export default function TournamentEditor({ tournament, classes }) {
           window.location.reload();
         }}
       >
-        <Field label="Name"><Input value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="Coed" /></Field>
-        <Field label="Gender">
+        <Field label="Name" width="w-40"><Input value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="Coed" /></Field>
+        <Field label="Gender" width="w-36">
           <Select value={divGender} onChange={(e) => setDivGender(e.target.value)}>
             {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
           </Select>
         </Field>
-        <Field label="Class">
+        <Field label="Class" width="w-32">
           <Select value={divClass} onChange={(e) => setDivClass(e.target.value)}>
             <option value="">Not set</option>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

@@ -98,6 +98,68 @@ async function load(id) {
 // URL, session or not, so naming the record here would put a real person's or
 // team's name in the <title> of a page they are not allowed to open — and in
 // any link preview of it. Gate it like the page body.
+/**
+ * One row per bracket a director actually runs.
+ *
+ * JD, 2026-07-27: "all the classes for that tournaments need to show as a
+ * row." A tournament that offers Rec, E, D and Open runs FOUR Coed brackets,
+ * not one Coed division — so a single row per division hid three of them.
+ *
+ * The classes come from the division's own class_id when it has one, and
+ * otherwise from what the tournament says it offers. A tournament that names
+ * no classes gets one row per division, which is what it is.
+ */
+function buildDivisionRows(divisions, registrations, classes, tournament) {
+  // "Rec, E, D, Open*" — the league writes it with stars and spaces.
+  const offeredNames = String(tournament.divisions_offered ?? "")
+    .split(",")
+    .map((x) => x.replace(/\*/g, "").trim().toLowerCase())
+    .filter(Boolean);
+  const offered = classes.filter((c) => offeredNames.includes(c.name.toLowerCase()));
+
+  const rows = [];
+  for (const d of divisions) {
+    const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
+    const live = registrations.filter(
+      (r) => r.division_id === d.id && r.status !== "withdrawn"
+    );
+    const divisionName = d.display_name ?? d.name;
+
+    // A division with its own class is already one bracket.
+    const forThis = d.class_id
+      ? [classes.find((c) => c.id === d.class_id)].filter(Boolean)
+      : offered;
+    const buckets = forThis.length > 0 ? forThis : [null];
+
+    for (const cls of buckets) {
+      const teams = cls
+        ? live.filter((r) => r.class_id === cls.id).length
+        : live.length;
+      rows.push({
+        key: `${d.id}:${cls?.id ?? "all"}`,
+        id: d.id,
+        classId: cls?.id ?? null,
+        label: cls ? `${divisionName} ${cls.name}` : divisionName,
+        sortKey: `${String(d.sort_order).padStart(4, "0")}-${String(cls?.sort_order ?? 0).padStart(4, "0")}`,
+        genderLabel: genderLabel(d.gender),
+        className: cls?.name ?? null,
+        teams,
+        teamsMax: d.max_teams ?? Math.max(d.min_teams ?? 6, teams),
+        minTeams: d.min_teams ?? 6,
+        minMen: d.min_men,
+        minWomen: d.min_women,
+        // Games belong to the division, not yet to a class bracket, so a
+        // split division shows them once — on its first row — rather than
+        // repeating the same count down the column as if each bracket had
+        // played them.
+        gamesTotal: buckets[0] === cls ? games.length : 0,
+        unplayed: buckets[0] === cls && games.length ? stillToPlayIn(games).length : 0,
+      });
+    }
+  }
+  return rows;
+}
+
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const store = await cookies();
@@ -132,28 +194,7 @@ export default async function TournamentPage({ params }) {
     >
       <h2 className="t-heading">Divisions</h2>
       <DivisionWorkbench
-        divisions={divisions.map((d) => {
-          const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
-          const teams = registrations.filter(
-            (r) => r.division_id === d.id && r.status !== "withdrawn"
-          ).length;
-          return {
-            id: d.id,
-            name: d.display_name ?? d.name,
-            sortOrder: d.sort_order,
-            genderLabel: genderLabel(d.gender),
-            className: (classes ?? []).find((c) => c.id === d.class_id)?.name ?? null,
-            teams,
-            // Uncapped divisions borrow the larger of "enough to run" and
-            // "already in", so the denominator is never below the numerator.
-            teamsMax: d.max_teams ?? Math.max(d.min_teams ?? 6, teams),
-            minTeams: d.min_teams ?? 6,
-            minMen: d.min_men,
-            minWomen: d.min_women,
-            gamesTotal: games.length,
-            unplayed: games.length ? stillToPlayIn(games).length : 0,
-          };
-        })}
+        divisions={buildDivisionRows(divisions, registrations, classes, tournament)}
         registrations={JSON.parse(JSON.stringify(registrations))}
         classes={classes}
       />
