@@ -12,6 +12,10 @@ import { useState } from "react";
 // a director nothing; "Move Taylor Sams from Fallen to GWZ?" tells them
 // exactly what is about to be true.
 export default function PersonActions({ person, appearances, registrations, otherPeople }) {
+  // Collapsed by default. These are the rare jobs — most visits to a player
+  // are to read or to rate, not to move or merge — and open panels for both
+  // made the page look like a form when it is a record.
+  const [panel, setPanel] = useState(null);
   const [from, setFrom] = useState(appearances[0]?.memberId ?? "");
   const [to, setTo] = useState("");
   const [mergeId, setMergeId] = useState("");
@@ -49,10 +53,22 @@ export default function PersonActions({ person, appearances, registrations, othe
   const mergeLabel = otherPeople.find((p) => p.id === mergeId);
 
   return (
-    <div className="space-y-3">
-      {appearances.length > 0 && registrations.length > 0 && (
-        <div className="card p-4 space-y-3">
-          <p className="t-strong">Move to another team</p>
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {appearances.length > 0 && registrations.length > 0 && (
+          <button type="button" className="btn-quiet" onClick={() => setPanel(panel === "move" ? null : "move")}>
+            Move to another team
+          </button>
+        )}
+        {otherPeople.length > 0 && (
+          <button type="button" className="btn-quiet" onClick={() => setPanel(panel === "merge" ? null : "merge")}>
+            Merge a duplicate
+          </button>
+        )}
+      </div>
+
+      {panel === "move" && (
+        <div className="card p-4 space-y-3 dense-controls">
           {appearances.length > 1 && (
             <label className="block">
               <span className="t-label block mb-1">Move them off</span>
@@ -101,13 +117,9 @@ export default function PersonActions({ person, appearances, registrations, othe
         </div>
       )}
 
-      {otherPeople.length > 0 && (
-        <div className="card p-4 space-y-3">
-          <p className="t-strong">Same person, listed twice?</p>
-          <p className="t-meta">
-            Pick the other record. Everything on it moves here, and it stops
-            showing up in lists. Nothing is deleted.
-          </p>
+      {panel === "merge" && (
+        <div className="card p-4 space-y-3 dense-controls">
+          <p className="t-meta">Everything on the duplicate moves here. Nothing is deleted.</p>
           <select
             className="w-full border border-afa-navy/30 rounded-lg px-3 py-2 text-base"
             value={mergeId}
