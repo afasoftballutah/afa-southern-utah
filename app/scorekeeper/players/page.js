@@ -7,6 +7,8 @@ import { leagueToday } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
+import InlineRating from "@/components/scorekeeper/InlineRating";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 export const metadata = { title: "Players — Control Center" };
@@ -59,6 +61,7 @@ export default async function PlayersPage() {
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
     const unsigned = active.filter((a) => !a.signed).length;
+    const lastAppearance = active[active.length - 1] ?? null;
     const teams = [...new Set(active.map((a) => a.teamName))];
 
     const tags = [];
@@ -77,10 +80,21 @@ export default async function PlayersPage() {
         name: lastNameFirst(p.full_name),
         // The most recent team, not every team they have ever been on — a
         // list of six wraps to two lines and answers nothing at a glance.
-        team: active[active.length - 1]?.teamName ?? "—",
-        // A person's RATING. A team's class is derived from these — see
-        // lib/class.js. They are different ladders: there is no C class.
-        rating: p.rating ?? "—",
+        // Links to that team AT THAT EVENT, which is the roster a director
+        // actually wants when they see a name here.
+        team: lastAppearance ? (
+          <Link
+            href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}
+            className="text-afa-navy hover:underline"
+          >
+            {lastAppearance.teamName}
+          </Link>
+        ) : (
+          "—"
+        ),
+        // Editable in place. A director rating a roster of twelve should not
+        // have to open twelve pages.
+        rating: <InlineRating playerId={p.id} value={p.rating ?? ""} />,
         gender: p.gender ?? "—",
         events: active.length,
         // Ticked when every roster they are on is signed. A paper roster is
@@ -91,7 +105,7 @@ export default async function PlayersPage() {
       sortValues: {
         name: lastNameKey(p.full_name),
         dob: p.birth_date ?? "",
-        team: active[active.length - 1]?.teamName ?? "",
+        team: lastAppearance?.teamName ?? "",
         events: active.length,
         rating: ratingRank(p.rating),
       },

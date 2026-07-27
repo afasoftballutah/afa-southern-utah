@@ -9,8 +9,14 @@ import MergeControl from "@/components/scorekeeper/MergeControl";
 
 export const dynamic = "force-dynamic";
 
+// Titles are PUBLIC. Next runs generateMetadata for anyone who requests the
+// URL, session or not, so naming the record here would put a real person's or
+// team's name in the <title> of a page they are not allowed to open — and in
+// any link preview of it. Gate it like the page body.
 export async function generateMetadata({ params }) {
   const { id } = await params;
+  const store = await cookies();
+  if (!hasValidScorekeeperSession(store)) return { title: "Team" };
   const team = await getTeam(id);
   return { title: team ? `${team.name} — Control Center` : "Team" };
 }
