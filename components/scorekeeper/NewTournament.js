@@ -21,6 +21,7 @@ export default function NewTournament() {
       heading="Add a tournament"
       note="Name and start date are all that is needed. Everything else can be filled in later."
       submitLabel="Create tournament"
+      confirmMessage="Create this tournament? It appears on the public site right away."
       onSubmit={async () => {
         const res = await directorPost({
           action: "createTournament",

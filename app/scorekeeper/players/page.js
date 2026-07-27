@@ -181,6 +181,7 @@ export default async function PlayersPage() {
             payload={{ playerId: p.id }}
             value={p.gender ?? ""}
             options={["M", "F"]}
+            subject={p.full_name}
           />
         ),
         dob: bornWithAge(p.birth_date, today),
@@ -192,6 +193,7 @@ export default async function PlayersPage() {
             payload={{ playerId: p.id }}
             value={p.rating ?? ""}
             options={RATINGS}
+            subject={p.full_name}
           />
         ),
         team: lastAppearance ? (

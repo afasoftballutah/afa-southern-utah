@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EligibilityPill from "./EligibilityPill";
+import ConfirmDialog from "./ConfirmDialog";
 
 const STATUS_LABEL = { submitted: "Submitted", confirmed: "Confirmed", withdrawn: "Withdrawn" };
 
@@ -16,6 +17,8 @@ export default function RegistrationCard({ registration, classes = [] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
+  // Every change here asks first (JD, 2026-07-27).
+  const [ask, setAsk] = useState(null);
 
   const { active_members: active, signed_members: signed, is_official: official } = reg.progress;
   const outstanding = active - signed;
@@ -25,7 +28,12 @@ export default function RegistrationCard({ registration, classes = [] }) {
     .join(" · ");
   const sug = reg.suggestion;
 
+  function confirmThen(message, body, confirmLabel) {
+    setAsk({ message, body, confirmLabel });
+  }
+
   async function patch(body) {
+    setAsk(null);
     setBusy(true);
     setError("");
     try {
@@ -111,7 +119,17 @@ export default function RegistrationCard({ registration, classes = [] }) {
                 key={c.id || "none"}
                 type="button"
                 disabled={busy}
-                onClick={() => patch({ classId: c.id || null })}
+                onClick={() =>
+                  confirmThen(
+                    `Enter ${reg.team_name} at ${c.name}?${
+                      sug.classId && c.id !== sug.classId && c.id
+                        ? ` The roster fits ${sug.className}.`
+                        : ""
+                    }`,
+                    { classId: c.id || null },
+                    "Enter them"
+                  )
+                }
                 className={
                   "px-3 py-2 rounded-lg t-label border min-w-[3.5rem] " +
                   (reg.class_id === c.id || (!reg.class_id && !c.id)
@@ -141,12 +159,12 @@ export default function RegistrationCard({ registration, classes = [] }) {
 
       <div className="flex flex-wrap gap-2">
         {!reg.paid_at && (
-          <button className="btn-quiet" disabled={busy} onClick={() => patch({ paid: true })}>
+          <button className="btn-quiet" disabled={busy} onClick={() => confirmThen(`Mark ${reg.team_name} as paid?`, { paid: true }, "Mark paid")}>
             Mark paid
           </button>
         )}
         {reg.paid_at && (
-          <button className="btn-quiet" disabled={busy} onClick={() => patch({ paid: false })}>
+          <button className="btn-quiet" disabled={busy} onClick={() => confirmThen(`Undo payment for ${reg.team_name}? The amount is cleared too.`, { paid: false }, "Undo paid")}>
             Undo paid
           </button>
         )}
@@ -154,7 +172,7 @@ export default function RegistrationCard({ registration, classes = [] }) {
           <button
             className="btn-quiet"
             disabled={busy}
-            onClick={() => patch({ status: "confirmed" })}
+            onClick={() => confirmThen(`Confirm ${reg.team_name} for this tournament?`, { status: "confirmed" }, "Confirm")}
           >
             Confirm
           </button>
@@ -163,7 +181,7 @@ export default function RegistrationCard({ registration, classes = [] }) {
           <button
             className="btn-quiet"
             disabled={busy}
-            onClick={() => patch({ status: "withdrawn" })}
+            onClick={() => confirmThen(`Withdraw ${reg.team_name}? They come off the division and their name is freed for another team.`, { status: "withdrawn" }, "Withdraw")}
           >
             Withdraw
           </button>
@@ -171,7 +189,7 @@ export default function RegistrationCard({ registration, classes = [] }) {
           <button
             className="btn-quiet"
             disabled={busy}
-            onClick={() => patch({ status: "submitted" })}
+            onClick={() => confirmThen(`Reinstate ${reg.team_name}?`, { status: "submitted" }, "Reinstate")}
           >
             Reinstate
           </button>
@@ -222,6 +240,17 @@ export default function RegistrationCard({ registration, classes = [] }) {
       )}
 
       {reg.director_notes && <p className="t-meta italic">{reg.director_notes}</p>}
+
+      {ask && (
+        <ConfirmDialog
+          title={reg.team_name}
+          message={ask.message}
+          confirmLabel={ask.confirmLabel}
+          busy={busy}
+          onConfirm={() => patch(ask.body)}
+          onCancel={() => setAsk(null)}
+        />
+      )}
     </div>
   );
 }

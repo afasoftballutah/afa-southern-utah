@@ -53,7 +53,7 @@ export default function ManageRoster({ token, initialMembers, rosterToken }) {
   }
 
   async function remove(member) {
-    if (!confirm(`Take ${member.name} off the roster?`)) return;
+    if (!window.confirm(`Take ${member.name} off the roster?`)) return;
     setBusy(true);
     setError("");
     try {

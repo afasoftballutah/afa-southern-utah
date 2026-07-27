@@ -34,6 +34,7 @@ export default function TournamentEditor({ tournament, classes }) {
         heading="Edit the terms"
         note="Anything left blank stays off the public page. A blank fee is not a free tournament — it is a fee nobody has set yet."
         submitLabel="Save terms"
+        confirmMessage="Save these terms? Anything left blank stays off the public page."
         onSubmit={async () => {
           const res = await directorPost({
             action: "updateTournament",
@@ -77,6 +78,7 @@ export default function TournamentEditor({ tournament, classes }) {
         heading="Add a division"
         note="Men's, Women's or Coed. Gender and class are what keep two teams with the same name apart, so set them if you know them."
         submitLabel="Add division"
+        confirmMessage="Add this division? Teams can be entered into it straight away."
         onSubmit={async () => {
           const res = await directorPost({
             action: "addDivision",

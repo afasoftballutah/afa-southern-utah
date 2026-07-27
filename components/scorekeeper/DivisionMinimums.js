@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { directorPost } from "./DirectorForm";
+import ConfirmDialog from "./ConfirmDialog";
 
 // The coed split, edited where the division lives.
 //
@@ -15,10 +16,12 @@ export default function DivisionMinimums({ divisionId, minMen, minWomen }) {
   const [men, setMen] = useState(minMen ?? "");
   const [women, setWomen] = useState(minWomen ?? "");
   const [state, setState] = useState("idle");
+  const [ask, setAsk] = useState(false);
 
   const dirty = String(men) !== String(minMen ?? "") || String(women) !== String(minWomen ?? "");
 
   async function save() {
+    setAsk(false);
     setState("saving");
     const res = await directorPost({
       action: "setDivisionMinimums",
@@ -51,8 +54,18 @@ export default function DivisionMinimums({ divisionId, minMen, minWomen }) {
           className="w-16 border border-afa-navy/30 rounded-lg px-2 py-1 text-[15px] text-center"
         />
       </label>
+      {ask && (
+        <ConfirmDialog
+          title="Roster minimum"
+          message={`Require at least ${men || 0} men and ${women || 0} women for this division? Teams below that are flagged, never blocked.`}
+          confirmLabel="Save"
+          busy={state === "saving"}
+          onConfirm={save}
+          onCancel={() => setAsk(false)}
+        />
+      )}
       {dirty && (
-        <button type="button" className="btn-quiet" disabled={state === "saving"} onClick={save}>
+        <button type="button" className="btn-quiet" disabled={state === "saving"} onClick={() => setAsk(true)}>
           {state === "saving" ? "Saving…" : state === "error" ? "Try again" : "Save"}
         </button>
       )}

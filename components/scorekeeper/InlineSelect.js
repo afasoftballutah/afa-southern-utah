@@ -1,30 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 
-// A field you change where you read it.
+// A field you change where you read it — and it asks before it changes.
 //
 // JD, 2026-07-27: "make rating editable on click" / "can you give me the
-// ability to modify M/F as well?"
+// ability to modify M/F as well?" / "can we have basic confirms for changes
+// (any)?"
 //
-// A <select> rather than a row of buttons: one tap on a phone, arrow keys on
-// a laptop, and it is the control every director has already used in a
-// spreadsheet. Buttons would need six per row and would turn a scannable
-// table into a wall.
-//
-// Saves on change with no confirm. These are values you set and re-set —
-// nothing follows from either that a second change cannot undo — and a prompt
-// per player would make working down a roster of twelve unbearable. A
-// rejected save puts the old value back, because a control that keeps a value
-// the server refused is worse than one that visibly refuses.
-export default function InlineSelect({ action, payload, valueKey, value, options, label }) {
+// I had argued against confirming here, on the grounds that rating a roster
+// of twelve would be miserable. He asked for it anyway, and he is the one
+// doing it twenty times a morning: a wrong rating changes which class a team
+// is eligible for, and silence is the wrong default for that.
+export default function InlineSelect({
+  action,
+  payload,
+  valueKey,
+  value,
+  options,
+  label,
+  subject,
+}) {
   const [current, setCurrent] = useState(value ?? "");
-  const [state, setState] = useState("idle");
+  const [pending, setPending] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  async function change(next) {
-    const previous = current;
-    setCurrent(next);
-    setState("saving");
+  async function save(next) {
+    setBusy(true);
+    setFailed(false);
     try {
       const res = await fetch("/api/scorekeeper/directory", {
         method: "POST",
@@ -32,39 +37,53 @@ export default function InlineSelect({ action, payload, valueKey, value, options
         body: JSON.stringify({ ...payload, action, [valueKey]: next || null }),
       });
       if (!res.ok) throw new Error();
-      setState("saved");
-      setTimeout(() => setState("idle"), 900);
+      setCurrent(next);
     } catch {
-      setCurrent(previous);
-      setState("error");
-      setTimeout(() => setState("idle"), 2000);
+      setFailed(true);
+      setTimeout(() => setFailed(false), 2500);
+    } finally {
+      setBusy(false);
+      setPending(null);
     }
   }
 
+  const wording = (v) => (v ? v : "not set");
+
   return (
-    <select
-      value={current}
-      onChange={(e) => change(e.target.value)}
-      aria-label={label}
-      // appearance-none drops the native arrow, which is what makes a select
-      // in a table cell tall and wide. It still opens on click.
-      className={
-        "w-full appearance-none rounded bg-transparent border text-center text-[14px] leading-none py-1 px-0 cursor-pointer " +
-        (state === "error"
-          ? "border-afa-red text-afa-red"
-          : state === "saving"
-            ? "border-afa-navy/30 text-afa-muted"
+    <>
+      <select
+        value={current}
+        onChange={(e) => setPending(e.target.value)}
+        aria-label={label}
+        // appearance-none drops the native arrow, which is what makes a
+        // select in a table cell tall and wide. It still opens on click.
+        className={
+          "w-full appearance-none rounded bg-transparent border text-center text-[14px] leading-none py-1 px-0 cursor-pointer " +
+          (failed
+            ? "border-afa-red text-afa-red"
             : current
               ? "border-transparent hover:border-afa-navy/30 text-afa-ink"
               : "border-transparent hover:border-afa-navy/30 text-afa-muted")
-      }
-    >
-      <option value="">—</option>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+        }
+      >
+        <option value="">—</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+
+      {pending !== null && (
+        <ConfirmDialog
+          title={`Change ${label}`}
+          message={`Set ${label} for ${subject} to ${wording(pending)}? It is currently ${wording(current)}.`}
+          confirmLabel="Change it"
+          busy={busy}
+          onConfirm={() => save(pending)}
+          onCancel={() => setPending(null)}
+        />
+      )}
+    </>
   );
 }

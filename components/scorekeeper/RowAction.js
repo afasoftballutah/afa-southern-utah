@@ -29,8 +29,8 @@ export default function RowAction({
   const chosen = options.find((o) => o.id === choice);
 
   async function go() {
-    const message = (confirmText ?? "Go ahead?").replace("{name}", chosen?.label ?? "");
-    if (!window.confirm(message)) return;
+    // No second prompt: this dialog already states what will happen and puts
+    // Cancel beside the button. Two confirms for one decision is noise.
     setBusy(true);
     setError("");
     try {

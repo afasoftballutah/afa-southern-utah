@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 
 // One form shape for the whole control center: a heading, plain-language
 // fields, one button. Collapsed behind its own heading so a page opens as a
@@ -58,12 +59,14 @@ export function fromCents(cents) {
 }
 
 /** Collapsible panel with a single submit. `onSubmit` returns an error string or null. */
-export default function DirectorForm({ heading, note, submitLabel, onSubmit, children, open: initiallyOpen = false }) {
+export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, open: initiallyOpen = false }) {
   const [open, setOpen] = useState(initiallyOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [ask, setAsk] = useState(false);
 
   async function go() {
+    setAsk(false);
     setBusy(true);
     setError("");
     try {
@@ -94,9 +97,24 @@ export default function DirectorForm({ heading, note, submitLabel, onSubmit, chi
       </div>
       {note && <p className="t-meta">{note}</p>}
       {children}
-      <button type="button" className="btn w-full" disabled={busy} onClick={go}>
+      <button
+        type="button"
+        className="btn w-full"
+        disabled={busy}
+        onClick={() => (confirmMessage ? setAsk(true) : go())}
+      >
         {busy ? "Saving…" : submitLabel}
       </button>
+      {ask && (
+        <ConfirmDialog
+          title={heading}
+          message={confirmMessage}
+          confirmLabel={submitLabel}
+          busy={busy}
+          onConfirm={go}
+          onCancel={() => setAsk(false)}
+        />
+      )}
       {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
     </div>
   );
