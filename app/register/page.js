@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPublicClient } from "@/lib/supabase";
 import { REGION_LABEL } from "@/lib/data";
+import { isRegistrationOpen } from "@/lib/tournament-state";
 import RegistrationForm from "@/components/RegistrationForm";
 
 export const revalidate = 30;
@@ -12,7 +13,7 @@ async function getRegisterableTournaments() {
   const { data, error } = await supabase
     .from("tournaments")
     .select(
-      "id, slug, name, start_date, region, is_placeholder, status, divisions(id, name, display_name, sort_order, parent_division_id)"
+      "id, slug, name, start_date, end_date, registration_closes, region, is_placeholder, status, divisions(id, name, display_name, sort_order, parent_division_id)"
     )
     .order("start_date", { ascending: true });
   if (error) throw error;
@@ -21,9 +22,12 @@ async function getRegisterableTournaments() {
 
 export default async function RegisterPage() {
   const tournaments = await getRegisterableTournaments();
-  // Only real, not-yet-played tournaments are registerable — a placeholder
-  // never is, and neither is one that's already happened.
-  const registerable = tournaments.filter((t) => !t.is_placeholder && t.status === "upcoming");
+  // Derived from dates, never from `tournaments.status` — nothing writes that
+  // column, so it said "upcoming" for the Heat Stroker three days after it
+  // ended and this page offered it. See isRegistrationOpen.
+  // Wrapped, not passed by reference — Array.filter hands the index as the
+  // second argument, which would land in `now` and reset the clock to 1970.
+  const registerable = tournaments.filter((t) => isRegistrationOpen(t));
 
   return (
     <div className="space-y-4">
