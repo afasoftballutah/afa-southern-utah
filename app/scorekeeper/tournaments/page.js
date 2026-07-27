@@ -40,7 +40,7 @@ export default async function TournamentsPage() {
   const supabase = getServiceClient();
   const { data } = await supabase
     .from("tournaments")
-    .select("id, name, slug, start_date, end_date, entry_fee_cents, registration_closes, is_placeholder, venue_name, divisions(id), registrations(id)")
+    .select("id, name, slug, start_date, end_date, entry_fee_cents, registration_closes, is_placeholder, venue_name, divisions(id, min_teams, max_teams), registrations(id, division_id, status)")
     .order("start_date");
 
   const tournaments = (data ?? []).filter((t) => !t.is_placeholder);
@@ -61,7 +61,17 @@ export default async function TournamentsPage() {
         date: t.start_date,
         venue: t.venue_name ?? "—",
         divisions: (t.divisions ?? []).length,
-        teams: (t.registrations ?? []).length,
+        // X/max, the same as every other count in the control center. Max is
+        // the sum of the divisions' caps, falling back to what it takes to
+        // run them.
+        teams: (() => {
+          const live = (t.registrations ?? []).filter((r) => r.status !== "withdrawn").length;
+          const cap = (t.divisions ?? []).reduce(
+            (n, d) => n + (d.max_teams ?? d.min_teams ?? 6),
+            0
+          );
+          return cap > 0 ? `${live}/${Math.max(cap, live)}` : String(live);
+        })(),
         // A blank fee is not a free tournament, it is one nobody has priced.
         fee: t.entry_fee_cents == null ? "—" : `$${t.entry_fee_cents / 100}`,
         closes: t.registration_closes ? String(t.registration_closes).slice(0, 10) : "—",
@@ -71,7 +81,7 @@ export default async function TournamentsPage() {
         name: t.name.toLowerCase(),
         date: t.start_date,
         divisions: (t.divisions ?? []).length,
-        teams: (t.registrations ?? []).length,
+        teams: (t.registrations ?? []).filter((r) => r.status !== "withdrawn").length,
         fee: t.entry_fee_cents ?? -1,
         closes: t.registration_closes ?? "",
       },

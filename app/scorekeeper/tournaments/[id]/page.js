@@ -7,10 +7,8 @@ import { isRegistrationOpen, stillToPlayIn } from "@/lib/tournament-state";
 import { genderLabel } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
-import DivisionMinimums from "@/components/scorekeeper/DivisionMinimums";
-import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
+import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +22,7 @@ async function load(id) {
     supabase
       .from("tournaments")
       .select(
-        "*, divisions(id, name, display_name, sort_order, parent_division_id, gender, class_id, min_men, min_women, games(id, status, is_bye, round), pool_games(id, status))"
+        "*, divisions(id, name, display_name, sort_order, parent_division_id, gender, class_id, min_men, min_women, min_teams, max_teams, games(id, status, is_bye, round), pool_games(id, status))"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -132,67 +130,33 @@ export default async function TournamentPage({ params }) {
       count={`${tournament.start_date} · ${open ? "taking teams" : "registration closed"}`}
       back="/scorekeeper/tournaments"
     >
-      <h2 className="t-heading">Score a division</h2>
-      {divisions.length === 0 ? (
-        <div className="card p-6 text-center space-y-1">
-          <p className="t-strong">No divisions yet.</p>
-          <p className="t-meta">Add one below and teams can be put in it.</p>
-        </div>
-      ) : (
-        <CardGrid>
-          {divisions.map((d) => {
-            const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
-            const left = games.length ? stillToPlayIn(games).length : 0;
-            const teams = registrations.filter(
-              (r) => r.division_id === d.id && r.status !== "withdrawn"
-            ).length;
-            const pool = (d.pool_games ?? []).length > 0;
-            return (
-              <div key={d.id} className="space-y-2">
-                <DirectorCard
-                  href={`/scorekeeper/division/${d.id}`}
-                  title={pool ? "Pool Play" : (d.display_name ?? d.name)}
-                  subtitle={genderLabel(d.gender) ?? "No gender set"}
-                  stats={[
-                    { label: "games", value: String(games.length) },
-                    { label: "to score", value: String(left), alert: left > 0 },
-                    { label: "teams", value: String(teams) },
-                  ]}
-                  footer={games.length === 0 ? "No schedule yet" : null}
-                />
-                {/* Only coed has a split to meet. */}
-                {d.gender === "coed" && (
-                  <div className="card p-3">
-                    <p className="t-label mb-2">Roster must have at least</p>
-                    <DivisionMinimums
-                      divisionId={d.id}
-                      minMen={d.min_men}
-                      minWomen={d.min_women}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </CardGrid>
-      )}
-
-      <h2 className="t-heading">Teams signed up</h2>
-      <Link href="/scorekeeper/registrations/new" className="pill">
-        Add a team yourself
-      </Link>
-      {registrations.length === 0 ? (
-        <div className="card p-6 text-center space-y-1">
-          <p className="t-strong">Nobody has registered yet.</p>
-          <p className="t-meta">They land here the moment someone submits the form.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {registrations.map((r) => (
-            <RegistrationCard key={r.id} registration={r} classes={classes} />
-          ))}
-        </div>
-      )}
+      <h2 className="t-heading">Divisions</h2>
+      <DivisionWorkbench
+        divisions={divisions.map((d) => {
+          const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
+          const teams = registrations.filter(
+            (r) => r.division_id === d.id && r.status !== "withdrawn"
+          ).length;
+          return {
+            id: d.id,
+            name: d.display_name ?? d.name,
+            sortOrder: d.sort_order,
+            genderLabel: genderLabel(d.gender),
+            className: (classes ?? []).find((c) => c.id === d.class_id)?.name ?? null,
+            teams,
+            // Uncapped divisions borrow the larger of "enough to run" and
+            // "already in", so the denominator is never below the numerator.
+            teamsMax: d.max_teams ?? Math.max(d.min_teams ?? 6, teams),
+            minTeams: d.min_teams ?? 6,
+            minMen: d.min_men,
+            minWomen: d.min_women,
+            gamesTotal: games.length,
+            unplayed: games.length ? stillToPlayIn(games).length : 0,
+          };
+        })}
+        registrations={JSON.parse(JSON.stringify(registrations))}
+        classes={classes}
+      />
 
       <h2 className="t-heading">Terms and divisions</h2>
       <TournamentEditor tournament={JSON.parse(JSON.stringify(tournament))} classes={classes} />
