@@ -166,14 +166,8 @@ export default async function RegistrationPage({ params }) {
             {sorted.map((m) => (
               <tr key={m.id} className="border-b border-black/5 last:border-0">
                 <td className="px-3 py-1.5 font-semibold text-afa-navy whitespace-nowrap">
-                  {m.playerId ? (
-                    <Link href={`/scorekeeper/players/${m.playerId}`} className="hover:underline">
-                      {lastNameFirst(m.name)}
-                    </Link>
-                  ) : (
-                    lastNameFirst(m.name)
-                  )}
-                  {m.role !== "player" && <span className="t-meta"> · {m.role}</span>}
+                  {lastNameFirst(m.name)}
+                  {m.role === "manager" && <span className="t-meta"> · manager</span>}
                 </td>
                 <td className="px-3 py-1.5 text-center">{m.gender ?? "—"}</td>
                 <td className="px-3 py-1.5 text-center whitespace-nowrap tabular-nums">

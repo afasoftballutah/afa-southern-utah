@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { listPeople } from "@/lib/director";
+import { listPeople, listTeams } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
 import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
 import { leagueToday } from "@/lib/tournament-state";
@@ -8,6 +8,7 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import InlineSelect from "@/components/scorekeeper/InlineSelect";
+import PlayerDetail from "@/components/scorekeeper/PlayerDetail";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
@@ -54,7 +55,16 @@ export default async function PlayersPage() {
     );
   }
 
-  const { players, unmatched } = await listPeople();
+  const [{ players, unmatched }, teams] = await Promise.all([listPeople(), listTeams()]);
+
+  // Built once for every row rather than per open — the whole league is a few
+  // hundred people, and a fetch on expand would make the accordion feel slow
+  // for no saving.
+  const openRegistrations = teams.flatMap((t) =>
+    t.registrations
+      .filter((r) => r.status !== "withdrawn")
+      .map((r) => ({ id: r.registrationId, label: `${t.name} — ${r.tournamentName}` }))
+  );
   // One clock for the whole table, so two rows can never disagree about today.
   const today = leagueToday();
 
@@ -73,7 +83,19 @@ export default async function PlayersPage() {
 
     return {
       key: p.id,
-      href: `/scorekeeper/players/${p.id}`,
+      detail: (
+        <PlayerDetail
+          person={{ id: p.id, name: p.full_name }}
+          appearances={active}
+          registrations={openRegistrations}
+          otherPeople={players
+            .filter((o) => o.id !== p.id)
+            .map((o) => ({
+              id: o.id,
+              label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
+            }))}
+        />
+      ),
       tags,
       search: `${p.full_name} ${teams.join(" ")} ${p.rating ?? ""}`,
       cells: {

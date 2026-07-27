@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 
 // The one table. Every director list is one of these.
@@ -19,7 +19,12 @@ import Link from "next/link";
 // and this file owns sorting and filtering.
 //
 //   columns [{ key, label, align?, width?, type?: "check"|"text", hideBelow? }]
-//   rows    [{ key, href, cells: {…}, sortValues: {…}, tags: [], search }]
+//   rows    [{ key, href, detail?, cells: {…}, sortValues: {…}, tags: [], search }]
+//
+// A row with `detail` opens in place instead of navigating. JD, 2026-07-27:
+// "youre reinventing formats over and over. just have an accordion dropdown
+// on the player list, thats easier." He is right — a second page shape for
+// what is one more row of the same record was churn.
 
 function Arrow({ dir }) {
   return <span className="text-afa-navy/60">{dir === "desc" ? "▼" : "▲"}</span>;
@@ -32,10 +37,12 @@ export default function DirectorTable({
   defaultSort,
   empty = "Nothing matches that.",
   searchPlaceholder = "Type a name…",
+  openRow = null,
 }) {
   const [query, setQuery] = useState("");
   const [filterKey, setFilterKey] = useState("all");
   const [sort, setSort] = useState(defaultSort ?? { key: columns[0]?.key, dir: "asc" });
+  const [openKey, setOpenKey] = useState(openRow ?? null);
 
   const suggestions = useMemo(
     () => [...new Set(rows.map((r) => r.cells[columns[0].key]).filter(Boolean))].sort(),
@@ -135,42 +142,77 @@ export default function DirectorTable({
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => (
-                <tr key={r.key} className="border-b border-black/5 last:border-0 hover:bg-afa-navy/[0.03]">
-                  {columns.map((c, i) => {
-                    const value = r.cells[c.key];
-                    const content =
-                      c.type === "check" ? (
-                        // A tick or an empty box, the way a paper roster marks
-                        // one off. Far faster to scan than "8 waiting to sign".
-                        <span className={"tick " + (value ? "text-afa-go" : "text-afa-muted/50")}>
-                          {value ? "☑" : "☐"}
-                        </span>
-                      ) : (
-                        value
-                      );
-                    return (
-                      <td
-                        key={c.key}
-                        className={
-                          "px-3 py-1.5 whitespace-nowrap " +
-                          (c.align === "right" ? "text-right tabular-nums " : c.align === "center" ? "text-center " : "") +
-                          (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
-                          (i === 0 ? "font-semibold text-afa-navy max-w-0 truncate" : "text-afa-ink")
-                        }
-                      >
-                        {i === 0 && r.href ? (
-                          <Link href={r.href} className="hover:underline">
-                            {content}
-                          </Link>
-                        ) : (
-                          content
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {visible.map((r) => {
+                const isOpen = r.detail && openKey === r.key;
+                return (
+                  <Fragment key={r.key}>
+                    <tr
+                      className={
+                        "border-b border-black/5 " +
+                        (r.detail ? "cursor-pointer " : "") +
+                        (isOpen ? "bg-afa-navy/[0.05]" : "hover:bg-afa-navy/[0.03]")
+                      }
+                      onClick={
+                        r.detail
+                          ? (e) => {
+                              // A click on a control inside the row is for
+                              // that control, not for opening the row.
+                              if (e.target.closest("select, a, button, input")) return;
+                              setOpenKey(isOpen ? null : r.key);
+                            }
+                          : undefined
+                      }
+                    >
+                      {columns.map((c, i) => {
+                        const value = r.cells[c.key];
+                        const content =
+                          c.type === "check" ? (
+                            <span className={"tick " + (value ? "text-afa-go" : "text-afa-muted/50")}>
+                              {value ? "☑" : "☐"}
+                            </span>
+                          ) : (
+                            value
+                          );
+                        return (
+                          <td
+                            key={c.key}
+                            className={
+                              "px-3 py-1.5 whitespace-nowrap " +
+                              (c.align === "right"
+                                ? "text-right tabular-nums "
+                                : c.align === "center"
+                                  ? "text-center "
+                                  : "") +
+                              (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
+                              (i === 0 ? "font-semibold text-afa-navy max-w-0 truncate" : "text-afa-ink")
+                            }
+                          >
+                            {i === 0 && r.detail && (
+                              <span className="text-afa-navy/40 mr-1.5 inline-block w-2">
+                                {isOpen ? "▾" : "▸"}
+                              </span>
+                            )}
+                            {i === 0 && r.href && !r.detail ? (
+                              <Link href={r.href} className="hover:underline">
+                                {content}
+                              </Link>
+                            ) : (
+                              content
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {isOpen && (
+                      <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
+                        <td colSpan={columns.length} className="px-3 py-3">
+                          {r.detail}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
