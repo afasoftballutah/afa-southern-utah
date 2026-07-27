@@ -30,6 +30,11 @@ async function load(id) {
   ]);
   if (!tournament) return { tournament: null, classes: [] };
 
+  const { data: venueRows } = await supabase
+    .from("tournaments")
+    .select("venue_name")
+    .not("venue_name", "is", null);
+
   const [{ data: registrations }, { data: progress }, { data: members }] = await Promise.all([
     supabase
       .from("registrations")
@@ -66,6 +71,7 @@ async function load(id) {
     tournament,
     classes: classes ?? [],
     classes: allClasses ?? [],
+    venues: [...new Set((venueRows ?? []).map((v) => v.venue_name))].sort(),
     registrations: (registrations ?? []).map((r) => {
       const roster = (membersBy.get(r.id) ?? []).map((m) => {
         const person = m.player_id ? playerBy.get(m.player_id) : null;
@@ -180,7 +186,7 @@ export default async function TournamentPage({ params }) {
     );
   }
 
-  const { tournament, classes, registrations } = await load(id);
+  const { tournament, classes, registrations, venues } = await load(id);
   if (!tournament) notFound();
 
   const open = isRegistrationOpen(tournament);
@@ -200,7 +206,11 @@ export default async function TournamentPage({ params }) {
       />
 
       <h2 className="t-heading">Terms and divisions</h2>
-      <TournamentEditor tournament={JSON.parse(JSON.stringify(tournament))} classes={classes} />
+      <TournamentEditor
+        tournament={JSON.parse(JSON.stringify(tournament))}
+        classes={classes}
+        venues={venues}
+      />
 
       <p className="t-meta">
         <Link href={`/tournaments/${tournament.slug}`} className="underline">

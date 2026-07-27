@@ -24,7 +24,7 @@ export function Input(props) {
   return (
     <input
       {...props}
-      className="w-full border border-afa-navy/30 rounded-lg px-3 py-3 text-base"
+      className="w-full border border-afa-navy/30 rounded-lg px-2 py-2 text-[15px]"
     />
   );
 }
@@ -33,7 +33,7 @@ export function Select({ children, ...props }) {
   return (
     <select
       {...props}
-      className="w-full border border-afa-navy/30 rounded-lg px-3 py-3 text-base"
+      className="w-full border border-afa-navy/30 rounded-lg px-2 py-2 text-[15px]"
     >
       {children}
     </select>

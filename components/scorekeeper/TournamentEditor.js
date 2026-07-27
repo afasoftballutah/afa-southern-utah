@@ -14,7 +14,7 @@ const GENDERS = [
 // The two things a director does to a tournament: state the terms, and add a
 // division. Both collapsed, so the page opens as a list of what exists rather
 // than a wall of inputs.
-export default function TournamentEditor({ tournament, classes }) {
+export default function TournamentEditor({ tournament, classes, venues = [] }) {
   const t = tournament;
   const [fee, setFee] = useState(fromCents(t.entry_fee_cents));
   const [deposit, setDeposit] = useState(fromCents(t.deposit_cents));
@@ -33,7 +33,6 @@ export default function TournamentEditor({ tournament, classes }) {
     <div className="space-y-3">
       <DirectorForm
         heading="Edit the terms"
-        note="Money in dollars. Anything left blank stays off the public page — a blank fee is not a free tournament, it is one nobody has priced."
         submitLabel="Save terms"
         row
         confirmMessage="Save these terms? Anything left blank stays off the public page."
@@ -59,16 +58,16 @@ export default function TournamentEditor({ tournament, classes }) {
         <Field label="Starts" width="w-40"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="Ends" width="w-40"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
         <Field label="Where" width="w-64"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
-        <Field label="Entry fee" width="w-28">
+        <Field label="Entry fee" width="w-20">
           <Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="300" />
         </Field>
-        <Field label="Deposit" width="w-28">
+        <Field label="Deposit" width="w-20">
           <Input inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="100" />
         </Field>
-        <Field label="Ump fee" width="w-28">
+        <Field label="Ump fee" width="w-20">
           <Input inputMode="decimal" value={umpFee} onChange={(e) => setUmpFee(e.target.value)} placeholder="10" />
         </Field>
-        <Field label="Guarantee" width="w-28">
+        <Field label="Guarantee" width="w-20">
           <Input value={guarantee} onChange={(e) => setGuarantee(e.target.value)} placeholder="3GG" />
         </Field>
         <Field label="Closes" width="w-40">
@@ -81,7 +80,6 @@ export default function TournamentEditor({ tournament, classes }) {
 
       <DirectorForm
         heading="Add a division"
-        note="Gender and class are what keep two teams with the same name apart."
         submitLabel="Add division"
         row
         confirmMessage="Add this division? Teams can be entered into it straight away."
@@ -97,7 +95,7 @@ export default function TournamentEditor({ tournament, classes }) {
           window.location.reload();
         }}
       >
-        <Field label="Name" width="w-40"><Input value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="Coed" /></Field>
+        <Field label="Name" width="w-36"><Input value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="Coed" /></Field>
         <Field label="Gender" width="w-36">
           <Select value={divGender} onChange={(e) => setDivGender(e.target.value)}>
             {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
