@@ -216,7 +216,7 @@ export default function DirectorTable({
                             <td
                               key={c.key}
                               className={
-                                "px-3 py-1 whitespace-nowrap text-afa-ink/80 " +
+                                "px-3 py-1 whitespace-nowrap text-afa-ink/85 " +
                                 (c.align === "right"
                                   ? "text-right tabular-nums "
                                   : c.align === "center"

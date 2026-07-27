@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { listPeople, listTeams } from "@/lib/director";
+import { listPeople, listTeams, resultsByTeamAndTournament, formatResult } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
 import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
 import { leagueToday } from "@/lib/tournament-state";
@@ -9,6 +9,7 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
+import ContactButton from "@/components/scorekeeper/ContactButton";
 import Link from "next/link";
 import { Fragment } from "react";
 
@@ -47,29 +48,6 @@ const ratingRank = (r) => {
   return i === -1 ? -1 : RATINGS.length - i;
 };
 
-// Text / Call / email, on one line. Reaching someone is about the person, so
-// it sits with them rather than on a page of its own.
-function contactOf(appearances) {
-  const c = appearances.find((a) => a.email || a.phone);
-  if (!c) return null;
-  const digits = String(c.phone ?? "").replace(/\D/g, "");
-  return (
-    <span className="flex flex-wrap items-center gap-x-3">
-      {c.phone && (
-        <Fragment key="phone">
-          <a className="t-label text-afa-navy underline" href={`sms:${digits}`}>Text</a>
-          <a className="t-label text-afa-navy underline" href={`tel:${digits}`}>Call</a>
-        </Fragment>
-      )}
-      {c.email && (
-        <a className="t-label text-afa-navy underline" href={`mailto:${c.email}`}>
-          {c.email}
-        </a>
-      )}
-    </span>
-  );
-}
-
 export default async function PlayersPage() {
   const store = await cookies();
   if (!hasValidScorekeeperSession(store)) {
@@ -81,7 +59,11 @@ export default async function PlayersPage() {
     );
   }
 
-  const [{ players, unmatched }, teams] = await Promise.all([listPeople(), listTeams()]);
+  const [{ players, unmatched }, teams, results] = await Promise.all([
+    listPeople(),
+    listTeams(),
+    resultsByTeamAndTournament(),
+  ]);
 
   // Built once for every row rather than per open — the whole league is a few
   // hundred people, and a fetch on expand would make the accordion feel slow
@@ -98,6 +80,17 @@ export default async function PlayersPage() {
     const active = p.appearances.filter((a) => !a.removed);
     const unsigned = active.filter((a) => !a.signed).length;
     const lastAppearance = active[active.length - 1] ?? null;
+    const own = active.find((a) => a.email || a.phone);
+    const viaManager = active.find((a) => a.managerEmail || a.managerPhone);
+    const contact = own
+      ? { phone: own.phone, email: own.email, via: null }
+      : viaManager
+        ? {
+            phone: viaManager.managerPhone,
+            email: viaManager.managerEmail,
+            via: viaManager.managerName,
+          }
+        : null;
     const teams = [...new Set(active.map((a) => a.teamName))];
 
     const tags = [];
@@ -113,11 +106,14 @@ export default async function PlayersPage() {
       // under the name because it is about who this person is, move under the
       // team because it is about which team they are on. Then every event, in
       // these same columns.
-      detailRows: [
-        {
-          key: `${p.id}-actions`,
-          cells: {
-            name: (
+      detailRows: active.map((a, idx) => ({
+        key: a.memberId,
+        cells: {
+          // The person's own columns are blank on an event row, so the actions
+          // live there — on the first one only. Merge under the name because it
+          // is about who this person is.
+          name:
+            idx === 0 ? (
               <RowAction
                 label="Merge duplicate"
                 title={`Merge into ${p.full_name}`}
@@ -134,75 +130,49 @@ export default async function PlayersPage() {
                     label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
                   }))}
               />
-            ),
-            team: lastAppearance ? (
+            ) : null,
+          dob:
+            idx === 0 ? (
+              <ContactButton
+                name={p.full_name}
+                phone={contact?.phone}
+                email={contact?.email}
+                via={contact?.via}
+              />
+            ) : null,
+          rating:
+            idx === 0 ? (
               <RowAction
-                label="Move team"
-                title={`Move ${p.full_name}`}
+                label="Switch Team"
+                title={`Switch ${p.full_name}`}
                 note="Both waivers are rebuilt."
                 placeholder="Pick a team…"
                 action="movePlayer"
                 valueKey="toRegistrationId"
-                payload={{ memberId: lastAppearance.memberId }}
-                confirmText={`Move ${p.full_name} to {name}? Both waivers are rebuilt.`}
+                payload={{ memberId: a.memberId }}
+                confirmText={`Switch ${p.full_name} to {name}? Both waivers are rebuilt.`}
                 options={openRegistrations}
               />
             ) : null,
-            tournament: contactOf(active),
-          },
+          team: (
+            <Link
+              href={`/scorekeeper/registrations/${a.registrationId}`}
+              className="text-afa-navy hover:underline"
+            >
+              {a.teamName}
+            </Link>
+          ),
+          tournament: a.tournamentName,
+          class: a.className ?? "—",
+          // How the team finished, where the row above counts events.
+          events: formatResult(results.get(a.tournamentId, a.teamName)),
+          waiver: a.signed,
         },
-        // Only the OTHER events. The closed row already shows the most recent
-        // one, so repeating it made opening a one-event player show the same
-        // line twice.
-        ...active.slice(0, -1).map((a) => ({
-          key: a.memberId,
-          cells: {
-            team: (
-              <Link
-                href={`/scorekeeper/registrations/${a.registrationId}`}
-                className="text-afa-navy hover:underline"
-              >
-                {a.teamName}
-              </Link>
-            ),
-            tournament: a.tournamentName,
-            class: a.className ?? "—",
-            waiver: a.signed,
-          },
-        })),
-      ],
+      })),
       tags,
       search: `${p.full_name} ${teams.join(" ")} ${active.map((a) => a.tournamentName).join(" ")} ${p.rating ?? ""}`,
       cells: {
         name: lastNameFirst(p.full_name),
-        // The MOST RECENT event only. Every event this person played opens
-        // underneath, in these same columns.
-        tournament: lastAppearance?.tournamentName ?? "—",
-        // The team's class AT THAT TOURNAMENT. Same letters as a rating and a
-        // different fact — one is the person, this is the team they played on.
-        class: lastAppearance?.className ?? "—",
-        team: lastAppearance ? (
-          <Link
-            href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}
-            className="text-afa-navy hover:underline"
-          >
-            {lastAppearance.teamName}
-          </Link>
-        ) : (
-          "—"
-        ),
-        // Editable in place. A director working down a roster of twelve
-        // should not have to open twelve pages.
-        rating: (
-          <InlineSelect
-            label="Rating"
-            action="setPlayerRating"
-            valueKey="rating"
-            payload={{ playerId: p.id }}
-            value={p.rating ?? ""}
-            options={RATINGS}
-          />
-        ),
         gender: (
           <InlineSelect
             label="M/F"
@@ -213,11 +183,32 @@ export default async function PlayersPage() {
             options={["M", "F"]}
           />
         ),
-        events: active.length,
-        // Ticked when every roster they are on is signed. A paper roster is
-        // marked off the same way, and it scans far faster than a sentence.
-        waiver: active.length > 0 && unsigned === 0,
         dob: bornWithAge(p.birth_date, today),
+        rating: (
+          <InlineSelect
+            label="Rating"
+            action="setPlayerRating"
+            valueKey="rating"
+            payload={{ playerId: p.id }}
+            value={p.rating ?? ""}
+            options={RATINGS}
+          />
+        ),
+        team: lastAppearance ? (
+          <Link
+            href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}
+            className="text-afa-navy hover:underline"
+          >
+            {lastAppearance.teamName}
+          </Link>
+        ) : (
+          "—"
+        ),
+        tournament: lastAppearance?.tournamentName ?? "—",
+        class: lastAppearance?.className ?? "—",
+        events: active.length,
+        // Ticked when every roster they are on is signed.
+        waiver: active.length > 0 && unsigned === 0,
       },
       sortValues: {
         name: lastNameKey(p.full_name),
