@@ -243,8 +243,14 @@ export default async function TournamentDetailPage({ params }) {
   // Never use tournaments.status. Terms only when a field has a real value.
   const registrationOpen = isRegistrationOpen(tournament);
   const regTerms = registrationTerms(tournament);
+  // Show the block whenever registration is OPEN, terms or not. Gating it on
+  // having a deadline/url/note hid the door entirely on a tournament anyone
+  // could still enter — and only 1 of 40 tournaments carries a deadline, so
+  // that was almost all of them. When closed it still needs a reason to
+  // exist, which is what the other fields provide.
   const hasRegistrationBlock = Boolean(
-    tournament.registration_closes ||
+    registrationOpen ||
+      tournament.registration_closes ||
       tournament.registration_url ||
       tournament.registration_note ||
       regTerms.length > 0
@@ -390,7 +396,17 @@ export default async function TournamentDetailPage({ params }) {
                     <p className="text-xs text-afa-ink/60 mt-1">{registrationHost}</p>
                   )}
                 </a>
-              ) : null}
+              ) : (
+                // No external URL means WE take the registration. Most
+                /* tournaments are this case, and without it an open
+                   tournament said "Registration" and offered no way in. */
+                <Link href="/register" className="block min-h-11 hover:opacity-80">
+                  <p className="font-bold text-afa-navy">Register this team</p>
+                  <p className="text-xs text-afa-ink/60 mt-1">
+                    Roster and waiver, on this site
+                  </p>
+                </Link>
+              )}
               {tournament.registration_note && (
                 <p className="text-sm text-afa-ink/70">{tournament.registration_note}</p>
               )}
