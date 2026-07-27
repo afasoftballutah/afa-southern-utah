@@ -26,6 +26,15 @@ left, so Gold produced no champion and the runner-up was never marked out. A
 pool loss must never eliminate anyone. A team with a slot downstream still
 waiting on their game is not out, they are about to be placed.
 
+**`tournament-state.test.mjs`** — the shared "still to play" predicate the
+archive rests on. Heat Stroker is finished *despite one unplayed game* — the
+if-game Backwards K made unnecessary — which is the case a naive
+`every(g => g.status === "final")` gets wrong, and the reason the archive
+would otherwise never render on the only finished tournament we have. Also
+asserts the three callers (getUpcomingGames, computeTeamStatus, isFinished)
+exclude the same things, since drift between them would pull the Next tab,
+the elimination logic and the archive apart.
+
 **`design-system.test.mjs`** — read statically off `globals.css`:
 - the display face never asks for a weight it does not have (Anton ships one;
   asking for 700 synthesises a bold and smears it — twice shipped)
