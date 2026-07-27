@@ -403,6 +403,44 @@ export async function POST(request) {
       });
     }
 
+    // ---- Rate a player -----------------------------------------------
+    case "setPlayerClass": {
+      const { playerId, classId } = body;
+      if (!playerId) return bad("Which player?");
+      if (classId) {
+        const { data: cls } = await supabase
+          .from("classes")
+          .select("id")
+          .eq("id", classId)
+          .maybeSingle();
+        if (!cls) return bad("That class does not exist", 404);
+      }
+      const { error } = await supabase
+        .from("players")
+        .update({ class_id: classId || null })
+        .eq("id", playerId);
+      if (error) {
+        console.error("set player class failed", error);
+        return bad("Could not save that class — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // ---- Enter a team at a class -------------------------------------
+    case "setRegistrationClass": {
+      const { registrationId, classId } = body;
+      if (!registrationId) return bad("Which team?");
+      const { error } = await supabase
+        .from("registrations")
+        .update({ class_id: classId || null })
+        .eq("id", registrationId);
+      if (error) {
+        console.error("set registration class failed", error);
+        return bad("Could not save that class — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
     default:
       return bad("Unknown action");
   }

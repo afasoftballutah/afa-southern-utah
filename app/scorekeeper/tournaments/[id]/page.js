@@ -10,6 +10,7 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
+import { suggestClass } from "@/lib/class";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +35,24 @@ async function load(id) {
     supabase
       .from("registrations")
       .select(
-        "id, team_name, class, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, manager_name, manager_email, manager_phone, division_id, divisions(name, display_name)"
+        "id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, manager_name, manager_email, manager_phone, division_id, divisions(name, display_name)"
       )
       .eq("tournament_id", id),
     supabase.from("registration_signing_progress").select("*"),
     supabase.from("roster_members").select("registration_id, name, role, signed_at, removed_at, player_id"),
   ]);
+
+  // Class is a property of a PERSON, so a team's class is worked out from who
+  // is on it. JD, 2026-07-27: "The team registers for the tournament with the
+  // players and then gets put into a suggested class based on the tournament."
+  const { data: allPlayers } = await supabase.from("players").select("id, class_id");
+  const { data: allClasses } = await supabase.from("classes").select("id, name, sort_order").order("sort_order");
+  const classOf = new Map((allPlayers ?? []).map((p) => [p.id, p.class_id]));
+
+  // What this tournament actually runs — a D team at a Rec/E event plays E.
+  const offeredClassIds = [
+    ...new Set((tournament.divisions ?? []).map((d) => d.class_id).filter(Boolean)),
+  ];
 
   const progressBy = new Map((progress ?? []).map((p) => [p.registration_id, p]));
   const membersBy = new Map();
@@ -52,11 +65,18 @@ async function load(id) {
   return {
     tournament,
     classes: classes ?? [],
-    registrations: (registrations ?? []).map((r) => ({
-      ...r,
-      progress: progressBy.get(r.id) ?? { active_members: 0, signed_members: 0, is_official: false },
-      members: membersBy.get(r.id) ?? [],
-    })),
+    classes: allClasses ?? [],
+    registrations: (registrations ?? []).map((r) => {
+      const roster = (membersBy.get(r.id) ?? []).map((m) => ({
+        class_id: m.player_id ? (classOf.get(m.player_id) ?? null) : null,
+      }));
+      return {
+        ...r,
+        progress: progressBy.get(r.id) ?? { active_members: 0, signed_members: 0, is_official: false },
+        members: membersBy.get(r.id) ?? [],
+        suggestion: suggestClass(roster, allClasses ?? [], offeredClassIds),
+      };
+    }),
   };
 }
 
@@ -135,7 +155,7 @@ export default async function TournamentPage({ params }) {
       ) : (
         <div className="space-y-3">
           {registrations.map((r) => (
-            <RegistrationCard key={r.id} registration={r} />
+            <RegistrationCard key={r.id} registration={r} classes={classes} />
           ))}
         </div>
       )}

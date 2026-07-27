@@ -28,8 +28,14 @@ const COLUMNS = [
 const FILTERS = [
   { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
   { key: "managers", label: "Managers", tag: "manager" },
+  { key: "noclass", label: "No class", tag: "noclass" },
   { key: "nodob", label: "No birth date", tag: "nodob" },
 ];
+
+// Sort Class by strength, not alphabetically — D before E is meaningless as
+// letters, and unrated belongs at one end rather than under "—".
+const classRank = (id, classes) =>
+  id ? (classes.find((c) => c.id === id)?.sort_order ?? 0) : -1;
 
 export default async function PlayersPage() {
   const store = await cookies();
@@ -42,7 +48,7 @@ export default async function PlayersPage() {
     );
   }
 
-  const { players, unmatched } = await listPeople();
+  const { players, unmatched, classes } = await listPeople();
 
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
@@ -54,16 +60,18 @@ export default async function PlayersPage() {
     if (unsigned > 0) tags.push("unsigned");
     if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
+    if (!p.class_id) tags.push("noclass");
 
     return {
       key: p.id,
       href: `/scorekeeper/players/${p.id}`,
       tags,
-      search: `${p.full_name} ${teams.join(" ")} ${latest?.className ?? ""}`,
+      search: `${p.full_name} ${teams.join(" ")} ${p.className ?? ""}`,
       cells: {
         name: lastNameFirst(p.full_name),
         team: teams.join(", ") || "—",
-        class: latest?.className ?? "—",
+        // The player's own rating, which is what decides a team's class.
+        class: p.className ?? "—",
         division: scopeLabel(latest?.gender, null) || "—",
         events: active.length,
         // Ticked when every roster they are on is signed. A paper roster is
@@ -71,7 +79,11 @@ export default async function PlayersPage() {
         waiver: active.length > 0 && unsigned === 0,
         dob: p.birth_date ?? "—",
       },
-      sortValues: { name: lastNameKey(p.full_name), events: active.length },
+      sortValues: {
+        name: lastNameKey(p.full_name),
+        events: active.length,
+        class: classRank(p.class_id, classes),
+      },
     };
   });
 

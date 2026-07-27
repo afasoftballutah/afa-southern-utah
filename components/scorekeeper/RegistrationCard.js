@@ -9,7 +9,7 @@ function money(cents) {
   return `$${(cents / 100).toFixed(2).replace(/\.00$/, "")}`;
 }
 
-export default function RegistrationCard({ registration }) {
+export default function RegistrationCard({ registration, classes = [] }) {
   const [reg, setReg] = useState(registration);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,22 +18,35 @@ export default function RegistrationCard({ registration }) {
 
   const { active_members: active, signed_members: signed, is_official: official } = reg.progress;
   const outstanding = active - signed;
-  const scope = [reg.divisions?.display_name ?? reg.divisions?.name, reg.class]
+  const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? null;
+  const scope = [reg.divisions?.display_name ?? reg.divisions?.name, enteredClass]
     .filter(Boolean)
     .join(" · ");
+  const sug = reg.suggestion;
 
   async function patch(body) {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/scorekeeper/registrations/${reg.id}`, {
-        method: "PATCH",
+      // Class goes through the directory route (it writes class_id); the
+      // rest are registration fields on the registration route.
+      const isClass = "classId" in body;
+      const res = await fetch(
+        isClass ? "/api/scorekeeper/directory" : `/api/scorekeeper/registrations/${reg.id}`,
+        {
+        method: isClass ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+        body: JSON.stringify(
+          isClass
+            ? { action: "setRegistrationClass", registrationId: reg.id, classId: body.classId }
+            : body
+        ),
+      }
+      );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save");
-      setReg((cur) => ({ ...cur, ...json.registration }));
+      if (isClass) setReg((cur) => ({ ...cur, class_id: body.classId }));
+      else setReg((cur) => ({ ...cur, ...json.registration }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -74,6 +87,48 @@ export default function RegistrationCard({ registration }) {
           <span className="t-meta">{outstanding} outstanding</span>
         )}
       </div>
+
+      {sug && (
+        <div className="rounded-lg bg-afa-navy/[0.04] p-3 space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="t-label">Suggested class</p>
+            <p className="t-strong">{sug.className ?? "—"}</p>
+          </div>
+          <p className="t-meta">{sug.reason}</p>
+          {sug.counts.length > 0 && (
+            <p className="t-meta">
+              Roster: {[...sug.counts].reverse().map((c) => `${c.count} ${c.name}`).join(" · ")}
+            </p>
+          )}
+          {/* A suggestion never sets anything. The director enters the team,
+              because they know things a roster does not say. */}
+          <div className="flex flex-wrap gap-2">
+            {[{ id: "", name: "Not set" }, ...classes].map((c) => (
+              <button
+                key={c.id || "none"}
+                type="button"
+                disabled={busy}
+                onClick={() => patch({ classId: c.id || null })}
+                className={
+                  "px-3 py-2 rounded-lg t-label border min-w-[3.5rem] " +
+                  (reg.class_id === c.id || (!reg.class_id && !c.id)
+                    ? "bg-afa-navy text-white border-afa-navy"
+                    : c.id === sug.classId
+                      ? "border-afa-navy text-afa-navy"
+                      : "border-afa-navy/20 text-afa-muted")
+                }
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <p className="t-meta">
+            {enteredClass
+              ? `Entered as ${enteredClass}.`
+              : "Not entered at a class yet — the outlined one is the suggestion."}
+          </p>
+        </div>
+      )}
 
       <p className="t-meta">
         {reg.manager_name}
