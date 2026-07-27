@@ -91,8 +91,12 @@ export default function RegistrationCard({ registration, classes = [] }) {
       {sug && (
         <div className="rounded-lg bg-afa-navy/[0.04] p-3 space-y-2">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="t-label">Suggested class</p>
-            <p className="t-strong">{sug.className ?? "—"}</p>
+            <p className="t-label">
+              Suggested class{sug.provisional && " · provisional"}
+            </p>
+            <p className={"t-strong " + (sug.provisional ? "text-afa-muted" : "")}>
+              {sug.className ?? "—"}
+            </p>
           </div>
           <p className="t-meta">{sug.reason}</p>
           {sug.counts.length > 0 && (
