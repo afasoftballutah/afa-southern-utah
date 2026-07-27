@@ -28,6 +28,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
   const [signers, setSigners] = useState([]);
+  const [rosterLink, setRosterLink] = useState("");
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   // Series filter (dispatch-brief-17) — "All" plus only the regions that
@@ -149,6 +150,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Registration failed");
       setSigners(json.signers ?? []);
+      setRosterLink(json.rosterLink ?? "");
       setSubmitState("done");
     } catch (err) {
       setSubmitState("error");
@@ -169,19 +171,35 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
         <p className="text-afa-ink/80">
           {teamName} is on the books for {tournament?.name}.
         </p>
-        <div>
-          <p className="font-semibold text-sm mb-2">
-            Send each of these to the person by name — nothing goes out
-            automatically. Once they open their link and sign, they&rsquo;re done.
+        {rosterLink && (
+          <div className="rounded-xl bg-afa-navy/5 p-4 space-y-2">
+            <p className="t-heading">Send one link to your team</p>
+            <p className="text-sm text-afa-ink/80">
+              Paste this into your team chat. Everyone taps their own name and
+              signs. You do not have to send {signers.length} separate messages.
+            </p>
+            <button
+              type="button"
+              onClick={() => copyLink(rosterLink, "roster")}
+              className="btn w-full"
+            >
+              {copiedIndex === "roster" ? "Copied" : "Copy team link"}
+            </button>
+          </div>
+        )}
+        <details>
+          <summary className="font-semibold text-sm cursor-pointer">
+            Or send people their links one at a time
+          </summary>
+          <p className="text-sm text-afa-ink/70 mt-2 mb-2">
+            Nothing goes out automatically. Once someone opens their link and
+            signs, they&rsquo;re done.
           </p>
           <ul className="space-y-2">
             {signers.map((s, i) => (
               <li key={i} className="flex items-center justify-between gap-2 text-sm">
                 <span>
-                  {s.name}{" "}
-                  <span className="text-afa-ink/50">
-                    ({s.role === "coach" ? "coach" : "player"})
-                  </span>
+                  {s.name} <span className="text-afa-ink/50">({s.role})</span>
                 </span>
                 <button
                   type="button"
@@ -193,7 +211,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       </div>
     );
   }
@@ -504,15 +522,25 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               submit.
             </p>
             <div>
-              <p className="font-semibold text-sm mb-1">Manager&rsquo;s Signature</p>
+              <p className="font-semibold text-sm mb-1">
+                Manager&rsquo;s Signature{" "}
+                <span className="font-normal text-afa-ink/60">— or sign later</span>
+              </p>
               <SignaturePad onChange={setSignature} />
+              <p className="text-xs text-afa-ink/60 mt-1">
+                You can submit without signing and come back to it. Submitting
+                gets your team on the list; signing is what makes it official.
+              </p>
             </div>
             {submitState === "error" && (
               <p className="text-afa-ink text-sm font-bold underline">{submitError}</p>
             )}
             <button
               type="button"
-              disabled={!agreed || !signature || submitState === "submitting"}
+              // The signature is no longer a gate — only agreement is. JD,
+              // 2026-07-27: "should be able to sign it whenever, even after
+              // submitting. Signing makes it official."
+              disabled={!agreed || submitState === "submitting"}
               onClick={submit}
               className="w-full bg-afa-red text-white font-bold py-3 rounded-lg disabled:opacity-40"
             >

@@ -4,6 +4,8 @@ import { useState } from "react";
 import SignaturePad from "./SignaturePad";
 import { RELEASE_TEXT } from "@/lib/waiver";
 
+const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing" };
+
 export default function SignRosterMember({ token, member }) {
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
@@ -35,7 +37,8 @@ export default function SignRosterMember({ token, member }) {
           {member.alreadySigned ? "Already signed — thanks." : "Signed. Thanks."}
         </p>
         <p className="text-sm text-afa-ink/70 mt-1">
-          {member.name}, you&rsquo;re on record for {member.role === "coach" ? "coaching" : "playing on"} this team.
+          {member.name}, you&rsquo;re on record for {ROLE_VERB[member.role] ?? ROLE_VERB.player} this
+          team.
         </p>
       </div>
     );
@@ -54,7 +57,7 @@ export default function SignRosterMember({ token, member }) {
             <dd>{member.address || "—"}</dd>
           </>
         )}
-        {member.role === "coach" && (
+        {member.role !== "player" && (
           <>
             <dt className="font-semibold">Email</dt>
             <dd>{member.email || "—"}</dd>

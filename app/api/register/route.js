@@ -36,14 +36,17 @@ export async function POST(request) {
     manager,
     players,
     coaches,
-    signaturePng, // manager's signature — captured live, she's present submitting
+    signaturePng, // optional — the manager may sign now or later, like anyone else
   } = body ?? {};
 
   if (!tournamentId || !divisionId) return bad("Missing tournament or division");
   if (!teamName || !teamName.trim()) return bad("Team name is required");
   if (!manager?.name || !manager?.email) return bad("Manager name and email are required");
   if (!Array.isArray(players) || players.length === 0) return bad("At least one player is required");
-  if (!signaturePng) return bad("Manager signature is required");
+  // No signature check. JD, 2026-07-27: "should be able to sign it whenever,
+  // even after submitting. Signing makes it official." Submitting records the
+  // team; the manager gets her own signing link back and can use it later,
+  // exactly like every player does.
 
   const supabase = getServiceClient();
 
@@ -72,10 +75,11 @@ export async function POST(request) {
       manager_city: manager.city ?? null,
       manager_state: manager.state ?? null,
       manager_zip: manager.zip ?? null,
-      manager_signature_png: signaturePng,
+      manager_signature_png: signaturePng ?? null,
+      manager_signed_at: signaturePng ? new Date().toISOString() : null,
       release_text_version: RELEASE_TEXT_VERSION,
     })
-    .select("id")
+    .select("id, roster_token, manager_signing_token")
     .single();
 
   if (insertError) {
@@ -125,11 +129,28 @@ export async function POST(request) {
   }
 
   const origin = new URL(request.url).origin;
-  const signers = insertedRoster.map((r) => ({
-    name: r.name,
-    role: r.role,
-    signLink: `${origin}/register/sign/${r.signing_token}`,
-  }));
+  const signers = [
+    // The manager is a signer too, and first in the list — she is the one
+    // person guaranteed to be looking at this screen.
+    ...(signaturePng
+      ? []
+      : [
+          {
+            name: manager.name,
+            role: "manager",
+            signLink: `${origin}/register/sign/${inserted.manager_signing_token}`,
+          },
+        ]),
+    ...insertedRoster.map((r) => ({
+      name: r.name,
+      role: r.role,
+      signLink: `${origin}/register/sign/${r.signing_token}`,
+    })),
+  ];
 
-  return Response.json({ ok: true, registrationId, signers });
+  // One link the manager shares with her whole team, instead of sending each
+  // of the links above to the right person by hand.
+  const rosterLink = `${origin}/register/roster/${inserted.roster_token}`;
+
+  return Response.json({ ok: true, registrationId, rosterLink, signers });
 }
