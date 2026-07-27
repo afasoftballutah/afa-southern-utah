@@ -151,7 +151,10 @@ export default async function PlayersPage() {
             tournament: contactOf(active),
           },
         },
-        ...active.map((a) => ({
+        // Only the OTHER events. The closed row already shows the most recent
+        // one, so repeating it made opening a one-event player show the same
+        // line twice.
+        ...active.slice(0, -1).map((a) => ({
           key: a.memberId,
           cells: {
             team: (
