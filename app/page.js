@@ -13,6 +13,7 @@ import { formatFieldTime } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import Door from "@/components/ui/Door";
 import Poster from "@/components/ui/Poster";
+import MyTeamStrip from "@/components/MyTeamStrip";
 
 export const revalidate = 30;
 
@@ -53,6 +54,10 @@ export default async function Home() {
       <section className="max-w-md mx-auto">
         <Poster posterUrl={null} className="h-52 sm:h-72" />
       </section>
+
+      {/* Who this device belongs to, when it knows. Renders nothing
+          otherwise, so a first-time visitor sees no empty slot. */}
+      <MyTeamStrip />
 
       {/* Obvious places to go. The next tournament is the featured door. */}
       <section className="max-w-md mx-auto space-y-3">

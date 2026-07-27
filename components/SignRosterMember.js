@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { writeMe } from "@/lib/me";
 import SignaturePad from "./SignaturePad";
 import { RELEASE_TEXT } from "@/lib/waiver";
 
 const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing" };
 
 export default function SignRosterMember({ token, member }) {
+  // Someone opening a link they already used is still telling us who they
+  // are — remember it without making them sign twice.
+  useEffect(() => {
+    if (member.alreadySigned && member.teamName) {
+      writeMe({ name: member.name, teamName: member.teamName, source: "signed" });
+    }
+  }, [member.alreadySigned, member.name, member.teamName]);
+
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
   const [state, setState] = useState(member.alreadySigned ? "done" : "idle");
@@ -23,6 +32,10 @@ export default function SignRosterMember({ token, member }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save your signature");
+      // Signing is the strongest thing this device will ever learn: the
+      // person AND their team. Remember it so every page after this one
+      // leads with them, this tournament and the next.
+      writeMe({ name: member.name, teamName: member.teamName, source: "signed" });
       setState("done");
     } catch (err) {
       setState("error");

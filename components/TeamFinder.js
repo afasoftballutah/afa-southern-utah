@@ -5,6 +5,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { teamSlug } from "@/lib/teams";
 import Chip from "@/components/ui/Chip";
+import { readMe, writeMe } from "@/lib/me";
 
 // The bracket a team finished in, tinted as itself — the same three
 // metallics the seed chips use, so "Gold" reads as Gold wherever it
@@ -57,7 +58,19 @@ export default function TeamFinder({
     } catch {
       remembered = null;
     }
-    if (!remembered) return;
+
+    // Fall back to who this device belongs to. A per-tournament pick still
+    // wins — someone can guest for another team this weekend without losing
+    // the team they actually play for (lib/me.js).
+    if (!remembered) {
+      const me = readMe();
+      if (me?.teamName && teams.includes(me.teamName)) {
+        setSelected(me.teamName);
+        onSelectedChange?.(me.teamName);
+      }
+      return;
+    }
+
     if (teams.includes(remembered)) {
       setSelected(remembered);
       onSelectedChange?.(remembered);
@@ -72,6 +85,9 @@ export default function TeamFinder({
   }, [storageKey]);
 
   function remember(value) {
+    // Picking a team also says who this device belongs to, so the next
+    // tournament leads with them without another pick.
+    writeMe(value ? { teamName: value, source: "picked" } : null);
     try {
       if (value) {
         window.localStorage.setItem(storageKey, value);
