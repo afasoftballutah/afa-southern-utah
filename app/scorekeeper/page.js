@@ -109,6 +109,9 @@ export default async function ScorekeeperPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="t-title">Scorekeeper</h1>
+        <Link href="/scorekeeper/registrations" className="t-meta underline">
+          Registrations
+        </Link>
       </div>
       <PullResults />
       {upcoming.length === 0 && pastCount === 0 ? (

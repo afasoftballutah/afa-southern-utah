@@ -1,0 +1,162 @@
+"use client";
+
+import { useState } from "react";
+
+const STATUS_LABEL = { submitted: "Submitted", confirmed: "Confirmed", withdrawn: "Withdrawn" };
+
+function money(cents) {
+  if (cents == null) return "";
+  return `$${(cents / 100).toFixed(2).replace(/\.00$/, "")}`;
+}
+
+export default function RegistrationCard({ registration }) {
+  const [reg, setReg] = useState(registration);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const { active_members: active, signed_members: signed, is_official: official } = reg.progress;
+  const outstanding = active - signed;
+  const scope = [reg.divisions?.display_name ?? reg.divisions?.name, reg.class]
+    .filter(Boolean)
+    .join(" · ");
+
+  async function patch(body) {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/scorekeeper/registrations/${reg.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not save");
+      setReg((cur) => ({ ...cur, ...json.registration }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function copyRosterLink() {
+    navigator.clipboard?.writeText(`${window.location.origin}/register/roster/${reg.roster_token}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className={"card p-4 space-y-3" + (reg.status === "withdrawn" ? " opacity-60" : "")}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="team-name text-lg">{reg.team_name}</p>
+          {scope && <p className="t-meta">{scope}</p>}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="t-label">{STATUS_LABEL[reg.status] ?? reg.status}</p>
+          <p className="t-meta">
+            {reg.paid_at ? `Paid ${money(reg.amount_paid_cents)}`.trim() : "Unpaid"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="t-strong">
+          {signed} of {active} signed
+        </span>
+        {official ? (
+          <span className="t-label text-afa-navy">Official</span>
+        ) : (
+          <span className="t-meta">{outstanding} outstanding</span>
+        )}
+      </div>
+
+      <p className="t-meta">
+        {reg.manager_name}
+        {reg.manager_email && <> &middot; {reg.manager_email}</>}
+        {reg.manager_phone && <> &middot; {reg.manager_phone}</>}
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {!reg.paid_at && (
+          <button className="btn-quiet" disabled={busy} onClick={() => patch({ paid: true })}>
+            Mark paid
+          </button>
+        )}
+        {reg.paid_at && (
+          <button className="btn-quiet" disabled={busy} onClick={() => patch({ paid: false })}>
+            Undo paid
+          </button>
+        )}
+        {reg.status !== "confirmed" && (
+          <button
+            className="btn-quiet"
+            disabled={busy}
+            onClick={() => patch({ status: "confirmed" })}
+          >
+            Confirm
+          </button>
+        )}
+        {reg.status !== "withdrawn" ? (
+          <button
+            className="btn-quiet"
+            disabled={busy}
+            onClick={() => patch({ status: "withdrawn" })}
+          >
+            Withdraw
+          </button>
+        ) : (
+          <button
+            className="btn-quiet"
+            disabled={busy}
+            onClick={() => patch({ status: "submitted" })}
+          >
+            Reinstate
+          </button>
+        )}
+        <button className="btn-quiet" onClick={copyRosterLink}>
+          {copied ? "Copied" : "Team link"}
+        </button>
+        {reg.pdf_storage_path && (
+          <a
+            className="btn-quiet"
+            href={`/api/scorekeeper/registrations/${reg.id}/waiver`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Waiver
+          </a>
+        )}
+        <button className="btn-quiet" onClick={() => setOpen((v) => !v)}>
+          {open ? "Hide roster" : "Roster"}
+        </button>
+      </div>
+
+      {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
+
+      {open && (
+        <ul className="divide-y divide-black/5 border-t border-black/5 pt-1">
+          {reg.members.map((m, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 py-2">
+              <span className="t-body">
+                {m.name}
+                {m.role !== "player" && <span className="t-meta"> &middot; {m.role}</span>}
+                {/* A roster entry with no person behind it means no birth date,
+                    so there was no safe key to match on. Worth showing: it is a
+                    director task, not an error. */}
+                {!m.player_id && (
+                  <span className="t-meta text-afa-red"> &middot; no person record</span>
+                )}
+              </span>
+              <span className="t-label shrink-0">{m.signed_at ? "Signed" : "Waiting"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {reg.director_notes && <p className="t-meta italic">{reg.director_notes}</p>}
+    </div>
+  );
+}
