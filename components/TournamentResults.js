@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Card from "@/components/ui/Card";
+import { teamSlug } from "@/lib/teams";
 
 // The archive face of a finished tournament — one column per bracket, podium
 // first, photos only when a director uploaded them. Lives above the schedule,
@@ -40,7 +41,7 @@ function DivisionColumn({ column, slug }) {
           <TeamRow
             key={`${row.place}-${row.team}`}
             row={row}
-            href={standingsHref}
+            href={`/teams/${teamSlug(row.team)}`}
           />
         ))}
       </div>

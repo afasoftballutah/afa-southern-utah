@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Card from "@/components/ui/Card";
+import { teamSlug } from "@/lib/teams";
 import Chip from "@/components/ui/Chip";
 
 // The bracket a team finished in, tinted as itself — the same three
@@ -202,6 +204,16 @@ export default function TeamFinder({
               <Chip variant="muted">{chipPrefix ? `${chipPrefix} ${pool}` : pool}</Chip>
             )}
           </div>
+        )}
+        {/* Team page lives BESIDE the picker, not on the name — the name
+            opens the select (spec-team-pages.md step 3). */}
+        {selected && (
+          <Link
+            href={`/teams/${teamSlug(selected)}`}
+            className="t-meta shrink-0 whitespace-nowrap text-afa-navy underline decoration-afa-navy/30 underline-offset-2"
+          >
+            Team page
+          </Link>
         )}
       </div>
 

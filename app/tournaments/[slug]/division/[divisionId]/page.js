@@ -16,6 +16,7 @@ import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 import { mootIfRounds } from "@/lib/bracket/if-game";
 import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
+import { teamSlug } from "@/lib/teams";
 
 export const revalidate = 30;
 
@@ -152,8 +153,13 @@ function PoolPlaySection({ poolGames }) {
                     <span className="text-right text-[12.5px] font-bold text-afa-navy/50 tabular-nums">
                       {left === 0 ? i + 1 : "\u00b7"}
                     </span>
-                    <span className="team-name text-[15px] font-semibold leading-tight [overflow-wrap:anywhere]">
-                      {t.team}
+                    <span className="min-w-0 text-[15px] font-semibold leading-tight [overflow-wrap:anywhere]">
+                      <Link
+                        href={`/teams/${teamSlug(t.team)}`}
+                        className="team-name text-afa-navy hover:underline"
+                      >
+                        {t.team}
+                      </Link>
                       {t.tied && (
                         <span className="ml-1.5 rounded bg-afa-navy/[0.08] px-1 py-px text-[10px] font-bold uppercase tracking-wide text-afa-muted">
                           tied
@@ -249,9 +255,13 @@ function StandingsPanel({ name, rows }) {
             key={t.team}
             className="grid min-h-11 grid-cols-[minmax(0,1fr)_46px_52px] items-center gap-x-2 border-b border-afa-navy/[0.07] py-1.5 text-sm last:border-0"
           >
-            <span className="team-name truncate font-semibold" title={t.team}>
+            <Link
+              href={`/teams/${teamSlug(t.team)}`}
+              className="team-name min-w-0 truncate font-semibold text-afa-navy hover:underline"
+              title={t.team}
+            >
               {t.team}
-            </span>
+            </Link>
             <span className="text-right font-semibold tabular-nums text-afa-ink/[0.78]">
               {t.w}&ndash;{t.l}
             </span>
