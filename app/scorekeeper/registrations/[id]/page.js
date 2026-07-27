@@ -149,7 +149,7 @@ export default async function RegistrationPage({ params }) {
 
       <h2 className="t-heading">Roster</h2>
       <div className="card overflow-x-auto">
-        <table className="w-full text-[15px] leading-snug">
+        <table className="w-full text-[14px] leading-snug">
           <thead>
             <tr className="border-b border-afa-navy/15">
               {["Name", "M/F", "Born", "Rating", "Waiver"].map((h, i) => (

@@ -49,7 +49,7 @@ export default function InlineSelect({ action, payload, valueKey, value, options
       // appearance-none drops the native arrow, which is what makes a select
       // in a table cell tall and wide. It still opens on click.
       className={
-        "w-full appearance-none rounded bg-transparent border text-center text-[15px] leading-none py-1 px-0 cursor-pointer " +
+        "w-full appearance-none rounded bg-transparent border text-center text-[14px] leading-none py-1 px-0 cursor-pointer " +
         (state === "error"
           ? "border-afa-red text-afa-red"
           : state === "saving"

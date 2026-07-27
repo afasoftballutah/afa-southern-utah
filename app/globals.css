@@ -60,7 +60,7 @@ textarea {
 .dense-controls select,
 .dense-controls input {
   min-height: 0;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 button {

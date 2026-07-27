@@ -25,8 +25,8 @@ const COLUMNS = [
   { key: "dob", label: "Born", width: "9rem" },
   { key: "rating", label: "Rating", align: "center", width: "5rem" },
   { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
-  { key: "tournament", label: "Tournament" },
   { key: "team", label: "Team" },
+  { key: "tournament", label: "Tournament" },
   { key: "events", label: "#", align: "right", width: "3.5rem" },
 ];
 
@@ -89,7 +89,10 @@ export default async function PlayersPage() {
       detailRows: active.map((a) => ({
         key: a.memberId,
         cells: {
-          name: a.className ? `${a.className} class` : "",
+          // Nothing in the name column. The team's class is the same letter
+          // ladder as the player's rating, so "D class" next to a Rating of D
+          // reads as a contradiction when it is two different facts.
+          name: "",
           waiver: a.signed,
           tournament: a.tournamentName,
           team: (

@@ -118,7 +118,10 @@ export default function DirectorTable({
         // Scrolls inside itself rather than pushing the page sideways. On a
         // laptop nothing scrolls; on a phone the table survives.
         <div className="card overflow-x-auto dense-controls">
-          <table className="w-full text-[15px] leading-snug">
+          {/* 14px, not 15 — the Team and Tournament columns had to fit on one
+              line and a name may never be cut off (JD, 2026-07-27: "the names
+              cant be ellipsis... shrink the fonts as needed"). */}
+          <table className="w-full text-[14px] leading-snug">
             <thead>
               <tr className="border-b border-afa-navy/15">
                 {columns.map((c) => (
@@ -187,7 +190,7 @@ export default function DirectorTable({
                                   ? "text-center "
                                   : "") +
                               (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
-                              (i === 0 ? "font-semibold text-afa-navy max-w-0 truncate" : "text-afa-ink")
+                              (i === 0 ? "font-semibold text-afa-navy" : "text-afa-ink")
                             }
                           >
                             {i === 0 && expandable && (
@@ -220,7 +223,7 @@ export default function DirectorTable({
                                     ? "text-center "
                                     : "") +
                                 (c.hideBelow === "sm" ? "hidden sm:table-cell " : "") +
-                                (i === 0 ? "pl-8 max-w-0 truncate" : "")
+                                (i === 0 ? "pl-8" : "")
                               }
                             >
                               {c.type === "check" && typeof d.cells[c.key] === "boolean" ? (
