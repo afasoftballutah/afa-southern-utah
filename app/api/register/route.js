@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
+import { resolvePlayer, resolveTeam } from "@/lib/identity";
 
 // NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
 // saves the registration, creates one roster_members row per player/coach
@@ -151,22 +152,41 @@ export async function POST(request) {
     return bad("Could not save the roster — please try again", 500);
   }
 
-  // Point the registration at the manager's roster row. That row's signature
-  // is what fills the "Manager's Signature" line on the AFA form, so there is
-  // never a second waiver to chase.
+  // Resolve to stored identities, so this team and these people exist beyond
+  // one weekend. Every failure here is SOFT: an unresolved row leaves a null
+  // for a director to look at, and never costs the manager her registration.
+  // Nothing below is allowed to throw past this point.
   const managerRow = insertedRoster.find((r) => same(r.name, manager.name));
-  if (managerRow) {
-    const patch = { manager_member_id: managerRow.id };
-    if (signaturePng) {
-      // She signed while submitting: put it on her roster row too, so the
-      // roster page and the form agree.
-      await supabase
-        .from("roster_members")
-        .update({ signature_png: signaturePng, signed_at: new Date().toISOString() })
-        .eq("id", managerRow.id);
-    }
-    await supabase.from("registrations").update(patch).eq("id", registrationId);
+  const patch = { manager_member_id: managerRow?.id ?? null };
+
+  try {
+    patch.team_id = await resolveTeam(supabase, { teamName: teamName.trim(), divisionId });
+
+    await Promise.all(
+      insertedRoster.map(async (row) => {
+        const source = rosterRows.find((r) => r.name === row.name);
+        const playerId = await resolvePlayer(supabase, {
+          name: row.name,
+          birthDate: source?.birth_date ?? null,
+        });
+        if (playerId) {
+          await supabase.from("roster_members").update({ player_id: playerId }).eq("id", row.id);
+        }
+      })
+    );
+  } catch (err) {
+    console.error("identity resolution failed", err);
   }
+
+  // Her one signature also goes on her roster row, so the roster page and the
+  // form's manager line cannot disagree.
+  if (managerRow && signaturePng) {
+    await supabase
+      .from("roster_members")
+      .update({ signature_png: signaturePng, signed_at: new Date().toISOString() })
+      .eq("id", managerRow.id);
+  }
+  await supabase.from("registrations").update(patch).eq("id", registrationId);
 
   try {
     await regenerateAndStoreWaiverPdf(registrationId);
