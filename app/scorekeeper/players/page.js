@@ -8,8 +8,9 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import InlineSelect from "@/components/scorekeeper/InlineSelect";
-import PlayerDetail from "@/components/scorekeeper/PlayerDetail";
+import RowAction from "@/components/scorekeeper/RowAction";
 import Link from "next/link";
+import { Fragment } from "react";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 export const metadata = { title: "Players — Control Center" };
@@ -24,10 +25,11 @@ const COLUMNS = [
   { key: "gender", label: "M/F", align: "center", width: "4rem" },
   { key: "dob", label: "Born", width: "9rem" },
   { key: "rating", label: "Rating", align: "center", width: "5rem" },
-  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
   { key: "team", label: "Team" },
   { key: "tournament", label: "Tournament" },
+  { key: "class", label: "Class", align: "center", width: "4.5rem" },
   { key: "events", label: "#", align: "right", width: "3.5rem" },
+  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
 ];
 
 const FILTERS = [
@@ -44,6 +46,29 @@ const ratingRank = (r) => {
   const i = RATINGS.indexOf(r);
   return i === -1 ? -1 : RATINGS.length - i;
 };
+
+// Text / Call / email, on one line. Reaching someone is about the person, so
+// it sits with them rather than on a page of its own.
+function contactOf(appearances) {
+  const c = appearances.find((a) => a.email || a.phone);
+  if (!c) return null;
+  const digits = String(c.phone ?? "").replace(/\D/g, "");
+  return (
+    <span className="flex flex-wrap items-center gap-x-3">
+      {c.phone && (
+        <Fragment key="phone">
+          <a className="t-label text-afa-navy underline" href={`sms:${digits}`}>Text</a>
+          <a className="t-label text-afa-navy underline" href={`tel:${digits}`}>Call</a>
+        </Fragment>
+      )}
+      {c.email && (
+        <a className="t-label text-afa-navy underline" href={`mailto:${c.email}`}>
+          {c.email}
+        </a>
+      )}
+    </span>
+  );
+}
 
 export default async function PlayersPage() {
   const store = await cookies();
@@ -84,40 +109,65 @@ export default async function PlayersPage() {
 
     return {
       key: p.id,
-      // Every event, in the same columns as the row above. The waiver tick
-      // is per event, because that is what a signature actually is.
-      detailRows: active.map((a) => ({
-        key: a.memberId,
-        cells: {
-          // Nothing in the name column. The team's class is the same letter
-          // ladder as the player's rating, so "D class" next to a Rating of D
-          // reads as a contradiction when it is two different facts.
-          name: "",
-          waiver: a.signed,
-          tournament: a.tournamentName,
-          team: (
-            <Link
-              href={`/scorekeeper/registrations/${a.registrationId}`}
-              className="text-afa-navy hover:underline"
-            >
-              {a.teamName}
-            </Link>
-          ),
+      // First the actions, each sitting in the column it belongs to — merge
+      // under the name because it is about who this person is, move under the
+      // team because it is about which team they are on. Then every event, in
+      // these same columns.
+      detailRows: [
+        {
+          key: `${p.id}-actions`,
+          cells: {
+            name: (
+              <RowAction
+                label="Merge duplicate"
+                title={`Merge into ${p.full_name}`}
+                note="Everything on the duplicate moves here. Nothing is deleted."
+                placeholder="Pick the duplicate…"
+                action="mergePlayers"
+                valueKey="dropId"
+                payload={{ keepId: p.id }}
+                confirmText={`Merge {name} into ${p.full_name}? Nothing is deleted.`}
+                options={players
+                  .filter((o) => o.id !== p.id)
+                  .map((o) => ({
+                    id: o.id,
+                    label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
+                  }))}
+              />
+            ),
+            team: lastAppearance ? (
+              <RowAction
+                label="Move team"
+                title={`Move ${p.full_name}`}
+                note="Both waivers are rebuilt."
+                placeholder="Pick a team…"
+                action="movePlayer"
+                valueKey="toRegistrationId"
+                payload={{ memberId: lastAppearance.memberId }}
+                confirmText={`Move ${p.full_name} to {name}? Both waivers are rebuilt.`}
+                options={openRegistrations}
+              />
+            ) : null,
+            tournament: contactOf(active),
+          },
         },
-      })),
-      detailActions: (
-        <PlayerDetail
-          person={{ id: p.id, name: p.full_name }}
-          appearances={active}
-          registrations={openRegistrations}
-          otherPeople={players
-            .filter((o) => o.id !== p.id)
-            .map((o) => ({
-              id: o.id,
-              label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
-            }))}
-        />
-      ),
+        ...active.map((a) => ({
+          key: a.memberId,
+          cells: {
+            team: (
+              <Link
+                href={`/scorekeeper/registrations/${a.registrationId}`}
+                className="text-afa-navy hover:underline"
+              >
+                {a.teamName}
+              </Link>
+            ),
+            tournament: a.tournamentName,
+            class: a.className ?? "—",
+            waiver: a.signed,
+          },
+        })),
+      ],
       tags,
       search: `${p.full_name} ${teams.join(" ")} ${active.map((a) => a.tournamentName).join(" ")} ${p.rating ?? ""}`,
       cells: {
@@ -125,6 +175,9 @@ export default async function PlayersPage() {
         // The MOST RECENT event only. Every event this person played opens
         // underneath, in these same columns.
         tournament: lastAppearance?.tournamentName ?? "—",
+        // The team's class AT THAT TOURNAMENT. Same letters as a rating and a
+        // different fact — one is the person, this is the team they played on.
+        class: lastAppearance?.className ?? "—",
         team: lastAppearance ? (
           <Link
             href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}

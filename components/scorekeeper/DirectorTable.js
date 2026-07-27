@@ -19,8 +19,8 @@ import Link from "next/link";
 // and this file owns sorting and filtering.
 //
 //   columns [{ key, label, align?, width?, type?: "check"|"text", hideBelow? }]
-//   rows    [{ key, href, detailRows?, detailActions?, cells: {…},
-//              sortValues: {…}, tags: [], search }]
+//   rows    [{ key, href, detailRows?, cells: {…}, sortValues: {…}, tags: [],
+//              search }]
 //
 // A row with `detailRows` opens in place instead of navigating, and the rows
 // it opens use THE SAME COLUMNS. JD, 2026-07-27: "youre reinventing formats
@@ -148,7 +148,7 @@ export default function DirectorTable({
             </thead>
             <tbody>
               {visible.map((r) => {
-                const expandable = Boolean(r.detailRows?.length || r.detailActions);
+                const expandable = Boolean(r.detailRows?.length);
                 const isOpen = expandable && openKey === r.key;
                 return (
                   <Fragment key={r.key}>
@@ -241,13 +241,6 @@ export default function DirectorTable({
                           ))}
                         </tr>
                       ))}
-                    {isOpen && r.detailActions && (
-                      <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
-                        <td colSpan={columns.length} className="px-3 pl-8 py-2">
-                          {r.detailActions}
-                        </td>
-                      </tr>
-                    )}
                   </Fragment>
                 );
               })}
