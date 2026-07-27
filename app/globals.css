@@ -63,7 +63,10 @@ textarea {
   font-size: 14px;
 }
 
-button {
+/* :not(.pill) because an unlayered element selector BEATS a class inside
+   @layer components — so .pill's own min-height:0 lost, every pill rendered
+   44px tall, and a short one like OK came out as a circle. */
+button:not(.pill) {
   min-height: 44px;
 }
 

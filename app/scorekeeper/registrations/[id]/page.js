@@ -130,7 +130,13 @@ export default async function RegistrationPage({ params }) {
   if (!data) notFound();
   const { registration: r, roster, removed, classes } = data;
   const today = leagueToday();
-  const scope = scopeLabel(r.divisions?.gender, r.divisions?.display_name ?? r.divisions?.name);
+  const enteredClassName = (data.classes ?? []).find((c) => c.id === r.class_id)?.name ?? null;
+  const scope = [
+    scopeLabel(r.divisions?.gender, r.divisions?.display_name ?? r.divisions?.name),
+    enteredClassName,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const sorted = [...roster].sort((a, b) =>
     lastNameKey(a.name).localeCompare(lastNameKey(b.name))
@@ -153,6 +159,7 @@ export default async function RegistrationPage({ params }) {
           roster,
         }}
         classes={classes}
+        showTitle={false}
       />
 
       <h2 className="t-heading">Roster</h2>

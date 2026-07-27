@@ -465,8 +465,23 @@ export async function POST(request) {
 
     // ---- Enter a team at a class -------------------------------------
     case "setRegistrationClass": {
-      const { registrationId, classId } = body;
+      const { registrationId, className } = body;
+      let { classId } = body;
       if (!registrationId) return bad("Which team?");
+      // The inline select sends a NAME, because that is what it shows. Resolve
+      // it here rather than making every caller carry class ids around.
+      if (classId === undefined) {
+        if (!className) classId = null;
+        else {
+          const { data: cls } = await supabase
+            .from("classes")
+            .select("id")
+            .eq("name", className)
+            .maybeSingle();
+          if (!cls) return bad(`There is no class called ${className}`, 404);
+          classId = cls.id;
+        }
+      }
       const { error } = await supabase
         .from("registrations")
         .update({ class_id: classId || null })

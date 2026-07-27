@@ -28,11 +28,15 @@ export default function EligibilityPill({ teamName, enteredClass, suggestedClass
       <button
         type="button"
         onClick={() => setOpen(true)}
+        // .pill first, so it is the same shape and height as every other row
+        // action; the utilities after it only recolour. Its own rounded-full
+        // button was a <button> without .pill, so the global 44px thumb-target
+        // rule applied and a two-letter label came out as a circle.
         className={
-          "px-3 py-1 rounded-full t-label border " +
+          "pill " +
           (ok
-            ? "bg-afa-go/10 border-afa-go/30 text-afa-go"
-            : "bg-afa-red text-white border-afa-red")
+            ? "bg-afa-go/10 border-afa-go/40 text-afa-go"
+            : "bg-afa-red border-afa-red text-white")
         }
       >
         {label}
