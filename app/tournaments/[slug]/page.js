@@ -14,6 +14,7 @@ import {
   isRealPoster,
   isGroupName,
 } from "@/lib/data";
+import { isRegistrationOpen, leagueToday } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
 import Door from "@/components/ui/Door";
@@ -111,17 +112,6 @@ function splitSentences(text) {
 }
 
 
-// Registration block (dispatch-brief-20) — true once registration_closes
-// is strictly before today. Page is ISR (revalidate = 30 above), so this
-// re-evaluates on every regeneration rather than freezing at build time.
-function isDateInPast(dateStr) {
-  if (!dateStr) return false;
-  const date = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date < today;
-}
-
 // Hostname only, for the "Register" door's sub-line (dispatch-brief-20) —
 // falls back to the raw URL if it somehow isn't parseable.
 function registrationHostname(url) {
@@ -131,6 +121,57 @@ function registrationHostname(url) {
   } catch {
     return url;
   }
+}
+
+/** Why registration is closed — same date rules as isRegistrationOpen. */
+function registrationClosedMessage(tournament) {
+  if (tournament?.is_placeholder) {
+    return "Registration is not open for this listing.";
+  }
+  const today = leagueToday();
+  const dateOnly = (v) => (v ? String(v).slice(0, 10) : null);
+
+  const closes = dateOnly(tournament.registration_closes);
+  if (closes && closes < today) {
+    const when = formatDateRange(
+      tournament.registration_closes,
+      tournament.registration_closes
+    );
+    return `Registration closed ${when} — past the entry deadline.`;
+  }
+
+  const end = dateOnly(tournament.end_date) ?? dateOnly(tournament.start_date);
+  if (end && end < today) {
+    const day = tournament.end_date ?? tournament.start_date;
+    const when = formatDateRange(day, day);
+    return `Registration closed — this tournament ended ${when}.`;
+  }
+
+  return "Registration is closed.";
+}
+
+/**
+ * Entry terms for the Registration card.
+ *
+ * The DEADLINE only. Fee, deposit, ump fees and guarantee belong to
+ * Specifics, which already renders all four — listing them here too printed
+ * "Entry fee $300 · Deposit $100 · Guarantee 3 games" twice on the same page,
+ * a few hundred pixels apart. Registration answers "can I still get in, and
+ * by when"; Specifics answers "what does it cost".
+ *
+ * Only fields that exist — never a bare "$". Data is thin: 1 of 40
+ * tournaments carries a registration_closes today, so this is usually empty
+ * and the card is a door with no terms under it.
+ */
+function registrationTerms(tournament) {
+  const rows = [];
+  if (tournament.registration_closes) {
+    rows.push([
+      "Closes",
+      formatDateRange(tournament.registration_closes, tournament.registration_closes),
+    ]);
+  }
+  return rows;
 }
 
 export default async function TournamentDetailPage({ params }) {
@@ -198,16 +239,16 @@ export default async function TournamentDetailPage({ params }) {
     prizesLines.length > 0 ||
     specialRulesLines.length > 0;
 
-  // Registration block (dispatch-brief-20) — renders only when at least one
-  // field is set. St. George City runs registration for this tournament
-  // (registration_url), not this site's own form.
+  // Registration — same open/closed rule as /register (isRegistrationOpen).
+  // Never use tournaments.status. Terms only when a field has a real value.
+  const registrationOpen = isRegistrationOpen(tournament);
+  const regTerms = registrationTerms(tournament);
   const hasRegistrationBlock = Boolean(
-    tournament.registration_closes || tournament.registration_url || tournament.registration_note
+    tournament.registration_closes ||
+      tournament.registration_url ||
+      tournament.registration_note ||
+      regTerms.length > 0
   );
-  const registrationClosed = isDateInPast(tournament.registration_closes);
-  const registrationClosedDateText = tournament.registration_closes
-    ? formatDateRange(tournament.registration_closes, tournament.registration_closes)
-    : null;
   const registrationHost = registrationHostname(tournament.registration_url);
 
   return (
@@ -318,55 +359,52 @@ export default async function TournamentDetailPage({ params }) {
         />
       ) : null}
 
-      {/* Registration (dispatch-brief-20) — sits directly below the action-
-          row doors. St. George City runs registration for this tournament,
-          not this site, so there's no site-side form to link to: closed,
-          it's a plain dated line (font-bold, muted, NOT a link, NOT red) so
-          a late arrival reads "closed" rather than "broken link"; open, it
-          points out to the city's page. No red here — the home page's
-          site-wide "Register a Team" button is untouched and out of scope. */}
+      {/* Registration — same isRegistrationOpen rule as /register. Open:
+          state fee/deposit/guarantee/deadline plainly (only fields that
+          exist). Closed: say why (deadline vs event over), not a silent
+          missing button. Schedule still owns the spot once games exist. */}
       {hasRegistrationBlock && !hasSchedule && (
         <Card className="space-y-3">
           <h2 className="t-heading">Registration</h2>
-          <div>
-            {registrationClosed ? (
-              <>
-                <p className="font-bold text-afa-ink/60">
-                  Registration closed {registrationClosedDateText}
-                </p>
-                {tournament.registration_url && (
-                  <a
-                    href={tournament.registration_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-afa-navy text-sm mt-2 inline-block"
-                  >
-                    {tournament.registration_url}
-                  </a>
-                )}
-                {tournament.registration_note && (
-                  <p className="text-sm text-afa-ink/70 mt-2">{tournament.registration_note}</p>
-                )}
-              </>
-            ) : (
-              tournament.registration_url && (
-                <>
-                  <a
-                    href={tournament.registration_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block min-h-11 hover:opacity-80"
-                  >
-                    <p className="font-bold text-afa-navy">Register</p>
+          {registrationOpen ? (
+            <>
+              {regTerms.length > 0 && (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {regTerms.map(([label, value]) => (
+                    <Fragment key={label}>
+                      <span className="t-strong">{label}</span>
+                      <span className="t-body">{value}</span>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+              {tournament.registration_url ? (
+                <a
+                  href={tournament.registration_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block min-h-11 hover:opacity-80"
+                >
+                  <p className="font-bold text-afa-navy">Register</p>
+                  {registrationHost && (
                     <p className="text-xs text-afa-ink/60 mt-1">{registrationHost}</p>
-                  </a>
-                  {tournament.registration_note && (
-                    <p className="text-sm text-afa-ink/70 mt-2">{tournament.registration_note}</p>
                   )}
-                </>
-              )
-            )}
-          </div>
+                </a>
+              ) : null}
+              {tournament.registration_note && (
+                <p className="text-sm text-afa-ink/70">{tournament.registration_note}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="font-bold text-afa-ink/60">
+                {registrationClosedMessage(tournament)}
+              </p>
+              {tournament.registration_note && (
+                <p className="text-sm text-afa-ink/70">{tournament.registration_note}</p>
+              )}
+            </>
+          )}
         </Card>
       )}
 
