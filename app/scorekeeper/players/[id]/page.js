@@ -7,6 +7,7 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import PersonActions from "@/components/scorekeeper/PersonActions";
 import ClassPicker from "@/components/scorekeeper/ClassPicker";
+import { RATINGS } from "@/lib/class";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function PersonPage({ params }) {
   const person = await getPerson(id);
   if (!person) notFound();
 
-  const [{ players, classes }, teams] = await Promise.all([listPeople(), listTeams()]);
+  const [{ players }, teams] = await Promise.all([listPeople(), listTeams()]);
   const openRegistrations = teams.flatMap((t) =>
     t.registrations
       .filter((r) => r.status !== "withdrawn")
@@ -49,17 +50,18 @@ export default async function PersonPage({ params }) {
       title={person.full_name}
       count={[
         person.birth_date ? `Born ${person.birth_date}` : "No birth date on file",
-        person.className ? `Class ${person.className}` : "Not rated",
+        person.rating ? `Rated ${person.rating}` : "Unranked",
       ].join(" · ")}
       back="/scorekeeper/players"
     >
       <ClassPicker
-        label="Class"
-        classes={classes}
-        value={person.class_id ?? ""}
-        action="setPlayerClass"
+        label="Rating"
+        options={[{ id: "", name: "Unranked" }, ...RATINGS.map((r) => ({ id: r, name: r }))]}
+        value={person.rating ?? ""}
+        action="setPlayerRating"
+        valueKey="rating"
         payload={{ playerId: person.id }}
-        hint="What this person is rated. A team's class is worked out from the players on it, so this is where it starts."
+        hint="What this person is rated. A team's CLASS is worked out from the ratings on its roster — Rec takes nobody letter-ranked, E takes up to three D or one C and one D, D takes up to three C, Open takes anyone."
       />
 
       {contact && (

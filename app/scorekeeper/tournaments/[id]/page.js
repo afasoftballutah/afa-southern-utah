@@ -45,9 +45,9 @@ async function load(id) {
   // Class is a property of a PERSON, so a team's class is worked out from who
   // is on it. JD, 2026-07-27: "The team registers for the tournament with the
   // players and then gets put into a suggested class based on the tournament."
-  const { data: allPlayers } = await supabase.from("players").select("id, class_id");
+  const { data: allPlayers } = await supabase.from("players").select("id, rating");
   const { data: allClasses } = await supabase.from("classes").select("id, name, sort_order").order("sort_order");
-  const classOf = new Map((allPlayers ?? []).map((p) => [p.id, p.class_id]));
+  const ratingOf = new Map((allPlayers ?? []).map((p) => [p.id, p.rating]));
 
   // What this tournament actually runs — a D team at a Rec/E event plays E.
   const offeredClassIds = [
@@ -68,7 +68,7 @@ async function load(id) {
     classes: allClasses ?? [],
     registrations: (registrations ?? []).map((r) => {
       const roster = (membersBy.get(r.id) ?? []).map((m) => ({
-        class_id: m.player_id ? (classOf.get(m.player_id) ?? null) : null,
+        rating: m.player_id ? (ratingOf.get(m.player_id) ?? null) : null,
       }));
       return {
         ...r,

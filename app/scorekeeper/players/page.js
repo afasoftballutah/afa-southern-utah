@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { listPeople, scopeLabel } from "@/lib/director";
+import { RATINGS } from "@/lib/class";
 import { lastNameFirst, lastNameKey } from "@/lib/names";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
@@ -18,7 +19,7 @@ export const metadata = { title: "Players — Control Center" };
 const COLUMNS = [
   { key: "name", label: "Name" },
   { key: "team", label: "Team" },
-  { key: "class", label: "Class", width: "5rem" },
+  { key: "rating", label: "Rating", width: "5rem" },
   { key: "division", label: "Division", width: "6rem", hideBelow: "sm" },
   { key: "events", label: "Events", align: "right", width: "5rem" },
   { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
@@ -28,14 +29,16 @@ const COLUMNS = [
 const FILTERS = [
   { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
   { key: "managers", label: "Managers", tag: "manager" },
-  { key: "noclass", label: "No class", tag: "noclass" },
+  { key: "norating", label: "Unranked", tag: "norating" },
   { key: "nodob", label: "No birth date", tag: "nodob" },
 ];
 
-// Sort Class by strength, not alphabetically — D before E is meaningless as
-// letters, and unrated belongs at one end rather than under "—".
-const classRank = (id, classes) =>
-  id ? (classes.find((c) => c.id === id)?.sort_order ?? 0) : -1;
+// Sort by strength, not alphabetically. A is strongest, and unranked sorts to
+// one end rather than scattering under "—".
+const ratingRank = (r) => {
+  const i = RATINGS.indexOf(r);
+  return i === -1 ? -1 : RATINGS.length - i;
+};
 
 export default async function PlayersPage() {
   const store = await cookies();
@@ -48,7 +51,7 @@ export default async function PlayersPage() {
     );
   }
 
-  const { players, unmatched, classes } = await listPeople();
+  const { players, unmatched } = await listPeople();
 
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
@@ -60,18 +63,19 @@ export default async function PlayersPage() {
     if (unsigned > 0) tags.push("unsigned");
     if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
-    if (!p.class_id) tags.push("noclass");
+    if (!p.rating) tags.push("norating");
 
     return {
       key: p.id,
       href: `/scorekeeper/players/${p.id}`,
       tags,
-      search: `${p.full_name} ${teams.join(" ")} ${p.className ?? ""}`,
+      search: `${p.full_name} ${teams.join(" ")} ${p.rating ?? ""}`,
       cells: {
         name: lastNameFirst(p.full_name),
         team: teams.join(", ") || "—",
-        // The player's own rating, which is what decides a team's class.
-        class: p.className ?? "—",
+        // A person's RATING. A team's class is derived from these — see
+        // lib/class.js. They are different ladders: there is no C class.
+        rating: p.rating ?? "—",
         division: scopeLabel(latest?.gender, null) || "—",
         events: active.length,
         // Ticked when every roster they are on is signed. A paper roster is
@@ -82,7 +86,7 @@ export default async function PlayersPage() {
       sortValues: {
         name: lastNameKey(p.full_name),
         events: active.length,
-        class: classRank(p.class_id, classes),
+        rating: ratingRank(p.rating),
       },
     };
   });

@@ -9,7 +9,7 @@ import { directorPost } from "./DirectorForm";
 // No confirm dialog here. A class is a value you change and change back —
 // unlike a move or a merge, nothing else follows from it — and a prompt on
 // every rating would make rating a whole roster miserable.
-export default function ClassPicker({ label, classes, value, action, payload, hint }) {
+export default function ClassPicker({ label, options, value, action, valueKey = "classId", payload, hint }) {
   const [current, setCurrent] = useState(value ?? "");
   const [state, setState] = useState("idle");
 
@@ -17,7 +17,7 @@ export default function ClassPicker({ label, classes, value, action, payload, hi
     const previous = current;
     setCurrent(next);
     setState("saving");
-    const res = await directorPost({ ...payload, action, classId: next || null });
+    const res = await directorPost({ ...payload, action, [valueKey]: next || null });
     if (res.error) {
       setCurrent(previous);
       setState("error");
@@ -38,7 +38,7 @@ export default function ClassPicker({ label, classes, value, action, payload, hi
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        {[{ id: "", name: "Not rated" }, ...classes].map((c) => (
+        {options.map((c) => (
           <button
             key={c.id || "none"}
             type="button"

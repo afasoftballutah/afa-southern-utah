@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
+import { RATINGS } from "@/lib/class";
 
 export const runtime = "nodejs";
 
@@ -404,24 +405,19 @@ export async function POST(request) {
     }
 
     // ---- Rate a player -----------------------------------------------
-    case "setPlayerClass": {
-      const { playerId, classId } = body;
+    case "setPlayerRating": {
+      const { playerId, rating } = body;
       if (!playerId) return bad("Which player?");
-      if (classId) {
-        const { data: cls } = await supabase
-          .from("classes")
-          .select("id")
-          .eq("id", classId)
-          .maybeSingle();
-        if (!cls) return bad("That class does not exist", 404);
+      if (rating && !RATINGS.includes(rating)) {
+        return bad(`Rating must be one of ${RATINGS.join(", ")}, or blank`);
       }
       const { error } = await supabase
         .from("players")
-        .update({ class_id: classId || null })
+        .update({ rating: rating || null })
         .eq("id", playerId);
       if (error) {
-        console.error("set player class failed", error);
-        return bad("Could not save that class — please try again", 500);
+        console.error("set player rating failed", error);
+        return bad("Could not save that rating — please try again", 500);
       }
       return Response.json({ ok: true });
     }

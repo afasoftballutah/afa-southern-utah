@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { suggestClass, formatCounts } from "@/lib/class.js";
+import { suggestClass, formatCounts, RATINGS } from "@/lib/class.js";
 
 const CLASSES = [
   { id: "rec", name: "Rec", sort_order: 10 },
@@ -8,103 +8,141 @@ const CLASSES = [
   { id: "d", name: "D", sort_order: 30 },
   { id: "open", name: "Open", sort_order: 40 },
 ];
-const p = (...ids) => ids.map((class_id) => ({ class_id }));
 
-test("a full roster plays at the level of its 4th best player", () => {
-  // D D D E Rec Rec -> the 4th strongest is E.
-  const s = suggestClass(p("d", "d", "d", "e", "rec", "rec"), CLASSES);
-  assert.equal(s.className, "E");
-  assert.equal(s.provisional, false);
-  assert.match(s.reason, /4th best player on the roster is E/);
-});
+/** roster("C", "D", "D", null, null) */
+const roster = (...ratings) => ratings.map((rating) => ({ rating }));
+const rep = (rating, count) => Array(count).fill(rating);
 
-test("one ringer does not drag a weak team up — the whole point of the rule", () => {
-  const s = suggestClass(p("open", "rec", "rec", "rec", "rec"), CLASSES);
+// JD, 2026-07-27: "D can have up to 3 Cs. Open can be anyone. E can have up to
+// three Ds or a C and one D. REC can have nobody letter-ranked."
+
+test("nobody letter-ranked is Rec", () => {
+  const s = suggestClass(roster(null, null, null), CLASSES);
   assert.equal(s.className, "Rec");
 });
 
-test("four strong players cannot hide behind eight weak ones", () => {
-  const s = suggestClass(p("d", "d", "d", "d", ...Array(8).fill("rec")), CLASSES);
+test("one E player is enough to bar Rec", () => {
+  const s = suggestClass(roster("E", null, null), CLASSES);
+  assert.equal(s.className, "E");
+  assert.match(s.reason, /Rec takes nobody letter-ranked/);
+});
+
+test("E takes up to three D", () => {
+  assert.equal(suggestClass(roster(...rep("D", 3), "E"), CLASSES).className, "E");
+});
+
+test("a fourth D pushes the team to D", () => {
+  const s = suggestClass(roster(...rep("D", 4)), CLASSES);
   assert.equal(s.className, "D");
+  assert.match(s.reason, /E takes up to three D, and this roster has 4/);
 });
 
-test("exactly four rated is not provisional", () => {
-  const s = suggestClass(p("open", "d", "e", "rec"), CLASSES);
-  assert.equal(s.className, "Rec");
-  assert.equal(s.provisional, false);
+test("E takes one C and one D", () => {
+  assert.equal(suggestClass(roster("C", "D", "E", "E"), CLASSES).className, "E");
 });
 
-test("fewer than four rated is provisional and says so", () => {
-  const s = suggestClass(p("d", "e", "rec"), CLASSES);
-  assert.equal(s.className, "Rec", "falls back to the weakest one known");
-  assert.equal(s.provisional, true);
-  assert.match(s.reason, /only 3 players are rated/i);
+test("one C and two D is too much for E", () => {
+  const s = suggestClass(roster("C", "D", "D"), CLASSES);
+  assert.equal(s.className, "D");
+  assert.match(s.reason, /With a C on the roster, E takes only one D/);
 });
 
-test("a single rated player is provisional, not authoritative", () => {
-  const s = suggestClass(p("open"), CLASSES);
+test("two C is too much for E, but fine for D", () => {
+  const s = suggestClass(roster("C", "C"), CLASSES);
+  assert.equal(s.className, "D");
+  assert.match(s.reason, /E takes at most one C/);
+});
+
+test("D takes up to three C", () => {
+  assert.equal(suggestClass(roster(...rep("C", 3), ...rep("D", 8)), CLASSES).className, "D");
+});
+
+test("a fourth C pushes the team to Open", () => {
+  const s = suggestClass(roster(...rep("C", 4)), CLASSES);
   assert.equal(s.className, "Open");
-  assert.equal(s.provisional, true);
+  assert.match(s.reason, /D takes up to three C, and this roster has 4/);
 });
 
-test("an all-Rec roster stays Rec", () => {
-  assert.equal(suggestClass(p("rec", "rec", "rec", "rec"), CLASSES).className, "Rec");
+test("Open takes anyone", () => {
+  const s = suggestClass(roster(...rep("A", 5), ...rep("C", 9)), CLASSES);
+  assert.equal(s.className, "Open");
 });
 
-test("nobody rated means no suggestion, and it says why", () => {
-  const s = suggestClass(p(null, null), CLASSES);
-  assert.equal(s.classId, null);
-  assert.match(s.reason, /no player on this roster has a class/i);
+// A and B are not covered by the stated rules. Treated as Open-only, which is
+// the conservative read — an A player must not quietly appear on a D team.
+test("a single A bars everything below Open", () => {
+  const s = suggestClass(roster("A", ...rep("E", 10)), CLASSES);
+  assert.equal(s.className, "Open");
+  assert.match(s.reason, /1 A on the roster — only Open takes those/);
 });
 
-test("an empty roster is not the same as an unrated one", () => {
-  assert.match(suggestClass([], CLASSES).reason, /no players on the roster/i);
+test("a single B does the same", () => {
+  assert.equal(suggestClass(roster("B", "E"), CLASSES).className, "Open");
 });
 
-test("unrated players are counted and flagged, not ignored", () => {
-  const s = suggestClass(p("e", "e", "e", "e", null, null), CLASSES);
+test("unranked players never bar a class, but are flagged", () => {
+  const s = suggestClass(roster("D", null, null, null), CLASSES);
   assert.equal(s.className, "E");
-  assert.equal(s.rated, 4);
-  assert.equal(s.unrated, 2);
-  assert.match(s.reason, /2 players have no class yet/);
+  assert.equal(s.unranked, 3);
+  assert.equal(s.ratedCount, 1);
+  assert.match(s.reason, /3 players have no rating yet/);
 });
 
-test("the tournament caps a suggestion it does not offer", () => {
-  const s = suggestClass(p("d", "d", "d", "d"), CLASSES, ["rec", "e"]);
+test("an unknown rating string is treated as unranked, not as a bar", () => {
+  const s = suggestClass(roster("Z", null), CLASSES);
+  assert.equal(s.className, "Rec");
+  assert.equal(s.unranked, 2);
+});
+
+test("an empty roster gets no suggestion", () => {
+  const s = suggestClass([], CLASSES);
+  assert.equal(s.classId, null);
+  assert.match(s.reason, /no players on the roster/i);
+});
+
+test("the tournament caps a class it does not run", () => {
+  // Eligible for D, but the event only runs Rec and E.
+  const s = suggestClass(roster("C", "C"), CLASSES, ["rec", "e"]);
   assert.equal(s.className, "E");
   assert.equal(s.cappedFrom, "D");
   assert.match(s.reason, /does not run D/);
 });
 
-test("a team below everything offered is lifted to the lowest offered", () => {
-  const s = suggestClass(p("rec", "rec", "rec", "rec"), CLASSES, ["d", "open"]);
+test("a Rec team at a D/Open event is lifted to D", () => {
+  const s = suggestClass(roster(null, null), CLASSES, ["d", "open"]);
   assert.equal(s.className, "D");
   assert.equal(s.cappedFrom, "Rec");
 });
 
-test("no cap when the tournament offers the suggested class", () => {
-  const s = suggestClass(p("d", "d", "d", "d"), CLASSES, ["e", "d", "open"]);
+test("no cap when the tournament runs the suggested class", () => {
+  const s = suggestClass(roster("C", "C"), CLASSES, ["e", "d", "open"]);
   assert.equal(s.className, "D");
   assert.equal(s.cappedFrom, null);
 });
 
-test("an empty offer list is treated as 'the tournament did not say'", () => {
-  assert.equal(suggestClass(p("d", "d", "d", "d"), CLASSES, []).className, "D");
-  assert.equal(suggestClass(p("d", "d", "d", "d"), CLASSES, null).className, "D");
+test("an empty offer list means the tournament did not say", () => {
+  assert.equal(suggestClass(roster("C", "C"), CLASSES, []).className, "D");
+  assert.equal(suggestClass(roster("C", "C"), CLASSES, null).className, "D");
 });
 
-test("a class the roster references but the league does not have is ignored", () => {
-  const s = suggestClass(p("ghost", "e"), CLASSES);
-  assert.equal(s.className, "E");
-  assert.equal(s.rated, 1);
+test("blocked classes are reported in order, so a director can see the whole ladder", () => {
+  const s = suggestClass(roster("C", "C"), CLASSES);
+  assert.deepEqual(
+    s.blocked.map((b) => b.name),
+    ["Rec", "E"]
+  );
 });
 
 test("the breakdown reads strongest first", () => {
-  const s = suggestClass(p("rec", "rec", "e", "d"), CLASSES);
-  assert.equal(formatCounts(s.counts), "1 D · 1 E · 2 Rec");
+  const s = suggestClass(roster("E", "E", "D", "C"), CLASSES);
+  assert.equal(formatCounts(s.counts), "1 C · 1 D · 2 E");
 });
 
 test("formatCounts survives nothing", () => {
   assert.equal(formatCounts([]), "nobody rated");
   assert.equal(formatCounts(null), "nobody rated");
+});
+
+test("RATINGS is strongest first, which everything else assumes", () => {
+  assert.deepEqual(RATINGS, ["A", "B", "C", "D", "E"]);
 });
