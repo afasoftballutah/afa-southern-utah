@@ -5,14 +5,25 @@ import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getTeam, listTeams, scopeLabel } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import MergeControl from "@/components/scorekeeper/MergeControl";
+import DirectorTable from "@/components/scorekeeper/DirectorTable";
+import RowAction from "@/components/scorekeeper/RowAction";
+import ContactButton from "@/components/scorekeeper/ContactButton";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // reads PII — never cached
 
-// Titles are PUBLIC. Next runs generateMetadata for anyone who requests the
-// URL, session or not, so naming the record here would put a real person's or
-// team's name in the <title> of a page they are not allowed to open — and in
-// any link preview of it. Gate it like the page body.
+// Same table as everywhere else. This page used to be a bespoke list of cards
+// with 44px buttons, which is why it looked like a different product from the
+// four pages around it (JD, 2026-07-27: "We need the formatting to be
+// consistent everywhere").
+const COLUMNS = [
+  { key: "tournament", label: "Tournament" },
+  { key: "manager", label: "Manager" },
+  { key: "status", label: "Status", width: "7rem" },
+  { key: "paid", label: "Paid", type: "check", align: "center", width: "5rem" },
+  { key: "actions", label: "", align: "right", width: "11rem" },
+];
+
+// Titles are PUBLIC — Next runs this for anyone who requests the URL.
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const store = await cookies();
@@ -36,9 +47,35 @@ export default async function TeamPage({ params }) {
   const team = await getTeam(id);
   if (!team) notFound();
   const all = await listTeams();
-  const others = all.filter((t) => t.id !== team.id).map((t) => ({
-    id: t.id,
-    label: `${t.name}${scopeLabel(t.gender, t.className) ? ` (${scopeLabel(t.gender, t.className)})` : ""}`,
+  const others = all
+    .filter((t) => t.id !== team.id)
+    .map((t) => ({
+      id: t.id,
+      label: `${t.name}${scopeLabel(t.gender, t.className) ? ` (${scopeLabel(t.gender, t.className)})` : ""}`,
+    }));
+
+  const rows = team.registrations.map((r) => ({
+    key: r.registrationId,
+    search: `${r.tournamentName} ${r.managerName ?? ""}`,
+    sortValues: { tournament: r.startDate ?? "", manager: r.managerName ?? "" },
+    cells: {
+      tournament: (
+        <Link href={`/scorekeeper/registrations/${r.registrationId}`} className="hover:underline">
+          {r.tournamentName}
+        </Link>
+      ),
+      manager: r.managerName ?? "—",
+      status: r.status,
+      paid: r.paid,
+      actions: (
+        <span className="flex justify-end gap-2">
+          <ContactButton name={r.managerName} phone={r.managerPhone} email={r.managerEmail} />
+          <Link href={`/scorekeeper/registrations/${r.registrationId}`} className="pill">
+            Roster
+          </Link>
+        </span>
+      ),
+    },
   }));
 
   return (
@@ -46,55 +83,27 @@ export default async function TeamPage({ params }) {
       title={team.name}
       count={scopeLabel(team.gender, team.className) || "No division scope"}
       back="/scorekeeper/teams"
+      inline={
+        <RowAction
+          label="Merge duplicate"
+          title={`Merge into ${team.name}`}
+          note="Every registration on the duplicate moves here. Nothing is deleted."
+          placeholder="Pick the duplicate…"
+          action="mergeTeams"
+          valueKey="dropId"
+          payload={{ keepId: team.id }}
+          options={others}
+        />
+      }
     >
-      <div className="space-y-2">
-        <p className="t-label">Tournaments entered</p>
-        {team.registrations.length === 0 ? (
-          <div className="card p-6 text-center"><p className="t-meta">No registrations yet.</p></div>
-        ) : (
-          <ul className="card divide-y divide-black/5">
-            {team.registrations.map((r) => (
-              <li key={r.registrationId} className="px-4 py-3 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="t-body block truncate">{r.tournamentName}</span>
-                    <span className="t-meta block truncate">{r.managerName}</span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="t-label block">{r.status}</span>
-                    <span className="t-meta block">{r.paid ? "Paid" : "Unpaid"}</span>
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {r.managerPhone && (
-                    <>
-                      <a className="btn-quiet" href={`sms:${r.managerPhone.replace(/\D/g, "")}`}>Text</a>
-                      <a className="btn-quiet" href={`tel:${r.managerPhone.replace(/\D/g, "")}`}>Call</a>
-                    </>
-                  )}
-                  {r.managerEmail && (
-                    <a className="btn-quiet" href={`mailto:${r.managerEmail}`}>Email</a>
-                  )}
-                  <Link className="btn-quiet" href="/scorekeeper/registrations">Roster</Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <MergeControl
-        kind="teams"
-        keepId={team.id}
-        keepLabel={team.name}
-        options={others}
-        heading="Same team, listed twice?"
-        note="Pick the other record. Every registration on it moves here, and it stops showing up in lists. Nothing is deleted."
+      <h2 className="t-heading">Tournaments entered</h2>
+      <DirectorTable
+        columns={COLUMNS}
+        rows={rows}
+        defaultSort={{ key: "tournament", dir: "desc" }}
+        empty="This team has not entered a tournament yet."
+        searchPlaceholder="Find a tournament…"
       />
-
-      <p className="t-meta">
-        <Link href="/scorekeeper/teams" className="underline">All teams</Link>
-      </p>
     </DirectorShell>
   );
 }

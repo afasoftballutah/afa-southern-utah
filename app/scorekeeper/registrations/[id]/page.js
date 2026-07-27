@@ -4,14 +4,26 @@ import { notFound } from "next/navigation";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
-import { genderLabel } from "@/lib/director";
+import { scopeLabel } from "@/lib/director";
 import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
 import { leagueToday } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
+import DirectorTable from "@/components/scorekeeper/DirectorTable";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
+
+// The same columns the Players list uses, minus the ones that are constant
+// here — every row is this team at this tournament, so Team, Tournament and
+// Class would repeat the heading.
+const ROSTER_COLUMNS = [
+  { key: "name", label: "Name" },
+  { key: "gender", label: "M/F", align: "center", width: "4rem" },
+  { key: "dob", label: "Born", width: "9rem" },
+  { key: "rating", label: "Rating", align: "center", width: "5rem" },
+  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
+];
 
 // One team at one event. The thing a director means when they say "pull up
 // Fallen at the T-Shirts" — the roster they will actually read down, with the
@@ -118,11 +130,7 @@ export default async function RegistrationPage({ params }) {
   if (!data) notFound();
   const { registration: r, roster, removed, classes } = data;
   const today = leagueToday();
-  // A division literally named "Coed" already says its gender, so do not
-  // print "Coed · Coed".
-  const divisionName = r.divisions?.display_name ?? r.divisions?.name;
-  const gender = genderLabel(r.divisions?.gender);
-  const scope = [...new Set([gender, divisionName].filter(Boolean))].join(" · ");
+  const scope = scopeLabel(r.divisions?.gender, r.divisions?.display_name ?? r.divisions?.name);
 
   const sorted = [...roster].sort((a, b) =>
     lastNameKey(a.name).localeCompare(lastNameKey(b.name))
@@ -148,42 +156,29 @@ export default async function RegistrationPage({ params }) {
       />
 
       <h2 className="t-heading">Roster</h2>
-      <div className="card overflow-x-auto">
-        <table className="w-full text-[14px] leading-snug">
-          <thead>
-            <tr className="border-b border-afa-navy/15">
-              {["Name", "M/F", "Born", "Rating", "Waiver"].map((h, i) => (
-                <th
-                  key={h}
-                  className={"px-3 py-1.5 t-label font-normal " + (i > 0 ? "text-center" : "text-left")}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((m) => (
-              <tr key={m.id} className="border-b border-black/5 last:border-0">
-                <td className="px-3 py-1.5 font-semibold text-afa-navy whitespace-nowrap">
-                  {lastNameFirst(m.name)}
-                  {m.role === "manager" && <span className="t-meta"> · manager</span>}
-                </td>
-                <td className="px-3 py-1.5 text-center">{m.gender ?? "—"}</td>
-                <td className="px-3 py-1.5 text-center whitespace-nowrap tabular-nums">
-                  {bornWithAge(m.birthDate, today)}
-                </td>
-                <td className="px-3 py-1.5 text-center">{m.rating ?? "—"}</td>
-                <td className="px-3 py-1.5 text-center">
-                  <span className={"tick " + (m.signed ? "text-afa-go" : "text-afa-muted/50")}>
-                    {m.signed ? "☑" : "☐"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DirectorTable
+        columns={ROSTER_COLUMNS}
+        rows={sorted.map((m) => ({
+          key: m.id,
+          cells: {
+            name: (
+              <>
+                {lastNameFirst(m.name)}
+                {m.role === "manager" && <span className="t-meta"> · manager</span>}
+              </>
+            ),
+            gender: m.gender ?? "—",
+            dob: bornWithAge(m.birthDate, today),
+            rating: m.rating ?? "—",
+            waiver: m.signed,
+          },
+          search: m.name,
+          sortValues: { name: lastNameKey(m.name), rating: m.rating ?? "" },
+        }))}
+        defaultSort={{ key: "name", dir: "asc" }}
+        empty="Nobody on this roster."
+        searchPlaceholder="Find a player…"
+      />
 
       {removed.length > 0 && (
         <p className="t-meta">

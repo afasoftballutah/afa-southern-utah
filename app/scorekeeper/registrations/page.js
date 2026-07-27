@@ -92,7 +92,7 @@ export default async function RegistrationsPage() {
         </Link>
       </div>
 
-      <Link href="/scorekeeper/registrations/new" className="btn-quiet w-full block text-center">
+      <Link href="/scorekeeper/registrations/new" className="pill">
         Add a team yourself
       </Link>
 

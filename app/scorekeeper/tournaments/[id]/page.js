@@ -178,7 +178,7 @@ export default async function TournamentPage({ params }) {
       )}
 
       <h2 className="t-heading">Teams signed up</h2>
-      <Link href="/scorekeeper/registrations/new" className="btn-quiet w-full block text-center">
+      <Link href="/scorekeeper/registrations/new" className="pill">
         Add a team yourself
       </Link>
       {registrations.length === 0 ? (

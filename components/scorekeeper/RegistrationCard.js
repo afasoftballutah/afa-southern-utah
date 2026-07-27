@@ -159,18 +159,18 @@ export default function RegistrationCard({ registration, classes = [] }) {
 
       <div className="flex flex-wrap gap-2">
         {!reg.paid_at && (
-          <button className="btn-quiet" disabled={busy} onClick={() => confirmThen(`Mark ${reg.team_name} as paid?`, { paid: true }, "Mark paid")}>
+          <button className="pill" disabled={busy} onClick={() => confirmThen(`Mark ${reg.team_name} as paid?`, { paid: true }, "Mark paid")}>
             Mark paid
           </button>
         )}
         {reg.paid_at && (
-          <button className="btn-quiet" disabled={busy} onClick={() => confirmThen(`Undo payment for ${reg.team_name}? The amount is cleared too.`, { paid: false }, "Undo paid")}>
+          <button className="pill" disabled={busy} onClick={() => confirmThen(`Undo payment for ${reg.team_name}? The amount is cleared too.`, { paid: false }, "Undo paid")}>
             Undo paid
           </button>
         )}
         {reg.status !== "confirmed" && (
           <button
-            className="btn-quiet"
+            className="pill"
             disabled={busy}
             onClick={() => confirmThen(`Confirm ${reg.team_name} for this tournament?`, { status: "confirmed" }, "Confirm")}
           >
@@ -179,7 +179,7 @@ export default function RegistrationCard({ registration, classes = [] }) {
         )}
         {reg.status !== "withdrawn" ? (
           <button
-            className="btn-quiet"
+            className="pill"
             disabled={busy}
             onClick={() => confirmThen(`Withdraw ${reg.team_name}? They come off the division and their name is freed for another team.`, { status: "withdrawn" }, "Withdraw")}
           >
@@ -187,24 +187,24 @@ export default function RegistrationCard({ registration, classes = [] }) {
           </button>
         ) : (
           <button
-            className="btn-quiet"
+            className="pill"
             disabled={busy}
             onClick={() => confirmThen(`Reinstate ${reg.team_name}?`, { status: "submitted" }, "Reinstate")}
           >
             Reinstate
           </button>
         )}
-        <button className="btn-quiet" onClick={() => copyLink("roster")}>
+        <button className="pill" onClick={() => copyLink("roster")}>
           {copied === "roster" ? "Copied" : "Team link"}
         </button>
         {/* The manager's private link. A director resends it when she loses
             it — which is the only way she gets it back. */}
-        <button className="btn-quiet" onClick={() => copyLink("manage")}>
+        <button className="pill" onClick={() => copyLink("manage")}>
           {copied === "manage" ? "Copied" : "Manager link"}
         </button>
         {reg.pdf_storage_path && (
           <a
-            className="btn-quiet"
+            className="pill"
             href={`/api/scorekeeper/registrations/${reg.id}/waiver`}
             target="_blank"
             rel="noreferrer"
@@ -212,7 +212,7 @@ export default function RegistrationCard({ registration, classes = [] }) {
             Waiver
           </a>
         )}
-        <button className="btn-quiet" onClick={() => setOpen((v) => !v)}>
+        <button className="pill" onClick={() => setOpen((v) => !v)}>
           {open ? "Hide roster" : "Roster"}
         </button>
       </div>
