@@ -7,6 +7,8 @@ import {
   getTeamSummaries,
   getSeedLabels,
   getTournamentBySlug,
+  getTournamentResults,
+  isTournamentFinished,
   formatDateRange,
   formatFee,
   isRealPoster,
@@ -18,6 +20,7 @@ import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
+import TournamentResults from "@/components/TournamentResults";
 import MyTeamCard from "@/components/MyTeamCard";
 
 // Where and when, split so a list of games lines up in columns.
@@ -148,6 +151,8 @@ export default async function TournamentDetailPage({ params }) {
   const hasSchedule = recentScores.length > 0 || upcomingGames.length > 0;
   const teamSummaries = await getTeamSummaries(tournament);
   const seedLabels = await getSeedLabels(tournament);
+  const finished = isTournamentFinished(tournament);
+  const tournamentResults = finished ? await getTournamentResults(tournament) : [];
 
   const divisions = tournament.divisions ?? [];
 
@@ -298,6 +303,13 @@ export default async function TournamentDetailPage({ params }) {
           2026-07-26). Registration is the live question until there is a
           schedule; the moment there is, the schedule is. They never both
           hold the same spot. */}
+      {finished && tournamentResults.length > 0 ? (
+        <TournamentResults
+          results={tournamentResults}
+          slug={tournament.slug}
+        />
+      ) : null}
+
       {hasSchedule ? (
         <GameFeed
           results={withWhen(recentScores)}

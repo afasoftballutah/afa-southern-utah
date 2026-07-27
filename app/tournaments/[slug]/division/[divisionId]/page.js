@@ -15,23 +15,11 @@ import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 import { mootIfRounds } from "@/lib/bracket/if-game";
+import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
 
 export const revalidate = 30;
 
-// Bracket slots hold PROVENANCE placeholders, not real team names, until
-// pool play fills them in — "Winner of Game 5" or a seed reference like
-// "[A #1]" (the live data brackets the seed; the letter+number form
-// without brackets is included too, belt and suspenders). Neither belongs
-// in the team picker (dispatch-brief-14).
-const SEED_PLACEHOLDER = /^\[?[A-I] #\d+\]?$/;
-const PROVENANCE_PREFIX = /^(Winner|Loser) of Game/;
-
-function isRealTeamName(name) {
-  if (!name) return false;
-  if (SEED_PLACEHOLDER.test(name)) return false;
-  if (PROVENANCE_PREFIX.test(name)) return false;
-  return true;
-}
+// isRealTeamName lives in lib/bracket/standings.js (shared with the archive).
 
 // Pool letters are DERIVED from the games, never hardcoded (2026-07-24).
 // A hardcoded A–F list silently hid pools G/H/I when the league reorganized
@@ -234,49 +222,6 @@ function eventTitle(tournamentName, divisionName) {
  */
 // The podium wears its medals; fourth and below wear their number.
 const PODIUM = { 1: "\u{1F3C6}", 2: "\u{1F948}", 3: "\u{1F949}" };
-
-function bracketStandings(games, teamStatus) {
-  const byTeam = new Map();
-  const add = (name) => {
-    if (!isRealTeamName(name)) return null;
-    if (!byTeam.has(name)) byTeam.set(name, { team: name, w: 0, l: 0 });
-    return byTeam.get(name);
-  };
-  for (const g of games) {
-    const a = add(g.team1_name);
-    const b = add(g.team2_name);
-    if (g.status !== "final" || g.team1_score === null || g.team2_score === null) continue;
-    if (!a || !b || g.team1_score === g.team2_score) continue;
-    const [win, lose] = g.team1_score > g.team2_score ? [a, b] : [b, a];
-    win.w += 1;
-    lose.l += 1;
-  }
-
-  // Only SETTLED places are shown (JD, 2026-07-26). A team still playing
-  // has not finished anywhere yet, and giving them a row number would
-  // read as a placing they have not earned. They sit above everyone who
-  // is out — which is true, they are still in it — and their place is
-  // simply blank until it is decided.
-  const placeOf = (t) => {
-    const st = teamStatus[t];
-    if (!st) return null;
-    // The league writes "Champion" rather than "1st" for the winner, and
-    // a champion is the most settled place there is — it must not fall
-    // through to "still in" for want of a digit.
-    if (st.state === "champion") return { label: st.placement || "Champion", n: 1 };
-    const n = st.placement ? Number(String(st.placement).match(/\d+/)?.[0]) : null;
-    return Number.isFinite(n) ? { label: st.placement, n } : null;
-  };
-
-  return [...byTeam.values()]
-    .map((t) => ({ ...t, finish: placeOf(t.team) }))
-    .sort((x, y) => {
-      if (!x.finish && !y.finish) return y.w - x.w || x.l - y.l || x.team.localeCompare(y.team);
-      if (!x.finish) return -1; // still playing outranks anyone already out
-      if (!y.finish) return 1;
-      return x.finish.n - y.finish.n;
-    });
-}
 
 function StandingsPanel({ name, rows }) {
   if (rows.length === 0) return null;
