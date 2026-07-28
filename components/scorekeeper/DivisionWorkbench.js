@@ -25,12 +25,18 @@ import DivisionMinimums from "./DivisionMinimums";
 // And "Scores" never said what it counted. Games is how many exist; Scored is
 // how many have a final score. Two plain numbers beat one slash nobody can
 // read the meaning of.
+// JD, 2026-07-27: "combine the two teams columns. then just have a Matchups
+// and Scores column with the numbers on all the buttons."
+//
+// The count and the button that opens it were two columns saying one thing.
+// The number now rides on the control it belongs to, so a row is the bracket
+// and the three things you can do to it, each already telling you where it
+// stands.
 const COLUMNS = [
   { key: "division", label: "Division" },
-  { key: "teams", label: "Teams", align: "right", width: "6rem" },
-  { key: "games", label: "Games", align: "right", width: "6rem" },
-  { key: "scored", label: "Scored", align: "right", width: "6rem" },
-  { key: "actions", label: "", align: "right", width: "22rem" },
+  { key: "teams", label: "Teams", align: "right", width: "11rem" },
+  { key: "matchups", label: "Matchups", align: "right", width: "11rem" },
+  { key: "scores", label: "Scores", align: "right", width: "10rem" },
 ];
 
 export default function DivisionWorkbench({ divisions, registrations, classes }) {
@@ -46,35 +52,36 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
   const rows = divisions.map((d) => ({
     key: d.key,
     search: `${d.label} ${d.genderLabel ?? ""} ${d.className ?? ""}`,
-    sortValues: { division: d.sortKey, teams: d.teams, games: d.gamesTotal, scored: d.gamesTotal - d.unplayed },
+    sortValues: {
+      division: d.sortKey,
+      teams: d.teams,
+      matchups: d.gamesTotal,
+      scores: d.gamesTotal - d.unplayed,
+    },
     cells: {
       division: d.label,
-      // X/max. Uncapped divisions borrow whichever is larger, the minimum
-      // needed to run or the teams already in — so the denominator is never
-      // smaller than the numerator.
-      teams: `${d.teams}/${d.teamsMax}`,
-      games: d.gamesTotal === 0 ? "—" : String(d.gamesTotal),
-      scored: d.gamesTotal === 0 ? "—" : String(d.gamesTotal - d.unplayed),
-      actions: (
-        <span className="flex justify-end gap-2">
-          <button
-            type="button"
-            className={"pill pill-solid" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
-            onClick={() => open(d.key, "teams")}
-          >
-            Teams
-          </button>
-          <button
-            type="button"
-            className={"pill pill-solid" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
-            onClick={() => open(d.key, "setup")}
-          >
-            Matchups
-          </button>
-          <Link className="pill pill-solid" href={`/scorekeeper/division/${d.id}`}>
-            Scores
-          </Link>
-        </span>
+      teams: (
+        <button
+          type="button"
+          className={"pill pill-solid" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
+          onClick={() => open(d.key, "teams")}
+        >
+          Teams {d.teams}/{d.teamsMax}
+        </button>
+      ),
+      matchups: (
+        <button
+          type="button"
+          className={"pill pill-solid" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
+          onClick={() => open(d.key, "setup")}
+        >
+          Matchups{d.gamesTotal > 0 ? ` ${d.gamesTotal}` : ""}
+        </button>
+      ),
+      scores: (
+        <Link className="pill pill-solid" href={`/scorekeeper/division/${d.id}`}>
+          Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
+        </Link>
       ),
     },
   }));
