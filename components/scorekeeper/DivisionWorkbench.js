@@ -66,6 +66,7 @@ function Step({ state, children }) {
 }
 
 export default function DivisionWorkbench({ divisions, registrations, classes, setup }) {
+  const divisionOptions = divisions.map((d) => ({ id: d.id, label: d.label }));
   // Keyed on division AND class, because a tournament that runs Coed D and
   // Coed E has two brackets and one division row would hide one of them.
   const [panel, setPanel] = useState(null); // { key, action }
@@ -84,7 +85,13 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       matchups: d.gamesTotal,
       scores: d.gamesTotal - d.unplayed,
     },
-    detail: panel?.key === d.key ? <Panel division={d} action={panel.action} registrations={registrations} classes={classes} /> : null,
+    detail: panel?.key === d.key ? <Panel
+            division={d}
+            action={panel.action}
+            registrations={registrations}
+            classes={classes}
+            divisionOptions={divisionOptions}
+          /> : null,
     cells: {
       division: d.label,
       teams: (
@@ -156,10 +163,8 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
 // if part of the accordion" — a panel below the table left the list intact but
 // disconnected from the row that opened it, and collapsing the list to hide
 // that just traded one problem for another.
-function Panel({ division: d, action, registrations, classes }) {
-  const forDivision = registrations.filter(
-    (r) => r.division_id === d.id && (d.classId == null || r.class_id === d.classId)
-  );
+function Panel({ division: d, action, registrations, classes, divisionOptions }) {
+  const forDivision = registrations.filter((r) => r.division_id === d.id);
 
   if (action === "setup") {
     return (
@@ -190,7 +195,7 @@ function Panel({ division: d, action, registrations, classes }) {
         <p className="t-meta">Nobody has registered for {d.label} yet.</p>
       ) : (
         forDivision.map((r) => (
-          <RegistrationCard key={r.id} registration={r} classes={classes} />
+          <RegistrationCard key={r.id} registration={r} classes={classes} divisions={divisionOptions} />
         ))
       )}
     </div>

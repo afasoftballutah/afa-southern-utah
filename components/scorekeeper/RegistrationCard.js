@@ -4,6 +4,7 @@ import { useState } from "react";
 import EligibilityPill from "./EligibilityPill";
 import ConfirmDialog from "./ConfirmDialog";
 import InlineSelect from "./InlineSelect";
+import RowAction from "./RowAction";
 
 // One team's registration. Used twice: in the list on a tournament page,
 // where it needs its own name; and on that registration's own page, where the
@@ -22,7 +23,7 @@ function money(cents) {
   return `$${(cents / 100).toFixed(2).replace(/\.00$/, "")}`;
 }
 
-export default function RegistrationCard({ registration, classes = [], showTitle = true }) {
+export default function RegistrationCard({ registration, classes = [], divisions = [], showTitle = true }) {
   const [reg, setReg] = useState(registration);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -166,6 +167,21 @@ export default function RegistrationCard({ registration, classes = [], showTitle
             Reinstate
           </button>
         )}
+        {/* Setting up a tournament leaves teams in the division they
+            registered for, which may no longer be the bracket they belong in.
+            The route refuses to remove a division that still has a team, so
+            this is how you empty one. */}
+        <RowAction
+          label="Move division"
+          title={`Move ${reg.team_name}`}
+          note="Same tournament only."
+          placeholder="Pick a division…"
+          action="moveRegistration"
+          valueKey="divisionId"
+          payload={{ registrationId: reg.id }}
+          confirmText={`Move ${reg.team_name} into {name}?`}
+          options={divisions.filter((d) => d.id !== reg.division_id)}
+        />
         <button className="pill" onClick={() => copyLink("roster")}>
           {copied === "roster" ? "Copied" : "Team link"}
         </button>

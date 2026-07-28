@@ -59,7 +59,7 @@ async function load(id) {
   // Only the divisions of THIS tournament decide what classes are on offer.
   const { data: siblingDivisions } = await supabase
     .from("divisions")
-    .select("class_id")
+    .select("id, name, display_name, class_id")
     .eq("tournament_id", registration.tournament_id);
   const offeredClassIds = [
     ...new Set((siblingDivisions ?? []).map((d) => d.class_id).filter(Boolean)),
@@ -86,6 +86,7 @@ async function load(id) {
   return {
     registration,
     classes: classes ?? [],
+    divisions: (siblingDivisions ?? []).map((d) => ({ id: d.id, label: d.display_name ?? d.name })),
     roster,
     removed: (members ?? []).filter((m) => m.removed_at),
     suggestion,
@@ -159,6 +160,7 @@ export default async function RegistrationPage({ params }) {
           roster,
         }}
         classes={classes}
+        divisions={data.divisions}
         showTitle={false}
       />
 

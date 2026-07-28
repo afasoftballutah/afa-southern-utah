@@ -106,72 +106,49 @@ async function load(id) {
 // team's name in the <title> of a page they are not allowed to open — and in
 // any link preview of it. Gate it like the page body.
 /**
- * One row per bracket a director actually runs.
+ * One row per division. A division IS a bracket now.
  *
- * JD, 2026-07-27: "all the classes for that tournaments need to show as a
- * row." A tournament that offers Rec, E, D and Open runs FOUR Coed brackets,
- * not one Coed division — so a single row per division hid three of them.
+ * This used to fan a class-less division out into one row per class the
+ * tournament offered, which was right when the only way to get class rows was
+ * to invent them. The setup bar creates a real division per class, so the fan
+ * out became double-counting: saving "Coed D" left the old class-less "Coed"
+ * in place — it has a team in it, so it is not deletable — and that one
+ * expanded into Coed Rec / Coed E / Coed D / Coed Open beside the real Coed D.
+ * Six rows for two brackets.
  *
- * The classes come from the division's own class_id when it has one, and
- * otherwise from what the tournament says it offers. A tournament that names
- * no classes gets one row per division, which is what it is.
+ * And the label appended the class to a name that already carried it, so a
+ * division called "Men's D" printed as "Men's D D".
  */
 function buildDivisionRows(divisions, registrations, classes, tournament) {
-  // "Rec, E, D, Open*" — the league writes it with stars and spaces.
-  const offeredNames = String(tournament.divisions_offered ?? "")
-    .split(",")
-    .map((x) => x.replace(/\*/g, "").trim().toLowerCase())
-    .filter(Boolean);
-  const offered = classes.filter((c) => offeredNames.includes(c.name.toLowerCase()));
-
-  const rows = [];
-  for (const d of divisions) {
+  return divisions.map((d) => {
     const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
-    const live = registrations.filter(
+    const teams = registrations.filter(
       (r) => r.division_id === d.id && r.status !== "withdrawn"
-    );
-    const divisionName = d.display_name ?? d.name;
+    ).length;
+    const cls = classes.find((c) => c.id === d.class_id) ?? null;
 
-    // A division with its own class is already one bracket.
-    const forThis = d.class_id
-      ? [classes.find((c) => c.id === d.class_id)].filter(Boolean)
-      : offered;
-    const buckets = forThis.length > 0 ? forThis : [null];
-
-    for (const cls of buckets) {
-      const teams = cls
-        ? live.filter((r) => r.class_id === cls.id).length
-        : live.length;
-      rows.push({
-        key: `${d.id}:${cls?.id ?? "all"}`,
-        id: d.id,
-        classId: cls?.id ?? null,
-        label: cls ? `${divisionName} ${cls.name}` : divisionName,
-        sortKey: `${String(d.sort_order).padStart(4, "0")}-${String(cls?.sort_order ?? 0).padStart(4, "0")}`,
-        genderLabel: genderLabel(d.gender),
-        className: cls?.name ?? null,
-        teams,
-        teamsMax: d.max_teams ?? Math.max(d.min_teams ?? 6, teams),
-        minTeams: d.min_teams ?? 6,
-        minMen: d.min_men,
-        minWomen: d.min_women,
-        // Games belong to the division, not yet to a class bracket, so a
-        // split division shows them once — on its first row — rather than
-        // repeating the same count down the column as if each bracket had
-        // played them.
-        gamesTotal: buckets[0] === cls ? games.length : 0,
-        unplayed: buckets[0] === cls && games.length ? stillToPlayIn(games).length : 0,
-      });
-    }
-  }
-  return rows;
+    return {
+      key: d.id,
+      id: d.id,
+      classId: d.class_id ?? null,
+      label: d.display_name ?? d.name,
+      sortKey: String(d.sort_order).padStart(4, "0"),
+      genderLabel: genderLabel(d.gender),
+      className: cls?.name ?? null,
+      teams,
+      teamsMax: d.max_teams ?? Math.max(d.min_teams ?? 6, teams),
+      minTeams: d.min_teams ?? 6,
+      minMen: d.min_men,
+      minWomen: d.min_women,
+      gamesTotal: games.length,
+      unplayed: games.length ? stillToPlayIn(games).length : 0,
+    };
+  });
 }
 
 /**
- * The setup bar's starting state, read back out of the divisions that exist.
- *
- * A director opening a tournament they set up last week should see their own
- * choices, not an empty form.
+ * The setup bar's starting state, read back out of the divisions that exist,
+ * so a director opening last week's tournament sees their own choices.
  */
 function planFrom(divisions, classes) {
   const CLASS_NAMES = new Set((classes ?? []).map((c) => c.name));
@@ -184,8 +161,7 @@ function planFrom(divisions, classes) {
     let mode = "divisions";
 
     for (const d of mine) {
-      const name = d.display_name ?? d.name;
-      const tail = name.split(" ").pop();
+      const tail = (d.display_name ?? d.name).split(" ").pop();
       if (BRACKETS.has(tail)) {
         mode = "brackets";
         picks.add(tail);
@@ -200,8 +176,7 @@ function planFrom(divisions, classes) {
     return {
       gender,
       on: mine.length > 0,
-      // Pool play is where a bracket tournament starts, so a parent division
-      // with children implies it.
+      // A parent division with children is what pool play looks like.
       poolPlay: mine.some((d) => mine.some((c) => c.parent_division_id === d.id)),
       poolPlayDone: false,
       mode,
