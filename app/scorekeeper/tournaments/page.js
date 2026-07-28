@@ -204,7 +204,7 @@ export default async function TournamentsPage() {
 
   return (
     <DirectorShell title="Tournaments" count={`${rows.length} on file`}>
-      <NewTournament />
+      <NewTournament venues={venues} />
       {(missingFee > 0 || missingDeadline > 0) && (
         <p className="t-meta">
           {missingFee} without an entry fee, {missingDeadline} without a registration deadline.

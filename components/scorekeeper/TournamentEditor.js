@@ -33,16 +33,16 @@ export default function TournamentEditor({ tournament, venues = [] }) {
         heading="Terms"
         alwaysOpen
         submitLabel="Save terms"
-        // An SVG, not a glyph: 🖫 has no coverage in the system font stack and
-        // rendered as an empty box.
+        // A drawn floppy: solid body, metal shutter, paper label. The first
+        // pass was three outline strokes that read as a generic box at 16px.
+        // Filled and solid navy, so the one thing that commits the row is the
+        // one thing on it that is not an outline.
         submitIcon={
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M2.5 2.5h8.6L13.5 4.9v8.6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1Z" />
-            <path d="M5 2.5v4h6v-4M5 14v-4h6v4" />
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="currentColor" aria-hidden="true">
+            <path d="M2.75 1.5h8.19a1 1 0 0 1 .71.29l2.56 2.56a1 1 0 0 1 .29.71v9.19a1.25 1.25 0 0 1-1.25 1.25H2.75A1.25 1.25 0 0 1 1.5 14.25V2.75A1.25 1.25 0 0 1 2.75 1.5Zm2 .75v3.5a.75.75 0 0 0 .75.75h4.25a.75.75 0 0 0 .75-.75v-3.5h-1.5v2.75h-1.25V2.25h-3Zm.5 7a.75.75 0 0 0-.75.75v4.5h7.5v-4.5a.75.75 0 0 0-.75-.75h-6Z" />
           </svg>
         }
-        row
-        confirmMessage="Save these terms?"
+        submitSolid
         actions={<DeleteTournament tournamentId={t.id} name={t.name} />}
         onSubmit={async () => {
           const res = await directorPost({
