@@ -129,6 +129,12 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
   }));
 
   const chosen = divisions.find((d) => d.key === panel?.key);
+
+  // With a division open, the other eleven are noise — you are working on one
+  // bracket, and the list you scrolled past to get here is in the way (JD,
+  // 2026-07-27: "when I click on a division, I'd like the list of divisions to
+  // collapse except to see that one"). Close brings them all back.
+  const visibleRows = chosen ? rows.filter((r) => r.key === chosen.key) : rows;
   // The teams in THIS bracket: same division, and same class when the row is
   // a class row.
   const forDivision = registrations.filter(
@@ -142,7 +148,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
     <div className="space-y-3">
       <DirectorTable
         columns={COLUMNS}
-        rows={rows}
+        rows={visibleRows}
         defaultSort={{ key: "division", dir: "asc" }}
         empty="No divisions yet. Add one below."
         searchPlaceholder="Find a division…"
@@ -150,13 +156,15 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
       />
 
       {chosen && (
-        <div className="space-y-3">
+        // Same width as the table and the cards under it, so the heading sits
+        // above what it names rather than spanning a page it does not fill.
+        <div className="space-y-3 max-w-3xl mx-auto">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="t-heading">
               {chosen.label} — {panel.action === "teams" ? "teams" : "matchups"}
             </h2>
             <button type="button" className="pill" onClick={() => setPanel(null)}>
-              Close
+              All divisions
             </button>
           </div>
 
