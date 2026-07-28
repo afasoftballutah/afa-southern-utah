@@ -77,8 +77,10 @@ export default function DirectorTable({
     setSort((cur) => (cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
   }
 
+  // mx-auto, because a narrowed table pinned to the left leaves the page
+  // looking broken rather than deliberate.
   return (
-    <div className={"space-y-2 " + width}>
+    <div className={"space-y-2 " + (width ? width + " mx-auto" : "")}>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"

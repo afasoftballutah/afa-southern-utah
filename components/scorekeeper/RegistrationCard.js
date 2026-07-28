@@ -83,7 +83,7 @@ export default function RegistrationCard({ registration, classes = [], showTitle
     // full width; they earn it.
     <div
       className={
-        "card p-4 space-y-3 max-w-3xl" + (reg.status === "withdrawn" ? " opacity-60" : "")
+        "card p-4 space-y-3 max-w-3xl mx-auto" + (reg.status === "withdrawn" ? " opacity-60" : "")
       }
     >
       {showTitle && (
