@@ -103,6 +103,7 @@ export default async function TeamPage({ params }) {
         defaultSort={{ key: "tournament", dir: "desc" }}
         empty="This team has not entered a tournament yet."
         searchPlaceholder="Find a tournament…"
+        width="max-w-4xl"
       />
     </DirectorShell>
   );

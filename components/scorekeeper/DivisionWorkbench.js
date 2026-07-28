@@ -146,6 +146,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
         defaultSort={{ key: "division", dir: "asc" }}
         empty="No divisions yet. Add one below."
         searchPlaceholder="Find a division…"
+        width="max-w-3xl"
       />
 
       {chosen && (

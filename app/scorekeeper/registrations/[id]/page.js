@@ -185,6 +185,7 @@ export default async function RegistrationPage({ params }) {
         defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody on this roster."
         searchPlaceholder="Find a player…"
+        width="max-w-3xl"
       />
 
       {removed.length > 0 && (

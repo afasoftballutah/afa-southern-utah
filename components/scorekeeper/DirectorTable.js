@@ -40,6 +40,11 @@ export default function DirectorTable({
   empty = "Nothing matches that.",
   searchPlaceholder = "Type a name…",
   openRow = null,
+  // A Tailwind max-w class. A table with four columns should not stretch to
+  // the width a nine-column one needs — the extra all lands in the first
+  // column and pushes everything else to the far side of the screen (JD,
+  // 2026-07-27: "still seems super wide?").
+  width = "",
 }) {
   const [query, setQuery] = useState("");
   const [filterKey, setFilterKey] = useState("all");
@@ -73,7 +78,7 @@ export default function DirectorTable({
   }
 
   return (
-    <div className="space-y-2">
+    <div className={"space-y-2 " + width}>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"
