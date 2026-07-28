@@ -15,16 +15,21 @@ import DivisionMinimums from "./DivisionMinimums";
 // Pick a division and an action on its row; the panel underneath becomes that
 // thing. The list stays on screen, so you never lose your place in it.
 //
-// "TO SCORE" IS GONE. It meant "games not yet final", which nobody could have
-// guessed. Scores now read X/Y the same way Teams does — entered out of
-// total — because a director already reads every other number here that way.
-
+// JD, 2026-07-27: "the Divisions row is kind of weird. since it just combines
+// two columns listed next. and what is 'Scores'?"
+//
+// Both right. Division WAS Gender and Class glued together and then printed
+// beside them, so the same fact appeared three times in a row. "Coed D" is
+// what a director says out loud, so that is the one that stays.
+//
+// And "Scores" never said what it counted. Games is how many exist; Scored is
+// how many have a final score. Two plain numbers beat one slash nobody can
+// read the meaning of.
 const COLUMNS = [
   { key: "division", label: "Division" },
-  { key: "gender", label: "Gender", width: "7rem" },
-  { key: "class", label: "Class", align: "center", width: "5rem" },
   { key: "teams", label: "Teams", align: "right", width: "6rem" },
-  { key: "scores", label: "Scores", align: "right", width: "6rem" },
+  { key: "games", label: "Games", align: "right", width: "6rem" },
+  { key: "scored", label: "Scored", align: "right", width: "6rem" },
   { key: "actions", label: "", align: "right", width: "22rem" },
 ];
 
@@ -41,16 +46,15 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
   const rows = divisions.map((d) => ({
     key: d.key,
     search: `${d.label} ${d.genderLabel ?? ""} ${d.className ?? ""}`,
-    sortValues: { division: d.sortKey, teams: d.teams, scores: d.gamesTotal },
+    sortValues: { division: d.sortKey, teams: d.teams, games: d.gamesTotal, scored: d.gamesTotal - d.unplayed },
     cells: {
       division: d.label,
-      gender: d.genderLabel ?? "—",
-      class: d.className ?? "—",
       // X/max. Uncapped divisions borrow whichever is larger, the minimum
       // needed to run or the teams already in — so the denominator is never
       // smaller than the numerator.
       teams: `${d.teams}/${d.teamsMax}`,
-      scores: d.gamesTotal === 0 ? "—" : `${d.gamesTotal - d.unplayed}/${d.gamesTotal}`,
+      games: d.gamesTotal === 0 ? "—" : String(d.gamesTotal),
+      scored: d.gamesTotal === 0 ? "—" : String(d.gamesTotal - d.unplayed),
       actions: (
         <span className="flex justify-end gap-2">
           <button
