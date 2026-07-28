@@ -228,7 +228,16 @@ export default async function TournamentPage({ params }) {
         registrations={JSON.parse(JSON.stringify(registrations))}
         classes={classes}
         setup={
-          <TournamentSetup tournamentId={tournament.id} initial={planFrom(divisions, classes)} />
+          <TournamentSetup
+            tournamentId={tournament.id}
+            initial={planFrom(divisions, classes)}
+            existing={divisions.map((d) => ({
+              label: d.display_name ?? d.name,
+              hasTeams: registrations.some(
+                (r) => r.division_id === d.id && r.status !== "withdrawn"
+              ),
+            }))}
+          />
         }
       />
 

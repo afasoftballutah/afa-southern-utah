@@ -29,7 +29,7 @@ const MODES = [
   { key: "brackets", label: "Brackets", options: ["Gold", "Silver", "Bronze"] },
 ];
 
-export default function TournamentSetup({ tournamentId, initial }) {
+export default function TournamentSetup({ tournamentId, initial, existing = [] }) {
   const [plan, setPlan] = useState(initial);
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -59,6 +59,12 @@ export default function TournamentSetup({ tournamentId, initial }) {
       if (g.mode === "brackets") return [label, ...g.picks.map((p) => `${label} ${p}`)];
       return g.picks.length ? g.picks.map((p) => `${label} ${p}`) : [label];
     });
+
+  // Name what goes, rather than explaining the rule that decides it. A
+  // division with a team in it is kept by the route, so it is not listed.
+  const going = existing
+    .filter((d) => !d.hasTeams && !summary.includes(d.label))
+    .map((d) => d.label);
 
   async function save() {
     setAsk(false);
@@ -172,9 +178,12 @@ export default function TournamentSetup({ tournamentId, initial }) {
         <ConfirmDialog
           title="Save this setup"
           message={
-            summary.length === 0
-              ? "Nothing is selected, so every division without teams in it will be removed."
-              : `Make these ${summary.length} divisions: ${summary.join(", ")}. Anything not listed is removed unless a team is registered in it.`
+            [
+              summary.length ? summary.join(", ") : "Nothing selected.",
+              going.length ? `Removing ${going.join(", ")}.` : null,
+            ]
+              .filter(Boolean)
+              .join("\n")
           }
           confirmLabel="Save setup"
           busy={busy}

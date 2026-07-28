@@ -26,7 +26,7 @@ export default function ConfirmDialog({ title, message, confirmLabel = "Yes", bu
         </>
       }
     >
-      <p className="t-body">{message}</p>
+      <p className="t-body whitespace-pre-line">{message}</p>
     </Modal>
   );
 }
