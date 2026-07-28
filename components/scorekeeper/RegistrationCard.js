@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import EligibilityPill from "./EligibilityPill";
-import ConfirmDialog from "./ConfirmDialog";
 import InlineSelect from "./InlineSelect";
-import RowAction from "./RowAction";
+import TeamActions from "./TeamActions";
 
 // One team's registration. Used twice: in the list on a tournament page,
 // where it needs its own name; and on that registration's own page, where the
@@ -24,11 +22,7 @@ function money(cents) {
 }
 
 export default function RegistrationCard({ registration, classes = [], divisions = [], showTitle = true }) {
-  const [reg, setReg] = useState(registration);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [copied, setCopied] = useState("");
-  const [ask, setAsk] = useState(null);
+  const reg = registration;
 
   // A team a director typed in has no roster at all, so no progress row.
   // Zero of zero signed is the truth about it, not a reason to crash.
@@ -37,47 +31,6 @@ export default function RegistrationCard({ registration, classes = [], divisions
   const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? null;
   const division = reg.divisions?.display_name ?? reg.divisions?.name;
   const sug = reg.suggestion;
-
-  function confirmThen(message, body, confirmLabel) {
-    setAsk({ message, body, confirmLabel });
-  }
-
-  async function patch(body) {
-    setAsk(null);
-    setBusy(true);
-    setError("");
-    try {
-      const isClass = "classId" in body;
-      const res = await fetch(
-        isClass ? "/api/scorekeeper/directory" : `/api/scorekeeper/registrations/${reg.id}`,
-        {
-          method: isClass ? "POST" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            isClass
-              ? { action: "setRegistrationClass", registrationId: reg.id, classId: body.classId }
-              : body
-          ),
-        }
-      );
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not save");
-      if (isClass) setReg((cur) => ({ ...cur, class_id: body.classId }));
-      else setReg((cur) => ({ ...cur, ...json.registration }));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function copyLink(kind) {
-    const path = kind === "manage" ? "manage" : "roster";
-    const tok = kind === "manage" ? reg.manage_token : reg.roster_token;
-    navigator.clipboard?.writeText(`${window.location.origin}/register/${path}/${tok}`);
-    setCopied(kind);
-    setTimeout(() => setCopied(""), 1500);
-  }
 
   return (
     // max-w-3xl because this card is a line of facts and a row of pills — it
@@ -140,82 +93,7 @@ export default function RegistrationCard({ registration, classes = [], divisions
         {reg.manager_phone && <> &middot; {reg.manager_phone}</>}
       </p>
 
-      <div className="flex flex-wrap gap-2">
-        {!reg.paid_at && (
-          <button className="pill" disabled={busy}
-            onClick={() => confirmThen(`Mark ${reg.team_name} as paid?`, { paid: true }, "Mark paid")}>
-            Mark paid
-          </button>
-        )}
-        {reg.paid_at && (
-          <button className="pill" disabled={busy}
-            onClick={() => confirmThen(`Undo payment for ${reg.team_name}? The amount is cleared too.`, { paid: false }, "Undo paid")}>
-            Undo paid
-          </button>
-        )}
-        {reg.status !== "confirmed" && (
-          <button className="pill" disabled={busy}
-            onClick={() => confirmThen(`Confirm ${reg.team_name} for this tournament?`, { status: "confirmed" }, "Confirm")}>
-            Confirm
-          </button>
-        )}
-        {reg.status !== "withdrawn" ? (
-          <button className="pill" disabled={busy}
-            onClick={() => confirmThen(`Withdraw ${reg.team_name}? Their name is freed for another team.`, { status: "withdrawn" }, "Withdraw")}>
-            Withdraw
-          </button>
-        ) : (
-          <button className="pill" disabled={busy}
-            onClick={() => confirmThen(`Reinstate ${reg.team_name}?`, { status: "submitted" }, "Reinstate")}>
-            Reinstate
-          </button>
-        )}
-        {/* Setting up a tournament leaves teams in the division they
-            registered for, which may no longer be the bracket they belong in.
-            The route refuses to remove a division that still has a team, so
-            this is how you empty one. */}
-        <RowAction
-          label="Move division"
-          title={`Move ${reg.team_name}`}
-          note="Same tournament only."
-          placeholder="Pick a division…"
-          action="moveRegistration"
-          valueKey="divisionId"
-          payload={{ registrationId: reg.id }}
-          confirmText={`Move ${reg.team_name} into {name}?`}
-          options={divisions.filter((d) => d.id !== reg.division_id)}
-        />
-        <button className="pill" onClick={() => copyLink("roster")}>
-          {copied === "roster" ? "Copied" : "Team link"}
-        </button>
-        <button className="pill" onClick={() => copyLink("manage")}>
-          {copied === "manage" ? "Copied" : "Manager link"}
-        </button>
-        {reg.pdf_storage_path && (
-          <a className="pill" href={`/api/scorekeeper/registrations/${reg.id}/waiver`} target="_blank" rel="noreferrer">
-            Waiver
-          </a>
-        )}
-      </div>
-
-      {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
-      {reg.director_notes && (
-        <details>
-          <summary className="t-meta cursor-pointer">Director note</summary>
-          <p className="t-meta italic mt-1">{reg.director_notes}</p>
-        </details>
-      )}
-
-      {ask && (
-        <ConfirmDialog
-          title={reg.team_name}
-          message={ask.message}
-          confirmLabel={ask.confirmLabel}
-          busy={busy}
-          onConfirm={() => patch(ask.body)}
-          onCancel={() => setAsk(null)}
-        />
-      )}
+      <TeamActions registration={reg} divisions={divisions} />
     </div>
   );
 }

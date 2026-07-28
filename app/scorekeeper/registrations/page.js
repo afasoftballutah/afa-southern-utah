@@ -3,7 +3,7 @@ import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import PinPad from "@/components/scorekeeper/PinPad";
-import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
+import TeamTable from "@/components/scorekeeper/TeamTable";
 
 export const dynamic = "force-dynamic"; // live tool, and it reads PII — never cached
 export const metadata = { title: "Registrations — Scorekeeper" };
@@ -20,20 +20,26 @@ async function getRegistrations() {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, submitted_at, manager_name, manager_email, manager_phone, team_id, tournaments(id, name, slug, start_date), divisions(name, display_name)"
+      "id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, " +
+        "roster_token, manage_token, pdf_storage_path, submitted_at, manager_name, manager_email, " +
+        "manager_phone, team_id, tournament_id, division_id, " +
+        "tournaments(id, name, slug, start_date), divisions(name, display_name)"
     )
     .order("submitted_at", { ascending: false });
   if (error) throw error;
 
   const rows = data ?? [];
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { registrations: [], classes: [], divisions: [] };
 
-  const [{ data: progress }, { data: members }] = await Promise.all([
-    supabase.from("registration_signing_progress").select("*"),
-    supabase
-      .from("roster_members")
-      .select("registration_id, name, role, signed_at, removed_at, player_id"),
-  ]);
+  const [{ data: progress }, { data: members }, { data: classes }, { data: divisions }] =
+    await Promise.all([
+      supabase.from("registration_signing_progress").select("*"),
+      supabase
+        .from("roster_members")
+        .select("registration_id, name, role, signed_at, removed_at, player_id"),
+      supabase.from("classes").select("id, name, sort_order").order("sort_order"),
+      supabase.from("divisions").select("id, tournament_id, name, display_name, sort_order"),
+    ]);
 
   const progressBy = new Map((progress ?? []).map((p) => [p.registration_id, p]));
   const membersBy = new Map();
@@ -49,19 +55,18 @@ async function getRegistrations() {
     members: membersBy.get(r.id) ?? [],
   }));
 
-  // Group by tournament, soonest first — the same instinct as the scorekeeper
-  // index: the thing happening next is the thing you came here for.
-  const byTournament = new Map();
-  for (const r of enriched) {
-    const key = r.tournaments?.id ?? "_";
-    if (!byTournament.has(key)) {
-      byTournament.set(key, { tournament: r.tournaments, registrations: [] });
-    }
-    byTournament.get(key).registrations.push(r);
-  }
-  return [...byTournament.values()].sort((a, b) =>
-    String(a.tournament?.start_date ?? "").localeCompare(String(b.tournament?.start_date ?? ""))
-  );
+  // One flat list. It was grouped under a heading per tournament, which meant
+  // the tournament could not be sorted or searched on — the table does both
+  // now, and Tournament is just another column (JD, 2026-07-28: "major UI
+  // cleanup to one line").
+  return {
+    registrations: enriched,
+    classes: classes ?? [],
+    // Move division only ever offers the tournament the team is already in.
+    divisions: (divisions ?? [])
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((d) => ({ id: d.id, label: d.display_name ?? d.name, tournamentId: d.tournament_id })),
+  };
 }
 
 export default async function RegistrationsPage() {
@@ -75,11 +80,10 @@ export default async function RegistrationsPage() {
     );
   }
 
-  const groups = await getRegistrations();
-  const total = groups.reduce((n, g) => n + g.registrations.length, 0);
-  const unlinked = groups.reduce(
-    (n, g) =>
-      n + g.registrations.reduce((k, r) => k + r.members.filter((m) => !m.player_id).length, 0),
+  const { registrations, classes, divisions } = await getRegistrations();
+  const total = registrations.length;
+  const unlinked = registrations.reduce(
+    (n, r) => n + r.members.filter((m) => !m.player_id).length,
     0
   );
 
@@ -121,14 +125,7 @@ export default async function RegistrationsPage() {
             )}
           </p>
 
-          {groups.map((g) => (
-            <section key={g.tournament?.id ?? "none"} className="space-y-3">
-              <h2 className="t-heading">{g.tournament?.name ?? "Unknown tournament"}</h2>
-              {g.registrations.map((r) => (
-                <RegistrationCard key={r.id} registration={r} />
-              ))}
-            </section>
-          ))}
+          <TeamTable registrations={registrations} classes={classes} divisions={divisions} wide />
         </>
       )}
     </div>

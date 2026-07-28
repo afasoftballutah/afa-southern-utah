@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import DirectorTable from "./DirectorTable";
-import RegistrationCard from "./RegistrationCard";
+import TeamTable from "./TeamTable";
 import InlineNumber from "./InlineNumber";
 import DirectorForm, { Field, directorPost } from "./DirectorForm";
 
@@ -219,9 +219,12 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
       {forDivision.length === 0 ? (
         <p className="t-meta">Nobody has registered for {d.label} yet.</p>
       ) : (
-        forDivision.map((r) => (
-          <RegistrationCard key={r.id} registration={r} classes={classes} divisions={divisionOptions} />
-        ))
+        <TeamTable
+          registrations={forDivision}
+          classes={classes}
+          divisions={divisionOptions}
+          divisionHasClass={d.classId != null}
+        />
       )}
     </div>
   );
