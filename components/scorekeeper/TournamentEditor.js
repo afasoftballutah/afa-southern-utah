@@ -32,6 +32,7 @@ export default function TournamentEditor({ tournament, venues = [] }) {
       <DirectorForm
         heading="Terms"
         alwaysOpen
+        row
         submitLabel="Save terms"
         // A drawn floppy: solid body, metal shutter, paper label. The first
         // pass was three outline strokes that read as a generic box at 16px.
