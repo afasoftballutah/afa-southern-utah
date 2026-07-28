@@ -85,7 +85,14 @@ export default function RootLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">{children}</main>
+        {/* The public site is read on a phone at a ballpark, so it stays narrow.
+            The control center is a desk tool with eight-column tables and
+            one-line forms, and 4xl was forcing them to wrap (JD, 2026-07-27:
+            "should we use a slightly wider page?"). The class is set per
+            route by the page below via a CSS variable on <body>. */}
+        <main className="flex-1 w-full max-w-[var(--page-width,56rem)] mx-auto px-4 py-6">
+          {children}
+        </main>
 
         {/* Fine print, sized AND written like fine print (JD, 2026-07-24).
             Shrinking the type alone didn't stop the wrap — at any readable

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* 56rem = max-w-4xl, the public default. The control center overrides it. */
+  --page-width: 56rem;
   --afa-navy: #1e3a6e;
   --afa-red: #c8102e;
   /* Ticked, done, cleared. Only ever used for a completed state — a green
