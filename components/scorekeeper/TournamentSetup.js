@@ -95,13 +95,23 @@ export default function TournamentSetup({ tournamentId, initial }) {
               </button>
 
               <div>
+                {/* The LABEL changes, not just the colour. Green-on versus
+                    white-off is invisible to anyone who is not looking for it
+                    (JD, 2026-07-27: "pool play it isnt clear whether it is
+                    selected or not to an old man"). Off it asks a question;
+                    on it states a fact and ticks it. */}
                 <button
                   type="button"
                   disabled={!g.on}
                   onClick={() => set(gender.key, { poolPlay: !g.poolPlay })}
-                  className={"pill " + (g.poolPlay && g.on ? "bg-afa-go text-white border-afa-go" : "")}
+                  className={
+                    "pill " +
+                    (g.poolPlay && g.on
+                      ? "bg-afa-go text-white border-afa-go"
+                      : "text-afa-muted border-afa-navy/15")
+                  }
                 >
-                  Pool play
+                  {g.poolPlay && g.on ? "Pool play ✓" : "Add pool play?"}
                 </button>
               </div>
 
@@ -138,6 +148,7 @@ export default function TournamentSetup({ tournamentId, initial }) {
                     }
                   >
                     {o}
+                    {g.picks.includes(o) && " ✓"}
                   </button>
                 ))}
               </div>
