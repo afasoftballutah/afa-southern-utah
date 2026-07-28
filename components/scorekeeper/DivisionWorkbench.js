@@ -39,15 +39,28 @@ const COLUMNS = [
   { key: "scores", label: "Scores", align: "center", width: "12rem" },
 ];
 
-// A button and whether that step is finished. The tick is the same glyph the
-// waiver column uses, so "done" looks the same everywhere in the tool.
-function Step({ done, children }) {
+// A button and how far that step has got. Three states, because "started" and
+// "not started" are different problems for a director and both were reading
+// as an empty box (JD, 2026-07-27: "maybe show a yellow tag when they are
+// partials... in the checkbox").
+//
+//   ☐ grey   nothing yet
+//   ◪ amber  under way
+//   ☑ green  done
+//
+// Same glyph family as the waiver column, so done looks the same everywhere.
+const MARK = {
+  none: { glyph: "☐", tone: "text-afa-muted/50" },
+  partial: { glyph: "◪", tone: "text-afa-part" },
+  done: { glyph: "☑", tone: "text-afa-go" },
+};
+
+function Step({ state, children }) {
+  const m = MARK[state] ?? MARK.none;
   return (
     <span className="inline-flex items-center gap-2">
       {children}
-      <span className={"tick " + (done ? "text-afa-go" : "text-afa-muted/50")}>
-        {done ? "☑" : "☐"}
-      </span>
+      <span className={"tick " + m.tone}>{m.glyph}</span>
     </span>
   );
 }
@@ -74,7 +87,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
     cells: {
       division: d.label,
       teams: (
-        <Step done={d.teams > 0 && d.teams >= d.teamsMax}>
+        <Step state={d.teams >= d.teamsMax ? "done" : d.teams > 0 ? "partial" : "none"}>
           <button
             type="button"
             className={"pill" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
@@ -85,7 +98,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
         </Step>
       ),
       matchups: (
-        <Step done={d.gamesTotal > 0}>
+        <Step state={d.gamesTotal > 0 ? "done" : "none"}>
           <button
             type="button"
             className={"pill" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
@@ -96,7 +109,17 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
         </Step>
       ),
       scores: (
-        <Step done={d.gamesTotal > 0 && d.unplayed === 0}>
+        <Step
+          state={
+            d.gamesTotal === 0
+              ? "none"
+              : d.unplayed === 0
+                ? "done"
+                : d.unplayed < d.gamesTotal
+                  ? "partial"
+                  : "none"
+          }
+        >
           <Link className="pill" href={`/scorekeeper/division/${d.id}`}>
             Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
           </Link>

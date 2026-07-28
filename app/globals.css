@@ -8,6 +8,9 @@
   /* Ticked, done, cleared. Only ever used for a completed state — a green
      that means anything else would stop meaning this one. */
   --afa-go: #167d4a;
+  /* Started, not finished. Amber only ever means partial — a colour that
+     also meant "warning" would stop meaning this. */
+  --afa-part: #b8730a;
   --afa-cream: #fdfaf3;
   --afa-ink: #16233d;
   /* Solid muted value — the flattened result of afa-ink at ~45% over
@@ -25,6 +28,7 @@
   --color-afa-navy: var(--afa-navy);
   --color-afa-red: var(--afa-red);
   --color-afa-go: var(--afa-go);
+  --color-afa-part: var(--afa-part);
   --color-afa-cream: var(--afa-cream);
   --color-afa-ink: var(--afa-ink);
   --color-afa-muted: var(--afa-muted);
