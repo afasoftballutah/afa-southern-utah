@@ -34,11 +34,13 @@ export default function DeleteTournament({ tournamentId, name }) {
     <>
       <button
         type="button"
-        className="pill text-afa-red border-afa-red/30 hover:border-afa-red"
+        className="pill text-afa-red border-afa-red/30 hover:border-afa-red text-[15px] px-2 py-0.5"
+        aria-label="Delete tournament"
+        title="Delete tournament"
         disabled={busy}
         onClick={() => setAsk(true)}
       >
-        {busy ? "…" : "Delete"}
+        {busy ? "…" : "✕"}
       </button>
       {error && <span className="t-meta text-afa-red font-semibold whitespace-nowrap">{error}</span>}
       {ask && (

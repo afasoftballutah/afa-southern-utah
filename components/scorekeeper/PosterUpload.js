@@ -17,6 +17,7 @@ export default function PosterUpload({ tournamentId, posterUrl }) {
   const [state, setState] = useState("idle");
   const [error, setError] = useState("");
   const [ask, setAsk] = useState(null); // "replace" | "remove"
+  const [show, setShow] = useState(false);
   const [staged, setStaged] = useState(null);
   const input = useRef(null);
 
@@ -56,37 +57,59 @@ export default function PosterUpload({ tournamentId, posterUrl }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-1.5">
       {url ? (
+        // Clicking the thumbnail shows it full size. A poster is a picture of
+        // a flyer with dates and prices on it, and 36 pixels tall is not
+        // enough to check any of that (JD, 2026-07-28).
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-9 w-auto rounded border border-afa-navy/15" />
+        <img
+          src={url}
+          alt=""
+          onClick={() => setShow(true)}
+          className="h-9 w-auto rounded border border-afa-navy/15 cursor-zoom-in"
+        />
       ) : (
         <span className="t-meta">None</span>
       )}
       <input ref={input} type="file" accept="image/*" onChange={pick} className="hidden" />
-      <button
-        type="button"
-        className="pill"
-        aria-label={url ? "Replace poster" : "Upload poster"}
-        title={url ? "Replace poster" : "Upload poster"}
-        disabled={state === "saving"}
-        onClick={() => input.current?.click()}
-      >
-        {state === "saving" ? "…" : "✎"}
-      </button>
-      {url && (
+      {/* Stacked, so two small icons read as one control rather than joining
+          the row of fields beside them. */}
+      <span className="inline-flex flex-col gap-0.5">
         <button
           type="button"
-          className="pill"
-          aria-label="Remove poster"
-          title="Remove poster"
+          className="pill px-1.5 py-0 leading-none"
+          aria-label={url ? "Replace poster" : "Upload poster"}
+          title={url ? "Replace poster" : "Upload poster"}
           disabled={state === "saving"}
-          onClick={() => setAsk("remove")}
+          onClick={() => input.current?.click()}
         >
-          ✕
+          {state === "saving" ? "…" : "✎"}
         </button>
-      )}
+        {url && (
+          <button
+            type="button"
+            className="pill px-1.5 py-0 leading-none text-afa-red border-afa-red/30"
+            aria-label="Remove poster"
+            title="Remove poster"
+            disabled={state === "saving"}
+            onClick={() => setAsk("remove")}
+          >
+            ✕
+          </button>
+        )}
+      </span>
       {error && <span className="t-meta text-afa-red font-semibold">{error}</span>}
+
+      {show && url && (
+        <span
+          className="fixed inset-0 z-50 bg-afa-ink/70 flex items-center justify-center p-6 cursor-zoom-out"
+          onClick={() => setShow(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="Tournament poster" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+        </span>
+      )}
 
       {ask === "replace" && (
         <ConfirmDialog

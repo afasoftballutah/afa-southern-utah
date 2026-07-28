@@ -67,6 +67,7 @@ export default function DirectorForm({
   heading,
   note,
   submitLabel,
+  submitIcon = null,
   confirmMessage,
   onSubmit,
   children,
@@ -126,11 +127,13 @@ export default function DirectorForm({
             <span className="flex items-end gap-2 shrink-0">
               <button
                 type="button"
-                className="pill"
+                className={"pill " + (submitIcon ? "text-[15px] px-2 py-0.5" : "")}
                 disabled={busy}
+                aria-label={submitLabel}
+                title={submitLabel}
                 onClick={() => (confirmMessage ? setAsk(true) : go())}
               >
-                {busy ? "Saving…" : submitLabel}
+                {busy ? "…" : (submitIcon ?? submitLabel)}
               </button>
               {actions}
             </span>
