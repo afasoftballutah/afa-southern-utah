@@ -31,6 +31,12 @@ const MODES = [
 
 export default function TournamentSetup({ tournamentId, initial, existing = [] }) {
   const [plan, setPlan] = useState(initial);
+  // Shut once the tournament has divisions: the list underneath is the thing
+  // you came to read, and the bar that made it is only in the way until you
+  // want to change the format. Open when there is nothing yet, because then
+  // this bar IS the page. JD, 2026-07-28: "keep the division list visible even
+  // when the setup is contracted."
+  const [open, setOpen] = useState(existing.length === 0);
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -91,7 +97,23 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
   }
 
   return (
-    <div className="border-b border-afa-navy/10 pb-4 space-y-3">
+    <div className={"border-b border-afa-navy/10 space-y-3 " + (open ? "pb-4" : "pb-0")}>
+      {/* The same triangle the table rows use, so one gesture opens everything
+          on this page. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full text-left"
+      >
+        <span className="text-afa-navy/40 inline-block w-2">{open ? "▾" : "▸"}</span>
+        <span className="t-strong">Setup</span>
+        <span className="t-meta truncate">
+          {summary.length === 0 ? "Nothing selected" : summary.join(" · ")}
+        </span>
+      </button>
+
+      {!open ? null : (
+      <>
       <div className="grid gap-6 sm:grid-cols-3">
         {GENDERS.map((gender) => {
           const g = plan.find((x) => x.gender === gender.key);
@@ -180,8 +202,9 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
         <button type="button" className="pill" disabled={busy} onClick={() => setAsk(true)}>
           {busy ? "Saving…" : "Save setup"}
         </button>
-        <span className="t-meta">{summary.length === 0 ? "Nothing selected" : summary.join(" · ")}</span>
       </div>
+      </>
+      )}
       {error && <p className="t-meta text-afa-red font-semibold text-center">{error}</p>}
       {kept.length > 0 && (
         <p className="t-meta text-center">

@@ -77,7 +77,7 @@ export default function TournamentEditor({ tournament, venues = [] }) {
         <Field label="Tournament" width="w-44 shrink-0">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Poster" width="shrink-0">
+        <Field label="Poster" width="shrink-0" group>
           <PosterUpload tournamentId={t.id} posterUrl={t.poster_url} />
         </Field>
         <Field label="Start" width="w-28 shrink-0"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>

@@ -10,13 +10,19 @@ import ConfirmDialog from "./ConfirmDialog";
 // JD, 2026-07-27: "very obvious, very consistent fonts and UI/UX... like a
 // 7th grader could use it."
 
-export function Field({ label, hint, children, width }) {
+// `group` for a field that holds more than one control. A <label> forwards a
+// click on anything non-interactive inside it to the one form control it
+// wraps — so with a hidden file input in there, clicking the poster, or the
+// backdrop to close the poster, opened the file picker as well (JD,
+// 2026-07-28). A group of controls is a <div> with a caption, not a label.
+export function Field({ label, hint, children, width, group = false }) {
+  const Tag = group ? "div" : "label";
   return (
-    <label className={"block " + (width ?? "")}>
+    <Tag className={"block " + (width ?? "")}>
       <span className="t-label block mb-1">{label}</span>
       {children}
       {hint && <span className="t-meta block mt-1">{hint}</span>}
-    </label>
+    </Tag>
   );
 }
 

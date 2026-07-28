@@ -54,6 +54,9 @@ export default function DirectorTable({
   defaultSort,
   empty = "Nothing matches that.",
   searchPlaceholder = "Type a name…",
+  // A list of four divisions does not need a box to find one in (JD,
+  // 2026-07-28). Off, the whole control row goes with it.
+  search = true,
   openRow = null,
   // A Tailwind max-w class. A table with four columns should not stretch to
   // the width a nine-column one needs — the extra all lands in the first
@@ -99,7 +102,10 @@ export default function DirectorTable({
   // looking broken rather than deliberate.
   return (
     <div className={"space-y-2 " + (width ? width + " mx-auto" : "")}>
+      {(search || filters.length > 0) && (
       <div className="flex flex-wrap items-center gap-2">
+        {search && (
+        <>
         <input
           type="search"
           list="director-suggestions"
@@ -113,6 +119,8 @@ export default function DirectorTable({
             <option key={s} value={s} />
           ))}
         </datalist>
+        </>
+        )}
 
         {filters.map((f) => (
           <button
@@ -134,6 +142,7 @@ export default function DirectorTable({
           {visible.length} of {rows.length}
         </span>
       </div>
+      )}
 
       {visible.length === 0 ? (
         <div className="card p-4 space-y-4">
