@@ -441,6 +441,45 @@ export async function POST(request) {
       return Response.json({ ok: true, refused });
     }
 
+    // ---- Delete a tournament -----------------------------------------
+    case "deleteTournament": {
+      const { tournamentId } = body;
+      if (!tournamentId) return bad("Which tournament?");
+
+      // Never with teams in it. A registration is somebody's roster, their
+      // waiver and their signature; deleting a tournament is not the place to
+      // take those with it.
+      const { count } = await supabase
+        .from("registrations")
+        .select("id", { count: "exact", head: true })
+        .eq("tournament_id", tournamentId)
+        .neq("status", "withdrawn");
+      if ((count ?? 0) > 0) {
+        return bad(
+          `${count} ${count === 1 ? "team is" : "teams are"} registered. Move or withdraw them first.`,
+          409
+        );
+      }
+
+      const { data: divisions } = await supabase
+        .from("divisions")
+        .select("id")
+        .eq("tournament_id", tournamentId);
+      const ids = (divisions ?? []).map((d) => d.id);
+      if (ids.length) {
+        await supabase.from("games").delete().in("division_id", ids);
+        await supabase.from("pool_games").delete().in("division_id", ids);
+        await supabase.from("divisions").delete().in("id", ids);
+      }
+
+      const { error } = await supabase.from("tournaments").delete().eq("id", tournamentId);
+      if (error) {
+        console.error("delete tournament failed", error);
+        return bad("Could not delete it — please try again", 500);
+      }
+      return Response.json({ ok: true });
+    }
+
     // ---- Upload a tournament poster ----------------------------------
     case "setPoster": {
       const { tournamentId, dataUrl } = body;

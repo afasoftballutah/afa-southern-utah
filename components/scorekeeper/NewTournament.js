@@ -32,7 +32,7 @@ export default function NewTournament() {
           region,
         });
         if (res.error) return res.error;
-        window.location.href = `/scorekeeper/tournaments/${res.tournament.id}`;
+        window.location.reload();
       }}
     >
       <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>

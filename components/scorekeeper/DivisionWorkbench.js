@@ -92,7 +92,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       matchups: d.gamesTotal,
       scores: d.gamesTotal - d.unplayed,
     },
-    detail: panel?.key === d.key ? <Panel
+    panel: panel?.key === d.key ? <Panel
             division={d}
             action={panel.action}
             registrations={registrations}

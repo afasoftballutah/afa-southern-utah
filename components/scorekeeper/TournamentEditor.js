@@ -3,6 +3,7 @@
 import { useState } from "react";
 import DirectorForm, { Field, Input, Select, directorPost, toCents, fromCents } from "./DirectorForm";
 import PosterUpload from "./PosterUpload";
+import DeleteTournament from "./DeleteTournament";
 
 const GENDERS = [
   { value: "", label: "Not set" },
@@ -32,7 +33,8 @@ export default function TournamentEditor({ tournament, venues = [] }) {
         alwaysOpen
         submitLabel="Save terms"
         row
-        confirmMessage="Save these terms? Anything left blank stays off the public page."
+        confirmMessage="Save these terms?"
+        actions={<DeleteTournament tournamentId={t.id} name={t.name} />}
         onSubmit={async () => {
           const res = await directorPost({
             action: "updateTournament",
@@ -53,28 +55,28 @@ export default function TournamentEditor({ tournament, venues = [] }) {
           window.location.reload();
         }}
       >
-        <Field label="Tournament" width="w-52">
+        <Field label="Tournament" width="w-44 shrink-0">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Starts" width="w-32"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-        <Field label="Ends" width="w-32"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
-        <Field label="Where" width="w-48"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
-        <Field label="Entry" width="w-16">
+        <Field label="Starts" width="w-28 shrink-0"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="Ends" width="w-28 shrink-0"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="Where" width="w-40 shrink-0"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
+        <Field label="Entry" width="w-12 shrink-0">
           <Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="300" />
         </Field>
-        <Field label="Deposit" width="w-16">
+        <Field label="Deposit" width="w-16 shrink-0">
           <Input inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="100" />
         </Field>
-        <Field label="Ump" width="w-16">
+        <Field label="Ump" width="w-12 shrink-0">
           <Input inputMode="decimal" value={umpFee} onChange={(e) => setUmpFee(e.target.value)} placeholder="10" />
         </Field>
-        <Field label="Games" width="w-16">
+        <Field label="Games" width="w-14 shrink-0">
           <Input value={guarantee} onChange={(e) => setGuarantee(e.target.value)} placeholder="3GG" />
         </Field>
-        <Field label="Closes" width="w-32">
+        <Field label="Closes" width="w-28 shrink-0">
           <Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} />
         </Field>
-        <Field label="Poster">
+        <Field label="Poster" width="shrink-0">
           <PosterUpload tournamentId={t.id} posterUrl={t.poster_url} />
         </Field>
       </DirectorForm>

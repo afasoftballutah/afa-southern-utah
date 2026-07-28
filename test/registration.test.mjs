@@ -132,3 +132,36 @@ test("bornWithAge reads the way a roster sheet does", () => {
   assert.equal(bornWithAge("1985-01-20", "2026-07-27"), "1985-01-20 [41]");
   assert.equal(bornWithAge(null, "2026-07-27"), "—");
 });
+
+// --- Venue names -----------------------------------------------------------
+import { venueParts } from "@/lib/director.js";
+
+test("a venue reads the way a director says it", () => {
+  assert.deepEqual(venueParts("The Canyons Sports Complex", "St. George, UT"), {
+    name: "Canyons",
+    locality: "St. George, UT",
+  });
+});
+
+test("the locality can be inside the name", () => {
+  assert.deepEqual(venueParts("Lakeside Park, Orem, UT", null), {
+    name: "Lakeside Park",
+    locality: "Orem, UT",
+  });
+});
+
+test("a venue that is only a town keeps its name", () => {
+  assert.deepEqual(venueParts("Wendover, NV", null), { name: "Wendover", locality: "NV" });
+});
+
+test("no locality anywhere is null, not empty string", () => {
+  assert.deepEqual(venueParts("Arroyo Grande", null), { name: "Arroyo Grande", locality: null });
+});
+
+test("venue_address wins over a comma in the name", () => {
+  assert.equal(venueParts("Somewhere, XX", "Real City, UT").locality, "Real City, UT");
+});
+
+test("an empty venue does not crash", () => {
+  assert.deepEqual(venueParts(null, null), { name: "", locality: null });
+});

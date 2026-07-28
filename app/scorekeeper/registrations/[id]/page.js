@@ -147,7 +147,7 @@ export default async function RegistrationPage({ params }) {
     <DirectorShell
       title={r.team_name}
       count={`${r.tournaments?.name}${scope ? ` · ${scope}` : ""}`}
-      back={`/scorekeeper/tournaments/${r.tournament_id}`}
+      back="/scorekeeper/tournaments"
     >
       <RegistrationCard
         registration={{

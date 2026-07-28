@@ -189,7 +189,7 @@ export default function DirectorTable({
             </thead>
             <tbody>
               {visible.map((r) => {
-                const expandable = Boolean(r.detailRows?.length);
+                const expandable = Boolean(r.detailRows?.length || r.detail);
                 const isOpen = expandable && openKey === r.key;
                 return (
                   <Fragment key={r.key}>
@@ -250,10 +250,10 @@ export default function DirectorTable({
                         );
                       })}
                     </tr>
-                    {r.detail && (
+                    {(r.panel || (isOpen && r.detail)) && (
                       <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
                         <td colSpan={columns.length} className="px-3 py-3">
-                          {r.detail}
+                          {r.panel ?? r.detail}
                         </td>
                       </tr>
                     )}

@@ -24,7 +24,7 @@ export function Input(props) {
   return (
     <input
       {...props}
-      className="w-full border border-afa-navy/30 rounded-lg px-2 py-2 text-[15px]"
+      className="w-full border border-afa-navy/30 rounded-lg px-1.5 py-2 text-[13px]"
     />
   );
 }
@@ -63,7 +63,20 @@ export function fromCents(cents) {
 // 2026-07-27: "when we add a division, it should be a single line, not a
 // stacked vertical list." A form of four short fields down the page is a
 // scroll for no reason.
-export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, row = false, open: initiallyOpen = false, alwaysOpen = false }) {
+export default function DirectorForm({
+  heading,
+  note,
+  submitLabel,
+  confirmMessage,
+  onSubmit,
+  children,
+  row = false,
+  open: initiallyOpen = false,
+  alwaysOpen = false,
+  // Rendered as the last item INSIDE the row, so the buttons never wrap away
+  // from the fields they belong to.
+  actions = null,
+}) {
   const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -103,18 +116,39 @@ export default function DirectorForm({ heading, note, submitLabel, confirmMessag
       </div>
       {note && <p className="t-meta">{note}</p>}
       {row ? (
-        <div className="flex flex-wrap items-end gap-3 dense-controls">{children}</div>
+        // flex-nowrap: a form of short fields reads as one line or not at
+        // all, and wrapping put the save button under the first field (JD,
+        // 2026-07-28: "I really dont want the menu to wrap, even the save
+        // button"). It scrolls sideways on a phone rather than stacking.
+        <div className="flex flex-nowrap items-end gap-2 overflow-x-auto dense-controls pb-1">
+          {children}
+          {row && (
+            <span className="flex items-end gap-2 shrink-0">
+              <button
+                type="button"
+                className="pill"
+                disabled={busy}
+                onClick={() => (confirmMessage ? setAsk(true) : go())}
+              >
+                {busy ? "Saving…" : submitLabel}
+              </button>
+              {actions}
+            </span>
+          )}
+        </div>
       ) : (
         children
       )}
-      <button
-        type="button"
-        className={row ? "btn" : "btn w-full"}
-        disabled={busy}
-        onClick={() => (confirmMessage ? setAsk(true) : go())}
-      >
-        {busy ? "Saving…" : submitLabel}
-      </button>
+      {!row && (
+        <button
+          type="button"
+          className="btn w-full"
+          disabled={busy}
+          onClick={() => (confirmMessage ? setAsk(true) : go())}
+        >
+          {busy ? "Saving…" : submitLabel}
+        </button>
+      )}
       {ask && (
         <ConfirmDialog
           title={heading}
