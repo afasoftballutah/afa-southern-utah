@@ -76,7 +76,16 @@ export default function RegistrationCard({ registration, classes = [], showTitle
   }
 
   return (
-    <div className={"card p-4 space-y-3" + (reg.status === "withdrawn" ? " opacity-60" : "")}>
+    // max-w-3xl because this card is a line of facts and a row of pills — it
+    // has never needed more, and at the control centre's 84rem it was 1312px
+    // wide with content stopping around 600 (JD, 2026-07-27: "can you narrow
+    // the top card since we dont need it to be so wide?"). Tables keep the
+    // full width; they earn it.
+    <div
+      className={
+        "card p-4 space-y-3 max-w-3xl" + (reg.status === "withdrawn" ? " opacity-60" : "")
+      }
+    >
       {showTitle && (
         <div className="flex items-baseline justify-between gap-3">
           <p className="team-name text-lg">{reg.team_name}</p>
