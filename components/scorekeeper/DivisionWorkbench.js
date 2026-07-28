@@ -37,8 +37,8 @@ const COLUMNS = [
   // How many men and women a roster needs here. Men's is 10/0, Women's 0/10,
   // Coed whatever its split is — the numbers the eligibility pill checks a
   // roster against, where a director can see them.
-  { key: "minMen", label: "M", align: "center", width: "3rem" },
-  { key: "minWomen", label: "W", align: "center", width: "3rem" },
+  { key: "minMen", label: "M", group: "Minimum", align: "center", width: "3rem" },
+  { key: "minWomen", label: "W", group: "Minimum", align: "center", width: "3rem" },
   { key: "teams", label: "Teams", align: "center", width: "12rem" },
   { key: "matchups", label: "Matchups", align: "center", width: "12rem" },
   { key: "scores", label: "Scores", align: "center", width: "12rem" },

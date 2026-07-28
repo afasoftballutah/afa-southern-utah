@@ -18,7 +18,11 @@ import Link from "next/link";
 // cannot hand a function across, so every cell arrives as a finished value
 // and this file owns sorting and filtering.
 //
-//   columns [{ key, label, align?, width?, type?: "check"|"text", hideBelow? }]
+//   columns [{ key, label, group?, align?, width?, type?: "check"|"text",
+//              hideBelow? }]
+//
+// Consecutive columns sharing a `group` get one spanning heading above them,
+// so "Minimum" is said once over M and W rather than twice inside them.
 //   rows    [{ key, href, detailRows?, cells: {…}, sortValues: {…}, tags: [],
 //              search }]
 //
@@ -27,6 +31,17 @@ import Link from "next/link";
 // over and over... have the accordion open in the same columns." A nested
 // table with its own headings was a third layout to read; aligned rows are
 // just more of the record you are already looking at.
+
+/** Runs of columns that share a group, as {label, span} in column order. */
+function groupSpans(columns) {
+  const out = [];
+  for (const c of columns) {
+    const last = out[out.length - 1];
+    if (last && last.label === (c.group ?? null)) last.span += 1;
+    else out.push({ label: c.group ?? null, span: 1 });
+  }
+  return out;
+}
 
 function Arrow({ dir }) {
   return <span className="text-afa-navy/60">{dir === "desc" ? "▼" : "▲"}</span>;
@@ -136,6 +151,19 @@ export default function DirectorTable({
               cant be ellipsis... shrink the fonts as needed"). */}
           <table className="w-full text-[14px] leading-snug">
             <thead>
+              {columns.some((c) => c.group) && (
+                <tr>
+                  {groupSpans(columns).map((g, i) => (
+                    <th
+                      key={i}
+                      colSpan={g.span}
+                      className="px-3 pt-2 pb-0 t-label font-normal text-center"
+                    >
+                      {g.label}
+                    </th>
+                  ))}
+                </tr>
+              )}
               <tr className="border-b border-afa-navy/15">
                 {columns.map((c) => (
                   <th
