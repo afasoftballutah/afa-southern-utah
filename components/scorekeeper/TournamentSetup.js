@@ -34,6 +34,7 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [kept, setKept] = useState([]);
 
   const set = (gender, patch) =>
     setPlan((cur) => cur.map((g) => (g.gender === gender ? { ...g, ...patch } : g)));
@@ -70,10 +71,14 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
     setAsk(false);
     setBusy(true);
     setError("");
+    setKept([]);
     const res = await directorPost({ action: "applyDivisionSetup", tournamentId, plan });
     if (res.error) return (setError(res.error), setBusy(false));
+    // Not an error, so not red. A division that stayed because a team is in
+    // it is a fact about the tournament, not a failure — and the old wording
+    // said "Kept Coed ... in them", which is not a sentence.
     if (res.refused?.length) {
-      setError(`Kept ${res.refused.join(", ")} — teams are registered in them.`);
+      setKept(res.refused);
       setBusy(false);
       return;
     }
@@ -173,6 +178,12 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
         <span className="t-meta">{summary.length === 0 ? "Nothing selected" : summary.join(" · ")}</span>
       </div>
       {error && <p className="t-meta text-afa-red font-semibold text-center">{error}</p>}
+      {kept.length > 0 && (
+        <p className="t-meta text-center">
+          {kept.join(", ")} {kept.length === 1 ? "still has a team in it" : "still have teams in them"} — move
+          them first.
+        </p>
+      )}
 
       {ask && (
         <ConfirmDialog

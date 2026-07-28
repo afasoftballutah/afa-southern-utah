@@ -333,17 +333,6 @@ export async function POST(request) {
       const existingByKey = new Map((existing ?? []).map((d) => [keyOf(d), d]));
       const wantedKeys = new Set(wanted.map(keyOf));
 
-      // Remove what the plan dropped — unless a team is in it.
-      const refused = [];
-      for (const d of existing ?? []) {
-        if (wantedKeys.has(keyOf(d))) continue;
-        if (hasTeams.has(d.id)) {
-          refused.push(d.name);
-          continue;
-        }
-        await supabase.from("divisions").delete().eq("id", d.id);
-      }
-
       // Create what is missing, parents before children.
       let order = 0;
       const createdByName = new Map();
@@ -375,6 +364,58 @@ export async function POST(request) {
           return bad("Could not save that setup — please try again", 500);
         }
         createdByName.set(`${w.gender}|${w.name}`, data.id);
+      }
+
+      // Teams follow their class. A tournament that ran one "Coed" division
+      // and is now split into Coed D and Coed E should carry the teams across
+      // rather than stranding them in a division the director just retired —
+      // Fallen is entered at D, so it belongs in Coed D (JD, 2026-07-27:
+      // "fallen is in coed D or should be").
+      const { data: fullRegs } = await supabase
+        .from("registrations")
+        .select("id, division_id, class_id")
+        .eq("tournament_id", tournamentId)
+        .neq("status", "withdrawn");
+
+      const stillThere = new Set();
+      for (const d of existing ?? []) {
+        if (wantedKeys.has(keyOf(d))) stillThere.add(d.id);
+      }
+
+      for (const r of fullRegs ?? []) {
+        if (stillThere.has(r.division_id)) continue; // its division survives
+        const from = (existing ?? []).find((d) => d.id === r.division_id);
+        if (!from) continue;
+        // The wanted division with the same gender AND the class this team
+        // was entered at. No class on the team means no safe destination.
+        const target = wanted.find(
+          (w) => w.gender === from.gender && r.class_id && w.classId === r.class_id
+        );
+        if (!target) continue;
+        const targetId = createdByName.get(`${target.gender}|${target.name}`);
+        if (targetId) {
+          await supabase.from("registrations").update({ division_id: targetId }).eq("id", r.id);
+          hasTeams.delete(from.id);
+        }
+      }
+
+      // Recheck, because a division emptied by the moves above is now
+      // deletable.
+      const { data: remaining } = await supabase
+        .from("registrations")
+        .select("division_id")
+        .eq("tournament_id", tournamentId)
+        .neq("status", "withdrawn");
+      const occupied = new Set((remaining ?? []).map((r) => r.division_id));
+
+      const refused = [];
+      for (const d of existing ?? []) {
+        if (wantedKeys.has(keyOf(d))) continue;
+        if (occupied.has(d.id)) {
+          refused.push(d.name);
+          continue;
+        }
+        await supabase.from("divisions").delete().eq("id", d.id);
       }
 
       for (const w of wanted.filter((x) => x.parentOf)) {
