@@ -34,10 +34,23 @@ import DivisionMinimums from "./DivisionMinimums";
 // stands.
 const COLUMNS = [
   { key: "division", label: "Division" },
-  { key: "teams", label: "Teams", align: "right", width: "11rem" },
-  { key: "matchups", label: "Matchups", align: "right", width: "11rem" },
-  { key: "scores", label: "Scores", align: "right", width: "10rem" },
+  { key: "teams", label: "Teams", align: "center", width: "12rem" },
+  { key: "matchups", label: "Matchups", align: "center", width: "12rem" },
+  { key: "scores", label: "Scores", align: "center", width: "12rem" },
 ];
+
+// A button and whether that step is finished. The tick is the same glyph the
+// waiver column uses, so "done" looks the same everywhere in the tool.
+function Step({ done, children }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      {children}
+      <span className={"tick " + (done ? "text-afa-go" : "text-afa-muted/50")}>
+        {done ? "☑" : "☐"}
+      </span>
+    </span>
+  );
+}
 
 export default function DivisionWorkbench({ divisions, registrations, classes }) {
   // Keyed on division AND class, because a tournament that runs Coed D and
@@ -61,27 +74,33 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
     cells: {
       division: d.label,
       teams: (
-        <button
-          type="button"
-          className={"pill pill-solid" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
-          onClick={() => open(d.key, "teams")}
-        >
-          Teams {d.teams}/{d.teamsMax}
-        </button>
+        <Step done={d.teams > 0 && d.teams >= d.teamsMax}>
+          <button
+            type="button"
+            className={"pill" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
+            onClick={() => open(d.key, "teams")}
+          >
+            Teams {d.teams}/{d.teamsMax}
+          </button>
+        </Step>
       ),
       matchups: (
-        <button
-          type="button"
-          className={"pill pill-solid" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
-          onClick={() => open(d.key, "setup")}
-        >
-          Matchups{d.gamesTotal > 0 ? ` ${d.gamesTotal}` : ""}
-        </button>
+        <Step done={d.gamesTotal > 0}>
+          <button
+            type="button"
+            className={"pill" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
+            onClick={() => open(d.key, "setup")}
+          >
+            Matchups{d.gamesTotal > 0 ? ` ${d.gamesTotal}` : ""}
+          </button>
+        </Step>
       ),
       scores: (
-        <Link className="pill pill-solid" href={`/scorekeeper/division/${d.id}`}>
-          Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
-        </Link>
+        <Step done={d.gamesTotal > 0 && d.unplayed === 0}>
+          <Link className="pill" href={`/scorekeeper/division/${d.id}`}>
+            Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
+          </Link>
+        </Step>
       ),
     },
   }));
