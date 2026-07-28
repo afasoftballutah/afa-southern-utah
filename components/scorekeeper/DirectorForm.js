@@ -102,6 +102,9 @@ export default function DirectorForm({
   // Rendered as the last item INSIDE the row, so the buttons never wrap away
   // from the fields they belong to.
   actions = null,
+  // How the collapsed form looks. A full-width bar is right when the form IS
+  // the section; a pill is right when it sits in a line of other pills.
+  triggerClass = "btn-quiet w-full",
 }) {
   const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);
@@ -124,7 +127,7 @@ export default function DirectorForm({
 
   if (!open && !alwaysOpen) {
     return (
-      <button type="button" className="btn-quiet w-full" onClick={() => setOpen(true)}>
+      <button type="button" className={triggerClass} onClick={() => setOpen(true)}>
         {heading}
       </button>
     );

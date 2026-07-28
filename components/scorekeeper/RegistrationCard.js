@@ -30,7 +30,10 @@ export default function RegistrationCard({ registration, classes = [], divisions
   const [copied, setCopied] = useState("");
   const [ask, setAsk] = useState(null);
 
-  const { active_members: active, signed_members: signed } = reg.progress;
+  // A team a director typed in has no roster at all, so no progress row.
+  // Zero of zero signed is the truth about it, not a reason to crash.
+  const { active_members: active, signed_members: signed } =
+    reg.progress ?? { active_members: 0, signed_members: 0 };
   const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? null;
   const division = reg.divisions?.display_name ?? reg.divisions?.name;
   const sug = reg.suggestion;
@@ -132,7 +135,7 @@ export default function RegistrationCard({ registration, classes = [], divisions
       </div>
 
       <p className="t-meta">
-        {reg.manager_name}
+        {reg.manager_name ?? "No manager yet"}
         {reg.manager_email && <> &middot; {reg.manager_email}</>}
         {reg.manager_phone && <> &middot; {reg.manager_phone}</>}
       </p>

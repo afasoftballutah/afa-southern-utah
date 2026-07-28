@@ -561,7 +561,6 @@ export async function POST(request) {
         body;
       if (!tournamentId || !divisionId) return bad("Which tournament and division?");
       if (!teamName?.trim()) return bad("A team name is required");
-      if (!managerName?.trim()) return bad("A manager name is required");
 
       const { data: division } = await supabase
         .from("divisions")
@@ -572,19 +571,18 @@ export async function POST(request) {
         return bad("That division is not in that tournament", 404);
       }
 
-      // manager_email is NOT NULL and the director may genuinely not have
-      // one yet. A reserved .invalid address is honest — it cannot be
-      // delivered to, so nobody will ever mistake it for a real contact.
-      const email = managerEmail?.trim() || `unknown@example.invalid`;
-
+      // Both may be blank. A team can be in a tournament before anyone has
+      // said who runs it, and null says that; the old code put a fake
+      // .invalid address in the column because it was NOT NULL.
+      // See supabase/team-without-manager.sql.
       const { data: registration, error } = await supabase
         .from("registrations")
         .insert({
           tournament_id: tournamentId,
           division_id: divisionId,
           team_name: teamName.trim(),
-          manager_name: managerName.trim(),
-          manager_email: email,
+          manager_name: managerName?.trim() || null,
+          manager_email: managerEmail?.trim() || null,
           manager_phone: managerPhone?.trim() || null,
           release_text_version: RELEASE_TEXT_VERSION,
           director_notes: "Entered by a director, not through the public form.",
@@ -603,31 +601,41 @@ export async function POST(request) {
       const names = (players ?? [])
         .map((p) => ({ name: String(p.name ?? "").trim(), birthDate: p.birthDate || null }))
         .filter((p) => p.name);
-      if (!names.some((p) => p.name.toLowerCase() === managerName.trim().toLowerCase())) {
+      // A manager is on their own roster — one waiver, not two.
+      if (
+        managerName?.trim() &&
+        !names.some((p) => p.name.toLowerCase() === managerName.trim().toLowerCase())
+      ) {
         names.unshift({ name: managerName.trim(), birthDate: null });
       }
 
-      const { data: roster, error: rosterError } = await supabase
-        .from("roster_members")
-        .insert(
-          names.map((p) => ({
-            registration_id: registration.id,
-            role: "player",
-            name: p.name,
-            birth_date: p.birthDate,
-          }))
-        )
-        .select("id, name");
+      // A team with no manager and no players is a name in a bracket, which is
+      // a real thing to enter. Skip the insert rather than write an empty row.
+      let roster = [];
+      if (names.length) {
+        const { data, error: rosterError } = await supabase
+          .from("roster_members")
+          .insert(
+            names.map((p) => ({
+              registration_id: registration.id,
+              role: "player",
+              name: p.name,
+              birth_date: p.birthDate,
+            }))
+          )
+          .select("id, name");
 
-      if (rosterError) {
-        console.error("director roster insert failed", rosterError);
-        await supabase.from("registrations").delete().eq("id", registration.id);
-        return bad("Could not save the roster — please try again", 500);
+        if (rosterError) {
+          console.error("director roster insert failed", rosterError);
+          await supabase.from("registrations").delete().eq("id", registration.id);
+          return bad("Could not save the roster — please try again", 500);
+        }
+        roster = data ?? [];
       }
 
-      const managerRow = (roster ?? []).find(
-        (r) => r.name.toLowerCase() === managerName.trim().toLowerCase()
-      );
+      const managerRow = managerName?.trim()
+        ? roster.find((r) => r.name.toLowerCase() === managerName.trim().toLowerCase())
+        : null;
 
       // Same identity resolution the public form does, so a team the director
       // typed in is the same team next season. Soft — a failure here leaves
@@ -655,10 +663,15 @@ export async function POST(request) {
         console.error("identity resolution failed on director entry", err);
       }
 
-      try {
-        await regenerateAndStoreWaiverPdf(registration.id);
-      } catch (err) {
-        console.error("PDF snapshot failed on director entry", err);
+      // The waiver PDF is a record of what a manager agreed to. With no
+      // manager there is nothing to record, and a blank one would look like
+      // an entry somebody signed.
+      if (managerName?.trim()) {
+        try {
+          await regenerateAndStoreWaiverPdf(registration.id);
+        } catch (err) {
+          console.error("PDF snapshot failed on director entry", err);
+        }
       }
 
       const origin = new URL(request.url).origin;
@@ -667,6 +680,88 @@ export async function POST(request) {
         registrationId: registration.id,
         rosterLink: `${origin}/register/roster/${registration.roster_token}`,
         manageLink: `${origin}/register/manage/${registration.manage_token}`,
+      });
+    }
+
+    // ---- Put a list of teams straight into a division ------------------
+    // For entering a bracket that already happened, or a stack of paper entry
+    // forms. Names only: no manager, no roster, no waiver. JD, 2026-07-28:
+    // "the teams should be put in, with no managers or players yet."
+    case "addTeams": {
+      const { tournamentId, divisionId, names } = body;
+      if (!tournamentId || !divisionId) return bad("Which tournament and division?");
+
+      const wanted = [
+        ...new Map(
+          String(names ?? "")
+            .split(/[\n,]/)
+            .map((n) => n.trim())
+            .filter(Boolean)
+            .map((n) => [n.toLowerCase(), n])
+        ).values(),
+      ];
+      if (wanted.length === 0) return bad("Type at least one team name");
+
+      const { data: division } = await supabase
+        .from("divisions")
+        .select("id, tournament_id, class_id")
+        .eq("id", divisionId)
+        .maybeSingle();
+      if (!division || division.tournament_id !== tournamentId) {
+        return bad("That division is not in that tournament", 404);
+      }
+
+      // Already there is not an error — a director pasting a list twice should
+      // get the missing ones added, not a wall of complaints.
+      const { data: existing } = await supabase
+        .from("registrations")
+        .select("team_name")
+        .eq("tournament_id", tournamentId)
+        .eq("division_id", divisionId)
+        .neq("status", "withdrawn");
+      const have = new Set((existing ?? []).map((r) => r.team_name.trim().toLowerCase()));
+
+      const fresh = wanted.filter((n) => !have.has(n.toLowerCase()));
+      if (fresh.length === 0) {
+        return Response.json({ ok: true, added: 0, skipped: wanted.length });
+      }
+
+      const { data: made, error } = await supabase
+        .from("registrations")
+        .insert(
+          fresh.map((n) => ({
+            tournament_id: tournamentId,
+            division_id: divisionId,
+            team_name: n,
+            class_id: division.class_id ?? null,
+            release_text_version: RELEASE_TEXT_VERSION,
+            director_notes: "Entered by a director. No manager yet.",
+          }))
+        )
+        .select("id, team_name");
+
+      if (error) {
+        console.error("bulk team insert failed", error);
+        return bad("Could not save those teams — please try again", 500);
+      }
+
+      // Soft: a team that could not be matched to a club leaves a null to fix,
+      // never a lost registration.
+      try {
+        await Promise.all(
+          (made ?? []).map(async (r) => {
+            const teamId = await resolveTeam(supabase, { teamName: r.team_name, divisionId });
+            if (teamId) await supabase.from("registrations").update({ team_id: teamId }).eq("id", r.id);
+          })
+        );
+      } catch (err) {
+        console.error("team identity resolution failed on bulk add", err);
+      }
+
+      return Response.json({
+        ok: true,
+        added: made?.length ?? 0,
+        skipped: wanted.length - (made?.length ?? 0),
       });
     }
 

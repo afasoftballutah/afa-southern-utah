@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
-import { isRegistrationOpen, stillToPlayIn } from "@/lib/tournament-state";
+import { isRegistrationOpen, stillToPlayIn, playableIn, GAME_STATE_FIELDS } from "@/lib/tournament-state";
 import { genderLabel, venueParts } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
@@ -41,13 +41,21 @@ const FILTERS = [
 
 async function load() {
   const supabase = getServiceClient();
-  const [{ data: tournaments }, { data: divisions }, { data: registrations }, { data: classes }] =
+  const [
+    { data: tournaments },
+    { data: divisions },
+    { data: registrations },
+    { data: classes },
+    { data: progress },
+  ] =
     await Promise.all([
       supabase.from("tournaments").select("*").order("start_date"),
       supabase
         .from("divisions")
         .select(
-          "id, tournament_id, name, display_name, sort_order, parent_division_id, gender, class_id, min_men, min_women, min_teams, max_teams, games(id, status, is_bye, round), pool_games(id, status)"
+          "id, tournament_id, name, display_name, sort_order, parent_division_id, gender, class_id, " +
+            "min_men, min_women, min_teams, max_teams, " +
+            `games(${GAME_STATE_FIELDS}), pool_games(id, status)`
         ),
       supabase
         .from("registrations")
@@ -55,6 +63,7 @@ async function load() {
           "id, tournament_id, division_id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, manager_name, manager_email, manager_phone, divisions(name, display_name)"
         ),
       supabase.from("classes").select("id, name, sort_order").order("sort_order"),
+      supabase.from("registration_signing_progress").select("*"),
     ]);
 
   const real = (tournaments ?? []).filter((t) => !t.is_placeholder);
@@ -62,7 +71,21 @@ async function load() {
     ...new Set((tournaments ?? []).map((t) => t.venue_name).filter(Boolean)),
   ].sort();
 
-  return { tournaments: real, divisions: divisions ?? [], registrations: registrations ?? [], classes: classes ?? [], venues };
+  // A team a director typed in has no roster, so no progress row. The card
+  // reads "0 of 0 signed" from this, which is what is true about it.
+  const progressBy = new Map((progress ?? []).map((p) => [p.registration_id, p]));
+  const withProgress = (registrations ?? []).map((r) => ({
+    ...r,
+    progress: progressBy.get(r.id) ?? { active_members: 0, signed_members: 0, is_official: false },
+  }));
+
+  return {
+    tournaments: real,
+    divisions: divisions ?? [],
+    registrations: withProgress,
+    classes: classes ?? [],
+    venues,
+  };
 }
 
 /** The setup bar's starting state, read out of the divisions that exist. */
@@ -111,6 +134,7 @@ export default async function TournamentsPage() {
       .filter((d) => d.tournament_id === t.id)
       .sort((a, b) => a.sort_order - b.sort_order);
     const regs = registrations.filter((r) => r.tournament_id === t.id);
+    const poolParents = mine.filter((d) => mine.some((c) => c.parent_division_id === d.id)).length;
     const live = regs.filter((r) => r.status !== "withdrawn");
     const open = isRegistrationOpen(t);
     const cap = mine.reduce((n, d) => n + (d.max_teams ?? d.min_teams ?? 6), 0);
@@ -158,12 +182,30 @@ export default async function TournamentsPage() {
           <DivisionWorkbench
             divisions={mine.map((d) => {
               const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
-              const teams = live.filter((r) => r.division_id === d.id).length;
+              // A pool-play parent holds no teams of its own — every team in
+              // its brackets played it. So it counts them all.
+              const children = mine.filter((c) => c.parent_division_id === d.id);
+              const inMe = (r) => r.division_id === d.id;
+              const inMine = (r) => inMe(r) || children.some((c) => c.id === r.division_id);
+              const teams = live.filter(children.length ? inMine : inMe).length;
+              // Byes and an if-game the champion made unnecessary are on the
+              // sheet but were never going to be played. Counting them left a
+              // finished bracket reading "Scores 16/17".
+              const playable = playableIn(games);
               return {
                 key: d.id,
                 id: d.id,
+                tournamentId: t.id,
                 classId: d.class_id ?? null,
-                label: d.display_name ?? d.name,
+                // JD, 2026-07-28: "top one should be All - Pool Play." Every
+                // team is in it, which is what makes it different from the
+                // brackets under it. Named by gender when two run pool play,
+                // because then "All" would be two different sets of teams.
+                label: children.length
+                  ? poolParents > 1
+                    ? `${genderLabel(d.gender)} — Pool Play`
+                    : "All — Pool Play"
+                  : (d.display_name ?? d.name),
                 sortKey: String(d.sort_order).padStart(4, "0"),
                 genderLabel: genderLabel(d.gender),
                 className: classes.find((c) => c.id === d.class_id)?.name ?? null,
@@ -172,8 +214,8 @@ export default async function TournamentsPage() {
                 minTeams: d.min_teams ?? 6,
                 minMen: d.min_men,
                 minWomen: d.min_women,
-                gamesTotal: games.length,
-                unplayed: games.length ? stillToPlayIn(games).length : 0,
+                gamesTotal: playable.length,
+                unplayed: playable.length ? stillToPlayIn(games).length : 0,
               };
             })}
             registrations={plain(regs)}
