@@ -262,6 +262,144 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    // ---- Set up a tournament's divisions ------------------------------
+    //
+    // JD, 2026-07-27: "mens coed and womens can all run different formats",
+    // "need a confirm at the end", "there should be a 'pool play' checkbox for
+    // each gender section first. Those rows only come up once pool play is
+    // over."
+    //
+    // The caller sends a PLAN, one entry per gender, and this makes the
+    // divisions match it. Nothing is created until they press save, and
+    // nothing with teams in it is ever removed — a division a team registered
+    // for is not the director's to delete by unticking a box.
+    case "applyDivisionSetup": {
+      const { tournamentId, plan } = body;
+      if (!tournamentId || !Array.isArray(plan)) return bad("Which tournament, and what setup?");
+
+      const GENDERS = { mens: "Men's", womens: "Women's", coed: "Coed" };
+      const { data: classes } = await supabase.from("classes").select("id, name, sort_order");
+      const { data: existing } = await supabase
+        .from("divisions")
+        .select("id, name, gender, class_id, parent_division_id")
+        .eq("tournament_id", tournamentId);
+      const { data: regs } = await supabase
+        .from("registrations")
+        .select("division_id")
+        .eq("tournament_id", tournamentId)
+        .neq("status", "withdrawn");
+      const hasTeams = new Set((regs ?? []).map((r) => r.division_id));
+
+      // What the plan says should exist.
+      const wanted = [];
+      for (const g of plan) {
+        const genderLabel = GENDERS[g.gender];
+        if (!genderLabel || !g.on) continue;
+
+        // Pool play, and brackets under it, live on ONE parent division —
+        // that is the shape the Heat Stroker ran: everyone in a pool, then
+        // split into Gold/Silver/Bronze once seeding is known.
+        if (g.mode === "brackets") {
+          wanted.push({ name: genderLabel, gender: g.gender, classId: null, parent: null });
+          for (const b of g.picks ?? []) {
+            wanted.push({ name: b, gender: g.gender, classId: null, parentOf: genderLabel });
+          }
+          continue;
+        }
+
+        if (g.mode === "levels") {
+          for (const l of g.picks ?? []) {
+            wanted.push({ name: `${genderLabel} ${l}`, gender: g.gender, classId: null, parent: null });
+          }
+          continue;
+        }
+
+        // Classes: a real division per class the tournament runs.
+        for (const name of g.picks ?? []) {
+          const cls = (classes ?? []).find((c) => c.name === name);
+          wanted.push({
+            name: `${genderLabel} ${name}`,
+            gender: g.gender,
+            classId: cls?.id ?? null,
+            parent: null,
+          });
+        }
+        if ((g.picks ?? []).length === 0 && g.poolPlay) {
+          wanted.push({ name: genderLabel, gender: g.gender, classId: null, parent: null });
+        }
+      }
+
+      const keyOf = (d) => `${d.gender}|${d.name}`;
+      const existingByKey = new Map((existing ?? []).map((d) => [keyOf(d), d]));
+      const wantedKeys = new Set(wanted.map(keyOf));
+
+      // Remove what the plan dropped — unless a team is in it.
+      const refused = [];
+      for (const d of existing ?? []) {
+        if (wantedKeys.has(keyOf(d))) continue;
+        if (hasTeams.has(d.id)) {
+          refused.push(d.name);
+          continue;
+        }
+        await supabase.from("divisions").delete().eq("id", d.id);
+      }
+
+      // Create what is missing, parents before children.
+      let order = 0;
+      const createdByName = new Map();
+      for (const w of wanted.filter((x) => !x.parentOf)) {
+        order += 10;
+        const found = existingByKey.get(keyOf(w));
+        if (found) {
+          createdByName.set(`${w.gender}|${w.name}`, found.id);
+          continue;
+        }
+        const { data, error } = await supabase
+          .from("divisions")
+          .insert({
+            tournament_id: tournamentId,
+            name: w.name,
+            display_name: w.name,
+            bracket_type: "double_elimination",
+            sort_order: order,
+            gender: w.gender,
+            class_id: w.classId,
+            min_teams: 6,
+            min_men: w.gender === "mens" ? 10 : w.gender === "coed" ? 5 : 0,
+            min_women: w.gender === "womens" ? 10 : w.gender === "coed" ? 5 : 0,
+          })
+          .select("id")
+          .single();
+        if (error) {
+          console.error("setup create failed", error);
+          return bad("Could not save that setup — please try again", 500);
+        }
+        createdByName.set(`${w.gender}|${w.name}`, data.id);
+      }
+
+      for (const w of wanted.filter((x) => x.parentOf)) {
+        if (existingByKey.has(keyOf(w))) continue;
+        order += 10;
+        const parentId = createdByName.get(`${w.gender}|${w.parentOf}`);
+        const { error } = await supabase.from("divisions").insert({
+          tournament_id: tournamentId,
+          name: w.name,
+          display_name: w.name,
+          bracket_type: "double_elimination",
+          sort_order: order,
+          gender: w.gender,
+          parent_division_id: parentId ?? null,
+          min_teams: 6,
+        });
+        if (error) {
+          console.error("setup create bracket failed", error);
+          return bad("Could not save that setup — please try again", 500);
+        }
+      }
+
+      return Response.json({ ok: true, refused });
+    }
+
     // ---- Upload a tournament poster ----------------------------------
     case "setPoster": {
       const { tournamentId, dataUrl } = body;

@@ -14,7 +14,7 @@ const GENDERS = [
 // The two things a director does to a tournament: state the terms, and add a
 // division. Both collapsed, so the page opens as a list of what exists rather
 // than a wall of inputs.
-export default function TournamentEditor({ tournament, classes, venues = [] }) {
+export default function TournamentEditor({ tournament, venues = [] }) {
   const t = tournament;
   const [fee, setFee] = useState(fromCents(t.entry_fee_cents));
   const [deposit, setDeposit] = useState(fromCents(t.deposit_cents));
@@ -24,15 +24,12 @@ export default function TournamentEditor({ tournament, classes, venues = [] }) {
   const [venue, setVenue] = useState(t.venue_name ?? "");
   const [start, setStart] = useState((t.start_date ?? "").slice(0, 10));
   const [end, setEnd] = useState((t.end_date ?? "").slice(0, 10));
-
-  const [divName, setDivName] = useState("");
-  const [divGender, setDivGender] = useState("");
-  const [divClass, setDivClass] = useState("");
+  const [name, setName] = useState(t.name ?? "");
 
   return (
-    <div className="space-y-3">
       <DirectorForm
-        heading="Edit the terms"
+        heading="Terms"
+        alwaysOpen
         submitLabel="Save terms"
         row
         confirmMessage="Save these terms? Anything left blank stays off the public page."
@@ -41,6 +38,7 @@ export default function TournamentEditor({ tournament, classes, venues = [] }) {
             action: "updateTournament",
             tournamentId: t.id,
             patch: {
+              name: name.trim() || t.name,
               start_date: start || null,
               end_date: end || start || null,
               venue_name: venue || null,
@@ -55,6 +53,9 @@ export default function TournamentEditor({ tournament, classes, venues = [] }) {
           window.location.reload();
         }}
       >
+        <Field label="Tournament" width="w-56">
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
         <Field label="Starts" width="w-40"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="Ends" width="w-40"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
         <Field label="Where" width="w-64"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
@@ -78,36 +79,5 @@ export default function TournamentEditor({ tournament, classes, venues = [] }) {
         </Field>
       </DirectorForm>
 
-      <DirectorForm
-        heading="Add a division"
-        submitLabel="Add division"
-        row
-        confirmMessage="Add this division? Teams can be entered into it straight away."
-        onSubmit={async () => {
-          const res = await directorPost({
-            action: "addDivision",
-            tournamentId: t.id,
-            name: divName,
-            gender: divGender || null,
-            classId: divClass || null,
-          });
-          if (res.error) return res.error;
-          window.location.reload();
-        }}
-      >
-        <Field label="Name" width="w-36"><Input value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="Coed" /></Field>
-        <Field label="Gender" width="w-36">
-          <Select value={divGender} onChange={(e) => setDivGender(e.target.value)}>
-            {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
-          </Select>
-        </Field>
-        <Field label="Class" width="w-32">
-          <Select value={divClass} onChange={(e) => setDivClass(e.target.value)}>
-            <option value="">Not set</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-        </Field>
-      </DirectorForm>
-    </div>
   );
 }

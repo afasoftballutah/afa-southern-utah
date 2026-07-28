@@ -63,8 +63,8 @@ export function fromCents(cents) {
 // 2026-07-27: "when we add a division, it should be a single line, not a
 // stacked vertical list." A form of four short fields down the page is a
 // scroll for no reason.
-export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, row = false, open: initiallyOpen = false }) {
-  const [open, setOpen] = useState(initiallyOpen);
+export default function DirectorForm({ heading, note, submitLabel, confirmMessage, onSubmit, children, row = false, open: initiallyOpen = false, alwaysOpen = false }) {
+  const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [ask, setAsk] = useState(false);
@@ -83,7 +83,7 @@ export default function DirectorForm({ heading, note, submitLabel, confirmMessag
     }
   }
 
-  if (!open) {
+  if (!open && !alwaysOpen) {
     return (
       <button type="button" className="btn-quiet w-full" onClick={() => setOpen(true)}>
         {heading}
@@ -95,9 +95,11 @@ export default function DirectorForm({ heading, note, submitLabel, confirmMessag
     <div className="card p-4 space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="t-strong">{heading}</p>
-        <button type="button" className="t-label underline text-afa-muted" onClick={() => setOpen(false)}>
-          Close
-        </button>
+        {!alwaysOpen && (
+          <button type="button" className="t-label underline text-afa-muted" onClick={() => setOpen(false)}>
+            Close
+          </button>
+        )}
       </div>
       {note && <p className="t-meta">{note}</p>}
       {row ? (

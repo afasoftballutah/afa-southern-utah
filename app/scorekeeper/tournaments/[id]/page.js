@@ -9,6 +9,7 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
 import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
+import TournamentSetup from "@/components/scorekeeper/TournamentSetup";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 
 export const dynamic = "force-dynamic";
@@ -166,6 +167,49 @@ function buildDivisionRows(divisions, registrations, classes, tournament) {
   return rows;
 }
 
+/**
+ * The setup bar's starting state, read back out of the divisions that exist.
+ *
+ * A director opening a tournament they set up last week should see their own
+ * choices, not an empty form.
+ */
+function planFrom(divisions, classes) {
+  const CLASS_NAMES = new Set((classes ?? []).map((c) => c.name));
+  const BRACKETS = new Set(["Gold", "Silver", "Bronze"]);
+  const LEVELS = new Set(["Upper", "Lower"]);
+
+  return ["mens", "womens", "coed"].map((gender) => {
+    const mine = divisions.filter((d) => d.gender === gender);
+    const picks = new Set();
+    let mode = "divisions";
+
+    for (const d of mine) {
+      const name = d.display_name ?? d.name;
+      const tail = name.split(" ").pop();
+      if (BRACKETS.has(tail)) {
+        mode = "brackets";
+        picks.add(tail);
+      } else if (LEVELS.has(tail)) {
+        mode = "levels";
+        picks.add(tail);
+      } else if (CLASS_NAMES.has(tail)) {
+        picks.add(tail);
+      }
+    }
+
+    return {
+      gender,
+      on: mine.length > 0,
+      // Pool play is where a bracket tournament starts, so a parent division
+      // with children implies it.
+      poolPlay: mine.some((d) => mine.some((c) => c.parent_division_id === d.id)),
+      poolPlayDone: false,
+      mode,
+      picks: [...picks],
+    };
+  });
+}
+
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const store = await cookies();
@@ -198,18 +242,18 @@ export default async function TournamentPage({ params }) {
       count={`${tournament.start_date} · ${open ? "taking teams" : "registration closed"}`}
       back="/scorekeeper/tournaments"
     >
+      <TournamentEditor
+        tournament={JSON.parse(JSON.stringify(tournament))}
+        venues={venues}
+      />
+
+      <TournamentSetup tournamentId={tournament.id} initial={planFrom(divisions, classes)} />
+
       <h2 className="t-heading">Divisions</h2>
       <DivisionWorkbench
         divisions={buildDivisionRows(divisions, registrations, classes, tournament)}
         registrations={JSON.parse(JSON.stringify(registrations))}
         classes={classes}
-      />
-
-      <h2 className="t-heading">Terms and divisions</h2>
-      <TournamentEditor
-        tournament={JSON.parse(JSON.stringify(tournament))}
-        classes={classes}
-        venues={venues}
       />
 
       <p className="t-meta">
