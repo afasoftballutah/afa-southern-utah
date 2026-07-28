@@ -247,13 +247,14 @@ export default async function TournamentPage({ params }) {
         venues={venues}
       />
 
-      <TournamentSetup tournamentId={tournament.id} initial={planFrom(divisions, classes)} />
-
       <h2 className="t-heading">Divisions</h2>
       <DivisionWorkbench
         divisions={buildDivisionRows(divisions, registrations, classes, tournament)}
         registrations={JSON.parse(JSON.stringify(registrations))}
         classes={classes}
+        setup={
+          <TournamentSetup tournamentId={tournament.id} initial={planFrom(divisions, classes)} />
+        }
       />
 
       <p className="t-meta">

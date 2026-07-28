@@ -249,8 +249,29 @@ button:not(.pill) {
     background: rgba(30, 58, 110, 0.05);
     padding: 2px;
   }
+  /* A segmented control inside a table column has a third of the width a
+     page header gives it, and the default padding overflowed into the
+     neighbouring one. */
+  /* .seg.seg-sm, not .seg-sm — equal specificity loses to the .seg > button
+     rule below it on source order, which is why the compact size did nothing
+     the first time. */
+  .seg.seg-sm > button {
+    min-height: 26px;
+    padding: 0 0.4rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .seg > button.is-on {
+    background: #fff;
+    color: var(--afa-navy);
+    box-shadow: 0 1px 2px rgba(22, 35, 61, 0.14);
+  }
+  .seg > button:disabled {
+    opacity: 0.4;
+  }
   .seg > button {
-    min-height: 44px;
+    min-height: 28px;
     padding: 0 1rem;
     border-radius: 999px;
     font-size: 0.875rem;

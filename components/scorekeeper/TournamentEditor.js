@@ -53,25 +53,25 @@ export default function TournamentEditor({ tournament, venues = [] }) {
           window.location.reload();
         }}
       >
-        <Field label="Tournament" width="w-56">
+        <Field label="Tournament" width="w-52">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Starts" width="w-40"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-        <Field label="Ends" width="w-40"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
-        <Field label="Where" width="w-64"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
-        <Field label="Entry fee" width="w-20">
+        <Field label="Starts" width="w-32"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="Ends" width="w-32"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="Where" width="w-48"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
+        <Field label="Entry" width="w-16">
           <Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="300" />
         </Field>
-        <Field label="Deposit" width="w-20">
+        <Field label="Deposit" width="w-16">
           <Input inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="100" />
         </Field>
-        <Field label="Ump fee" width="w-20">
+        <Field label="Ump" width="w-16">
           <Input inputMode="decimal" value={umpFee} onChange={(e) => setUmpFee(e.target.value)} placeholder="10" />
         </Field>
-        <Field label="Guarantee" width="w-20">
+        <Field label="Games" width="w-16">
           <Input value={guarantee} onChange={(e) => setGuarantee(e.target.value)} placeholder="3GG" />
         </Field>
-        <Field label="Closes" width="w-40">
+        <Field label="Closes" width="w-32">
           <Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} />
         </Field>
         <Field label="Poster">

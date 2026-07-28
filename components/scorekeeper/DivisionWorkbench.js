@@ -65,7 +65,7 @@ function Step({ state, children }) {
   );
 }
 
-export default function DivisionWorkbench({ divisions, registrations, classes }) {
+export default function DivisionWorkbench({ divisions, registrations, classes, setup }) {
   // Keyed on division AND class, because a tournament that runs Coed D and
   // Coed E has two brackets and one division row would hide one of them.
   const [panel, setPanel] = useState(null); // { key, action }
@@ -141,6 +141,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
 
   return (
     <DirectorTable
+      before={setup}
       columns={COLUMNS}
       rows={rows}
       defaultSort={{ key: "division", dir: "asc" }}

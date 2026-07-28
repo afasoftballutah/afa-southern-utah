@@ -4,17 +4,18 @@ import { useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import { directorPost } from "./DirectorForm";
 
-// How this tournament is split up, one column per gender.
+// How this tournament is split up. Sits at the top of the Divisions card,
+// because it is what makes the rows underneath it.
 //
-// JD, 2026-07-27: "a bar split into thirds, checkbox for the M/W/Coed and
-// slider between divisions... Levels... or Brackets", "mens coed and womens
-// can all run different formats", "need a confirm at the end", "there should
-// be a 'pool play' checkbox for each gender section first. Those rows only
-// come up once pool play is over. Maybe to make it easier they come up grayed
-// out initially", "Might be better if instead of checks it had buttons that
-// turn green."
+// JD, 2026-07-27: "its not intuitive whats going on. They are not linked to
+// the lower table (problem), not a slider pill so you cant know that one is an
+// either or and one is a multi-select... Pool Play should be on a separate
+// line, and the left align doesnt suggest hierarchy."
 //
-// Nothing is written until Save, and the confirm names what will be created.
+// So: the format is a SEGMENTED CONTROL — one track, one filled segment, which
+// is how a screen says "pick one". The options under it are separate buttons
+// that turn green, which is how a screen says "pick as many as you like". Pool
+// play gets its own line above the format, because it happens first.
 
 const GENDERS = [
   { key: "mens", label: "Men's" },
@@ -27,29 +28,6 @@ const MODES = [
   { key: "levels", label: "Levels", options: ["Upper", "Lower"] },
   { key: "brackets", label: "Brackets", options: ["Gold", "Silver", "Bronze"] },
 ];
-
-// A button that turns green when it is on — the same green as every other
-// "done" mark in the tool.
-function Toggle({ on, disabled, onClick, children, title }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      title={title}
-      onClick={onClick}
-      className={
-        "pill " +
-        (disabled
-          ? "opacity-40 cursor-not-allowed"
-          : on
-            ? "bg-afa-go text-white border-afa-go"
-            : "")
-      }
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function TournamentSetup({ tournamentId, initial }) {
   const [plan, setPlan] = useState(initial);
@@ -74,14 +52,11 @@ export default function TournamentSetup({ tournamentId, initial }) {
       )
     );
 
-  // What Save will actually make, in the words of the rows it produces.
   const summary = plan
     .filter((g) => g.on)
     .flatMap((g) => {
       const label = GENDERS.find((x) => x.key === g.gender).label;
-      if (g.mode === "brackets") {
-        return [label, ...g.picks.map((p) => `${label} ${p}`)];
-      }
+      if (g.mode === "brackets") return [label, ...g.picks.map((p) => `${label} ${p}`)];
       return g.picks.length ? g.picks.map((p) => `${label} ${p}`) : [label];
     });
 
@@ -90,11 +65,7 @@ export default function TournamentSetup({ tournamentId, initial }) {
     setBusy(true);
     setError("");
     const res = await directorPost({ action: "applyDivisionSetup", tournamentId, plan });
-    if (res.error) {
-      setError(res.error);
-      setBusy(false);
-      return;
-    }
+    if (res.error) return (setError(res.error), setBusy(false));
     if (res.refused?.length) {
       setError(`Kept ${res.refused.join(", ")} — teams are registered in them.`);
       setBusy(false);
@@ -104,81 +75,87 @@ export default function TournamentSetup({ tournamentId, initial }) {
   }
 
   return (
-    <div className="card p-4 space-y-3">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <div className="border-b border-afa-navy/10 pb-4 space-y-3">
+      <div className="grid gap-6 sm:grid-cols-3">
         {GENDERS.map((gender) => {
           const g = plan.find((x) => x.gender === gender.key);
           const mode = MODES.find((m) => m.key === g.mode) ?? MODES[0];
-          // Brackets come out of pool play, so they cannot be filled until it
-          // is over. Shown, greyed, so a director can see they are coming.
           const bracketsPending = g.mode === "brackets" && !g.poolPlayDone;
 
           return (
-            <div key={gender.key} className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Toggle on={g.on} onClick={() => set(gender.key, { on: !g.on })}>
-                  {gender.label}
-                </Toggle>
-                <Toggle
-                  on={g.poolPlay}
+            // Centred, so each gender reads as its own column rather than three
+            // things stacked against the left edge.
+            <div key={gender.key} className={"text-center space-y-2 " + (g.on ? "" : "opacity-45")}>
+              <button
+                type="button"
+                onClick={() => set(gender.key, { on: !g.on })}
+                className={"pill " + (g.on ? "bg-afa-go text-white border-afa-go" : "")}
+              >
+                {gender.label}
+              </button>
+
+              <div>
+                <button
+                  type="button"
                   disabled={!g.on}
                   onClick={() => set(gender.key, { poolPlay: !g.poolPlay })}
+                  className={"pill " + (g.poolPlay && g.on ? "bg-afa-go text-white border-afa-go" : "")}
                 >
                   Pool play
-                </Toggle>
+                </button>
               </div>
 
-              <div className="flex flex-wrap gap-1">
+              {/* One track, one filled segment: pick one. */}
+              <div className="seg seg-sm mx-auto">
                 {MODES.map((m) => (
                   <button
                     key={m.key}
                     type="button"
                     disabled={!g.on}
                     onClick={() => set(gender.key, { mode: m.key, picks: [] })}
-                    className={
-                      "pill " +
-                      (!g.on
-                        ? "opacity-40 cursor-not-allowed"
-                        : g.mode === m.key
-                          ? "bg-afa-navy text-white border-afa-navy"
-                          : "")
-                    }
+                    className={g.mode === m.key ? "is-on" : ""}
                   >
                     {m.label}
                   </button>
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-1">
+              {/* Separate buttons: pick as many as apply. */}
+              <div className="flex flex-wrap justify-center gap-1">
                 {mode.options.map((o) => (
-                  <Toggle
+                  <button
                     key={o}
-                    on={g.picks.includes(o)}
+                    type="button"
                     disabled={!g.on}
-                    title={bracketsPending ? "Fills once pool play is over" : undefined}
                     onClick={() => togglePick(gender.key, o)}
+                    className={
+                      "pill " +
+                      (g.picks.includes(o)
+                        ? bracketsPending
+                          ? "bg-afa-part/15 border-afa-part text-afa-part"
+                          : "bg-afa-go text-white border-afa-go"
+                        : "")
+                    }
                   >
                     {o}
-                  </Toggle>
+                  </button>
                 ))}
               </div>
               {bracketsPending && g.picks.length > 0 && (
-                <p className="t-meta">Fills once pool play is over.</p>
+                <p className="t-meta">Fills once pool play is over</p>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn" disabled={busy} onClick={() => setAsk(true)}>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <button type="button" className="pill" disabled={busy} onClick={() => setAsk(true)}>
           {busy ? "Saving…" : "Save setup"}
         </button>
-        <span className="t-meta">
-          {summary.length === 0 ? "Nothing selected." : summary.join(" · ")}
-        </span>
+        <span className="t-meta">{summary.length === 0 ? "Nothing selected" : summary.join(" · ")}</span>
       </div>
-      {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
+      {error && <p className="t-meta text-afa-red font-semibold text-center">{error}</p>}
 
       {ask && (
         <ConfirmDialog

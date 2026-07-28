@@ -45,6 +45,9 @@ export default function DirectorTable({
   // column and pushes everything else to the far side of the screen (JD,
   // 2026-07-27: "still seems super wide?").
   width = "",
+  // Rendered inside the same card, above the table. For a control that makes
+  // the rows below it — a separate card left them looking unrelated.
+  before = null,
 }) {
   const [query, setQuery] = useState("");
   const [filterKey, setFilterKey] = useState("all");
@@ -118,13 +121,16 @@ export default function DirectorTable({
       </div>
 
       {visible.length === 0 ? (
-        <div className="card p-6 text-center">
-          <p className="t-meta">{empty}</p>
+        <div className="card p-4 space-y-4">
+          {before}
+          <p className="t-meta text-center">{empty}</p>
         </div>
       ) : (
         // Scrolls inside itself rather than pushing the page sideways. On a
         // laptop nothing scrolls; on a phone the table survives.
-        <div className="card overflow-x-auto dense-controls">
+        <div className="card dense-controls">
+          {before && <div className="p-4">{before}</div>}
+          <div className="overflow-x-auto">
           {/* 14px, not 15 — the Team and Tournament columns had to fit on one
               line and a name may never be cut off (JD, 2026-07-27: "the names
               cant be ellipsis... shrink the fonts as needed"). */}
@@ -260,6 +266,7 @@ export default function DirectorTable({
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
