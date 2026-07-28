@@ -84,6 +84,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
       matchups: d.gamesTotal,
       scores: d.gamesTotal - d.unplayed,
     },
+    detail: panel?.key === d.key ? <Panel division={d} action={panel.action} registrations={registrations} classes={classes} /> : null,
     cells: {
       division: d.label,
       teams: (
@@ -129,12 +130,6 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
   }));
 
   const chosen = divisions.find((d) => d.key === panel?.key);
-
-  // With a division open, the other eleven are noise — you are working on one
-  // bracket, and the list you scrolled past to get here is in the way (JD,
-  // 2026-07-27: "when I click on a division, I'd like the list of divisions to
-  // collapse except to see that one"). Close brings them all back.
-  const visibleRows = chosen ? rows.filter((r) => r.key === chosen.key) : rows;
   // The teams in THIS bracket: same division, and same class when the row is
   // a class row.
   const forDivision = registrations.filter(
@@ -145,69 +140,57 @@ export default function DivisionWorkbench({ divisions, registrations, classes })
   );
 
   return (
-    <div className="space-y-3">
-      <DirectorTable
-        columns={COLUMNS}
-        rows={visibleRows}
-        defaultSort={{ key: "division", dir: "asc" }}
-        empty="No divisions yet. Add one below."
-        searchPlaceholder="Find a division…"
-        width="max-w-3xl"
-      />
+    <DirectorTable
+      columns={COLUMNS}
+      rows={rows}
+      defaultSort={{ key: "division", dir: "asc" }}
+      empty="No divisions yet. Add one below."
+      searchPlaceholder="Find a division…"
+      width="max-w-3xl"
+    />
+  );
+}
 
-      {chosen && (
-        // Same width as the table and the cards under it, so the heading sits
-        // above what it names rather than spanning a page it does not fill.
-        <div className="space-y-3 max-w-3xl mx-auto">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="t-heading">
-              {chosen.label} — {panel.action === "teams" ? "teams" : "matchups"}
-            </h2>
-            <button type="button" className="pill" onClick={() => setPanel(null)}>
-              All divisions
-            </button>
+// What opens under a division's row. JD, 2026-07-27: "I think it only works
+// if part of the accordion" — a panel below the table left the list intact but
+// disconnected from the row that opened it, and collapsing the list to hide
+// that just traded one problem for another.
+function Panel({ division: d, action, registrations, classes }) {
+  const forDivision = registrations.filter(
+    (r) => r.division_id === d.id && (d.classId == null || r.class_id === d.classId)
+  );
+
+  if (action === "setup") {
+    return (
+      <div className="space-y-3">
+        {d.genderLabel === "Coed" && (
+          <div>
+            <p className="t-label mb-2">Roster must have at least</p>
+            <DivisionMinimums divisionId={d.id} minMen={d.minMen} minWomen={d.minWomen} />
           </div>
+        )}
+        <p className="t-body">
+          {d.teams} {d.teams === 1 ? "team is" : "teams are"} in {d.label}.
+          {d.teams < d.minTeams && ` It takes ${d.minTeams} to run this division.`}
+        </p>
+        <Link href={`/scorekeeper/division/${d.id}`} className="pill">
+          Build pools and brackets
+        </Link>
+      </div>
+    );
+  }
 
-          {panel.action === "teams" && (
-            <>
-              <Link href="/scorekeeper/registrations/new" className="pill">
-                Add a team yourself
-              </Link>
-              {forDivision.length === 0 ? (
-                <div className="card p-6 text-center">
-                  <p className="t-meta">Nobody has registered for {chosen.label} yet.</p>
-                </div>
-              ) : (
-                forDivision.map((r) => (
-                  <RegistrationCard key={r.id} registration={r} classes={classes} />
-                ))
-              )}
-            </>
-          )}
-
-          {panel.action === "setup" && (
-            <div className="card p-4 space-y-3">
-              {chosen.genderLabel === "Coed" && (
-                <div>
-                  <p className="t-label mb-2">Roster must have at least</p>
-                  <DivisionMinimums
-                    divisionId={chosen.id}
-                    minMen={chosen.minMen}
-                    minWomen={chosen.minWomen}
-                  />
-                </div>
-              )}
-              <p className="t-body">
-                {chosen.teams} {chosen.teams === 1 ? "team is" : "teams are"} in {chosen.label}.
-                {chosen.teams < chosen.minTeams &&
-                  ` It takes ${chosen.minTeams} to run this division.`}
-              </p>
-              <Link href={`/scorekeeper/division/${chosen.id}`} className="btn">
-                Open {chosen.label} to build pools and brackets
-              </Link>
-            </div>
-          )}
-        </div>
+  return (
+    <div className="space-y-3">
+      <Link href="/scorekeeper/registrations/new" className="pill">
+        Add a team yourself
+      </Link>
+      {forDivision.length === 0 ? (
+        <p className="t-meta">Nobody has registered for {d.label} yet.</p>
+      ) : (
+        forDivision.map((r) => (
+          <RegistrationCard key={r.id} registration={r} classes={classes} />
+        ))
       )}
     </div>
   );

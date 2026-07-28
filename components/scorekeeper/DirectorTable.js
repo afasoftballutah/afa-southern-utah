@@ -216,6 +216,13 @@ export default function DirectorTable({
                         );
                       })}
                     </tr>
+                    {r.detail && (
+                      <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
+                        <td colSpan={columns.length} className="px-3 py-3">
+                          {r.detail}
+                        </td>
+                      </tr>
+                    )}
                     {isOpen &&
                       (r.detailRows ?? []).map((d) => (
                         <tr key={d.key} className="border-b border-black/5 bg-afa-navy/[0.03]">
