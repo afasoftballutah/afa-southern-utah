@@ -134,7 +134,31 @@ test("bornWithAge reads the way a roster sheet does", () => {
 });
 
 // --- Venue names -----------------------------------------------------------
-import { venueParts } from "@/lib/director.js";
+import { venueParts, venueLabel, resolveVenue } from "@/lib/director.js";
+
+const VENUES = ["The Canyons Sports Complex", "Lakeside Park, Orem, UT"];
+
+test("picking the short name off the list stores the full one", () => {
+  // The point of the whole exercise: the director reads "Canyons" and the
+  // column keeps saying "The Canyons Sports Complex". Saving a row you did
+  // not mean to edit must not rename its venue.
+  assert.equal(venueLabel("The Canyons Sports Complex", "St. George, UT"), "Canyons · St. George, UT");
+  assert.equal(venueLabel("The Canyons Sports Complex", null), "Canyons");
+  assert.equal(resolveVenue("Canyons", VENUES), "The Canyons Sports Complex");
+});
+
+test("a venue nobody has used before is stored as typed", () => {
+  assert.equal(resolveVenue("Hurricane Ballfields", VENUES), "Hurricane Ballfields");
+});
+
+test("the stored name typed back is still the stored name", () => {
+  assert.equal(resolveVenue("the canyons sports complex", VENUES), "The Canyons Sports Complex");
+  assert.equal(resolveVenue("Lakeside Park · Orem, UT", VENUES), "Lakeside Park, Orem, UT");
+});
+
+test("an empty venue is not set, not an empty name", () => {
+  assert.equal(resolveVenue("  ", VENUES), null);
+});
 
 test("a venue reads the way a director says it", () => {
   assert.deepEqual(venueParts("The Canyons Sports Complex", "St. George, UT"), {

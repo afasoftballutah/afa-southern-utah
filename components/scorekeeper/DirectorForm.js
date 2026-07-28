@@ -41,6 +41,24 @@ export function Select({ children, ...props }) {
 }
 
 /**
+ * Type it or pick it. A fixed dropdown cannot take a venue the league just
+ * started using; a bare text box grows a second spelling of one it already
+ * has. The list is what has been used before, and it filters as you type.
+ */
+export function Combo({ id, options = [], ...props }) {
+  return (
+    <>
+      <Input {...props} list={id} autoComplete="off" />
+      <datalist id={id}>
+        {options.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+/**
  * Money in, cents out. A director types 300 or $300 or 300.00 and means the
  * same thing; the column stores cents. Empty means "not set", which is NOT
  * the same as zero and must stay null so the public page keeps the line off.
@@ -125,7 +143,14 @@ export default function DirectorForm({
         <div className="flex flex-nowrap items-end gap-2 overflow-x-auto dense-controls pb-1">
           {children}
           {row && (
-            <span className="flex items-end gap-2 shrink-0">
+            // A column shaped like a field — blank label, then a box the
+            // height of an input — so the buttons sit on the line of the
+            // boxes they act on rather than on the floor under them.
+            <span className="shrink-0 flex flex-col">
+              <span className="t-label block mb-1" aria-hidden="true">
+                &nbsp;
+              </span>
+              <span className="flex items-center gap-2 min-h-[2.3rem]">
               <button
                 type="button"
                 className={
@@ -141,6 +166,7 @@ export default function DirectorForm({
                 {busy ? "…" : (submitIcon ?? submitLabel)}
               </button>
               {actions}
+              </span>
             </span>
           )}
         </div>

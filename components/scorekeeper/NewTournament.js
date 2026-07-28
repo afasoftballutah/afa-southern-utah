@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import DirectorForm, { Field, Input, Select, directorPost } from "./DirectorForm";
-import { venueParts } from "@/lib/director";
+import DirectorForm, { Field, Input, Select, Combo, directorPost } from "./DirectorForm";
+import { venueLabel, resolveVenue } from "@/lib/director";
 
 const REGIONS = [
   { value: "southern_utah", label: "Southern UT/NV" },
@@ -29,7 +29,7 @@ export default function NewTournament({ venues = [] }) {
           name,
           startDate,
           endDate,
-          venueName,
+          venueName: resolveVenue(venueName, venues),
           region,
         });
         if (res.error) return res.error;
@@ -46,16 +46,15 @@ export default function NewTournament({ venues = [] }) {
         <Input type="date" value={endDate} onChange={(e) => setEnd(e.target.value)} />
       </Field>
       <Field label="Where" width="w-44 shrink-0">
-        {/* Same dropdown as the terms row — a venue typed by hand is how the
-            league ended up with "Arroyo Grande" and "Arroyo Grande Complex". */}
-        <Select value={venueName} onChange={(e) => setVenue(e.target.value)}>
-          <option value="">Not set</option>
-          {venues.map((v) => (
-            <option key={v} value={v}>
-              {[venueParts(v, null).name, venueParts(v, null).locality].filter(Boolean).join(" · ")}
-            </option>
-          ))}
-        </Select>
+        {/* Same box as the terms row: the list is the venues already in use,
+            and a new one is typed straight in. */}
+        <Combo
+          id="venues-new"
+          options={venues.map((v) => venueLabel(v, null))}
+          value={venueName}
+          onChange={(e) => setVenue(e.target.value)}
+          placeholder="Canyons"
+        />
       </Field>
       <Field label="Region" width="w-40 shrink-0">
         <Select value={region} onChange={(e) => setRegion(e.target.value)}>

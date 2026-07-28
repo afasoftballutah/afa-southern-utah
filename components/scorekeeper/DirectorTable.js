@@ -191,12 +191,18 @@ export default function DirectorTable({
               {visible.map((r) => {
                 const expandable = Boolean(r.detailRows?.length || r.detail);
                 const isOpen = expandable && openKey === r.key;
+                // One row open means you are working on that row. The others
+                // step back so the wrong one cannot be edited by mistake, and
+                // they come back the moment it closes. JD, 2026-07-28: "the
+                // rest should fade to the background so we dont get confused."
+                const faded = openKey !== null && !isOpen;
                 return (
                   <Fragment key={r.key}>
                     <tr
                       className={
-                        "border-b border-black/5 " +
+                        "border-b border-black/5 transition-opacity " +
                         (expandable ? "cursor-pointer " : "") +
+                        (faded ? "opacity-30 hover:opacity-100 " : "") +
                         (isOpen ? "bg-afa-navy/[0.05]" : "hover:bg-afa-navy/[0.03]")
                       }
                       onClick={
@@ -251,7 +257,12 @@ export default function DirectorTable({
                       })}
                     </tr>
                     {(r.panel || (isOpen && r.detail)) && (
-                      <tr className="border-b border-black/5 bg-afa-navy/[0.03]">
+                      <tr
+                        className={
+                          "border-b border-black/5 bg-afa-navy/[0.03] transition-opacity " +
+                          (faded ? "opacity-30 hover:opacity-100" : "")
+                        }
+                      >
                         <td colSpan={columns.length} className="px-3 py-3">
                           {r.panel ?? r.detail}
                         </td>
