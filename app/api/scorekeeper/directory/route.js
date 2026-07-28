@@ -658,10 +658,14 @@ export async function POST(request) {
           return bad("Minimums must be whole numbers, or blank for no requirement");
         }
       }
-      const { error } = await supabase
-        .from("divisions")
-        .update({ min_men: minMen ?? null, min_women: minWomen ?? null })
-        .eq("id", divisionId);
+      // Only the keys that were sent. An inline edit changes one number, and
+      // defaulting the other to null would silently clear it.
+      const patch = {};
+      if ("minMen" in body) patch.min_men = minMen ?? null;
+      if ("minWomen" in body) patch.min_women = minWomen ?? null;
+      if (Object.keys(patch).length === 0) return bad("Nothing to change");
+
+      const { error } = await supabase.from("divisions").update(patch).eq("id", divisionId);
       if (error) {
         console.error("set division minimums failed", error);
         return bad("Could not save — please try again", 500);

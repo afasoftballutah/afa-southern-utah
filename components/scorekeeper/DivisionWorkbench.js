@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import DirectorTable from "./DirectorTable";
 import RegistrationCard from "./RegistrationCard";
-import DivisionMinimums from "./DivisionMinimums";
+import InlineNumber from "./InlineNumber";
 
 // The divisions of one tournament, and whatever you are doing with one.
 //
@@ -34,6 +34,11 @@ import DivisionMinimums from "./DivisionMinimums";
 // stands.
 const COLUMNS = [
   { key: "division", label: "Division" },
+  // How many men and women a roster needs here. Men's is 10/0, Women's 0/10,
+  // Coed whatever its split is — the numbers the eligibility pill checks a
+  // roster against, where a director can see them.
+  { key: "minMen", label: "M", align: "center", width: "3rem" },
+  { key: "minWomen", label: "W", align: "center", width: "3rem" },
   { key: "teams", label: "Teams", align: "center", width: "12rem" },
   { key: "matchups", label: "Matchups", align: "center", width: "12rem" },
   { key: "scores", label: "Scores", align: "center", width: "12rem" },
@@ -81,6 +86,8 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
     search: `${d.label} ${d.genderLabel ?? ""} ${d.className ?? ""}`,
     sortValues: {
       division: d.sortKey,
+      minMen: d.minMen ?? -1,
+      minWomen: d.minWomen ?? -1,
       teams: d.teams,
       matchups: d.gamesTotal,
       scores: d.gamesTotal - d.unplayed,
@@ -94,6 +101,26 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
           /> : null,
     cells: {
       division: d.label,
+      minMen: (
+        <InlineNumber
+          label="Men"
+          subject={d.label}
+          value={d.minMen}
+          action="setDivisionMinimums"
+          valueKey="minMen"
+          payload={{ divisionId: d.id, minWomen: d.minWomen ?? null }}
+        />
+      ),
+      minWomen: (
+        <InlineNumber
+          label="Women"
+          subject={d.label}
+          value={d.minWomen}
+          action="setDivisionMinimums"
+          valueKey="minWomen"
+          payload={{ divisionId: d.id, minMen: d.minMen ?? null }}
+        />
+      ),
       teams: (
         <Step state={d.teams >= d.teamsMax ? "done" : d.teams > 0 ? "partial" : "none"}>
           <button
@@ -169,12 +196,6 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
   if (action === "setup") {
     return (
       <div className="space-y-3">
-        {d.genderLabel === "Coed" && (
-          <div>
-            <p className="t-label mb-2">Roster must have at least</p>
-            <DivisionMinimums divisionId={d.id} minMen={d.minMen} minWomen={d.minWomen} />
-          </div>
-        )}
         <p className="t-body">
           {d.teams} {d.teams === 1 ? "team is" : "teams are"} in {d.label}.
           {d.teams < d.minTeams && ` It takes ${d.minTeams} to run this division.`}

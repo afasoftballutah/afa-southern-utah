@@ -61,11 +61,16 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
       return g.picks.length ? g.picks.map((p) => `${label} ${p}`) : [label];
     });
 
-  // Name what goes, rather than explaining the rule that decides it. A
-  // division with a team in it is kept by the route, so it is not listed.
-  const going = existing
-    .filter((d) => !d.hasTeams && !summary.includes(d.label))
-    .map((d) => d.label);
+  // Only what CHANGES. A list of everything that will exist makes a director
+  // read nine names to find the one that moved.
+  //
+  // Removals are not filtered by hasTeams: splitting a division moves its
+  // teams into the new one, which empties it, so a division with a team in it
+  // today may well go. Better to name it and have the route keep it — it says
+  // so — than to leave it off and delete it anyway.
+  const existingLabels = existing.map((d) => d.label);
+  const adding = summary.filter((x) => !existingLabels.includes(x));
+  const removing = existingLabels.filter((x) => !summary.includes(x));
 
   async function save() {
     setAsk(false);
@@ -189,12 +194,14 @@ export default function TournamentSetup({ tournamentId, initial, existing = [] }
         <ConfirmDialog
           title="Save this setup"
           message={
-            [
-              summary.length ? summary.join(", ") : "Nothing selected.",
-              going.length ? `Removing ${going.join(", ")}.` : null,
-            ]
-              .filter(Boolean)
-              .join("\n")
+            adding.length === 0 && removing.length === 0
+              ? "No change."
+              : [
+                  adding.length ? `Add: ${adding.join(", ")}` : null,
+                  removing.length ? `Remove: ${removing.join(", ")}` : null,
+                ]
+                  .filter(Boolean)
+                  .join("\n")
           }
           confirmLabel="Save setup"
           busy={busy}
