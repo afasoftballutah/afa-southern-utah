@@ -62,11 +62,6 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [shown, setShown] = useState(stages?.[0]?.id ?? null);
-  // "How do I run it manually? Where is the button?" (JD, 2026-07-26).
-  // The pull runs hourly on its own; this is for the director who has
-  // just watched the league post a score and does not want to wait.
-  const [pull, setPull] = useState(null); // null | "running" | report
-
 
   const waiting = poolGames.filter((g) => g.status !== "final").length;
 
@@ -89,19 +84,6 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
       setAsk(null);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function pullResults() {
-    setPull("running");
-    try {
-      const res = await fetch("/api/scorekeeper/sync", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not pull results");
-      setPull(json);
-      router.refresh();
-    } catch (err) {
-      setPull({ errors: [err.message], applied: 0, changes: [] });
     }
   }
 
@@ -130,29 +112,10 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
 
       {error && <p className="text-sm font-bold underline text-afa-ink">{error}</p>}
 
-      {/* Results arrive from the league's own system every hour by
-          themselves. This is the same run, on demand. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={pull === "running"}
-          onClick={pullResults}
-          className="min-h-11 rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy disabled:opacity-50"
-        >
-          {pull === "running" ? "Pulling…" : "Pull results from QuickScores"}
-        </button>
-        {pull && pull !== "running" && (
-          <span className="text-sm text-afa-ink/70">
-            {pull.errors?.length
-              ? pull.errors.join("; ")
-              : pull.applied
-                ? `Added ${pull.applied} result${pull.applied === 1 ? "" : "s"}: ${pull.changes
-                    .map((c) => `${c.game} ${c.now}`)
-                    .join(", ")}`
-                : "Already up to date."}
-          </span>
-        )}
-      </div>
+      {/* The Pull from QuickScores button is gone. JD, 2026-07-27: "lets get
+          rid of the pull from quickscores link. thats not going to be a thing
+          much anymore, lets not depend on it." Scores are typed here now. The
+          hourly sync route is untouched, so nothing that already ran stops. */}
 
       {stage === "pools" ? (
         <>
