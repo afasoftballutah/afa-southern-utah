@@ -50,10 +50,10 @@ export default function InlineNumber({ value, label, subject, action, valueKey, 
         }}
         className={
           width +
-          " rounded bg-transparent border text-center text-[14px] leading-none py-1 px-0 " +
+          " rounded-lg bg-white border text-center text-[14px] leading-none py-1 px-1 " +
           (failed
             ? "border-afa-red text-afa-red"
-            : "border-transparent hover:border-afa-navy/30 focus:border-afa-navy/40 text-afa-ink")
+            : "border-afa-navy/25 hover:border-afa-navy/50 focus:border-afa-navy text-afa-ink")
         }
       />
       {pending !== null && (

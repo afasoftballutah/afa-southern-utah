@@ -58,12 +58,12 @@ export default function InlineSelect({
         // appearance-none drops the native arrow, which is what makes a
         // select in a table cell tall and wide. It still opens on click.
         className={
-          "w-full appearance-none rounded bg-transparent border text-center text-[14px] leading-none py-1 px-0 cursor-pointer " +
+          "w-full appearance-none rounded-lg bg-white border text-center text-[14px] leading-none py-1 px-1 cursor-pointer " +
           (failed
             ? "border-afa-red text-afa-red"
             : current
-              ? "border-transparent hover:border-afa-navy/30 text-afa-ink"
-              : "border-transparent hover:border-afa-navy/30 text-afa-muted")
+              ? "border-afa-navy/25 hover:border-afa-navy/50 text-afa-ink"
+              : "border-afa-navy/25 hover:border-afa-navy/50 text-afa-muted")
         }
       >
         <option value="">—</option>
