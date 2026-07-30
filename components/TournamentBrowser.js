@@ -5,6 +5,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import { formatDateRange, formatFee, isRealPoster, isGroupName } from "@/lib/data";
+import { parseLeagueDateOnly } from "@/lib/league-time";
 
 const STORAGE_KEY = "afa-tournaments-view";
 
@@ -37,9 +38,10 @@ function byStartDateDesc(a, b) {
 function groupByMonth(tournaments) {
   const map = new Map();
   for (const t of tournaments) {
-    const d = new Date(`${t.start_date}T00:00:00`);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    if (!map.has(key)) map.set(key, { year: d.getFullYear(), month: d.getMonth(), tournaments: [] });
+    const d = parseLeagueDateOnly(t.start_date);
+    if (!d) continue;
+    const key = `${d.year}-${d.month}`;
+    if (!map.has(key)) map.set(key, { year: d.year, month: d.month, tournaments: [] });
     map.get(key).tournaments.push(t);
   }
   return [...map.values()].sort((a, b) => a.year - b.year || a.month - b.month);
