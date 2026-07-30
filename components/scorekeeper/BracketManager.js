@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PlacementsUpload from "./PlacementsUpload";
+import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
@@ -195,7 +196,7 @@ function GameRow({ game, teamNames, draft, onChanged }) {
   const [team1, setTeam1] = useState(game.team1_name || "");
   const [team2, setTeam2] = useState(game.team2_name || "");
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(toLocalInputValue(game.scheduled_time));
+  const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
   const [busy, setBusy] = useState(false);
@@ -231,7 +232,7 @@ function GameRow({ game, teamNames, draft, onChanged }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           field: field || null,
-          scheduledTime: time ? new Date(time).toISOString() : null,
+          scheduledTime: parseLeagueInputValue(time)?.toISOString() ?? null,
         }),
       });
       const json = await res.json();
@@ -393,9 +394,3 @@ function TeamSelect({ value, onChange, teamNames }) {
   );
 }
 
-function toLocalInputValue(isoString) {
-  if (!isoString) return "";
-  const d = new Date(isoString);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}

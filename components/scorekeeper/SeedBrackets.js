@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import { parseSeedRef } from "@/lib/bracket/seed";
+import { formatLeagueShortTime } from "@/lib/league-time";
 
 // Seeding (dispatch-brief-22): "machine proposes, director disposes."
 // Standings compute; ties are surfaced for the director to settle and are
@@ -284,7 +285,7 @@ function PoolGameRow({ game, readOnly, onSaved }) {
       <div className="text-[10px] font-medium leading-tight text-afa-muted">
         <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
         <br />
-        {shortTime(game.scheduled_time)}
+        {formatLeagueShortTime(game.scheduled_time)}
       </div>
       <div className={`overflow-hidden rounded-[10px] border bg-white transition ${dirty ? "border-afa-navy/45 ring-[3px] ring-afa-navy/10" : "border-afa-navy/15"} divide-y divide-afa-navy/[0.07]`}>
         {side(game.team1_name, s1, setS1, w1)}
@@ -344,14 +345,6 @@ function fieldAbbrev(field) {
   if (!field) return "";
   const m = String(field).match(/\d+/);
   return m ? `F${m[0]}` : field;
-}
-
-function shortTime(iso) {
-  if (!iso) return "TBD";
-  const d = new Date(iso);
-  const h = d.getHours() % 12 || 12;
-  const m = d.getMinutes();
-  return `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]} ${h}${m ? ":" + String(m).padStart(2, "0") : ""}${d.getHours() < 12 ? "a" : "p"}`;
 }
 
 // Gold, Silver and Bronze read as themselves rather than as three
@@ -681,7 +674,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
             label="Time"
             value={filter.time}
             options={timeOptions}
-            format={shortTime}
+            format={formatLeagueShortTime}
             onPick={(v) => setFilter((f) => ({ ...f, time: v }))}
           />
         </div>

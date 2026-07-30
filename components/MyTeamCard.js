@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
+import { LEAGUE_TZ } from "@/lib/bracket/tree";
 
 // The door into a team's own tournament, and — once they have picked one
 // — a line about where they are (JD, 2026-07-26: "Team Name, Pool or
@@ -18,21 +19,24 @@ const TIER = {
   Bronze: "bg-[#f3e2d6] text-[#7b4a28]",
 };
 
-function whenLabel(iso, tz) {
+// The zone is the league's, always. Taking it as a prop was the one place a
+// caller could hand this card the wrong one and get a game time that disagreed
+// with every other screen.
+function whenLabel(iso) {
   if (!iso) return "time to come";
   const parts = new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: tz,
+    timeZone: LEAGUE_TZ,
   }).formatToParts(new Date(iso));
   const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
   const min = get("minute");
   return `${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`;
 }
 
-export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZone }) {
+export default function MyTeamCard({ slug, summaries = {}, fallbackHref }) {
   const [team, setTeam] = useState("");
   useEffect(() => {
     try {
@@ -147,7 +151,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref, timeZon
                     )}
                   </span>
                   <span className="t-meta block">
-                    {whenLabel(me.next.scheduledTime, timeZone)}
+                    {whenLabel(me.next.scheduledTime)}
                     {me.next.field ? ` · ${String(me.next.field).replace(/^Field\s*/i, "F")}` : ""}
                   </span>
                 </>

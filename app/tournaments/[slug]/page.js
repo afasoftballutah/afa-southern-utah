@@ -323,7 +323,6 @@ export default async function TournamentDetailPage({ params }) {
             <MyTeamCard
               slug={tournament.slug}
               summaries={teamSummaries}
-              timeZone={LEAGUE_TZ}
               fallbackHref={`/tournaments/${tournament.slug}/division/${groupCards[0].id}`}
             />
           ) : (

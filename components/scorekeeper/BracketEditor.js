@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
 
 // BracketEditor — the director's bracket. Same drawing the public sees,
 // but tapping a game opens it for editing instead of showing what happens
@@ -18,13 +19,6 @@ import { LEAGUE_TZ } from "@/lib/bracket/tree";
 
 const PLACEHOLDER_RE = /^(Winner|Loser) of Game \d+$/;
 const isPlaceholder = (n) => !!n && PLACEHOLDER_RE.test(n);
-
-function toLocalInputValue(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function whenLabel(iso) {
   if (!iso) return "no time set";
@@ -84,7 +78,7 @@ export default function BracketEditor({ stages }) {
       s1: g.team1_score ?? "",
       s2: g.team2_score ?? "",
       field: g.field ?? "",
-      time: toLocalInputValue(g.scheduled_time),
+      time: formatLeagueInputValue(g.scheduled_time),
     });
   }
 
@@ -122,7 +116,7 @@ export default function BracketEditor({ stages }) {
     try {
       await post(`/api/scorekeeper/games/${selected.id}`, {
         field: draft.field || null,
-        scheduledTime: draft.time ? new Date(draft.time).toISOString() : null,
+        scheduledTime: parseLeagueInputValue(draft.time)?.toISOString() ?? null,
       });
       setSelected(null);
       router.refresh();

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import SignaturePad from "./SignaturePad";
 import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
+import { formatLeagueDateOnly } from "@/lib/league-time";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -16,14 +17,6 @@ const REGION_ORDER = ["southern_utah", "northern_utah", "series"];
 
 const emptyPlayer = () => ({ name: "", birthDate: "", address: "" });
 const emptyCoach = () => ({ name: "", email: "", phone: "" });
-
-function formatStartDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default function RegistrationForm({ tournaments, regionLabel }) {
   const [step, setStep] = useState(0);
@@ -283,7 +276,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               >
                 {filteredTournaments.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name} — {formatStartDate(t.start_date)}
+                    {t.name} — {formatLeagueDateOnly(t.start_date)}
                     {seriesFilter === "all" ? ` · ${regionLabel[t.region]}` : ""}
                   </option>
                 ))}
