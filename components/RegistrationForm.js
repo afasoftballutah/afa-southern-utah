@@ -169,7 +169,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
           {teamName} is on the books for {tournament?.name}.
         </p>
         {rosterLink && (
-          <div className="rounded-xl bg-afa-navy/5 p-4 space-y-2">
+          <div className="form-surface p-4 space-y-2">
             <p className="t-heading">Send one link to your team</p>
             <p className="text-sm text-afa-ink/80">
               Paste this into your team chat. Everyone taps their own name and
@@ -178,21 +178,21 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             <button
               type="button"
               onClick={() => copyLink(rosterLink, "roster")}
-              className="btn w-full"
+              className="btn-action w-full"
             >
               {copiedIndex === "roster" ? "Copied" : "Copy team link"}
             </button>
           </div>
         )}
         {manageLink && (
-          <div className="rounded-xl border border-afa-navy/20 p-4 space-y-2">
+          <div className="form-surface p-4 space-y-2">
             <p className="t-strong">Keep this one to yourself</p>
             <p className="text-sm text-afa-ink/80">
               Your own link, for adding a player who turns up on Saturday or
               taking someone off. Do not put it in the team chat &mdash; anyone
               who has it can change the roster.
             </p>
-            <button type="button" onClick={() => copyLink(manageLink, "manage")} className="btn-quiet w-full">
+            <button type="button" onClick={() => copyLink(manageLink, "manage")} className="btn-transient w-full">
               {copiedIndex === "manage" ? "Copied" : "Copy my roster link"}
             </button>
           </div>
@@ -214,7 +214,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 <button
                   type="button"
                   onClick={() => copyLink(s.signLink, i)}
-                  className="text-afa-navy underline font-semibold shrink-0"
+                  className="btn-transient shrink-0"
                 >
                   {copiedIndex === i ? "Copied" : "Copy link"}
                 </button>
@@ -228,17 +228,17 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
 
   return (
     <div className="space-y-4">
-      <ol className="flex flex-wrap gap-2 text-xs font-semibold">
+      <ol className="flex flex-wrap gap-2">
         {STEPS.map((label, i) => (
           <li
             key={label}
             className={
-              "px-2 py-1 rounded " +
+              "step-chip " +
               (i === step
-                ? "bg-afa-navy text-white"
+                ? "step-chip--current"
                 : i < step
-                ? "bg-afa-navy/20 text-afa-navy"
-                : "bg-afa-navy/5 text-afa-ink/50")
+                ? "step-chip--done"
+                : "step-chip--todo")
             }
           >
             {i + 1}. {label}
@@ -246,28 +246,25 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
         ))}
       </ol>
 
-      <div className="form-panel p-4 space-y-4">
+      <div className="form-surface p-4 space-y-4">
         {step === 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 text-sm flex-wrap">
-              {filterOptions.map((opt, i) => (
-                <div key={opt.value} className="flex items-center gap-3">
-                  {i > 0 && <span className="text-afa-ink/30">|</span>}
-                  <button
-                    type="button"
-                    onClick={() => chooseFilter(opt.value)}
-                    className={`font-semibold ${
-                      seriesFilter === opt.value ? "text-afa-navy underline" : "text-afa-ink/50"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                </div>
+            <div className="seg-view" role="group" aria-label="Filter by region">
+              {filterOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => chooseFilter(opt.value)}
+                  className={seriesFilter === opt.value ? "btn-info" : "btn-transient"}
+                  aria-pressed={seriesFilter === opt.value}
+                >
+                  {opt.label}
+                </button>
               ))}
             </div>
             <Field label="Tournament">
               <select
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={tournamentId}
                 onChange={(e) => {
                   setTournamentId(e.target.value);
@@ -289,7 +286,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
           <div className="space-y-4">
             <Field label="Team Name">
               <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
               />
@@ -302,7 +299,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             {registerableDivisions.length > 1 && (
               <Field label="Division">
                 <select
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={divisionId}
                   onChange={(e) => setDivisionId(e.target.value)}
                 >
@@ -317,14 +314,14 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             )}
             <Field label="Class">
               <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
               />
             </Field>
             <Field label="AFA Membership #">
               <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={afaMembershipNumber}
                 onChange={(e) => setAfaMembershipNumber(e.target.value)}
               />
@@ -336,7 +333,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
           <div className="space-y-4">
             <Field label="Manager's Name">
               <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={manager.name}
                 onChange={(e) => setManager({ ...manager, name: e.target.value })}
               />
@@ -344,7 +341,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             <Field label="Email">
               <input
                 type="email"
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={manager.email}
                 onChange={(e) => setManager({ ...manager, email: e.target.value })}
               />
@@ -352,14 +349,14 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Phone #">
                 <input
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={manager.phone}
                   onChange={(e) => setManager({ ...manager, phone: e.target.value })}
                 />
               </Field>
               <Field label="Cell #">
                 <input
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={manager.cell}
                   onChange={(e) => setManager({ ...manager, cell: e.target.value })}
                 />
@@ -367,7 +364,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             </div>
             <Field label="Address">
               <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                className="form-field"
                 value={manager.address}
                 onChange={(e) => setManager({ ...manager, address: e.target.value })}
               />
@@ -375,21 +372,21 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             <div className="grid grid-cols-3 gap-3">
               <Field label="City">
                 <input
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={manager.city}
                   onChange={(e) => setManager({ ...manager, city: e.target.value })}
                 />
               </Field>
               <Field label="State">
                 <input
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={manager.state}
                   onChange={(e) => setManager({ ...manager, state: e.target.value })}
                 />
               </Field>
               <Field label="Zip">
                 <input
-                  className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                  className="form-field"
                   value={manager.zip}
                   onChange={(e) => setManager({ ...manager, zip: e.target.value })}
                 />
@@ -414,7 +411,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 onClick={() =>
                   setPlayers((prev) => [{ ...emptyPlayer(), name: manager.name.trim() }, ...prev])
                 }
-                className="w-full text-left rounded border border-afa-navy/20 bg-afa-navy/5 px-3 py-2 text-sm"
+                className="form-field text-left"
               >
                 <span className="font-semibold text-afa-navy">
                   Add {manager.name.trim()} to the roster
@@ -426,13 +423,13 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               </button>
             )}
             {players.map((p, i) => (
-              <div key={i} className="border border-afa-navy/10 rounded p-3 space-y-2">
+              <div key={i} className="form-surface p-3 space-y-2">
                 <div className="flex justify-between items-center">
                   <p className="font-semibold text-sm">Player {i + 1}</p>
                   {players.length > MIN_PLAYERS && (
                     <button
                       type="button"
-                      className="text-xs text-afa-navy underline font-semibold"
+                      className="btn-transient"
                       onClick={() =>
                         setPlayers((prev) => prev.filter((_, idx) => idx !== i))
                       }
@@ -443,7 +440,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 </div>
                 <Field label="Name">
                   <input
-                    className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                    className="form-field"
                     value={p.name}
                     onChange={(e) => updatePlayer(i, "name", e.target.value)}
                   />
@@ -452,14 +449,14 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                   <Field label="Birth Date">
                     <input
                       type="date"
-                      className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                      className="form-field"
                       value={p.birthDate}
                       onChange={(e) => updatePlayer(i, "birthDate", e.target.value)}
                     />
                   </Field>
                   <Field label="Address">
                     <input
-                      className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                      className="form-field"
                       value={p.address}
                       onChange={(e) => updatePlayer(i, "address", e.target.value)}
                     />
@@ -470,7 +467,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             {players.length < MAX_PLAYERS && (
               <button
                 type="button"
-                className="w-full py-3 text-afa-navy underline font-semibold"
+                className="btn-transient w-full"
                 onClick={() => setPlayers((prev) => [...prev, emptyPlayer()])}
               >
                 + Add Player
@@ -483,12 +480,12 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">Coaches (optional).</p>
             {coaches.map((c, i) => (
-              <div key={i} className="border border-afa-navy/10 rounded p-3 space-y-2">
+              <div key={i} className="form-surface p-3 space-y-2">
                 <div className="flex justify-between items-center">
                   <p className="font-semibold text-sm">Coach {i + 1}</p>
                   <button
                     type="button"
-                    className="text-xs text-afa-navy underline font-semibold"
+                    className="btn-transient"
                     onClick={() => setCoaches((prev) => prev.filter((_, idx) => idx !== i))}
                   >
                     Remove
@@ -496,7 +493,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 </div>
                 <Field label="Name">
                   <input
-                    className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                    className="form-field"
                     value={c.name}
                     onChange={(e) => updateCoach(i, "name", e.target.value)}
                   />
@@ -504,14 +501,14 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Email">
                     <input
-                      className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                      className="form-field"
                       value={c.email}
                       onChange={(e) => updateCoach(i, "email", e.target.value)}
                     />
                   </Field>
                   <Field label="Phone">
                     <input
-                      className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                      className="form-field"
                       value={c.phone}
                       onChange={(e) => updateCoach(i, "phone", e.target.value)}
                     />
@@ -522,7 +519,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             {coaches.length < MAX_COACHES && (
               <button
                 type="button"
-                className="w-full py-3 text-afa-navy underline font-semibold"
+                className="btn-transient w-full"
                 onClick={() => setCoaches((prev) => [...prev, emptyCoach()])}
               >
                 + Add Coach
@@ -533,7 +530,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
 
         {step === 5 && (
           <div className="space-y-4">
-            <div className="max-h-48 overflow-y-auto border border-afa-navy/20 rounded p-3 text-sm bg-afa-cream">
+            <div className="max-h-48 overflow-y-auto form-surface p-3 text-sm">
               {RELEASE_TEXT}
             </div>
             <label className="flex items-start gap-2 text-sm">
@@ -572,7 +569,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               // submitting. Signing makes it official."
               disabled={!agreed || submitState === "submitting"}
               onClick={submit}
-              className="w-full bg-afa-red text-white font-bold py-3 rounded-lg disabled:opacity-40"
+              className="btn-action-block disabled:opacity-40"
             >
               {submitState === "submitting" ? "Submitting…" : "Submit Registration"}
             </button>
@@ -585,7 +582,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
-          className="px-4 py-2 font-semibold text-afa-navy underline disabled:opacity-30"
+          className="btn-transient disabled:opacity-30"
         >
           Back
         </button>
@@ -594,7 +591,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             type="button"
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
             disabled={!canProceed()}
-            className="px-4 py-2 text-afa-navy underline font-semibold disabled:opacity-30"
+            className="btn-action disabled:opacity-30"
           >
             Next
           </button>
@@ -607,7 +604,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="block text-sm font-semibold mb-1">{label}</span>
+      <span className="form-label">{label}</span>
       {children}
     </label>
   );

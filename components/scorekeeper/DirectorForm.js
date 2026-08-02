@@ -104,7 +104,7 @@ export default function DirectorForm({
   actions = null,
   // How the collapsed form looks. A full-width bar is right when the form IS
   // the section; a pill is right when it sits in a line of other pills.
-  triggerClass = "btn-quiet w-full",
+  triggerClass = "btn-transient w-full",
 }) {
   const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);
@@ -185,7 +185,7 @@ export default function DirectorForm({
       {!row && (
         <button
           type="button"
-          className="btn w-full"
+          className="btn-action w-full"
           disabled={busy}
           onClick={() => (confirmMessage ? setAsk(true) : go())}
         >

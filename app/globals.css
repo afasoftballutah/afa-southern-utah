@@ -1,27 +1,48 @@
 @import "tailwindcss";
 
+/*
+ * Brand tokens — shared with afa-design-system/css/tokens.css.
+ * Shell + pages both read these. Do not put hex in components.
+ *
+ * Shell pass (2026-08): white header, flag-blue wordmark, updated red.
+ * Deep sports-app navy (--afa-navy-deep) is reserved for full dark
+ * surfaces later; page cards still use --afa-navy (flag blue).
+ */
 :root {
   /* 56rem = max-w-4xl, the public default. The control center overrides it. */
   --page-width: 56rem;
-  --afa-navy: #1e3a6e;
-  --afa-red: #c8102e;
-  /* Ticked, done, cleared. Only ever used for a completed state — a green
-     that means anything else would stop meaning this one. */
-  --afa-go: #167d4a;
-  /* Started, not finished. Amber only ever means partial — a colour that
-     also meant "warning" would stop meaning this. */
-  --afa-part: #b8730a;
-  --afa-cream: #fdfaf3;
-  --afa-ink: #16233d;
-  /* Solid muted value — the flattened result of afa-ink at ~45% over
-     afa-cream, the same visual weight ListView's text-afa-ink/40-50
-     opacity classes already produce. Bracket-tree sizing pass (7/21):
-     connector lines and placeholder/muted text use this SOLID color
-     instead of an opacity modifier — opacity apologizes, this doesn't,
-     and it prints the same weight every time regardless of what's
-     behind it (an opacity value over a non-cream background, e.g. a
-     dashed box fill, reads lighter than intended). */
-  --afa-muted: #8c93a3;
+
+  /* ---- Brand ---- */
+  --afa-red: #e31c25;
+  --afa-red-hover: #c91820;
+  --afa-red-active: #a8141b;
+  --afa-flag-blue: #002868;
+  /* Primary brand blue for cards, meters, chrome — same as flag blue */
+  --afa-navy: var(--afa-flag-blue);
+  /* Near-black sports-app ground (footer, future dark pages) */
+  --afa-navy-deep: #0a1628;
+  --afa-navy-light: #1a2332;
+  --afa-navy-lighter: #243044;
+  --afa-white: #ffffff;
+  --afa-soft-gray: #f5f7fa;
+  --afa-gold: #ffd700;
+  /* Ticked, done, cleared. Only ever used for a completed state. */
+  --afa-go: #10b981;
+  /* Started, not finished. Amber only ever means partial. */
+  --afa-part: #f59e0b;
+  /* Page ground — light shell until full dark migration */
+  --afa-cream: #f5f7fa;
+  --afa-ink: #0a1628;
+  /* Solid muted — not opacity-over-cream */
+  --afa-muted: #6b7280;
+
+  /* ---- Semantic (light public shell) ---- */
+  --color-primary: var(--afa-red);
+  --color-bg: var(--afa-cream);
+  --color-bg-elevated: var(--afa-white);
+  --color-text: var(--afa-ink);
+  --color-text-muted: var(--afa-muted);
+  --color-border: rgba(10, 22, 40, 0.1);
 }
 
 @theme inline {
@@ -32,6 +53,10 @@
   --color-afa-cream: var(--afa-cream);
   --color-afa-ink: var(--afa-ink);
   --color-afa-muted: var(--afa-muted);
+  --color-afa-flag-blue: var(--afa-flag-blue);
+  --color-afa-white: var(--afa-white);
+  --color-afa-gold: var(--afa-gold);
+  --color-afa-navy-deep: var(--afa-navy-deep);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-display: var(--font-display-face), Arial, Helvetica, sans-serif;
   /* The bracket's team face (redesign spec 5.2) — condensed like the
@@ -45,9 +70,1119 @@ html {
 }
 
 body {
-  background: var(--afa-cream);
-  color: var(--afa-ink);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ============================================================
+ * COLOR LAW (JD, 2026-08)
+ *
+ *   RED    = action          (Register, submit, find, do)
+ *   BLUE   = permanent info  (Rules, brand, standing facts)
+ *   WHITE  = transient info  (live chips, temporary state, toasts)
+ *
+ * Prefer these semantic classes over raw color utilities.
+ * ============================================================ */
+/* Shared footprint: same box model so borders never change size. */
+.btn-action,
+.btn-info,
+.btn-transient {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  border-radius: 0.375rem; /* rounded rect — more hit area than a pill */
+  border-width: 1px;
+  border-style: solid;
+  transition: background var(--transition-base, 0.15s ease),
+    color var(--transition-base, 0.15s ease),
+    border-color var(--transition-base, 0.15s ease);
+}
+/* RED — do something (border matches fill so box = blue/white siblings) */
+.btn-action {
+  color: var(--afa-white);
+  background: var(--afa-red);
+  border-color: var(--afa-red);
+}
+.btn-action:hover {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+}
+/* BLUE — permanent information */
+.btn-info {
+  color: var(--afa-white);
+  background: var(--afa-flag-blue);
+  border-color: var(--afa-flag-blue);
+}
+.btn-info:hover {
+  background: #001f52;
+  border-color: #001f52;
+}
+/* WHITE — transient information.
+   Outline matches the label so the control doesn’t vanish on white. */
+.btn-transient {
+  color: var(--afa-ink);
+  background: var(--afa-white);
+  border-color: var(--afa-ink);
+}
+.btn-transient:hover {
+  background: var(--afa-soft-gray);
+  border-color: var(--afa-ink);
+}
+/* On a dark ground, white transient fills solid white */
+.site-footer .btn-transient,
+.on-dark .btn-transient {
+  color: var(--afa-navy-deep);
+  background: var(--afa-white);
+  border-color: var(--afa-white);
+}
+
+/* ============================================================
+ * SITE SHELL — header / footer / wordmark
+ * Classes only. layout.js must not invent one-off colors.
+ * ============================================================ */
+.site-header {
+  background: var(--afa-white);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 0 rgba(10, 22, 40, 0.04);
+}
+.site-header__inner {
+  max-width: var(--page-width);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.55rem 0.65rem;
+  /* Never drop the wordmark — wrap brand + nav before hiding identity */
+  flex-wrap: wrap;
+}
+@media (min-width: 640px) {
+  .site-header__inner {
+    flex-wrap: nowrap;
+    padding: 0.75rem 1rem;
+  }
+}
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  /* Prefer brand over nav when space is tight */
+  max-width: 100%;
+}
+.site-brand img {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+@media (min-width: 640px) {
+  .site-brand img {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+/* Always visible — scales down and can wrap on narrow phones */
+.site-wordmark {
+  display: inline;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(0.7rem, 2.8vw, 1.25rem);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--afa-flag-blue);
+  white-space: normal; /* allow wrap instead of vanishing */
+  hyphens: none;
+}
+@media (min-width: 480px) {
+  .site-wordmark {
+    white-space: nowrap;
+  }
+}
+.site-nav {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0;
+  margin-left: auto;
+}
+/* Top bar — all the same: dark blue text links, no multi-color pills */
+.site-nav__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--afa-flag-blue);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.site-nav__link:hover {
+  color: var(--afa-flag-blue);
+  background: rgba(0, 40, 104, 0.06);
+}
+@media (min-width: 480px) {
+  .site-nav__link {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.8125rem;
+  }
+}
+@media (min-width: 640px) {
+  .site-nav__link {
+    min-height: 2.5rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.875rem;
+  }
+}
+
+.site-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--page-width, 56rem);
+  margin-inline: auto;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+/* Home is full-bleed dark — kill cream gutters under/around it */
+body:has(.home) {
+  background: #060d18;
+}
+body:has(.home) .site-main {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  background: #060d18;
+}
+body:has(.home) .home {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* Scorekeeper desk width — :has so <main> (parent) widens with the desk tool */
+body:has(.scorekeeper-scope) {
+  --page-width: 84rem;
+}
+
+/* PIN pad — uniform keys; Go is action (red) */
+.pin-pad__key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5rem;
+  padding: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: 0.375rem;
+  border: 1px solid var(--afa-ink);
+  background: var(--afa-white);
+  color: var(--afa-ink);
+  box-sizing: border-box;
+}
+.pin-pad__key:hover {
+  background: var(--afa-soft-gray);
+}
+.pin-pad__key--ghost {
+  font-size: 1.125rem;
+  background: var(--afa-soft-gray);
+  border-color: var(--afa-muted);
+  color: var(--afa-ink);
+}
+.pin-pad__key--go {
+  font-size: 1.125rem;
+  background: var(--afa-red);
+  border-color: var(--afa-red);
+  color: var(--afa-white);
+}
+.pin-pad__key--go:hover {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+}
+.pin-pad__key--go:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Door — full-width info/transient cards used as home navigation */
+.door {
+  display: block;
+  min-height: 2.75rem;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--afa-ink);
+  background: var(--afa-white);
+  color: var(--afa-ink);
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.door__title {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+.door__sub {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  opacity: 0.7;
+}
+/* Permanent destination / permanent facts */
+.door--info {
+  background: var(--afa-flag-blue);
+  border-color: var(--afa-flag-blue);
+  color: var(--afa-white);
+}
+.door--info .door__sub {
+  opacity: 0.85;
+  color: var(--afa-white);
+}
+.door--info:hover {
+  background: #001f52;
+  border-color: #001f52;
+}
+/* Transient — white fill, ink outline (same as label) so it reads on white */
+.door--transient {
+  background: var(--afa-white);
+  border-color: var(--afa-ink);
+  color: var(--afa-ink);
+}
+.door--transient:hover {
+  background: var(--afa-soft-gray);
+}
+/* Segmented view switch (tournaments By region | By month) */
+.seg-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.seg-view .btn-info,
+.seg-view .btn-transient {
+  min-height: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+}
+
+/* Tournament list row — white + ink outline (catalog path) */
+.tournament-row {
+  display: block;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--afa-ink);
+  background: var(--afa-white);
+  color: var(--afa-ink);
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tournament-row:hover {
+  background: var(--afa-soft-gray);
+}
+.tournament-row--static {
+  cursor: default;
+}
+.tournament-row--static:hover {
+  background: var(--afa-white);
+}
+
+/* Form fields — ink outline (same as transient white controls) */
+.form-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem; /* iOS: no zoom on focus */
+  font-family: inherit;
+  color: var(--afa-ink);
+  background: var(--afa-white);
+  border: 1px solid var(--afa-ink);
+  border-radius: 0.375rem;
+}
+.form-field:focus {
+  outline: none;
+  border-color: var(--afa-flag-blue);
+  box-shadow: 0 0 0 3px rgba(0, 40, 104, 0.15);
+}
+textarea.form-field {
+  min-height: 6rem;
+  resize: vertical;
+}
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--afa-ink);
+}
+.form-surface {
+  background: var(--afa-white);
+  border: 1px solid var(--afa-ink);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+}
+/* Step indicators in multi-step flows */
+.step-chip {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.step-chip--current {
+  background: var(--afa-flag-blue);
+  border-color: var(--afa-flag-blue);
+  color: var(--afa-white);
+}
+.step-chip--done {
+  background: var(--afa-white);
+  border-color: var(--afa-flag-blue);
+  color: var(--afa-flag-blue);
+}
+.step-chip--todo {
+  background: var(--afa-soft-gray);
+  border-color: var(--afa-muted);
+  color: var(--afa-muted);
+}
+.btn-action:disabled,
+.btn-info:disabled,
+.btn-transient:disabled,
+.btn-action-block:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Chip — permanent info labels */
+.chip {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--afa-flag-blue);
+  background: var(--afa-white);
+  color: var(--afa-flag-blue);
+  line-height: 1.3;
+}
+.chip--info {
+  border-color: var(--afa-flag-blue);
+  color: var(--afa-flag-blue);
+}
+.chip--muted {
+  border-color: var(--afa-muted);
+  color: var(--afa-muted);
+}
+
+/* Full-width action block (home Register) */
+.btn-action-block {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--afa-white);
+  background: var(--afa-red);
+  border: 1px solid var(--afa-red);
+  border-radius: 0.375rem;
+}
+.btn-action-block:hover {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+}
+/* ============================================================
+ * HOME — match Grok Imagine mock
+ * Full-bleed hero · copy right · dark dash cards overlapping hero foot
+ * (White header / blue wordmark stay — user shell decision.)
+ * ============================================================ */
+.home {
+  /* Full width/height of main; body:has(.home) clears cream padding */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: clip;
+  background: #060d18;
+  padding-bottom: 2.5rem;
+}
+.home-hero {
+  position: relative;
+  min-height: min(72vh, 34rem);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: #0a1628;
+  border-radius: 0;
+  width: 100%;
+}
+.home-hero__bg {
+  position: absolute;
+  inset: 0;
+  background-image: url("/afa-eagle-mascot.png");
+  /* Cover the hero; pin focus on head/chest so the card overlap zone
+     is mostly desert/ground — not the face or bat tip. */
+  background-size: cover;
+  background-position: 28% 22%;
+  background-repeat: no-repeat;
+}
+/* Soft vignette — right for type; heavy fade at foot where dash cards sit */
+.home-hero__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      105deg,
+      rgba(6, 13, 24, 0.12) 0%,
+      rgba(6, 13, 24, 0.08) 35%,
+      rgba(6, 13, 24, 0.5) 62%,
+      rgba(6, 13, 24, 0.8) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(6, 13, 24, 0.15) 0%,
+      transparent 28%,
+      transparent 48%,
+      rgba(6, 13, 24, 0.55) 72%,
+      rgba(6, 13, 24, 0.95) 100%
+    );
+}
+.home-hero__inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 3.5rem 1.5rem 7.5rem; /* room for overlapping cards */
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+.home-hero__copy {
+  max-width: 26rem;
+  min-width: 0;
+  text-align: left;
+}
+/* Imagine: title-case bold white, not Anton all-caps */
+.home-hero__title {
+  margin: 0 0 0.75rem;
+  max-width: 14ch;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.25rem, 5vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: #fff;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.45);
+}
+.home-hero__tagline {
+  margin: 0 0 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.home-hero__ctas {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+/*
+ * Hero CTAs — identical box; colors ONLY from the site color law:
+ *   red   = action
+ *   blue  = permanent information
+ *   white = transient information (use .home-cta--transient when needed)
+ */
+.home-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  min-width: 8.75rem;
+  padding: 0 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 0.5rem;
+  border: 2px solid transparent;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+/* RED — action */
+.home-cta--action {
+  color: #ffffff;
+  background: var(--afa-red);
+  border-color: var(--afa-red);
+}
+.home-cta--action:hover {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+  color: #ffffff;
+}
+/* BLUE — permanent information */
+.home-cta--info {
+  color: #ffffff;
+  background: var(--afa-flag-blue);
+  border-color: var(--afa-flag-blue);
+}
+.home-cta--info:hover {
+  background: #001f52;
+  border-color: #001f52;
+  color: #ffffff;
+}
+/* WHITE — transient (border matches label so it reads on dark hero) */
+.home-cta--transient {
+  color: #ffffff;
+  background: transparent;
+  border-color: #ffffff;
+}
+.home-cta--transient:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+/* Dark band + overlapping cards (Imagine foot of hero) */
+.home-dash-wrap {
+  position: relative;
+  z-index: 3;
+  max-width: 72rem;
+  margin: -5.5rem auto 0;
+  padding: 0 1.25rem;
+}
+.home-dash {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.95fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+/* Two-up: Upcoming + Recent Results */
+.home-dash--two {
+  grid-template-columns: 1fr 1.35fr;
+}
+.home-dash__card--results {
+  min-width: 0;
+}
+/* Recent Results tourney row — date + name + arrow, offset right like before */
+.home-events--results-tour {
+  display: block;
+  margin: 0 0 0.65rem;
+}
+.home-events--results-tour .home-event--date-name {
+  display: grid;
+  margin-left: auto;
+  width: fit-content;
+  max-width: 100%;
+  min-width: min(100%, 16rem);
+  grid-template-columns: auto auto;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+.home-results__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  flex: 1;
+  align-items: stretch;
+}
+/* Gender columns as cards — same family as upcoming event rows */
+.home-gender-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+.home-gender-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+}
+.home-gender-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  line-height: 1.2;
+}
+.home-gender-card__count {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+.home-gender-card__body {
+  padding: 0.65rem 0.65rem 0.75rem;
+  flex: 1;
+}
+.home-results__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+/* Caption metal colors come from MatchupCard (Gold/Silver/Bronze) */
+.home-gender-card .matchup-card__caption {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+.home-results__empty {
+  margin: 0;
+  padding: 1.25rem 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 0.55rem;
+}
+/* News — full width under the dash; poster + short copy */
+.home-news {
+  margin-top: 1rem;
+  padding: 1.15rem 1.25rem 1.35rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, #151d2e 0%, #0c1220 100%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.home-news__title {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+.home-news__poster-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) 1fr;
+  gap: 1.25rem 1.75rem;
+  align-items: center;
+}
+.home-news__poster-link {
+  display: block;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.home-news__poster {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+.home-news__aside-lead {
+  margin: 0 0 0.65rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #fff;
+}
+.home-news__aside-body {
+  margin: 0 0 1.15rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 28rem;
+}
+.home-news__aside-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+.home-news__aside-links .home-cta {
+  /* reuse hero CTA sizing on dark ground */
+  min-width: 0;
+}
+.home-news__ext {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+}
+.home-news__ext:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+.home-dash__card {
+  display: flex;
+  flex-direction: column;
+  min-height: 13.5rem;
+  padding: 1.15rem 1.15rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, #151d2e 0%, #0c1220 100%);
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.home-dash__card h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #fff;
+}
+.home-dash__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+/* Upcoming events — horizontal rows (not tiny vertical pills) */
+.home-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+.home-event {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7.5rem) 1fr auto;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  text-decoration: none;
+  color: inherit;
+  min-height: 0;
+}
+.home-event:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.home-event__when {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.home-event__main {
+  min-width: 0;
+}
+.home-event__name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-event__where {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-event__cta {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--afa-red);
+  white-space: nowrap;
+}
+/* Tight gap between Last Tournament block and Upcoming Events heading */
+.home-events__section-title {
+  margin-top: 0.55rem !important;
+  margin-bottom: 0.35rem !important;
+}
+.home-events--last {
+  margin-bottom: 0;
+}
+.home-events__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.55rem;
+  align-self: flex-start;
+  min-height: 2.25rem;
+  padding: 0 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--afa-red);
+  border: 1px solid var(--afa-red);
+  border-radius: 0.375rem;
+  text-decoration: none;
+}
+.home-events__more:hover {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+  color: #fff;
+}
+
+.home-dash__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 2.5rem;
+}
+.home-dash__row a {
+  color: inherit;
+  text-decoration: none;
+}
+.home-dash__row a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+.home-dash__meta {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.3;
+}
+.home-dash__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+.home-dash__sub {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 0.1rem;
+}
+.home-dash__rank {
+  flex-shrink: 0;
+  width: 1.15rem;
+  font-weight: 800;
+  color: var(--afa-red);
+  font-size: 0.85rem;
+}
+.home-dash__pts {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--afa-gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.home-dash__empty {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0.5rem 0;
+}
+.home-dash__heading {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0 0.15rem 0.25rem;
+  list-style: none;
+}
+.home-dash__cta {
+  margin-top: 0.65rem;
+}
+.home-dash__cta .btn-action {
+  width: 100%;
+  justify-content: center;
+}
+.home-body-extra {
+  max-width: 72rem;
+  margin: 1.5rem auto 0;
+  padding: 0 1.25rem;
+}
+.home-body-extra h2 {
+  color: #fff;
+}
+/* MyTeamStrip sits above the dash on dark ground */
+.home-me {
+  margin-bottom: 0.75rem;
+}
+.home-me:empty {
+  display: none;
+}
+.w-full {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .home-hero {
+    min-height: min(62vh, 28rem);
+    align-items: flex-end;
+  }
+  .home-hero__inner {
+    justify-content: center;
+    padding: 2.5rem 1rem 6.5rem;
+  }
+  .home-hero__copy {
+    text-align: center;
+    max-width: 22rem;
+  }
+  .home-hero__tagline {
+    margin-inline: auto;
+  }
+  .home-hero__ctas {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 15rem;
+    margin-inline: auto;
+  }
+  .home-cta {
+    width: 100%;
+  }
+  .home-hero__bg {
+    /* Phone: keep head high; bottom is under the cards anyway */
+    background-position: 35% 12%;
+  }
+  .home-hero__bg::after {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 13, 24, 0.12) 0%,
+      rgba(6, 13, 24, 0.3) 38%,
+      rgba(6, 13, 24, 0.85) 70%,
+      rgba(6, 13, 24, 0.98) 100%
+    );
+  }
+  .home-dash,
+  .home-dash--two {
+    grid-template-columns: 1fr;
+  }
+  .home-results__grid {
+    grid-template-columns: 1fr;
+  }
+  .home-news__poster-wrap {
+    grid-template-columns: 1fr;
+    max-width: 22rem;
+    margin-inline: auto;
+    text-align: center;
+  }
+  .home-news__aside-body {
+    margin-inline: auto;
+  }
+  .home-news__aside-links {
+    align-items: center;
+  }
+  .home-event {
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 0.65rem;
+  }
+  .home-event__when {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+  .home-dash-wrap {
+    margin-top: -4rem;
+  }
+}
+
+/* Featured permanent fact card (next tournament) */
+.card-info {
+  display: block;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--afa-flag-blue);
+  color: var(--afa-white);
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+}
+.card-info:hover {
+  opacity: 0.95;
+}
+.card-info__eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.7);
+}
+.card-info__title {
+  margin-top: 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.card-info__meta {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.site-footer {
+  background: var(--afa-navy-deep);
+  color: var(--afa-white);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.site-footer__inner {
+  max-width: var(--page-width);
+  margin-inline: auto;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.site-footer__muted {
+  color: rgba(255, 255, 255, 0.8);
+}
+.site-footer a {
+  text-decoration: underline;
+  color: inherit;
+}
+.site-footer a:hover {
+  color: var(--afa-white);
 }
 
 /* Sun-readable, thumb-size form controls — ballpark-on-LTE conditions */
@@ -286,9 +1421,10 @@ button:not(.pill) {
     box-shadow: 0 1px 2px rgba(22, 35, 61, 0.12);
   }
 
-  /* ── Button ─────────────────────────────────────────────────────────
-     One pill, two weights. Loud is navy on white; quiet is the outline.
-     Segmented controls are the same pill, grouped on a tinted track. */
+  /* ── Button (legacy aliases → color law) ───────────────────────────
+     .btn        → action (red)
+     .btn-quiet  → transient (white / outlined)
+     Prefer .btn-action / .btn-info / .btn-transient in new code. */
   .btn,
   .btn-quiet {
     display: inline-flex;
@@ -296,22 +1432,26 @@ button:not(.pill) {
     justify-content: center;
     min-height: 44px;
     padding: 0 1rem;
-    border-radius: 999px;
+    border-radius: 0.375rem;
     font-size: 0.875rem;
     font-weight: 700;
     white-space: nowrap;
   }
   .btn {
-    background: var(--afa-navy);
+    background: var(--afa-red);
     color: #fff;
   }
+  .btn:hover {
+    background: var(--afa-red-hover);
+  }
   .btn-quiet {
-    background: #fff;
-    color: var(--afa-navy);
-    border: 1px solid rgba(30, 58, 110, 0.25);
+    background: var(--afa-white);
+    color: var(--afa-ink);
+    border: 1px solid var(--afa-ink);
   }
   .btn-quiet:hover {
-    border-color: rgba(30, 58, 110, 0.6);
+    background: var(--afa-soft-gray);
+    border-color: var(--afa-ink);
   }
 
   /* ── Poster ─────────────────────────────────────────────────────────

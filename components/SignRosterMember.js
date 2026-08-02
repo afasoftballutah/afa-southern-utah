@@ -105,7 +105,7 @@ export default function SignRosterMember({ token, member }) {
         type="button"
         disabled={!agreed || !signature || state === "submitting"}
         onClick={submit}
-        className="w-full bg-afa-red text-white font-bold py-3 rounded-lg disabled:opacity-40"
+        className="btn-action-block disabled:opacity-40"
       >
         {state === "submitting" ? "Submitting…" : "Sign"}
       </button>

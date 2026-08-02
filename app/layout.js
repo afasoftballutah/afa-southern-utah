@@ -25,7 +25,7 @@ const teamFace = Oswald({
 export const metadata = {
   title: "AFA Southern Utah Slow-Pitch",
   description:
-    "American Fastpitch Association — Southern Utah Slow Pitch Division. Tournaments, registration, and results for St. George area softball.",
+    "America's recreational sport played as it should be. Great events, good times, family fun, best prizes, politics free. AFA Southern Utah Slow Pitch — tournaments, registration, and results.",
 };
 
 export const viewport = {
@@ -34,51 +34,26 @@ export const viewport = {
   maximumScale: 1,
 };
 
-function NavLink({ href, children }) {
-  return (
-    <Link
-      href={href}
-      className="px-2 sm:px-3 py-2 text-sm font-semibold text-white hover:text-white/70"
-    >
-      {children}
-    </Link>
-  );
-}
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`h-full ${displayFace.variable} ${teamFace.variable}`}>
-      <body className="min-h-full flex flex-col bg-afa-cream text-afa-ink antialiased">
-        {/* Masthead — navy ground, eagle at left, name in white. Thin red
-            bar underneath is the one place red is decoration, not action. */}
-        <header className="bg-afa-navy border-b-2 border-afa-red print:hidden">
-          <div className="max-w-4xl mx-auto flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
-            <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
-              {/* Logo glow (JD ruling, dispatch-brief-3): the mark is
-                  blue-on-blue against the navy masthead. A halo that hugs
-                  the PNG's own alpha footprint, never a box/panel behind
-                  it. */}
-              <img
-                src="/afa-logo.png"
-                alt=""
-                width={32}
-                height={32}
-                className="shrink-0 [filter:drop-shadow(0_0_2px_rgba(253,250,243,0.95))_drop-shadow(0_0_6px_rgba(253,250,243,0.5))]"
-              />
-              {/* At phone width the glowing mark IS the identity — the
-                  wordmark yields so the nav never collides (390px can't
-                  hold both; measured 2026-07-23). Full name from sm: up. */}
-              <span className="hidden sm:inline text-white font-black whitespace-nowrap sm:text-lg leading-tight tracking-tight">
-                AFA Southern Utah
-              </span>
+      <body className="min-h-full flex flex-col antialiased">
+        {/* Site shell — look lives in globals.css (.site-*). */}
+        <header className="site-header print:hidden">
+          <div className="site-header__inner">
+            <Link href="/" className="site-brand">
+              <img src="/afa-logo.png" alt="" width={32} height={32} />
+              <span className="site-wordmark">AFA Softball Southern Utah</span>
             </Link>
-            <nav className="flex items-center shrink-0">
-              <NavLink href="/tournaments">Tournaments</NavLink>
-              <NavLink href="/rules">Rules</NavLink>
-              <Link
-                href="/register"
-                className="ml-1 sm:ml-2 px-2 sm:px-3 py-2 text-sm font-bold text-white bg-afa-red rounded"
-              >
+            <nav className="site-nav">
+              {/* Top bar: all dark-blue text links (uniform). Color-law buttons live in page content. */}
+              <Link href="/tournaments" className="site-nav__link">
+                Tournaments
+              </Link>
+              <Link href="/rules" className="site-nav__link">
+                Rules
+              </Link>
+              <Link href="/register" className="site-nav__link">
                 Register
               </Link>
             </nav>
@@ -90,28 +65,18 @@ export default function RootLayout({ children }) {
             one-line forms, and 4xl was forcing them to wrap (JD, 2026-07-27:
             "should we use a slightly wider page?"). The class is set per
             route by the page below via a CSS variable on <body>. */}
-        <main className="flex-1 w-full max-w-[var(--page-width,56rem)] mx-auto px-4 py-6">
-          {children}
-        </main>
+        <main className="site-main">{children}</main>
 
-        {/* Fine print, sized AND written like fine print (JD, 2026-07-24).
-            Shrinking the type alone didn't stop the wrap — at any readable
-            size these sentences were simply longer than a 390px screen, so
-            the words were shortened too. Meaning is preserved: the privacy
-            line still says what we collect and that nothing is sold, and
-            the release line still points at the full text on Register. */}
-        <footer className="bg-afa-navy text-white text-xs leading-snug print:hidden">
-          <div className="max-w-4xl mx-auto px-4 py-5 space-y-1.5">
+        {/* Fine print, sized AND written like fine print (JD, 2026-07-24). */}
+        <footer className="site-footer print:hidden">
+          <div className="site-footer__inner">
             <p>AFA &mdash; Southern Utah Slow Pitch</p>
-            <p className="text-white/80">
+            <p className="site-footer__muted">
               Names and contacts only. Nothing is sold.
             </p>
-            <p className="text-white/80">
+            <p className="site-footer__muted">
               Registering means signing the AFA release &mdash; full text on{" "}
-              <Link href="/register" className="underline">
-                Register
-              </Link>
-              .
+              <Link href="/register">Register</Link>.
             </p>
           </div>
         </footer>

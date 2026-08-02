@@ -43,8 +43,8 @@ export default async function TeamPage({ params }) {
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <p className="t-meta">
-          <Link href="/tournaments" className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2">
-            Tournaments
+          <Link href="/tournaments" className="btn-transient">
+            ← Tournaments
           </Link>
         </p>
         <h1 className="team-name mt-1 text-3xl font-bold uppercase tracking-wide text-afa-navy">

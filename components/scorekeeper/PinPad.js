@@ -43,36 +43,23 @@ export default function PinPad() {
         {"•".repeat(pin.length) || <span className="text-afa-ink/30">Enter PIN</span>}
       </div>
       {state === "error" && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 pin-pad">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => tap(d)}
-            className="py-4 text-2xl font-bold bg-white border border-afa-navy/20 rounded-lg"
-          >
+          <button key={d} type="button" onClick={() => tap(d)} className="pin-pad__key">
             {d}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={backspace}
-          className="py-4 text-lg font-bold text-afa-navy underline"
-        >
+        <button type="button" onClick={backspace} className="pin-pad__key pin-pad__key--ghost">
           Del
         </button>
-        <button
-          type="button"
-          onClick={() => tap("0")}
-          className="py-4 text-2xl font-bold bg-white border border-afa-navy/20 rounded-lg"
-        >
+        <button type="button" onClick={() => tap("0")} className="pin-pad__key">
           0
         </button>
         <button
           type="button"
           disabled={pin.length === 0 || state === "submitting"}
           onClick={() => submit(pin)}
-          className="py-4 text-lg font-bold text-white bg-afa-navy rounded-lg disabled:opacity-40"
+          className="pin-pad__key pin-pad__key--go"
         >
           Go
         </button>

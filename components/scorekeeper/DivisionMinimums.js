@@ -65,7 +65,7 @@ export default function DivisionMinimums({ divisionId, minMen, minWomen }) {
         />
       )}
       {dirty && (
-        <button type="button" className="btn-quiet" disabled={state === "saving"} onClick={() => setAsk(true)}>
+        <button type="button" className="btn-transient" disabled={state === "saving"} onClick={() => setAsk(true)}>
           {state === "saving" ? "Saving…" : state === "error" ? "Try again" : "Save"}
         </button>
       )}

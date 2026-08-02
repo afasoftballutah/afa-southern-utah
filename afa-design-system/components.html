@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AFA Softball – Component Sheet</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    body { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    .demo-section { margin-bottom: 3rem; }
+    .demo-section h2 { margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
+    .demo-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+    .demo-label { font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
+    .theme-bar { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
+    /* Logo readability on dark surfaces (header mock, if any) */
+    .logo-on-navy {
+      background: #0A1628;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-on-navy img {
+      height: 40px;
+      filter: drop-shadow(0 0 2px rgba(253, 250, 243, 0.95))
+              drop-shadow(0 0 6px rgba(253, 250, 243, 0.5));
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-bar">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">🌓</button>
+  </div>
+
+  <div style="background:#FFD700;color:#0A1628;font-weight:800;text-align:center;padding:0.5rem 1rem;margin:-2rem -2rem 1.5rem;letter-spacing:0.06em;text-transform:uppercase;font-size:0.8rem;">
+    ★ DESIGN MOCK ONLY · ALL LABELS BELOW ARE DUMMY · NOT LIVE ★
+  </div>
+  <h1 style="font-family: var(--font-display); color: var(--afa-red); font-size: 2.5rem; margin-bottom: 0.25rem;">DUMMY COMPONENT SHEET</h1>
+  <p class="text-muted" style="margin-bottom: 2.5rem;">Buttons · Forms · Tables · Light + Dark — placeholder copy only. Use 🌓 top-right to toggle.</p>
+
+  <!-- LOGO ON NAVY (the real readability problem) -->
+  <section class="demo-section">
+    <h2>Logo on navy (always needs a halo)</h2>
+    <p class="text-muted" style="margin-bottom: 0.75rem;">Dark mode isn’t the only issue — the header bar is navy in both themes. Without a light drop-shadow the mark disappears.</p>
+    <div class="logo-on-navy">
+      <img src="assets/afa-logo.png" alt="AFA logo with glow" />
+      <span style="font-family: var(--font-display); color: var(--afa-red); font-size: 1.4rem; letter-spacing: 0.03em;">DUMMY AFA</span>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section class="demo-section">
+    <h2>Buttons</h2>
+    <div class="demo-row">
+      <div>
+        <div class="demo-label">Primary</div>
+        <a class="btn btn-primary">Fake Primary</a>
+      </div>
+      <div>
+        <div class="demo-label">Secondary</div>
+        <a class="btn btn-secondary">Fake Secondary</a>
+      </div>
+      <div>
+        <div class="demo-label">Outline</div>
+        <a class="btn btn-outline">Fake Outline</a>
+      </div>
+      <div>
+        <div class="demo-label">Success</div>
+        <a class="btn btn-success">Fake Success</a>
+      </div>
+      <div>
+        <div class="demo-label">Ghost</div>
+        <a class="btn btn-ghost">Fake Ghost</a>
+      </div>
+      <div>
+        <div class="demo-label">Link</div>
+        <a class="btn btn-link">Fake link →</a>
+      </div>
+    </div>
+    <div class="demo-row">
+      <div>
+        <div class="demo-label">Small</div>
+        <a class="btn btn-primary btn-sm">Register</a>
+      </div>
+      <div>
+        <div class="demo-label">Disabled</div>
+        <a class="btn btn-primary" disabled>Disabled</a>
+      </div>
+      <div>
+        <div class="demo-label">Block</div>
+        <a class="btn btn-primary btn-block" style="max-width:220px">Full Width CTA</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORMS -->
+  <section class="demo-section">
+    <h2>Forms</h2>
+    <form style="max-width: 520px;">
+      <div class="form-group">
+        <label class="form-label">Dummy Name <span class="required">*</span></label>
+        <input type="text" class="form-input" placeholder="Fake First Last" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Dummy Email</label>
+          <input type="email" class="form-input" placeholder="fake@example.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dummy Phone</label>
+          <input type="tel" class="form-input" placeholder="(000) 000-0000" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dummy Division</label>
+        <select class="form-select">
+          <option>Select fake division…</option>
+          <option>Placeholder 10U</option>
+          <option>Placeholder 12U</option>
+          <option>Placeholder Adult</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dummy Notes</label>
+        <textarea class="form-textarea" placeholder="Lorem ipsum — not real notes…"></textarea>
+        <div class="form-hint">Fake hint text only. Does nothing.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-check">
+          <input type="checkbox" /> I agree this is dummy form UI
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Error state example</label>
+        <input type="text" class="form-input is-error" value="invalid@dummy" />
+        <div class="form-error">Fake validation error (not real)</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Fake Submit</button>
+    </form>
+  </section>
+
+  <!-- TABLES -->
+  <section class="demo-section">
+    <h2>Tables (Rankings / Rosters)</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="rank-cell">#</th>
+            <th>Team</th>
+            <th>Division</th>
+            <th class="text-right">Points</th>
+            <th class="text-right">W-L</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rank-cell">1</td>
+            <td><strong>Team Placeholder A</strong></td>
+            <td>Fake 14U</td>
+            <td class="text-right pts-cell">9999</td>
+            <td class="text-right">0-0</td>
+            <td class="table-actions"><a class="btn btn-ghost btn-sm">Dummy</a></td>
+          </tr>
+          <tr>
+            <td class="rank-cell">2</td>
+            <td><strong>Team Placeholder B</strong></td>
+            <td>Fake 14U</td>
+            <td class="text-right pts-cell">8888</td>
+            <td class="text-right">0-0</td>
+            <td class="table-actions"><a class="btn btn-ghost btn-sm">Dummy</a></td>
+          </tr>
+          <tr>
+            <td class="rank-cell">3</td>
+            <td><strong>Team Placeholder C</strong></td>
+            <td>Fake 12U</td>
+            <td class="text-right pts-cell">7777</td>
+            <td class="text-right">0-0</td>
+            <td class="table-actions"><a class="btn btn-ghost btn-sm">Dummy</a></td>
+          </tr>
+          <tr>
+            <td class="rank-cell">4</td>
+            <td><strong>Team Placeholder D</strong></td>
+            <td>Fake 16U</td>
+            <td class="text-right pts-cell">6666</td>
+            <td class="text-right">0-0</td>
+            <td class="table-actions"><a class="btn btn-ghost btn-sm">Dummy</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- EVENT CARDS -->
+  <section class="demo-section">
+    <h2>Event Cards</h2>
+    <div class="card card-event" style="max-width: 480px;">
+      <div class="badge badge-flame">🔥</div>
+      <div class="info">
+        <div class="title">FAKE EVENT ALPHA</div>
+        <div class="meta">Jan 1–2, 2099 · Fake Town · Placeholder Fields</div>
+      </div>
+      <a href="#" class="btn btn-primary btn-sm">Dummy Register</a>
+    </div>
+  </section>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    }
+  </script>
+</body>
+</html>

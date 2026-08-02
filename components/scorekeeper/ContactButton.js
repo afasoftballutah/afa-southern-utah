@@ -33,8 +33,8 @@ export default function ContactButton({ name, phone, email, via }) {
               <p className="t-label">Phone</p>
               <p className="t-body tabular-nums">{phone}</p>
               <div className="flex gap-2">
-                <a className="btn flex-1" href={`sms:${digits}`}>Text</a>
-                <a className="btn-quiet flex-1" href={`tel:${digits}`}>Call</a>
+                <a className="btn-action flex-1" href={`sms:${digits}`}>Text</a>
+                <a className="btn-transient flex-1" href={`tel:${digits}`}>Call</a>
               </div>
             </div>
           )}

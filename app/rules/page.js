@@ -15,13 +15,15 @@ export default function RulesPage() {
   return (
     <div className="space-y-4">
       <h1 className="t-title">Rules</h1>
-      <p className="text-sm text-afa-ink/70">
-        {RULES_SOURCE.title} ({RULES_SOURCE.year}) —{" "}
+      <p className="t-meta">
+        {RULES_SOURCE.title} ({RULES_SOURCE.year})
+      </p>
+      <p>
         <a
           href={RULES_SOURCE.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-afa-navy"
+          className="btn-info"
         >
           View the original PDF
         </a>

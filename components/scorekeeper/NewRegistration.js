@@ -79,13 +79,13 @@ export default function NewRegistration({ tournaments }) {
           Nobody has signed yet. Send the team link so each person signs their
           own waiver, and keep the manager link for yourself.
         </p>
-        <button type="button" className="btn w-full" onClick={() => copy(done.rosterLink, "roster")}>
+        <button type="button" className="btn-action w-full" onClick={() => copy(done.rosterLink, "roster")}>
           {copied === "roster" ? "Copied" : "Copy team link"}
         </button>
-        <button type="button" className="btn-quiet w-full" onClick={() => copy(done.manageLink, "manage")}>
+        <button type="button" className="btn-transient w-full" onClick={() => copy(done.manageLink, "manage")}>
           {copied === "manage" ? "Copied" : "Copy manager link"}
         </button>
-        <a className="btn-quiet w-full block text-center" href="/scorekeeper/registrations">
+        <a className="btn-transient w-full block text-center" href="/scorekeeper/registrations">
           See all registrations
         </a>
       </div>
@@ -151,7 +151,7 @@ export default function NewRegistration({ tournaments }) {
 
       <button
         type="button"
-        className="btn w-full"
+        className="btn-action w-full"
         disabled={busy || !teamName.trim() || !managerName.trim() || !effectiveDivision}
         onClick={submit}
       >

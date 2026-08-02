@@ -156,7 +156,7 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
         <button
           type="button"
           onClick={() => setAsk("confirm")}
-          className="w-full rounded-lg bg-afa-red py-3 font-bold text-white"
+          className="btn-action-block"
         >
           Confirm bracket
         </button>

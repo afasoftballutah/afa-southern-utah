@@ -388,22 +388,17 @@ export default async function TournamentDetailPage({ params }) {
                   href={tournament.registration_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block min-h-11 hover:opacity-80"
+                  className="btn-action-block"
                 >
-                  <p className="font-bold text-afa-navy">Register</p>
-                  {registrationHost && (
-                    <p className="text-xs text-afa-ink/60 mt-1">{registrationHost}</p>
-                  )}
+                  Register
+                  {registrationHost ? ` · ${registrationHost}` : ""}
                 </a>
               ) : (
                 // No external URL means WE take the registration. Most
                 /* tournaments are this case, and without it an open
                    tournament said "Registration" and offered no way in. */
-                <Link href="/register" className="block min-h-11 hover:opacity-80">
-                  <p className="font-bold text-afa-navy">Register this team</p>
-                  <p className="text-xs text-afa-ink/60 mt-1">
-                    Roster and waiver, on this site
-                  </p>
+                <Link href="/register" className="btn-action-block">
+                  Register this team
                 </Link>
               )}
               {tournament.registration_note && (

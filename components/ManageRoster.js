@@ -128,7 +128,7 @@ export default function ManageRoster({ token, initialMembers, rosterToken }) {
             onChange={(e) => setBirthDate(e.target.value)}
           />
         </label>
-        <button type="button" className="btn w-full" disabled={busy || !name.trim()} onClick={add}>
+        <button type="button" className="btn-action w-full" disabled={busy || !name.trim()} onClick={add}>
           {busy ? "Working…" : "Add to roster"}
         </button>
 
@@ -140,7 +140,7 @@ export default function ManageRoster({ token, initialMembers, rosterToken }) {
             </p>
             <button
               type="button"
-              className="btn-quiet w-full"
+              className="btn-transient w-full"
               onClick={() => copy(addedLink.signLink, "added")}
             >
               {copied === "added" ? "Copied" : "Copy their signing link"}
@@ -153,7 +153,7 @@ export default function ManageRoster({ token, initialMembers, rosterToken }) {
 
       <button
         type="button"
-        className="btn-quiet w-full"
+        className="btn-transient w-full"
         onClick={() =>
           copy(`${window.location.origin}/register/roster/${rosterToken}`, "roster")
         }

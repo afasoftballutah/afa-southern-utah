@@ -2,7 +2,6 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import { formatDateRange, formatFee, isRealPoster, isGroupName } from "@/lib/data";
 import { parseLeagueDateOnly } from "@/lib/league-time";
@@ -95,19 +94,21 @@ export default function TournamentBrowser({ groups }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 text-sm">
+      {/* View switch — same footprint; selected = info (blue), idle = transient */}
+      <div className="seg-view" role="group" aria-label="Group tournaments by">
         <button
           type="button"
           onClick={() => choose("region")}
-          className={`font-semibold ${view === "region" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
+          className={view === "region" ? "btn-info" : "btn-transient"}
+          aria-pressed={view === "region"}
         >
           By region
         </button>
-        <span className="text-afa-ink/30">|</span>
         <button
           type="button"
           onClick={() => choose("month")}
-          className={`font-semibold ${view === "month" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
+          className={view === "month" ? "btn-info" : "btn-transient"}
+          aria-pressed={view === "month"}
         >
           By month
         </button>
@@ -120,7 +121,7 @@ export default function TournamentBrowser({ groups }) {
           <button
             type="button"
             onClick={() => setShowPast((v) => !v)}
-            className="text-sm font-semibold text-afa-ink/60 hover:text-afa-navy"
+            className="btn-transient"
           >
             {showPast ? "Hide past tournaments" : `Past tournaments (${pastCount})`}
           </button>
@@ -221,12 +222,12 @@ function TournamentRowCard({ t, showRegionChip }) {
   const row = <TournamentRow t={t} linked={linked} showRegionChip={showRegionChip} />;
   if (linked) {
     return (
-      <Link href={`/tournaments/${t.slug}`} className="block group">
-        <Card className="hover:border-afa-navy/50">{row}</Card>
+      <Link href={`/tournaments/${t.slug}`} className="block group tournament-row">
+        {row}
       </Link>
     );
   }
-  return <Card>{row}</Card>;
+  return <div className="tournament-row tournament-row--static">{row}</div>;
 }
 
 function TournamentRow({ t, linked, showRegionChip }) {

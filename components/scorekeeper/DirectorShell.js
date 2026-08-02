@@ -28,7 +28,7 @@ export default function DirectorShell({ title, count, inline, back = "/scorekeep
           {inline}
         </div>
         {back && (
-          <Link href={back} className="t-meta underline shrink-0">
+          <Link href={back} className="btn-transient shrink-0">
             Back
           </Link>
         )}

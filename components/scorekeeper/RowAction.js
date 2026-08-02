@@ -65,10 +65,10 @@ export default function RowAction({
           onClose={() => setOpen(false)}
           footer={
             <>
-              <button type="button" className="btn-quiet" onClick={() => setOpen(false)}>
+              <button type="button" className="btn-transient" onClick={() => setOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="btn" disabled={busy || !choice} onClick={go}>
+              <button type="button" className="btn-action" disabled={busy || !choice} onClick={go}>
                 {busy ? "Working…" : label}
               </button>
             </>

@@ -17,10 +17,10 @@ export default function ConfirmDialog({ title, message, confirmLabel = "Yes", bu
     <Modal title={title} onClose={onCancel} width="max-w-sm"
       footer={
         <>
-          <button type="button" className="btn-quiet" onClick={onCancel} disabled={busy}>
+          <button type="button" className="btn-transient" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
-          <button type="button" className="btn" onClick={onConfirm} disabled={busy}>
+          <button type="button" className="btn-action" onClick={onConfirm} disabled={busy}>
             {busy ? "Working…" : confirmLabel}
           </button>
         </>

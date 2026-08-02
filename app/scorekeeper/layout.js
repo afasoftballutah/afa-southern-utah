@@ -5,14 +5,7 @@
 // stay narrow; these are eight-column tables and one-line forms read at a
 // desk, and 56rem was forcing both to wrap.
 //
-// The width lives on <main> in the root layout, which is OUTSIDE this one, so
-// it is set through a variable rather than a class. Scoped to /scorekeeper by
-// virtue of this file existing only here.
+// Width is set via .scorekeeper-scope on the stylesheet (no page-local CSS).
 export default function ScorekeeperLayout({ children }) {
-  return (
-    <>
-      <style>{`:root { --page-width: 84rem; }`}</style>
-      {children}
-    </>
-  );
+  return <div className="scorekeeper-scope">{children}</div>;
 }
