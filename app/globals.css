@@ -807,6 +807,7 @@ textarea.form-field {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  line-height: 0; /* kill gap under img */
 }
 .home-news__poster {
   display: block;
