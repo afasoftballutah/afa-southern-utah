@@ -6,7 +6,8 @@ import AddressInput from "./AddressInput";
 import RegisterBack from "./RegisterBack";
 import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
 import { formatLeagueDateOnly } from "@/lib/league-time";
-import { REGION_ORDER } from "@/lib/data";
+import { REGION_ORDER, canonicalRegion } from "@/lib/data";
+import { getRegionPref } from "@/lib/region-pref";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -35,22 +36,60 @@ export default function RegistrationForm({
     return tournaments.find((t) => t.slug === initialTournamentSlug) ?? null;
   }, [tournaments, initialTournamentSlug]);
 
-  // Series filter (dispatch-brief-17) — "All" plus only the regions that
-  // actually have a registerable tournament in this list. `tournaments` here
-  // is already the registerable set (page.js filters is_placeholder/status).
+  // Series filter — "All" plus only the regions that have a registerable
+  // tournament. Prefer the home map’s site-wide region when present.
+  // Lists are always next-first (soonest start_date).
   const [seriesFilter, setSeriesFilter] = useState("all");
+  useEffect(() => {
+    // Don't override deep-link ?tournament=… region
+    if (initialTournament) {
+      const r = canonicalRegion(initialTournament);
+      if (r) setSeriesFilter(r);
+      return;
+    }
+    const pref = getRegionPref();
+    if (pref && REGION_ORDER.includes(pref)) setSeriesFilter(pref);
+  }, [initialTournament]);
   const filterOptions = useMemo(() => {
-    const present = REGION_ORDER.filter((r) => tournaments.some((t) => t.region === r));
-    return [{ value: "all", label: "All" }, ...present.map((r) => ({ value: r, label: regionLabel[r] }))];
+    const present = REGION_ORDER.filter((r) =>
+      tournaments.some((t) => canonicalRegion(t) === r)
+    );
+    return [
+      { value: "all", label: "All" },
+      ...present.map((r) => ({ value: r, label: regionLabel[r] })),
+    ];
   }, [tournaments, regionLabel]);
   const filteredTournaments = useMemo(() => {
-    const list = seriesFilter === "all" ? tournaments : tournaments.filter((t) => t.region === seriesFilter);
-    return list.slice().sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0));
+    const list =
+      seriesFilter === "all"
+        ? tournaments
+        : tournaments.filter((t) => canonicalRegion(t) === seriesFilter);
+    return list
+      .slice()
+      .sort((a, b) =>
+        a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0
+      );
   }, [tournaments, seriesFilter]);
 
+  // Default selection = next open tournament (first after date sort)
   const [tournamentId, setTournamentId] = useState(
     () => initialTournament?.id ?? tournaments[0]?.id ?? ""
   );
+  // When region filter changes (map pref or chips), snap to next in that set
+  useEffect(() => {
+    if (initialTournament && seriesFilter !== "all") {
+      // Deep-link already set the team’s event
+      if (tournamentId === initialTournament.id) return;
+    }
+    if (filteredTournaments.length === 0) {
+      setTournamentId("");
+      return;
+    }
+    const stillIn = filteredTournaments.some((t) => t.id === tournamentId);
+    if (!stillIn) {
+      setTournamentId(filteredTournaments[0].id);
+    }
+  }, [filteredTournaments, seriesFilter, initialTournament, tournamentId]);
   const tournament = useMemo(
     () => tournaments.find((t) => t.id === tournamentId),
     [tournaments, tournamentId]
@@ -88,7 +127,8 @@ export default function RegistrationForm({
 
   function chooseFilter(next) {
     setSeriesFilter(next);
-    const stillVisible = next === "all" || (tournament && tournament.region === next);
+    const stillVisible =
+      next === "all" || (tournament && canonicalRegion(tournament) === next);
     if (!stillVisible) {
       setTournamentId("");
       setDivisionId("");
@@ -335,7 +375,7 @@ export default function RegistrationForm({
                     <option key={t.id} value={t.id}>
                       {t.name} — {formatLeagueDateOnly(t.start_date)}
                       {seriesFilter === "all"
-                        ? ` · ${regionLabel[t.region] ?? t.region}`
+                        ? ` · ${regionLabel[canonicalRegion(t)] ?? t.region}`
                         : ""}
                     </option>
                   ))}

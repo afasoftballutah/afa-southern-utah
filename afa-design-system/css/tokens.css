@@ -24,6 +24,9 @@
   --afa-muted-light:    #9CA3AF;
   --afa-gold:           #FFD700;
   --afa-gold-dark:      #E6C200;
+  /* Tournament status — softball field colors */
+  --afa-teal:           #0D9488; /* completed */
+  --afa-lime:           #C8FF00; /* upcoming */
   --afa-success:        #10B981;
   --afa-warning:        #F59E0B;
   --afa-error:          #EF4444;

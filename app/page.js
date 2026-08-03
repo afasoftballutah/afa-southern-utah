@@ -5,16 +5,18 @@ import {
   withArchiveSummaries,
   formatFee,
   isRealPoster,
+  REGION_ORDER,
+  canonicalRegion,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { leagueToday } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
-import { buildPosterDeckSlides } from "@/lib/poster-deck";
+import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import Card from "@/components/ui/Card";
 import MyTeamStrip from "@/components/MyTeamStrip";
-import PosterCarousel from "@/components/PosterCarousel";
-import HomeRecentResults from "@/components/HomeRecentResults";
 import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
+import RegionMap from "@/components/RegionMap";
+import HomeRegionContent from "@/components/HomeRegionContent";
 
 export const revalidate = 30;
 
@@ -55,57 +57,14 @@ export default async function Home() {
     return Boolean(end && end >= today);
   };
 
-  const southernAll =
-    seasonGroups.find((g) => g.region === "southern_utah")?.tournaments ?? [];
-
   const posterSlides = buildPosterDeckSlides(seasonGroups, {
     today,
     formatWhen: formatDateRangeNoYear,
   });
 
-  // Last finished: prefer archive helper; else latest past by end date.
-  let lastTournament = lastResults;
-  if (!lastTournament) {
-    lastTournament =
-      southernAll
-        .filter(isPastByDate)
-        .slice()
-        .sort((a, b) => {
-          const da = eventEnd(a) ?? "";
-          const db = eventEnd(b) ?? "";
-          return da < db ? 1 : da > db ? -1 : 0;
-        })[0] ?? null;
-  }
-
-  const lastEvent = lastTournament
-    ? {
-        id: lastTournament.id,
-        slug: lastTournament.slug,
-        name: lastTournament.name,
-        when: formatDateRangeNoYear(
-          lastTournament.start_date,
-          lastTournament.end_date
-        ),
-        where: lastTournament.venue_name,
-        fee:
-          lastTournament.entry_fee_cents != null
-            ? formatFee(lastTournament.entry_fee_cents)
-            : null,
-        gg: lastTournament.game_guarantee,
-      }
-    : null;
-
-  // Truly upcoming + real event poster only (no schedule placeholders).
-  const upcomingEvents = southernAll
-    .filter((t) => isUpcomingByDate(t) && isRealPoster(t))
-    .slice()
-    .sort((a, b) => {
-      const da = String(a.start_date ?? "");
-      const db = String(b.start_date ?? "");
-      return da < db ? -1 : da > db ? 1 : 0;
-    })
-    .slice(0, 3)
-    .map((t) => ({
+  function toEventCard(t) {
+    if (!t) return null;
+    return {
       id: t.id,
       slug: t.slug,
       name: t.name,
@@ -113,30 +72,85 @@ export default async function Home() {
       where: t.venue_name,
       fee: t.entry_fee_cents != null ? formatFee(t.entry_fee_cents) : null,
       gg: t.game_guarantee,
-    }));
+    };
+  }
 
-  // Recent Results dropdown: finished events that have at least one final.
-  const resultEvents = (recentCompleted.length > 0
-    ? recentCompleted
-    : lastTournament
-      ? [lastTournament]
-      : []
-  )
-    .map((t) => {
-      const genderFinals = championshipsByGender(t);
-      const hasFinal = GENDER_KEYS.some(
-        (k) => (genderFinals[k] ?? []).length > 0
-      );
-      if (!hasFinal) return null;
-      return {
-        id: t.id,
-        slug: t.slug,
-        name: t.name,
-        when: formatDateRangeNoYear(t.start_date, t.end_date),
-        genderFinals,
-      };
-    })
-    .filter(Boolean);
+  // Per-region last / upcoming / results for the map filter.
+  // Upcoming is always sorted next-first (soonest start).
+  const lastByRegion = {};
+  const upcomingByRegion = {};
+  const resultEventsByRegion = {};
+
+  for (const region of REGION_ORDER) {
+    const list =
+      seasonGroups.find((g) => g.region === region)?.tournaments ?? [];
+
+    const lastT =
+      list
+        .filter(isPastByDate)
+        .slice()
+        .sort((a, b) => {
+          const da = eventEnd(a) ?? "";
+          const db = eventEnd(b) ?? "";
+          return da < db ? 1 : da > db ? -1 : 0;
+        })[0] ?? null;
+    // Southern Utah prefers the recent-completed helper when available
+    if (region === "southern_utah" && lastResults) {
+      lastByRegion[region] = toEventCard(lastResults);
+    } else {
+      lastByRegion[region] = toEventCard(lastT);
+    }
+
+    upcomingByRegion[region] = list
+      .filter((t) => isUpcomingByDate(t) && isRealPoster(t))
+      .slice()
+      .sort((a, b) => {
+        const da = String(a.start_date ?? "");
+        const db = String(b.start_date ?? "");
+        return da < db ? -1 : da > db ? 1 : 0;
+      })
+      .slice(0, 3)
+      .map(toEventCard)
+      .filter(Boolean);
+
+    resultEventsByRegion[region] = [];
+  }
+
+  // Default region = where the next site-wide event is (not always Southern Utah)
+  const globalNext =
+    nextTournament(
+      seasonGroups.flatMap((g) => g.tournaments ?? []),
+      today
+    ) ?? null;
+  const defaultRegion = globalNext
+    ? canonicalRegion(globalNext)
+    : "southern_utah";
+
+  // Recent Results: southern-focused feed (where we have game data), also
+  // bucketed by region when we know it.
+  const resultSource =
+    recentCompleted.length > 0
+      ? recentCompleted
+      : lastByRegion.southern_utah
+        ? [lastResults].filter(Boolean)
+        : [];
+  for (const t of resultSource) {
+    const genderFinals = championshipsByGender(t);
+    const hasFinal = GENDER_KEYS.some(
+      (k) => (genderFinals[k] ?? []).length > 0
+    );
+    if (!hasFinal) continue;
+    const row = {
+      id: t.id,
+      slug: t.slug,
+      name: t.name,
+      when: formatDateRangeNoYear(t.start_date, t.end_date),
+      genderFinals,
+    };
+    const r = canonicalRegion(t);
+    if (!resultEventsByRegion[r]) resultEventsByRegion[r] = [];
+    resultEventsByRegion[r].push(row);
+  }
 
   return (
     <div className="home">
@@ -148,6 +162,13 @@ export default async function Home() {
           role="img"
           aria-label="AFA eagle mascot on red rock desert"
         />
+        {/*
+          Map is a direct child of the full-bleed hero so % / vw placement
+          tracks the eagle/bat art, not the content-column gutter.
+        */}
+        <div id="region-map" className="home-hero__region">
+          <RegionMap compact />
+        </div>
         <div className="home-hero__inner">
           <div className="home-hero__copy">
             <h1 className="home-hero__title">Softball as it should be</h1>
@@ -167,77 +188,17 @@ export default async function Home() {
       </section>
 
       <div className="home-dash-wrap">
-        {posterSlides.length > 0 && <PosterCarousel slides={posterSlides} />}
+        <HomeRegionContent
+          posterSlides={posterSlides}
+          lastByRegion={lastByRegion}
+          upcomingByRegion={upcomingByRegion}
+          resultEventsByRegion={resultEventsByRegion}
+          defaultRegion={defaultRegion}
+        />
 
         <div className="home-me">
           <MyTeamStrip />
         </div>
-
-        <section className="home-dash home-dash--two" aria-label="Season snapshot">
-          <article className="home-dash__card">
-            {lastEvent && (
-              <>
-                <h2>Last Tournament</h2>
-                <div className="home-events home-events--last">
-                  <Link
-                    href={`/tournaments/${lastEvent.slug}`}
-                    className="home-event"
-                  >
-                    <span className="home-event__when">{lastEvent.when}</span>
-                    <span className="home-event__main">
-                      <span className="home-event__name">{lastEvent.name}</span>
-                      <span className="home-event__where">
-                        {[lastEvent.where, lastEvent.fee, lastEvent.gg]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </span>
-                    <span className="home-event__cta" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                </div>
-              </>
-            )}
-
-            <h2 className={lastEvent ? "home-events__section-title" : undefined}>
-              Upcoming Events
-            </h2>
-            {upcomingEvents.length > 0 ? (
-              <div className="home-events">
-                {upcomingEvents.map((ev) => (
-                  <Link
-                    key={ev.id}
-                    href={`/tournaments/${ev.slug}`}
-                    className="home-event"
-                  >
-                    <span className="home-event__when">{ev.when}</span>
-                    <span className="home-event__main">
-                      <span className="home-event__name">{ev.name}</span>
-                      <span className="home-event__where">
-                        {[ev.where, ev.fee, ev.gg].filter(Boolean).join(" · ")}
-                      </span>
-                    </span>
-                    <span className="home-event__cta" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="home-dash__empty">
-                {lastEvent
-                  ? "No upcoming events posted yet."
-                  : "Nothing on the calendar yet."}
-              </p>
-            )}
-            <Link href="/tournaments" className="home-events__more">
-              Show full list
-            </Link>
-          </article>
-
-          <HomeRecentResults events={resultEvents} />
-        </section>
 
         {/* News — under dash; poster is the AFA “We Want You” piece */}
         <section id="news" className="home-news" aria-label="News">

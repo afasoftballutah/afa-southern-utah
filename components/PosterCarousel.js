@@ -8,7 +8,8 @@ import Link from "next/link";
  * Always shows up to 5 slots: … | -2 | -1 | center | +1 | +2 | …
  * Infinite wrap. Center full color; sides desaturated.
  * Click side poster → rotate to center. Click center → lightbox; backdrop/Esc closes.
- * Finished posters: Completed tag + champion stamps (short codes G/S/B, O/D/E/R, U/L).
+ * Finished posters: black Completed tag + champion stamps (G/S/B, O/D/E/R, U/L).
+ * Upcoming: neon lime tag.
  * Multi-gender: W / M / Coed tabs, gold (champ) per division only.
  */
 
@@ -19,9 +20,9 @@ function wrapDelta(i, center, n) {
   return d;
 }
 
-export default function PosterCarousel({ slides = [] }) {
+export default function PosterCarousel({ slides = [], /** Force remount center when region changes */ resetKey = "" }) {
   const n = slides.length;
-  // Prefer first non-finished (next up) as initial center
+  // Slides are ordered next-first; first non-finished is the next tournament.
   const initial = useMemo(() => {
     const i = slides.findIndex((s) => !s.finished);
     return i >= 0 ? i : 0;
@@ -32,9 +33,11 @@ export default function PosterCarousel({ slides = [] }) {
   const [tabBySlide, setTabBySlide] = useState({});
   const [lightboxId, setLightboxId] = useState(null);
 
+  // Region switch / new slide list → snap to that region’s next tournament
   useEffect(() => {
     setCenter(initial);
-  }, [initial]);
+    setLightboxId(null);
+  }, [initial, resetKey]);
 
   // Advance carousel; when lightbox is open, keep it on the new center poster.
   const step = useCallback(

@@ -36,6 +36,10 @@
   --afa-go: #10b981;
   /* Started, not finished. Amber only ever means partial. */
   --afa-part: #f59e0b;
+  /* Tournament status chips — softball field colors */
+  --afa-teal: #0d9488; /* available if needed */
+  --afa-lime: #c8ff00; /* upcoming — neon field lime */
+  --afa-done-chip: #0a0a0a; /* completed — solid black */
   /* Page ground — light shell */
   --afa-cream: #f5f7fa;
   --afa-ink: var(--afa-ground);
@@ -63,6 +67,8 @@
   --color-afa-flag-blue: var(--afa-flag-blue);
   --color-afa-white: var(--afa-white);
   --color-afa-gold: var(--afa-gold);
+  --color-afa-teal: var(--afa-teal);
+  --color-afa-lime: var(--afa-lime);
   --color-afa-navy-deep: var(--afa-navy-deep);
   --color-afa-ground: var(--afa-ground);
   --font-sans: var(--font-body-face), system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -266,6 +272,29 @@ body {
 .site-nav__link:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
+}
+/* Active region from home map — lime chip in the nav */
+.site-nav__region {
+  display: inline-flex;
+  align-items: center;
+  max-width: 7.5rem;
+  margin-right: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #0a1f0a;
+  background: var(--afa-lime, #c8ff00);
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.site-nav__region:hover {
+  filter: brightness(1.05);
 }
 @media (min-width: 480px) {
   .site-nav__link {
@@ -939,14 +968,20 @@ textarea.form-field {
  */
 .home-hero {
   position: relative;
-  /* Tighter than before — less empty air above the copy */
+  /* Fixed band height so container queries (cqh) scale the map with the hero */
+  height: min(70vh, 34rem);
   min-height: min(70vh, 34rem);
   display: flex;
-  align-items: center;
+  /* Stretch so the max-width column fills hero height (map sits on bottom) */
+  justify-content: center;
+  align-items: stretch;
   overflow: hidden;
   background: var(--afa-ground);
   border-radius: 0;
   width: 100%;
+  /* Region map size/placement scale with this box, not fixed rems */
+  container-type: size;
+  container-name: home-hero;
 }
 .home-hero__bg {
   position: absolute;
@@ -1008,7 +1043,7 @@ textarea.form-field {
 .home-hero__inner {
   position: relative;
   z-index: 2;
-  width: 100%;
+  width: min(100%, 72rem);
   max-width: 72rem;
   margin-inline: auto;
   /* Top pad clears the fixed glass header; less bottom air than before */
@@ -1016,6 +1051,10 @@ textarea.form-field {
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
+  box-sizing: border-box;
+  /* Stretch to hero height so copy still sits on the bottom of the band */
+  align-self: stretch;
+  min-height: 100%;
 }
 .home-hero__copy {
   max-width: 28rem;
@@ -1119,7 +1158,7 @@ textarea.form-field {
 /*
  * Home poster deck — perspective carousel under hero (hero height unchanged).
  * Always shows up to 5 slots; center full color; sides desaturated.
- * Finished: red Completed tag + champion stamps (G/S/B, O/D/E/R, U/L).
+ * Finished: black Completed tag; upcoming: neon lime. Champion stamps G/S/B…
  */
 .poster-deck {
   --poster-deck-card-w: 9.5rem;
@@ -1296,15 +1335,20 @@ textarea.form-field {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #fff;
-  background: var(--afa-red);
+  /* Black — finished, settled against the poster */
+  background: var(--afa-done-chip);
   border-radius: 999px;
   padding: 0.22rem 0.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
-/* Same corner as Completed; blue so future ≠ finished */
+/* Neon lime — still to play; dark ink for contrast on the bright chip */
 .poster-deck__done--upcoming {
-  background: var(--afa-flag-blue, #002868);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: #0a1f0a;
+  background: var(--afa-lime);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 14px rgba(200, 255, 0, 0.35);
 }
 .poster-deck__champ {
   position: absolute;
@@ -1627,15 +1671,201 @@ textarea.form-field {
   margin: 0 auto;
   padding: 1.75rem 1.25rem 2rem;
 }
+/*
+ * Region map — scales with the hero. On mobile, sit above the centered CTA
+ * row so Arizona (etc.) never steals taps from Tournaments / Register.
+ */
+.home-hero__region {
+  position: absolute;
+  width: clamp(8rem, 30cqh, 11.5rem);
+  max-width: min(40cqi, 11.5rem);
+  left: max(0px, calc(max(env(safe-area-inset-left, 0px), 0.5cqi) - 5px));
+  /*
+   * Just above the CTA strip — not mid-hero. Pills ~2.65rem + pad ~1.75rem.
+   */
+  bottom: max(3.35rem, 11cqh);
+  z-index: 3;
+  scroll-margin-top: 5rem;
+  pointer-events: none; /* only stars re-enable */
+}
+/* Tablet+: still keep a bit of air if CTAs remain centered */
+@container home-hero (min-width: 640px) {
+  .home-hero__region {
+    left: max(0px, calc(max(0.75rem, 4cqi) - 5px));
+    bottom: max(3.15rem, 10cqh);
+    width: clamp(9.5rem, 34cqh, 14rem);
+  }
+}
+/* Desktop: CTAs are on the right — map can sit low-left under the bat */
+@container home-hero (min-width: 900px) {
+  .home-hero__region {
+    left: max(0px, calc(max(2rem, 9cqi) - 5px));
+    bottom: max(0.55rem, 3.5cqh);
+    width: clamp(12.5rem, 42cqh, 24rem);
+    max-width: min(48cqi, 24rem);
+  }
+}
+@container home-hero (min-width: 1200px) {
+  .home-hero__region {
+    left: max(0px, calc(max(3.5rem, 11cqi) - 5px));
+    width: clamp(14rem, 44cqh, 26rem);
+  }
+}
+/* Only star hit targets capture taps — not the full map box */
+.home-hero__region .region-map,
+.home-hero__region .region-map__stage,
+.home-hero__region .region-map__art {
+  pointer-events: none;
+}
+.home-hero__region .region-map__hot {
+  pointer-events: auto;
+}
+.region-map {
+  width: 100%;
+  text-align: center;
+  background: transparent;
+}
+.region-map--compact .region-map__stage {
+  max-width: none;
+  margin: 0;
+}
+.region-map__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  background: transparent;
+  /* Star size is % of stage (matches ~45px stars on 1024 art) */
+  container-type: size;
+}
+.region-map__art {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  /* Soft read on busy photo without a plate */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 10px rgba(0, 0, 0, 0.25));
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.92;
+}
+/* Hit target centered on each red star; yellow SVG covers it exactly */
+.region-map__hot {
+  position: absolute;
+  /* ~2× star for easy tap; star itself is smaller and centered */
+  width: 10%;
+  height: 10%;
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 0;
+  z-index: 2;
+  display: block;
+}
+/* Yellow star — same footprint as the red art stars (~4.6% of stage) */
+.region-map__star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  color: #ffd700;
+  opacity: 0;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+  /* Cover red completely when shown */
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.35));
+}
+.region-map__star path {
+  /* Slightly larger than red fill so no red peeks at edges */
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.region-map__hot:hover .region-map__star,
+.region-map__hot:focus-visible .region-map__star,
+.region-map__hot.is-selected .region-map__star {
+  opacity: 1;
+}
+.region-map__hot.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.region-map__hot.is-disabled .region-map__star {
+  display: none;
+}
+.region-map__hot-label {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.region-map__hot:hover .region-map__hot-label,
+.region-map__hot:focus-visible .region-map__hot-label,
+.region-map__hot.is-selected .region-map__hot-label {
+  opacity: 1;
+}
 .home-dash {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 0.95fr;
+  width: 100%;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.95fr);
   gap: 1.15rem;
   align-items: stretch;
 }
 /* Two-up: Upcoming + Recent Results */
 .home-dash--two {
-  grid-template-columns: 1fr 1.35fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+}
+/* Region filter: size locked to widest/tallest region (CSS vars from HomeRegionContent) */
+.home-dash--region-lock {
+  width: 100%;
+}
+.home-dash--region-lock .home-dash__card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.home-dash--region-lock .home-event__when {
+  min-width: calc(var(--home-when-ch, 10) * 0.62ch);
+}
+.home-dash--region-lock .home-event__name {
+  min-width: min(100%, calc(var(--home-name-ch, 12) * 0.55ch));
+}
+.home-dash--region-lock .home-event__where {
+  min-width: min(100%, calc(var(--home-where-ch, 16) * 0.5ch));
+}
+/* Reserve rows for the max upcoming count across regions */
+.home-dash--region-lock .home-events--upcoming-lock {
+  min-height: calc(var(--home-upcoming-n, 1) * 3.35rem);
+}
+.home-dash--region-lock .home-event--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+.home-dash--region-lock .home-results__tour-select-wrap {
+  width: 100%;
+  max-width: none;
+  min-width: min(100%, calc(var(--home-results-label-ch, 18) * 0.55ch));
 }
 .home-dash__card--results {
   min-width: 0;
@@ -2156,8 +2386,9 @@ textarea.form-field {
 
 @media (max-width: 900px) {
   .home-hero {
+    height: min(58vh, 26rem);
     min-height: min(58vh, 26rem);
-    align-items: flex-end;
+    align-items: stretch;
   }
   .home-hero__inner {
     justify-content: center;
@@ -2165,6 +2396,8 @@ textarea.form-field {
     padding: 4.25rem 1rem 1.75rem;
   }
   .home-hero__copy {
+    position: relative;
+    z-index: 5; /* CTAs above map if anything still overlaps */
     text-align: center;
     max-width: 22rem;
     transform: none;
@@ -2173,6 +2406,8 @@ textarea.form-field {
     margin-inline: auto;
   }
   .home-hero__ctas {
+    position: relative;
+    z-index: 5;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
@@ -2182,6 +2417,8 @@ textarea.form-field {
     margin-inline: auto;
   }
   .home-cta {
+    position: relative;
+    z-index: 5;
     width: auto;
     flex: 0 0 auto;
     min-width: 0;

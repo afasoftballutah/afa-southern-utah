@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Chip from "@/components/ui/Chip";
 import {
@@ -9,8 +9,14 @@ import {
   isRealPoster,
   isGroupName,
   schedulePosterForRegion,
+  REGION_LABEL,
 } from "@/lib/data";
 import { parseLeagueDateOnly } from "@/lib/league-time";
+import {
+  getRegionPrefSnapshot,
+  getRegionPrefServerSnapshot,
+  subscribeRegionPref,
+} from "@/lib/region-pref";
 
 const STORAGE_KEY = "afa-tournaments-view";
 
@@ -64,11 +70,22 @@ export default function TournamentBrowser({ groups }) {
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
   const view = explicitView ?? (storedView === "month" ? "month" : "region");
   const [showPast, setShowPast] = useState(false);
+  const regionPref = useSyncExternalStore(
+    subscribeRegionPref,
+    getRegionPrefSnapshot,
+    getRegionPrefServerSnapshot
+  );
 
   function choose(next) {
     setExplicitView(next);
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, next);
   }
+
+  // Honor home map filter: only that region’s groups when set.
+  const scopedGroups = useMemo(() => {
+    if (!regionPref) return groups;
+    return groups.filter((g) => g.region === regionPref);
+  }, [groups, regionPref]);
 
   // Past is derived: status is rarely written, so a finished tournament
   // (games settled, moot if-games excluded) counts as past even when the
@@ -80,7 +97,7 @@ export default function TournamentBrowser({ groups }) {
   // greyed (not linked / not registerable) until a flyer is posted.
   const isPublic = (t) => isRealPoster(t);
 
-  const upcomingPublicByRegion = groups
+  const upcomingPublicByRegion = scopedGroups
     .map((g) => ({
       ...g,
       tournaments: g.tournaments.filter((t) => !isPast(t) && isPublic(t)),
@@ -88,7 +105,7 @@ export default function TournamentBrowser({ groups }) {
     .filter((g) => g.tournaments.length > 0)
     .map((g) => ({ ...g, tournaments: [...g.tournaments].sort(byStartDateAsc) }));
 
-  const upcomingUnpublished = groups
+  const upcomingUnpublished = scopedGroups
     .flatMap((g) =>
       g.tournaments
         .filter((t) => !isPast(t) && !isPublic(t))
@@ -96,7 +113,7 @@ export default function TournamentBrowser({ groups }) {
     )
     .sort(byStartDateAsc);
 
-  const pastByRegion = groups
+  const pastByRegion = scopedGroups
     .map((g) => ({ ...g, tournaments: g.tournaments.filter(isPast) }))
     .filter((g) => g.tournaments.length > 0)
     .map((g) => ({ ...g, tournaments: [...g.tournaments].sort(byStartDateDesc) }));
@@ -104,7 +121,7 @@ export default function TournamentBrowser({ groups }) {
   const pastCount = pastByRegion.reduce((sum, g) => sum + g.tournaments.length, 0);
 
   const upcomingByMonth = groupByMonth(
-    groups
+    scopedGroups
       .flatMap((g) =>
         g.tournaments
           .filter((t) => !isPast(t) && isPublic(t))
@@ -115,6 +132,16 @@ export default function TournamentBrowser({ groups }) {
 
   return (
     <div className="space-y-6">
+      {regionPref ? (
+        <p className="t-meta">
+          Filtered to <strong>{REGION_LABEL[regionPref] ?? regionPref}</strong>
+          {" · "}
+          <Link href="/#region-map" className="underline">
+            Change on the map
+          </Link>
+        </p>
+      ) : null}
+
       {/* View switch — same footprint; selected = info (blue), idle = transient */}
       <div className="seg-view" role="group" aria-label="Group tournaments by">
         <button

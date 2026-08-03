@@ -1,6 +1,7 @@
 import { Anton, Outfit } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import RegionPrefBadge from "@/components/RegionPrefBadge";
 
 // Display — Anton for wordmark + titles. Self-hosted via next/font.
 const displayFace = Anton({
@@ -54,6 +55,7 @@ export default function RootLayout({ children }) {
             </div>
             <nav className="site-nav">
               {/* Top bar: white links on flag-blue. Color-law buttons live in page content. */}
+              <RegionPrefBadge />
               <Link href="/tournaments" className="site-nav__link">
                 Tournaments
               </Link>
