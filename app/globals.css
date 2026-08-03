@@ -2230,6 +2230,41 @@ textarea.form-field {
   color: var(--afa-red);
   white-space: nowrap;
 }
+/* Completed (Last Tournament): room for Results pill — tourney sits left */
+.home-event--completed {
+  grid-template-columns: minmax(4.75rem, 6.25rem) minmax(0, 1fr) auto;
+  gap: 0.35rem 0.5rem;
+  padding-right: 0.65rem;
+}
+.home-event__results-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.65rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  /* Solid red action pill — same family as .btn-action / Show full list */
+  border: 2px solid var(--afa-red);
+  background: var(--afa-red);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    filter 0.15s ease;
+}
+.home-event--completed:hover .home-event__results-pill {
+  background: var(--afa-red-hover);
+  border-color: var(--afa-red-hover);
+  filter: brightness(1.05);
+}
 /* Tight gap between Last Tournament block and Upcoming Events heading */
 .home-events__section-title {
   margin-top: 0.55rem !important;

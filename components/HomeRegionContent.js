@@ -163,7 +163,7 @@ export default function HomeRegionContent({
                 {lastEvent ? (
                   <Link
                     href={`/tournaments/${lastEvent.slug}`}
-                    className="home-event"
+                    className="home-event home-event--completed"
                   >
                     <span className="home-event__when">{lastEvent.when}</span>
                     <span className="home-event__main">
@@ -174,18 +174,19 @@ export default function HomeRegionContent({
                           .join(" · ")}
                       </span>
                     </span>
-                    <span className="home-event__cta" aria-hidden="true">
-                      →
-                    </span>
+                    <span className="home-event__results-pill">Results</span>
                   </Link>
                 ) : (
-                  <div className="home-event home-event--placeholder" aria-hidden="true">
+                  <div
+                    className="home-event home-event--completed home-event--placeholder"
+                    aria-hidden="true"
+                  >
                     <span className="home-event__when">&nbsp;</span>
                     <span className="home-event__main">
                       <span className="home-event__name">&nbsp;</span>
                       <span className="home-event__where">&nbsp;</span>
                     </span>
-                    <span className="home-event__cta">→</span>
+                    <span className="home-event__results-pill">Results</span>
                   </div>
                 )}
               </div>
