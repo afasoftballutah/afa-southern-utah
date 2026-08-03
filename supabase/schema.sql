@@ -131,6 +131,7 @@ create table if not exists public.divisions (
   day_date date,
   -- Director seed order (#1 first). Null until seeded.
   seed_order text[],
+  third_life_teams text[] not null default '{}',
   unique (tournament_id, name)
 );
 comment on table public.divisions is 'Public division list per tournament. No PII. Safe for anon read.';

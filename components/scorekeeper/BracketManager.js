@@ -10,7 +10,11 @@ import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
 function roundLabel(side, round) {
-  if (side === "final") return round === 1 ? "Grand Final" : "If Necessary";
+  if (side === "final") {
+    if (round === 1) return "Grand Final";
+    if (round === 2) return "If Necessary";
+    if (round === 3) return "3GG Super Final";
+  }
   return `Round ${round}`;
 }
 
