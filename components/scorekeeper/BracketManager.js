@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlacementsUpload from "./PlacementsUpload";
+import DirectorSeedList from "./DirectorSeedList";
+import { isCompleteSeedOrder } from "@/lib/bracket/seed-order";
 import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
@@ -18,14 +20,21 @@ export default function BracketManager({
   consolationBracket,
   games,
   teamNames,
+  seedOrder: seedOrderProp = null,
   mainDraft,
   consolationDraft,
   completion,
 }) {
   const router = useRouter();
-  const [format, setFormat] = useState("double_elim");
+  const [format, setFormat] = useState("three_gg_hybrid");
+  const [seedOrder, setSeedOrder] = useState(seedOrderProp);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  const seedsReady = useMemo(
+    () => isCompleteSeedOrder(teamNames, seedOrder),
+    [teamNames, seedOrder]
+  );
 
   async function generate() {
     setBusy(true);
@@ -34,7 +43,11 @@ export default function BracketManager({
       const res = await fetch("/api/scorekeeper/bracket/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ divisionId, format }),
+        body: JSON.stringify({
+          divisionId,
+          format,
+          seedOrder: seedOrder ?? undefined,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not generate bracket");
@@ -49,51 +62,68 @@ export default function BracketManager({
   async function regenerate() {
     const msg =
       consolationBracket || format === "double_elim_consolation"
-        ? "Regenerate both the championship and consolation brackets from current registrations? This replaces every unplayed game in both."
-        : "Regenerate the bracket from current registrations? This replaces every unplayed game.";
+        ? "Regenerate both brackets from the saved seed order? This replaces every unplayed game in both."
+        : "Regenerate the bracket from the saved seed order? This replaces every unplayed game.";
     if (!window.confirm(msg)) return;
     await generate();
   }
 
   if (!mainBracket) {
     return (
-      <div className="card p-4 space-y-3">
-        <p className="text-sm text-afa-ink/70">
-          {teamNames.length} team{teamNames.length === 1 ? "" : "s"} registered. No bracket yet.
-        </p>
-        <label className="block">
-          <span className="block text-sm font-semibold mb-1">Format</span>
-          <select
-            className="w-full border border-afa-navy/30 rounded px-3 py-2"
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-          >
-            <option value="double_elim">Double Elimination</option>
-            <option value="double_elim_consolation">Double Elimination + Consolation</option>
-          </select>
-        </label>
-        {format === "double_elim_consolation" && (
-          <p className="text-xs text-afa-ink/60">
-            A team drops into the consolation bracket the moment it&rsquo;s
-            eliminated from the championship bracket (its 2nd loss there),
-            starting fresh at 0 losses. The consolation bracket is its own
-            full double elimination, same shape as the championship one.
-            This is the typical default — every slot in both brackets stays
-            hand-editable if a tournament needs something different.
+      <div className="space-y-4">
+        <DirectorSeedList
+          divisionId={divisionId}
+          teamNames={teamNames}
+          initialOrder={seedOrder}
+          onSaved={(order) => setSeedOrder(order)}
+        />
+        <div className="card p-4 space-y-3">
+          <p className="text-sm text-afa-ink/70">
+            {teamNames.length} team{teamNames.length === 1 ? "" : "s"} registered.
+            {" "}
+            {seedsReady ? "Seeds ready — generate when the field is set." : "Set seed order above before generating."}
           </p>
-        )}
-        {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
-        <button
-          type="button"
-          disabled={busy || teamNames.length < 2}
-          onClick={generate}
-          className="w-full bg-afa-navy text-white font-bold py-3 rounded-lg disabled:opacity-40"
-        >
-          {busy ? "Generating…" : "Generate Bracket"}
-        </button>
-        {teamNames.length < 2 && (
-          <p className="text-xs text-afa-ink/60">Need at least 2 registered teams first.</p>
-        )}
+          <label className="block">
+            <span className="block text-sm font-semibold mb-1">Format</span>
+            <select
+              className="w-full border border-afa-navy/30 rounded px-3 py-2"
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+            >
+              <option value="three_gg_hybrid">3GG (hybrid — 0–2 gets a third life)</option>
+              <option value="double_elim">Double Elimination</option>
+              <option value="double_elim_consolation">Double Elimination + Consolation</option>
+            </select>
+          </label>
+          {format === "three_gg_hybrid" && (
+            <p className="text-xs text-afa-ink/60">
+              No pool. Everyone is double-elim except a team that goes{" "}
+              <strong>0–2</strong> in the bracket — they get a third life and can still win.
+              A 1–2 team is out at two losses. Seed order is required.
+            </p>
+          )}
+          {format === "double_elim_consolation" && (
+            <p className="text-xs text-afa-ink/60">
+              A team drops into the consolation bracket on its 2nd loss in the
+              championship bracket, starting fresh at 0 losses there.
+            </p>
+          )}
+          {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
+          <button
+            type="button"
+            disabled={busy || teamNames.length < 2 || !seedsReady}
+            onClick={generate}
+            className="w-full bg-afa-navy text-white font-bold py-3 rounded-lg disabled:opacity-40"
+          >
+            {busy ? "Generating…" : "Generate Bracket"}
+          </button>
+          {teamNames.length < 2 && (
+            <p className="text-xs text-afa-ink/60">Need at least 2 registered teams first.</p>
+          )}
+          {!seedsReady && teamNames.length >= 2 && (
+            <p className="text-xs text-afa-ink/60">Save a complete seed order (#1 through #{teamNames.length}) first.</p>
+          )}
+        </div>
       </div>
     );
   }

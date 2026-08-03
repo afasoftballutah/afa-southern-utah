@@ -80,6 +80,7 @@ async function loadDivisionData(divisionId) {
     games: games ?? [],
     poolGames: poolGames ?? [],
     teamNames: (registrations ?? []).map((r) => r.team_name),
+    seedOrder: division.seed_order ?? null,
     mainDraft,
     consolationDraft,
     completion,
@@ -140,6 +141,7 @@ export default async function ScorekeeperDivisionPage({ params }) {
           consolationBracket={data.consolationBracket}
           games={data.games}
           teamNames={data.teamNames}
+          seedOrder={data.seedOrder}
           mainDraft={data.mainDraft}
           consolationDraft={data.consolationDraft}
           completion={data.completion}

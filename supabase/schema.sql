@@ -129,6 +129,8 @@ create table if not exists public.divisions (
   -- machine truth the calendar route and per-event .ics links key off.
   -- Nullable — most divisions have none yet.
   day_date date,
+  -- Director seed order (#1 first). Null until seeded.
+  seed_order text[],
   unique (tournament_id, name)
 );
 comment on table public.divisions is 'Public division list per tournament. No PII. Safe for anon read.';

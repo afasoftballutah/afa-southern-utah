@@ -886,6 +886,42 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    // ---- Director seed order for a division ----------------------------
+    case "setDivisionSeedOrder": {
+      const { divisionId, seedOrder } = body;
+      if (!divisionId) return bad("Which division?");
+      if (!Array.isArray(seedOrder)) return bad("seedOrder must be an array of team names");
+      const { data: regs, error: regErr } = await supabase
+        .from("registrations")
+        .select("team_name")
+        .eq("division_id", divisionId)
+        .neq("status", "withdrawn");
+      if (regErr) {
+        console.error(regErr);
+        return bad("Could not load teams", 500);
+      }
+      const teamNames = (regs ?? []).map((r) => r.team_name).filter(Boolean);
+      const { normalizeSeedOrder, isCompleteSeedOrder } = await import("@/lib/bracket/seed-order");
+      const order = normalizeSeedOrder(teamNames, seedOrder);
+      if (teamNames.length >= 2 && !isCompleteSeedOrder(teamNames, order)) {
+        return bad("Seed list must include every registered team exactly once");
+      }
+      const { error } = await supabase
+        .from("divisions")
+        .update({ seed_order: order })
+        .eq("id", divisionId);
+      if (error) {
+        console.error("setDivisionSeedOrder failed", error);
+        return bad(
+          error.message?.includes("seed_order")
+            ? "seed_order column missing — run migration-2026-08-03-division-seed-order.sql"
+            : "Could not save seed order",
+          500
+        );
+      }
+      return Response.json({ ok: true, seedOrder: order });
+    }
+
     default:
       return bad("Unknown action");
   }

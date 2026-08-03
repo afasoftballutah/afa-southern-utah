@@ -16,7 +16,7 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { divisionId, format } = body ?? {};
+  const { divisionId, format, seedOrder } = body ?? {};
   if (!divisionId) return Response.json({ error: "Missing divisionId" }, { status: 400 });
 
   const draft = await isBracketDraft(divisionId);
@@ -27,8 +27,19 @@ export async function POST(request) {
     );
   }
 
+  const fmt =
+    format === "double_elim_consolation"
+      ? "double_elim_consolation"
+      : format === "three_gg_hybrid"
+        ? "three_gg_hybrid"
+        : "double_elim";
+
   try {
-    const result = await generateBracket(divisionId, format === "double_elim_consolation" ? "double_elim_consolation" : "double_elim");
+    const result = await generateBracket(
+      divisionId,
+      fmt,
+      Array.isArray(seedOrder) ? seedOrder : null
+    );
     return Response.json({ ok: true, ...result });
   } catch (err) {
     return Response.json({ error: err.message || "Could not generate bracket" }, { status: 500 });
