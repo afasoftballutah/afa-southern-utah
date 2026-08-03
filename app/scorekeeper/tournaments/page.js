@@ -133,7 +133,18 @@ export default async function TournamentsPage() {
     const mine = divisions
       .filter((d) => d.tournament_id === t.id)
       .sort((a, b) => a.sort_order - b.sort_order);
-    const regs = registrations.filter((r) => r.tournament_id === t.id);
+    // Attach fee fields so Record payment can default deposit/entry on each row.
+    const regs = registrations
+      .filter((r) => r.tournament_id === t.id)
+      .map((r) => ({
+        ...r,
+        tournaments: {
+          id: t.id,
+          name: t.name,
+          entry_fee_cents: t.entry_fee_cents ?? null,
+          deposit_cents: t.deposit_cents ?? null,
+        },
+      }));
     const poolParents = mine.filter((d) => mine.some((c) => c.parent_division_id === d.id)).length;
     const live = regs.filter((r) => r.status !== "withdrawn");
     const open = isRegistrationOpen(t);
@@ -152,10 +163,13 @@ export default async function TournamentsPage() {
       cells: {
         name: t.name,
         date: t.start_date,
+        // key required: this JSX is built inside tournaments.map (React list).
         venue: venue.name ? (
-          <span>
+          <span key={`venue-${t.id}`}>
             {venue.name}
-            {venue.locality && <span className="t-meta"> {venue.locality}</span>}
+            {venue.locality && (
+              <span className="t-meta"> {venue.locality}</span>
+            )}
           </span>
         ) : (
           "—"

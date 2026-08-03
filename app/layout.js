@@ -1,25 +1,18 @@
-import { Anton, Oswald } from "next/font/google";
+import { Anton, Outfit } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 
-// ONE display face, used only for tournament names (Lacy, 2026-07-21) —
-// everything else in the site stays plain. Self-hosted at build time by
-// next/font — no runtime dependency on Google's CDN.
+// Display — Anton for wordmark + titles. Self-hosted via next/font.
 const displayFace = Anton({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-display-face",
 });
 
-// The bracket's team face (redesign spec 5.2). Condensed like the display
-// face, so a team pill reads as a scoreboard, but VARIABLE: a team name is
-// always black and its weight is what says winner, loser or undecided.
-// Anton was tried first and cannot do that — it ships one weight, so a
-// winner and a loser render identically. No `weight` here on purpose,
-// which is what loads the variable cut.
-const teamFace = Oswald({
+// Body + teams — Outfit (variable weight covers winner/loser on the bracket).
+const bodyFace = Outfit({
   subsets: ["latin"],
-  variable: "--font-team-face",
+  variable: "--font-body-face",
 });
 
 export const metadata = {
@@ -36,25 +29,39 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`h-full ${displayFace.variable} ${teamFace.variable}`}>
+    <html
+      lang="en"
+      className={`h-full ${displayFace.variable} ${bodyFace.variable}`}
+    >
       <body className="min-h-full flex flex-col antialiased">
         {/* Site shell — look lives in globals.css (.site-*). */}
         <header className="site-header print:hidden">
           <div className="site-header__inner">
-            <Link href="/" className="site-brand">
-              <img src="/afa-logo.png" alt="" width={32} height={32} />
-              <span className="site-wordmark">AFA Softball Southern Utah</span>
+            <Link href="/" className="site-brand" aria-label="AFA SlowPitch home">
+              <img
+                className="site-brand__logo"
+                src="/afa-logo.png"
+                alt=""
+                width={90}
+                height={72}
+              />
             </Link>
+            {/* Wordmark centers in the gap between logo right edge and nav (Tournaments). */}
+            <div className="site-wordmark-slot">
+              <Link href="/" className="site-wordmark">
+                AFA SlowPitch
+              </Link>
+            </div>
             <nav className="site-nav">
-              {/* Top bar: all dark-blue text links (uniform). Color-law buttons live in page content. */}
+              {/* Top bar: white links on flag-blue. Color-law buttons live in page content. */}
               <Link href="/tournaments" className="site-nav__link">
                 Tournaments
               </Link>
+              <Link href="/#news" className="site-nav__link">
+                News
+              </Link>
               <Link href="/rules" className="site-nav__link">
                 Rules
-              </Link>
-              <Link href="/register" className="site-nav__link">
-                Register
               </Link>
             </nav>
           </div>

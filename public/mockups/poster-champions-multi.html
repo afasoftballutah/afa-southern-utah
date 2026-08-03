@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — Multi-division champions on poster</title>
+  <style>
+    :root {
+      --ground: #000d24;
+      --blue: #002868;
+      --red: #e31c25;
+      --gold: #c9a227;
+      --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--ground);
+      color: #fff;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.35rem; font-weight: 800; }
+    .lede {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      max-width: 42rem;
+      line-height: 1.45;
+      margin: 0 0 1.5rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+      gap: 1.5rem;
+      max-width: 64rem;
+    }
+    figure { margin: 0; }
+    figcaption {
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.4;
+    }
+    figcaption strong {
+      display: block;
+      color: #fff;
+      margin-bottom: 0.2rem;
+      font-size: 0.88rem;
+    }
+
+    .poster {
+      position: relative;
+      border-radius: 0.85rem;
+      overflow: hidden;
+      aspect-ratio: 3 / 4;
+      background: #111;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+    }
+    .poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      display: block;
+    }
+    .done-tag {
+      position: absolute;
+      top: 0.45rem;
+      left: 0.45rem;
+      z-index: 4;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #fff;
+      background: var(--red);
+      border-radius: 999px;
+      padding: 0.22rem 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    /* ===== Option 1: Tabs by gender ===== */
+    .stamp-tabs {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, transparent, rgba(0,8,20,0.95) 28%);
+      padding: 1.5rem 0.5rem 0.5rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 0.4rem;
+    }
+    .tabs button {
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.65);
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.2rem;
+      border-radius: 0.3rem;
+      cursor: pointer;
+    }
+    .tabs button.on {
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      border-color: rgba(201,162,39,0.5);
+    }
+    .panel { display: none; }
+    .panel.on { display: block; }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.2rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .g {
+      flex: 0 0 auto;
+      width: 1.15rem;
+      text-align: center;
+      font-size: 0.55rem;
+      font-weight: 900;
+      border-radius: 0.2rem;
+      padding: 0.1rem 0;
+      color: #0a1628;
+      background: linear-gradient(135deg, #ffd700, #c9a227);
+    }
+    .div {
+      flex: 0 0 auto;
+      min-width: 2.6rem;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+    }
+    .team {
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    /* ===== Option 2: Gold-only dense grid ===== */
+    .stamp-grid {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 1.4rem 0.45rem 0.45rem;
+      background: linear-gradient(180deg, transparent, rgba(0,8,20,0.96) 22%);
+    }
+    .stamp-grid__h {
+      font-size: 0.52rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.35rem;
+    }
+    .gender {
+      margin-top: 0.35rem;
+    }
+    .gender__lab {
+      font-size: 0.5rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 0.15rem;
+    }
+    .cells {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.2rem;
+    }
+    .cell {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.22rem 0.3rem;
+      border-radius: 0.3rem;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+      min-width: 0;
+    }
+    .cell .g { width: 0.95rem; font-size: 0.48rem; }
+    .cell .div { min-width: 0; font-size: 0.48rem; color: rgba(255,255,255,0.5); }
+    .cell .team { font-size: 0.58rem; }
+
+    /* ===== Option 3: Expand sheet (carousel-friendly) ===== */
+    .stamp-sheet {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      pointer-events: none;
+    }
+    .stamp-sheet__peek {
+      pointer-events: auto;
+      margin: 0 0.4rem 0.4rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 0.5rem;
+      background: rgba(8,14,28,0.88);
+      border: 1px solid rgba(201,162,39,0.4);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+    }
+    .stamp-sheet__peek strong {
+      display: block;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .stamp-sheet__peek span {
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .stamp-sheet__peek em {
+      font-style: normal;
+      font-size: 0.55rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+    }
+    .stamp-sheet.is-open .stamp-sheet__full {
+      display: block;
+    }
+    .stamp-sheet__full {
+      display: none;
+      pointer-events: auto;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 10, 24, 0.94);
+      padding: 2.25rem 0.55rem 0.55rem;
+      overflow-y: auto;
+    }
+    .stamp-sheet__full h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .stamp-sheet__close {
+      position: absolute;
+      top: 0.45rem;
+      right: 0.45rem;
+      border: none;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 999px;
+      width: 1.6rem;
+      height: 1.6rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .note {
+      max-width: 64rem;
+      margin-top: 1.75rem;
+      padding: 1rem 1.1rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.5;
+    }
+    .note code { color: #9ec1ff; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Mockup — Sample tourney, all brackets</h1>
+  <p class="lede">
+    Women’s Upper / Lower · Men’s Open / D / E / Rec · Coed D / E / Rec
+    (9 gold winners). Three ways to stamp that on a flyer without drowning it.
+    Open: <code>/mockups/poster-champions-multi.html</code>
+  </p>
+
+  <div class="grid">
+    <!-- 1 Tabs -->
+    <figure>
+      <div class="poster" id="tabs-poster">
+        <img src="/posters/2026-halloween.jpg" alt="Sample poster" />
+        <span class="done-tag">Completed</span>
+        <div class="stamp-tabs">
+          <div class="tabs" role="tablist">
+            <button type="button" class="on" data-tab="w">Women</button>
+            <button type="button" data-tab="m">Men</button>
+            <button type="button" data-tab="c">Coed</button>
+          </div>
+          <div class="panel on" data-panel="w">
+            <div class="row"><span class="g">G</span><span class="div">Upper</span><span class="team">Diamond Divas</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Lower</span><span class="team">Softball Queens</span></div>
+          </div>
+          <div class="panel" data-panel="m">
+            <div class="row"><span class="g">G</span><span class="div">Open</span><span class="team">Thunder</span></div>
+            <div class="row"><span class="g">G</span><span class="div">D</span><span class="team">Backwards K</span></div>
+            <div class="row"><span class="g">G</span><span class="div">E</span><span class="team">Dirtbags</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Rec</span><span class="team">Sunday Slow</span></div>
+          </div>
+          <div class="panel" data-panel="c">
+            <div class="row"><span class="g">G</span><span class="div">D</span><span class="team">Mixed Nuts</span></div>
+            <div class="row"><span class="g">G</span><span class="div">E</span><span class="team">Bat Intentions</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Rec</span><span class="team">Just For Fun</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>1 · Gender tabs + gold only</strong>
+        Best for the carousel. 2–4 lines at a time. Tap Women / Men / Coed.
+        G only keeps it readable (S/B optional in expand).
+      </figcaption>
+    </figure>
+
+    <!-- 2 Dense grid -->
+    <figure>
+      <div class="poster">
+        <img src="/posters/2026-halloween.jpg" alt="Sample poster" />
+        <span class="done-tag">Completed</span>
+        <div class="stamp-grid">
+          <div class="stamp-grid__h">Champions · Gold</div>
+          <div class="gender">
+            <div class="gender__lab">Women’s</div>
+            <div class="cells">
+              <div class="cell"><span class="g">G</span><span class="div">Up</span><span class="team">Diamond Divas</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">Low</span><span class="team">Softball Queens</span></div>
+            </div>
+          </div>
+          <div class="gender">
+            <div class="gender__lab">Men’s</div>
+            <div class="cells">
+              <div class="cell"><span class="g">G</span><span class="div">Open</span><span class="team">Thunder</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">D</span><span class="team">Backwards K</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">E</span><span class="team">Dirtbags</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">Rec</span><span class="team">Sunday Slow</span></div>
+            </div>
+          </div>
+          <div class="gender">
+            <div class="gender__lab">Coed</div>
+            <div class="cells">
+              <div class="cell"><span class="g">G</span><span class="div">D</span><span class="team">Mixed Nuts</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">E</span><span class="team">Bat Intentions</span></div>
+              <div class="cell"><span class="g">G</span><span class="div">Rec</span><span class="team">Just For Fun</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>2 · All golds at once (dense grid)</strong>
+        Full story without tapping. Covers more of the art. Best on lightbox / full poster page, heavy for a small carousel card.
+      </figcaption>
+    </figure>
+
+    <!-- 3 Expand sheet -->
+    <figure>
+      <div class="poster" id="sheet-poster">
+        <img src="/posters/2026-halloween.jpg" alt="Sample poster" />
+        <span class="done-tag">Completed</span>
+        <div class="stamp-sheet" id="sheet">
+          <div class="stamp-sheet__peek" id="sheet-open" role="button" tabindex="0">
+            <strong>Champions · 9 brackets</strong>
+            <span>Tap for full board</span>
+            <em> · W 2 · M 4 · Coed 3</em>
+          </div>
+          <div class="stamp-sheet__full">
+            <button type="button" class="stamp-sheet__close" id="sheet-close" aria-label="Close">×</button>
+            <h3>Champions</h3>
+            <div class="gender__lab">Women’s</div>
+            <div class="row"><span class="g">G</span><span class="div">Upper</span><span class="team">Diamond Divas</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Lower</span><span class="team">Softball Queens</span></div>
+            <div class="gender__lab" style="margin-top:0.5rem">Men’s</div>
+            <div class="row"><span class="g">G</span><span class="div">Open</span><span class="team">Thunder</span></div>
+            <div class="row"><span class="g">G</span><span class="div">D</span><span class="team">Backwards K</span></div>
+            <div class="row"><span class="g">G</span><span class="div">E</span><span class="team">Dirtbags</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Rec</span><span class="team">Sunday Slow</span></div>
+            <div class="gender__lab" style="margin-top:0.5rem">Coed</div>
+            <div class="row"><span class="g">G</span><span class="div">D</span><span class="team">Mixed Nuts</span></div>
+            <div class="row"><span class="g">G</span><span class="div">E</span><span class="team">Bat Intentions</span></div>
+            <div class="row"><span class="g">G</span><span class="div">Rec</span><span class="team">Just For Fun</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>3 · Peek + expand sheet</strong>
+        Carousel stays light (one line + count). Full board opens on the card — same pattern as poster lightbox.
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="note">
+    <strong style="color:#fff">How we’d get the data</strong><br />
+    Same path as home “Recent Results”: for each finished division under the tournament,
+    take the gold (and optional S/B) from championship matchups / placements.
+    Structure: <code>gender → division label → team</code>.
+    Carousel default = gold only; S/B only when a single gender (e.g. Coed-only Heat Stroker).<br /><br />
+    <strong style="color:#fff">Recommendation for the home deck:</strong>
+    Option <strong>1 (tabs)</strong> or <strong>3 (expand)</strong>. Option 2 for the tournament page / enlarged poster.
+  </div>
+
+  <script>
+    // Tabs
+    const tabsRoot = document.getElementById("tabs-poster");
+    tabsRoot.querySelectorAll(".tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabsRoot.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("on"));
+        tabsRoot.querySelectorAll(".panel").forEach((p) => p.classList.remove("on"));
+        btn.classList.add("on");
+        tabsRoot.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add("on");
+      });
+    });
+
+    // Expand sheet
+    const sheet = document.getElementById("sheet");
+    document.getElementById("sheet-open").onclick = () => sheet.classList.add("is-open");
+    document.getElementById("sheet-close").onclick = (e) => {
+      e.stopPropagation();
+      sheet.classList.remove("is-open");
+    };
+  </script>
+</body>
+</html>

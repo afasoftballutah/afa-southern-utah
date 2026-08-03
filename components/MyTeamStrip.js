@@ -22,18 +22,22 @@ export default function MyTeamStrip() {
   if (!me?.teamName) return null;
 
   return (
-    <section className="max-w-md mx-auto">
-      <div className="card p-4 flex items-start justify-between gap-3">
+    <section className="home-me-strip max-w-md mx-auto">
+      <div className="home-me-strip__card flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="t-label">{me.name ? `${me.name} · your team` : "Your team"}</p>
-          <Link href={`/teams/${teamSlug(me.teamName)}`} className="team-name text-lg">
+          <p className="home-me-strip__label">
+            {me.name ? `${me.name} · your team` : "Your team"}
+          </p>
+          <Link
+            href={`/teams/${teamSlug(me.teamName)}`}
+            className="home-me-strip__team team-name text-lg"
+          >
             {me.teamName}
           </Link>
-          <p className="t-meta">Every schedule opens on them.</p>
         </div>
         <button
           type="button"
-          className="t-label shrink-0 underline text-afa-muted"
+          className="home-me-strip__clear shrink-0 underline"
           onClick={() => {
             writeMe(null);
             setMe(null);

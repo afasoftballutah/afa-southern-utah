@@ -12,7 +12,7 @@
 
 alter table public.tournaments
   add column if not exists region text not null default 'southern_utah'
-  check (region in ('southern_utah', 'northern_utah', 'series'));
+  check (region in ('southern_utah', 'northern_utah', 'colorado', 'arizona', 'nevada'));
 
 -- ============================================================
 -- Northern Utah AFA Events — 2026

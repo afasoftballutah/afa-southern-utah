@@ -1,24 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SignaturePad from "./SignaturePad";
+import AddressInput from "./AddressInput";
+import RegisterBack from "./RegisterBack";
 import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
 import { formatLeagueDateOnly } from "@/lib/league-time";
+import { REGION_ORDER } from "@/lib/data";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
-// Same region ordering as the Tournaments page (lib/data.js REGION_ORDER) —
-// Southern Utah/Nevada first (home base), then Northern Utah, then the
-// Series circuit. Kept local here since only region LABELS are shared
-// (dispatch-brief-17); the order is a display concern of this filter alone.
-const REGION_ORDER = ["southern_utah", "northern_utah", "series"];
-
 const emptyPlayer = () => ({ name: "", birthDate: "", address: "" });
 const emptyCoach = () => ({ name: "", email: "", phone: "" });
 
-export default function RegistrationForm({ tournaments, regionLabel }) {
+export default function RegistrationForm({
+  tournaments,
+  regionLabel,
+  initialTournamentSlug = null,
+}) {
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
@@ -26,6 +27,13 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
   const [rosterLink, setRosterLink] = useState("");
   const [manageLink, setManageLink] = useState("");
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [posterOpen, setPosterOpen] = useState(false);
+
+  // Prefer ?tournament=slug from the tournament page Register link.
+  const initialTournament = useMemo(() => {
+    if (!initialTournamentSlug) return null;
+    return tournaments.find((t) => t.slug === initialTournamentSlug) ?? null;
+  }, [tournaments, initialTournamentSlug]);
 
   // Series filter (dispatch-brief-17) — "All" plus only the regions that
   // actually have a registerable tournament in this list. `tournaments` here
@@ -40,11 +48,26 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
     return list.slice().sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0));
   }, [tournaments, seriesFilter]);
 
-  const [tournamentId, setTournamentId] = useState(tournaments[0]?.id ?? "");
+  const [tournamentId, setTournamentId] = useState(
+    () => initialTournament?.id ?? tournaments[0]?.id ?? ""
+  );
   const tournament = useMemo(
     () => tournaments.find((t) => t.id === tournamentId),
     [tournaments, tournamentId]
   );
+  // Close expanded poster when the selected tournament changes
+  useEffect(() => {
+    setPosterOpen(false);
+  }, [tournamentId]);
+  // Escape closes the poster lightbox
+  useEffect(() => {
+    if (!posterOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setPosterOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [posterOpen]);
   const [divisionId, setDivisionId] = useState("");
 
   // Registerable divisions for the selected tournament — bracket-stage
@@ -73,7 +96,6 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
   }
 
   const [teamName, setTeamName] = useState("");
-  const [className, setClassName] = useState("");
   const [afaMembershipNumber, setAfaMembershipNumber] = useState("");
 
   const [manager, setManager] = useState({
@@ -109,8 +131,22 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
     });
   }
 
+  // External host for off-site registration (Halloween → St George Rec, etc.)
+  const externalRegisterUrl = tournament?.registration_url
+    ? String(tournament.registration_url).trim()
+    : "";
+  const externalRegisterHost = useMemo(() => {
+    if (!externalRegisterUrl) return null;
+    try {
+      return new URL(externalRegisterUrl).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  }, [externalRegisterUrl]);
+
   function canProceed() {
-    if (step === 0) return Boolean(tournamentId);
+    // Off-site registration never advances into our multi-step form
+    if (step === 0) return Boolean(tournamentId) && !externalRegisterUrl;
     if (step === 1) {
       return (
         teamName.trim().length > 0 &&
@@ -131,7 +167,12 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
         tournamentId,
         divisionId: effectiveDivisionId,
         teamName: teamName.trim(),
-        class: className.trim(),
+        // Division label already carries class (e.g. "Men's D") — no separate field.
+        class:
+          registerableDivisions.find((d) => d.id === effectiveDivisionId)
+            ?.display_name ??
+          registerableDivisions.find((d) => d.id === effectiveDivisionId)?.name ??
+          null,
         afaMembershipNumber: afaMembershipNumber.trim(),
         manager,
         players: players.filter((p) => p.name.trim().length > 0),
@@ -163,6 +204,15 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
 
   if (submitState === "done") {
     return (
+      <div className="space-y-4">
+        <RegisterBack
+          href={
+            tournament?.slug
+              ? `/tournaments/${tournament.slug}`
+              : "/tournaments"
+          }
+          label={tournament?.name || "Tournaments"}
+        />
       <div className="rounded-xl bg-white p-6 space-y-4 card">
         <h2 className="t-title">Registration saved</h2>
         <p className="text-afa-ink/80">
@@ -222,6 +272,14 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             ))}
           </ul>
         </details>
+        {rosterLink && (
+          <p className="t-meta">
+            <a href={rosterLink} className="underline font-semibold text-afa-navy">
+              Open team roster →
+            </a>
+          </p>
+        )}
+      </div>
       </div>
     );
   }
@@ -262,23 +320,143 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 </button>
               ))}
             </div>
-            <Field label="Tournament">
-              <select
-                className="form-field"
-                value={tournamentId}
-                onChange={(e) => {
-                  setTournamentId(e.target.value);
-                  setDivisionId("");
-                }}
+            <div className="register-tournament-row">
+              <label className="register-tournament-row__field">
+                <span className="form-label">Tournament</span>
+                <select
+                  className="form-field"
+                  value={tournamentId}
+                  onChange={(e) => {
+                    setTournamentId(e.target.value);
+                    setDivisionId("");
+                  }}
+                >
+                  {filteredTournaments.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} — {formatLeagueDateOnly(t.start_date)}
+                      {seriesFilter === "all"
+                        ? ` · ${regionLabel[t.region] ?? t.region}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {externalRegisterUrl ? (
+                <a
+                  href={externalRegisterUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-action register-tournament-row__next"
+                >
+                  Register
+                  {externalRegisterHost ? ` · ${externalRegisterHost}` : ""}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+                  disabled={!canProceed()}
+                  className="btn-action register-tournament-row__next disabled:opacity-30"
+                >
+                  Next
+                </button>
+              )}
+            </div>
+
+            {externalRegisterUrl && (
+              <p className="register-external-note">
+                Registration for {tournament?.name} is on an external site
+                {externalRegisterHost ? ` (${externalRegisterHost})` : ""}.
+                Use the button above — this form is only for AFA-hosted signups.
+                {tournament?.registration_note ? (
+                  <>
+                    {" "}
+                    <span className="register-external-note__extra">
+                      {tournament.registration_note}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            )}
+
+            {/* Poster for every tournament in the current dropdown list */}
+            {filteredTournaments.length > 0 && (
+              <div
+                className="register-poster-grid"
+                role="listbox"
+                aria-label="Tournament posters"
               >
-                {filteredTournaments.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} — {formatLeagueDateOnly(t.start_date)}
-                    {seriesFilter === "all" ? ` · ${regionLabel[t.region]}` : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
+                {filteredTournaments.map((t) => {
+                  const selected = t.id === tournamentId;
+                  const hasPoster = Boolean(t.poster_url);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={
+                        "register-poster-pick" +
+                        (selected ? " is-selected" : "") +
+                        (!hasPoster ? " is-empty" : "")
+                      }
+                      onClick={() => {
+                        if (selected && hasPoster) {
+                          setPosterOpen(true);
+                        } else {
+                          setTournamentId(t.id);
+                          setDivisionId("");
+                        }
+                      }}
+                      aria-label={
+                        selected && hasPoster
+                          ? `View full ${t.name} poster`
+                          : `Select ${t.name}`
+                      }
+                    >
+                      {hasPoster ? (
+                        <img
+                          src={t.poster_url}
+                          alt=""
+                          className="register-poster-pick__img"
+                        />
+                      ) : (
+                        <span className="register-poster-pick__fallback">
+                          No flyer
+                        </span>
+                      )}
+                      <span className="register-poster-pick__name">{t.name}</span>
+                      <span className="register-poster-pick__when">
+                        {formatLeagueDateOnly(t.start_date)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {tournament?.poster_url && (
+              <p className="register-poster-hint-line">
+                Selected flyer — tap again to enlarge
+              </p>
+            )}
+
+            {posterOpen && tournament?.poster_url && (
+              <div
+                className="register-poster-lightbox"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${tournament.name} poster`}
+                onClick={() => setPosterOpen(false)}
+              >
+                <img
+                  src={tournament.poster_url}
+                  alt={`${tournament.name} poster`}
+                  className="register-poster-lightbox__img"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -291,34 +469,38 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                 onChange={(e) => setTeamName(e.target.value)}
               />
             </Field>
-            {registerableDivisions.length === 1 && (
-              <p className="text-sm">
-                Division: {registerableDivisions[0].display_name ?? registerableDivisions[0].name}
-              </p>
-            )}
-            {registerableDivisions.length > 1 && (
-              <Field label="Division">
-                <select
-                  className="form-field"
-                  value={divisionId}
-                  onChange={(e) => setDivisionId(e.target.value)}
+            {registerableDivisions.length > 0 && (
+              <div>
+                <span className="form-label">Division</span>
+                <div
+                  className="register-division-picks"
+                  role="group"
+                  aria-label="Division"
                 >
-                  <option value="">Select a division&hellip;</option>
-                  {registerableDivisions.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.display_name ?? d.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                  {registerableDivisions.map((d) => {
+                    const id = d.id;
+                    const label = d.display_name ?? d.name;
+                    const selected =
+                      registerableDivisions.length === 1 ||
+                      divisionId === id ||
+                      effectiveDivisionId === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={
+                          selected ? "btn-info" : "btn-transient"
+                        }
+                        aria-pressed={selected}
+                        onClick={() => setDivisionId(id)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-            <Field label="Class">
-              <input
-                className="form-field"
-                value={className}
-                onChange={(e) => setClassName(e.target.value)}
-              />
-            </Field>
             <Field label="AFA Membership #">
               <input
                 className="form-field"
@@ -363,10 +545,21 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
               </Field>
             </div>
             <Field label="Address">
-              <input
-                className="form-field"
+              <AddressInput
                 value={manager.address}
-                onChange={(e) => setManager({ ...manager, address: e.target.value })}
+                onChange={(v) => setManager({ ...manager, address: v })}
+                onPlace={(p) =>
+                  setManager((m) => ({
+                    ...m,
+                    // Keep full line in street field; also split city/state/zip
+                    address: p.formatted || p.street || m.address,
+                    city: p.city || m.city,
+                    state: p.state || m.state,
+                    zip: p.zip || m.zip,
+                  }))
+                }
+                name="address-line1"
+                placeholder="Start typing street address…"
               />
             </Field>
             <div className="grid grid-cols-3 gap-3">
@@ -375,6 +568,7 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                   className="form-field"
                   value={manager.city}
                   onChange={(e) => setManager({ ...manager, city: e.target.value })}
+                  autoComplete="address-level2"
                 />
               </Field>
               <Field label="State">
@@ -382,11 +576,13 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                   className="form-field"
                   value={manager.state}
                   onChange={(e) => setManager({ ...manager, state: e.target.value })}
+                  autoComplete="address-level1"
                 />
               </Field>
               <Field label="Zip">
                 <input
                   className="form-field"
+                  autoComplete="postal-code"
                   value={manager.zip}
                   onChange={(e) => setManager({ ...manager, zip: e.target.value })}
                 />
@@ -445,23 +641,21 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
                     onChange={(e) => updatePlayer(i, "name", e.target.value)}
                   />
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Birth Date">
-                    <input
-                      type="date"
-                      className="form-field"
-                      value={p.birthDate}
-                      onChange={(e) => updatePlayer(i, "birthDate", e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Address">
-                    <input
-                      className="form-field"
-                      value={p.address}
-                      onChange={(e) => updatePlayer(i, "address", e.target.value)}
-                    />
-                  </Field>
-                </div>
+                <Field label="Birth Date">
+                  <input
+                    type="date"
+                    className="form-field"
+                    value={p.birthDate}
+                    onChange={(e) => updatePlayer(i, "birthDate", e.target.value)}
+                  />
+                </Field>
+                <Field label="Address (optional — player can add when they sign)">
+                  <AddressInput
+                    value={p.address}
+                    onChange={(v) => updatePlayer(i, "address", v)}
+                    placeholder="Start typing address…"
+                  />
+                </Field>
               </div>
             ))}
             {players.length < MAX_PLAYERS && (
@@ -533,15 +727,17 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
             <div className="max-h-48 overflow-y-auto form-surface p-3 text-sm">
               {RELEASE_TEXT}
             </div>
-            <label className="flex items-start gap-2 text-sm">
+            <label className="register-agree">
               <input
                 type="checkbox"
-                className="mt-1 w-5 h-5"
+                className="register-agree__box"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
               />
-              I have read this release and waiver of liability and I agree to
-              it as the team&rsquo;s manager.
+              <span className="register-agree__text">
+                I have read this release and waiver of liability and I agree to
+                it as the team&rsquo;s manager.
+              </span>
             </label>
             <p className="text-xs text-afa-ink/60">
               You sign once, as a member of this roster. That signature covers
@@ -577,26 +773,28 @@ export default function RegistrationForm({ tournaments, regionLabel }) {
         )}
       </div>
 
-      <div className="flex justify-between">
-        <button
-          type="button"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
-          className="btn-transient disabled:opacity-30"
-        >
-          Back
-        </button>
-        {step < STEPS.length - 1 && (
+      {/* Step 0 keeps Next beside the tournament dropdown so it stays on-screen. */}
+      {step > 0 && (
+        <div className="flex justify-between">
           <button
             type="button"
-            onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-            disabled={!canProceed()}
-            className="btn-action disabled:opacity-30"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            className="btn-transient"
           >
-            Next
+            Back
           </button>
-        )}
-      </div>
+          {step < STEPS.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+              disabled={!canProceed()}
+              className="btn-action disabled:opacity-30"
+            >
+              Next
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

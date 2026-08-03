@@ -4,26 +4,13 @@ import { notFound } from "next/navigation";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
-import { scopeLabel } from "@/lib/director";
-import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
-import { leagueToday } from "@/lib/tournament-state";
+import { registrationScope } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
-import DirectorTable from "@/components/scorekeeper/DirectorTable";
+import ManageRoster from "@/components/ManageRoster";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
-
-// The same columns the Players list uses, minus the ones that are constant
-// here — every row is this team at this tournament, so Team, Tournament and
-// Class would repeat the heading.
-const ROSTER_COLUMNS = [
-  { key: "name", label: "Name" },
-  { key: "gender", label: "M/F", align: "center", width: "4rem" },
-  { key: "dob", label: "Born", width: "9rem" },
-  { key: "rating", label: "Rating", align: "center", width: "5rem" },
-  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
-];
 
 // One team at one event. The thing a director means when they say "pull up
 // Fallen at the T-Shirts" — the roster they will actually read down, with the
@@ -34,7 +21,7 @@ async function load(id) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, manager_name, manager_email, manager_phone, manager_member_id, division_id, tournament_id, tournaments(id, name, slug, start_date), divisions(id, name, display_name, gender, class_id, min_men, min_women)"
+      "id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, roster_token, manage_token, pdf_storage_path, manager_name, manager_email, manager_phone, manager_member_id, division_id, tournament_id, tournaments(id, name, slug, start_date, entry_fee_cents, deposit_cents), divisions(id, name, display_name, gender, class_id, min_men, min_women)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -130,18 +117,34 @@ export default async function RegistrationPage({ params }) {
   const data = await load(id);
   if (!data) notFound();
   const { registration: r, roster, removed, classes } = data;
-  const today = leagueToday();
-  const enteredClassName = (data.classes ?? []).find((c) => c.id === r.class_id)?.name ?? null;
-  const scope = [
-    scopeLabel(r.divisions?.gender, r.divisions?.display_name ?? r.divisions?.name),
-    enteredClassName,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const enteredClassName =
+    (data.classes ?? []).find((c) => c.id === r.class_id)?.name ??
+    r.class ??
+    null;
+  // "Do It for the T-Shirts · Coed D" — never "· Coed · Coed D · D"
+  const scope = registrationScope(r.divisions, enteredClassName);
 
-  const sorted = [...roster].sort((a, b) =>
-    lastNameKey(a.name).localeCompare(lastNameKey(b.name))
-  );
+  // Same shape ManageRoster expects (includes soft-removed for restore list)
+  const manageMembers = [
+    ...roster.map((m) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      birthDate: m.birthDate,
+      signed: m.signed,
+      removed: false,
+      isManager: m.role === "manager",
+    })),
+    ...removed.map((m) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      birthDate: m.birth_date ?? null,
+      signed: Boolean(m.signed_at),
+      removed: true,
+      isManager: m.id === r.manager_member_id,
+    })),
+  ];
 
   return (
     <DirectorShell
@@ -164,37 +167,27 @@ export default async function RegistrationPage({ params }) {
         showTitle={false}
       />
 
-      <h2 className="t-heading">Roster</h2>
-      <DirectorTable
-        columns={ROSTER_COLUMNS}
-        rows={sorted.map((m) => ({
-          key: m.id,
-          cells: {
-            name: (
-              <>
-                {lastNameFirst(m.name)}
-                {m.role === "manager" && <span className="t-meta"> · manager</span>}
-              </>
-            ),
-            gender: m.gender ?? "—",
-            dob: bornWithAge(m.birthDate, today),
-            rating: m.rating ?? "—",
-            waiver: m.signed,
-          },
-          search: m.name,
-          sortValues: { name: lastNameKey(m.name), rating: m.rating ?? "" },
-        }))}
-        defaultSort={{ key: "name", dir: "asc" }}
-        empty="Nobody on this roster."
-        searchPlaceholder="Find a player…"
-        width="max-w-3xl"
-      />
-
-      {removed.length > 0 && (
+      <div className="max-w-lg mx-auto space-y-2">
+        <h2 className="t-heading">Roster</h2>
         <p className="t-meta">
-          Off the roster: {removed.map((m) => m.name).join(", ")}
+          Add players, release them to the free-agent pool, or claim free agents.
+          Same tools as the manager link — you can do it here without leaving
+          the control center.
         </p>
-      )}
+        {r.manage_token ? (
+          <ManageRoster
+            token={r.manage_token}
+            initialMembers={manageMembers}
+            rosterToken={r.roster_token}
+            canEdit={r.status !== "withdrawn"}
+            managerLabel="Manager"
+          />
+        ) : (
+          <p className="t-meta text-afa-red font-semibold">
+            No manage token on this registration — cannot edit roster.
+          </p>
+        )}
+      </div>
     </DirectorShell>
   );
 }

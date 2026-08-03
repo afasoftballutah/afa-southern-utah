@@ -93,17 +93,21 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       matchups: d.gamesTotal,
       scores: d.gamesTotal - d.unplayed,
     },
-    panel: panel?.key === d.key ? <Panel
-            division={d}
-            action={panel.action}
-            registrations={registrations}
-            classes={classes}
-            divisionOptions={divisionOptions}
-          /> : null,
+    panel: panel?.key === d.key ? (
+      <Panel
+        key={`panel-${d.key}`}
+        division={d}
+        action={panel.action}
+        registrations={registrations}
+        classes={classes}
+        divisionOptions={divisionOptions}
+      />
+    ) : null,
     cells: {
       division: d.label,
       minMen: (
         <InlineNumber
+          key={`minMen-${d.key}`}
           label="Men"
           subject={d.label}
           value={d.minMen}
@@ -114,6 +118,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       ),
       minWomen: (
         <InlineNumber
+          key={`minWomen-${d.key}`}
           label="Women"
           subject={d.label}
           value={d.minWomen}
@@ -123,7 +128,10 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
         />
       ),
       teams: (
-        <Step state={d.teams >= d.teamsMax ? "done" : d.teams > 0 ? "partial" : "none"}>
+        <Step
+          key={`teams-${d.key}`}
+          state={d.teams >= d.teamsMax ? "done" : d.teams > 0 ? "partial" : "none"}
+        >
           <button
             type="button"
             className={"pill" + (isOn(d, "teams") ? " ring-2 ring-afa-navy/30" : "")}
@@ -134,7 +142,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
         </Step>
       ),
       matchups: (
-        <Step state={d.gamesTotal > 0 ? "done" : "none"}>
+        <Step key={`matchups-${d.key}`} state={d.gamesTotal > 0 ? "done" : "none"}>
           <button
             type="button"
             className={"pill" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
@@ -146,6 +154,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       ),
       scores: (
         <Step
+          key={`scores-${d.key}`}
           state={
             d.gamesTotal === 0
               ? "none"

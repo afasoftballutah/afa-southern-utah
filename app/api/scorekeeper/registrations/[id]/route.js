@@ -1,5 +1,7 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
+import { releaseMemberToPool } from "@/lib/roster-eligibility";
+import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 
 export const runtime = "nodejs";
 
@@ -21,7 +23,7 @@ export async function PATCH(request, { params }) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { status, paid, amountPaidCents, notes } = body ?? {};
+  const { status, paid, amountPaidCents, notes, releaseRosterToPool } = body ?? {};
   const patch = {};
 
   if (status !== undefined) {
@@ -43,6 +45,10 @@ export async function PATCH(request, { params }) {
       return Response.json({ error: "Amount must be a whole number of cents" }, { status: 400 });
     }
     patch.amount_paid_cents = amountPaidCents;
+    // Recording an amount implies a payment event if they did not also clear paid.
+    if (amountPaidCents !== null && paid === undefined) {
+      patch.paid_at = new Date().toISOString();
+    }
   }
 
   if (notes !== undefined) patch.director_notes = notes || null;
@@ -52,6 +58,15 @@ export async function PATCH(request, { params }) {
   }
 
   const supabase = getServiceClient();
+
+  // Load before update so we know if this is a fresh withdraw → pool release.
+  const { data: before } = await supabase
+    .from("registrations")
+    .select("id, status, manager_member_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!before) return Response.json({ error: "Registration not found" }, { status: 404 });
+
   const { data, error } = await supabase
     .from("registrations")
     .update(patch)
@@ -65,5 +80,28 @@ export async function PATCH(request, { params }) {
   }
   if (!data) return Response.json({ error: "Registration not found" }, { status: 404 });
 
-  return Response.json({ ok: true, registration: data });
+  // Team dropped out: release every non-manager player to the free-agent pool
+  // so other managers can claim them (unless the director opts out).
+  const justWithdrew =
+    status === "withdrawn" && before.status !== "withdrawn" && releaseRosterToPool !== false;
+  let pooled = 0;
+  if (justWithdrew) {
+    const { data: members } = await supabase
+      .from("roster_members")
+      .select("id")
+      .eq("registration_id", id)
+      .is("removed_at", null);
+    for (const m of members ?? []) {
+      if (m.id === before.manager_member_id) continue;
+      const result = await releaseMemberToPool(supabase, m.id);
+      if (result.ok) pooled += 1;
+    }
+    try {
+      await regenerateAndStoreWaiverPdf(id);
+    } catch (err) {
+      console.error("PDF regeneration after withdraw pool release failed", err);
+    }
+  }
+
+  return Response.json({ ok: true, registration: data, pooled });
 }

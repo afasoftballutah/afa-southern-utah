@@ -72,10 +72,17 @@ export default function DirectorTable({
   const [sort, setSort] = useState(defaultSort ?? { key: columns[0]?.key, dir: "asc" });
   const [openKey, setOpenKey] = useState(openRow ?? null);
 
-  const suggestions = useMemo(
-    () => [...new Set(rows.map((r) => r.cells[columns[0].key]).filter(Boolean))].sort(),
-    [rows, columns]
-  );
+  // Only string cells for the datalist — JSX cell values are not valid option keys.
+  const suggestions = useMemo(() => {
+    const firstKey = columns[0]?.key;
+    return [
+      ...new Set(
+        rows
+          .map((r) => r.cells[firstKey])
+          .filter((v) => typeof v === "string" && v.length > 0)
+      ),
+    ].sort();
+  }, [rows, columns]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();

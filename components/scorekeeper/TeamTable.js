@@ -117,11 +117,28 @@ export default function TeamTable({
           </span>
         ),
         status: STATUS_LABEL[reg.status] ?? reg.status,
-        paid: reg.paid_at ? (
-          <span className="text-afa-go font-semibold">{money(reg.amount_paid_cents) || "☑"}</span>
-        ) : (
-          <span className="text-afa-muted/60">☐</span>
-        ),
+        paid: (() => {
+          const due = reg.tournaments?.entry_fee_cents ?? null;
+          if (reg.paid_at || reg.amount_paid_cents != null) {
+            const paid = reg.amount_paid_cents;
+            if (paid != null && due != null && paid < due) {
+              return (
+                <span className="font-semibold text-afa-part">
+                  {money(paid)}
+                  <span className="text-afa-muted font-normal"> / {money(due)}</span>
+                </span>
+              );
+            }
+            return (
+              <span className="text-afa-go font-semibold">{money(paid) || "☑"}</span>
+            );
+          }
+          return (
+            <span className="text-afa-muted/60">
+              {due != null ? money(due) : "☐"}
+            </span>
+          );
+        })(),
         // "0 of 0 signed" was three words for one fraction. A team with no
         // roster shows an em dash, because 0/0 reads like a failure.
         signed: active === 0 ? "—" : `${signed}/${active}`,

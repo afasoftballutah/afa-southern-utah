@@ -179,6 +179,38 @@ export default async function TournamentDetailPage({ params }) {
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
+  // No event poster yet → not a public lobby (still in DB / greyed on list).
+  // Finished events with results can stay viewable even if poster was a schedule.
+  const finishedEarly = isTournamentFinished(tournament);
+  if (!isRealPoster(tournament) && !finishedEarly) {
+    return (
+      <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
+        <h1 className="t-title">{tournament.name}</h1>
+        <p className="t-meta">
+          {formatDateRange(tournament.start_date, tournament.end_date)}
+          {tournament.venue_name ? ` · ${tournament.venue_name}` : ""}
+        </p>
+        <p className="t-strong">Details coming soon</p>
+        <p className="t-meta">
+          This tournament is on the calendar. The full page and registration
+          open when the flyer is posted.
+        </p>
+        <div className="flex flex-wrap gap-2 justify-center pt-2">
+          <Link href="/tournaments" className="btn-transient">
+            All tournaments
+          </Link>
+          <span
+            className="btn-action opacity-40 pointer-events-none select-none"
+            aria-disabled="true"
+            title="Registration opens when the tournament flyer is posted"
+          >
+            Register
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   // Recent scores live here now, not on the front page (JD, 2026-07-26).
   // A game belongs to a tournament; a list of them a mile from anything
   // that named it was the wrong home. Scoped to THIS tournament's
@@ -239,9 +271,10 @@ export default async function TournamentDetailPage({ params }) {
     prizesLines.length > 0 ||
     specialRulesLines.length > 0;
 
-  // Registration — same open/closed rule as /register (isRegistrationOpen).
+  // Registration — open by date AND real event poster (same as /register).
   // Never use tournaments.status. Terms only when a field has a real value.
-  const registrationOpen = isRegistrationOpen(tournament);
+  const registrationOpen =
+    isRegistrationOpen(tournament) && isRealPoster(tournament);
   const regTerms = registrationTerms(tournament);
   // Show the block whenever registration is OPEN, terms or not. Gating it on
   // having a deadline/url/note hid the door entirely on a tournament anyone
@@ -397,8 +430,11 @@ export default async function TournamentDetailPage({ params }) {
                 // No external URL means WE take the registration. Most
                 /* tournaments are this case, and without it an open
                    tournament said "Registration" and offered no way in. */
-                <Link href="/register" className="btn-action-block">
-                  Register this team
+                <Link
+                  href={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
+                  className="btn-action-block"
+                >
+                  Register
                 </Link>
               )}
               {tournament.registration_note && (

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" width="400" height="320">
+  <!-- Exact recreation of the official AFA Softball logo based on provided source.
+       Navy AFA letters with white outline, red swoosh ribbon, SOFTBALL text.
+       No invented stars or extra elements. -->
+  <defs>
+    <style>
+      .afa-letter { fill: #0A1628; stroke: #FFFFFF; stroke-width: 4; paint-order: stroke fill; font-family: Arial Black, Impact, sans-serif; font-weight: 900; }
+      .softball { fill: #FFFFFF; stroke: #E31C25; stroke-width: 2.5; paint-order: stroke fill; font-family: Arial Black, Impact, sans-serif; font-weight: 900; letter-spacing: 2px; }
+    </style>
+  </defs>
+  
+  <!-- Red swoosh ribbons -->
+  <path d="M30 160 Q100 110 180 145 Q250 175 320 130 Q350 110 370 120" 
+        fill="none" stroke="#E31C25" stroke-width="22" stroke-linecap="round"/>
+  <path d="M25 175 Q110 130 190 160 Q260 185 340 145" 
+        fill="none" stroke="#C91820" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- AFA letters - stacked/italic feel -->
+  <text x="40" y="155" class="afa-letter" font-size="110" transform="skewX(-8)">A</text>
+  <text x="145" y="155" class="afa-letter" font-size="110" transform="skewX(-8)">F</text>
+  <text x="245" y="155" class="afa-letter" font-size="110" transform="skewX(-8)">A</text>
+  
+  <!-- SOFTBALL -->
+  <text x="55" y="250" class="softball" font-size="42">SOFTBALL</text>
+</svg>

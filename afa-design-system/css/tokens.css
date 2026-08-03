@@ -9,10 +9,15 @@
   --afa-red:            #E31C25;
   --afa-red-hover:      #C91820;
   --afa-red-active:     #A8141B;
-  --afa-navy:           #0A1628;
-  --afa-navy-light:     #1A2332;
-  --afa-navy-lighter:   #243044;
-  --afa-flag-blue:      #002868;
+  /* ONE blue family (flag blue) — no second navy hue */
+  --afa-blue:           #002868;
+  --afa-blue-hover:     #001F52;
+  --afa-flag-blue:      var(--afa-blue);
+  --afa-navy:           var(--afa-blue);
+  --afa-ground:         #000D24;
+  --afa-navy-deep:      var(--afa-ground);
+  --afa-navy-light:     #16356A;
+  --afa-navy-lighter:   #1E4480;
   --afa-white:          #FFFFFF;
   --afa-soft-gray:      #F5F7FA;
   --afa-muted:          #6B7280;
@@ -27,7 +32,7 @@
 
   /* ---- Semantic (Dark Mode default) ---- */
   --color-primary:      var(--afa-red);
-  --color-bg:           var(--afa-navy);
+  --color-bg:           var(--afa-ground);
   --color-bg-elevated:  var(--afa-navy-light);
   --color-bg-surface:   var(--afa-navy-lighter);
   --color-surface:      var(--afa-soft-gray);

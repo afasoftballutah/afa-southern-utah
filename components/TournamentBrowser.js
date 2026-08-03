@@ -3,7 +3,13 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Chip from "@/components/ui/Chip";
-import { formatDateRange, formatFee, isRealPoster, isGroupName } from "@/lib/data";
+import {
+  formatDateRange,
+  formatFee,
+  isRealPoster,
+  isGroupName,
+  schedulePosterForRegion,
+} from "@/lib/data";
 import { parseLeagueDateOnly } from "@/lib/league-time";
 
 const STORAGE_KEY = "afa-tournaments-view";
@@ -70,10 +76,25 @@ export default function TournamentBrowser({ groups }) {
   // seed rows with no game data.
   const isPast = (t) => t.status === "complete" || t.finished === true;
 
-  const upcomingByRegion = groups
-    .map((g) => ({ ...g, tournaments: g.tournaments.filter((t) => !isPast(t)) }))
+  // Public upcoming = has a real event poster. Others stay listed but
+  // greyed (not linked / not registerable) until a flyer is posted.
+  const isPublic = (t) => isRealPoster(t);
+
+  const upcomingPublicByRegion = groups
+    .map((g) => ({
+      ...g,
+      tournaments: g.tournaments.filter((t) => !isPast(t) && isPublic(t)),
+    }))
     .filter((g) => g.tournaments.length > 0)
     .map((g) => ({ ...g, tournaments: [...g.tournaments].sort(byStartDateAsc) }));
+
+  const upcomingUnpublished = groups
+    .flatMap((g) =>
+      g.tournaments
+        .filter((t) => !isPast(t) && !isPublic(t))
+        .map((t) => ({ ...t, regionLabel: g.label }))
+    )
+    .sort(byStartDateAsc);
 
   const pastByRegion = groups
     .map((g) => ({ ...g, tournaments: g.tournaments.filter(isPast) }))
@@ -86,7 +107,7 @@ export default function TournamentBrowser({ groups }) {
     groups
       .flatMap((g) =>
         g.tournaments
-          .filter((t) => !isPast(t))
+          .filter((t) => !isPast(t) && isPublic(t))
           .map((t) => ({ ...t, regionLabel: g.label }))
       )
       .sort(byStartDateAsc)
@@ -114,7 +135,15 @@ export default function TournamentBrowser({ groups }) {
         </button>
       </div>
 
-      {view === "region" ? <RegionView groups={upcomingByRegion} /> : <MonthView months={upcomingByMonth} />}
+      {view === "region" ? (
+        <RegionView groups={upcomingPublicByRegion} />
+      ) : (
+        <MonthView months={upcomingByMonth} />
+      )}
+
+      {upcomingUnpublished.length > 0 && (
+        <UnpublishedScheduleBlock tournaments={upcomingUnpublished} />
+      )}
 
       {pastCount > 0 && (
         <div>
@@ -133,6 +162,65 @@ export default function TournamentBrowser({ groups }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Greyed calendar of events without flyers + overall schedule image(s). */
+function UnpublishedScheduleBlock({ tournaments }) {
+  const regions = [...new Set(tournaments.map((t) => t.region))];
+  const scheduleUrls = [
+    ...new Set(regions.map((r) => schedulePosterForRegion(r)).filter(Boolean)),
+  ];
+
+  return (
+    <section className="tournament-unpublished" aria-label="Coming soon">
+      <h2 className="t-heading mb-1">Coming soon</h2>
+      <p className="t-meta mb-3">
+        On the calendar — flyer and registration open when the poster posts.
+      </p>
+      <div className="tournament-unpublished__box">
+        <ul className="tournament-unpublished__list">
+          {tournaments.map((t) => (
+            <li key={t.id} className="tournament-unpublished__row">
+              <span className="tournament-unpublished__name">{t.name}</span>
+              <span className="tournament-unpublished__meta">
+                {[formatDateRange(t.start_date, t.end_date), t.venue_name, t.regionLabel]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              <span className="tournament-unpublished__badge" aria-hidden="true">
+                Poster pending
+              </span>
+              {/* Non-working register control — visible but disabled */}
+              <button
+                type="button"
+                className="btn-action tournament-unpublished__reg"
+                disabled
+                title="Registration opens when the tournament flyer is posted"
+              >
+                Register
+              </button>
+            </li>
+          ))}
+        </ul>
+        {scheduleUrls.length > 0 && (
+          <div className="tournament-unpublished__schedules">
+            <p className="t-label mb-2">Overall schedule</p>
+            {scheduleUrls.map((src) => (
+              <a
+                key={src}
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tournament-unpublished__schedule-link"
+              >
+                <img src={src} alt="Season schedule" className="tournament-unpublished__schedule" />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -215,10 +303,15 @@ function ChampionLine({ champions }) {
 }
 
 function TournamentRowCard({ t, showRegionChip }) {
-  // Southern Utah tournaments run brackets/registration on this site;
-  // other regions are published schedule only — plain text, not a link,
-  // until that region has a page of its own (unchanged rule).
-  const linked = t.region === "southern_utah";
+  // Public detail pages only for events with a real poster. Southern Utah
+  // + poster → linked lobby; everything else is static list copy.
+  // Full lobby only for events this app runs (Southern Utah home base, plus
+  // Fredonia which we still host even though it’s listed under AZ).
+  const homeBase =
+    t.region_raw === "southern_utah" ||
+    t.slug === "2026-coed-fredonia" ||
+    (t.region_raw == null && t.region === "southern_utah");
+  const linked = homeBase && isRealPoster(t);
   const row = <TournamentRow t={t} linked={linked} showRegionChip={showRegionChip} />;
   if (linked) {
     return (
@@ -296,7 +389,7 @@ function TournamentRow({ t, linked, showRegionChip }) {
         <img
           src={t.poster_url}
           alt={`${t.name} poster`}
-          className="w-14 h-14 shrink-0 rounded object-cover"
+          className="tournament-row__poster"
         />
       )}
     </div>

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — Perspective poster carousel</title>
+  <style>
+    :root {
+      --ground: #000d24;
+      --blue: #002868;
+      --red: #e31c25;
+      --gold: #c9a227;
+      --silver: #8b9bb0;
+      --bronze: #c47a4a;
+      --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --card-w: 9.5rem;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--ground);
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .bar {
+      background: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 1.25rem;
+    }
+    .bar__mark {
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.95rem;
+    }
+    .bar__nav {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      opacity: 0.92;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 12rem;
+      background:
+        linear-gradient(100deg, rgba(0,13,36,0.25) 0%, rgba(0,13,36,0.78) 70%),
+        url("/afa-eagle-mascot.png") 18% 20% / cover no-repeat;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 1.75rem 1.5rem 2rem;
+    }
+    .hero__copy {
+      max-width: 18rem;
+    }
+    .hero__copy h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.5rem, 3.5vw, 2.15rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+    .hero__copy p {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.85);
+    }
+    .hero__btns { display: flex; gap: 0.45rem; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.25rem;
+      padding: 0 1rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--red);
+      border: 2px solid var(--red);
+    }
+    .pill--ghost {
+      background: transparent;
+      border-color: rgba(255,255,255,0.85);
+    }
+
+    .wrap {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 0 1.25rem 2.5rem;
+    }
+
+    .deck-section {
+      margin-top: -0.5rem;
+      position: relative;
+      z-index: 2;
+    }
+    .deck-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+    }
+    .deck-head h2 {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .deck-head p {
+      margin: 0.12rem 0 0;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.45);
+    }
+    .deck-controls {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .deck-controls button {
+      width: 1.85rem;
+      height: 1.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .deck-controls button:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    /*
+     * Perspective stage — always 5 visible:
+     *  past-2 | past-1 | NEXT (center) | up-1 | up-2
+     */
+    .stage {
+      perspective: 1000px;
+      perspective-origin: 50% 45%;
+      height: 16rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 0.25rem 0 0.5rem;
+      user-select: none;
+      /* room for wider L/R spread */
+      overflow: visible;
+    }
+
+    .slot {
+      position: absolute;
+      width: var(--card-w);
+      transition:
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        filter 0.4s ease,
+        opacity 0.4s ease,
+        z-index 0s linear 0.2s;
+      transform-style: preserve-3d;
+      cursor: pointer;
+    }
+
+    /* Off-center: desaturated + dim */
+    .slot:not(.is-center) {
+      filter: grayscale(0.92) brightness(0.72);
+      opacity: 0.72;
+    }
+    .slot.is-center {
+      filter: none;
+      opacity: 1;
+      z-index: 5 !important;
+    }
+
+    /* Fixed perspective positions (left → right) — wider L/R spread, sides larger */
+    .slot[data-pos="-2"] {
+      transform: translateX(calc(var(--card-w) * -2.35)) translateZ(-70px) rotateY(28deg) scale(0.9);
+      z-index: 1;
+    }
+    .slot[data-pos="-1"] {
+      transform: translateX(calc(var(--card-w) * -1.2)) translateZ(-35px) rotateY(16deg) scale(0.96);
+      z-index: 2;
+    }
+    .slot[data-pos="0"] {
+      transform: translateX(0) translateZ(28px) rotateY(0deg) scale(1.05);
+      z-index: 5;
+    }
+    .slot[data-pos="1"] {
+      transform: translateX(calc(var(--card-w) * 1.2)) translateZ(-35px) rotateY(-16deg) scale(0.96);
+      z-index: 2;
+    }
+    .slot[data-pos="2"] {
+      transform: translateX(calc(var(--card-w) * 2.35)) translateZ(-70px) rotateY(-28deg) scale(0.9);
+      z-index: 1;
+    }
+
+    /* Hidden (more than ±2 from center in data order — we only show 5) */
+    .slot[data-pos="hide"] {
+      transform: translateX(0) translateZ(-160px) scale(0.5);
+      opacity: 0;
+      pointer-events: none;
+      filter: grayscale(1);
+      z-index: 0;
+    }
+
+    .poster {
+      position: relative;
+      border-radius: 0.65rem;
+      overflow: hidden;
+      aspect-ratio: 3 / 4;
+      background: #111;
+      box-shadow:
+        0 12px 28px rgba(0,0,0,0.45),
+        0 0 0 1px rgba(255,255,255,0.1);
+    }
+    .slot.is-center .poster {
+      box-shadow:
+        0 18px 40px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(255,255,255,0.2),
+        0 0 28px rgba(227, 28, 37, 0.12);
+    }
+    .poster img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    /* Completed badge — top of finished posters */
+    .done-tag {
+      position: absolute;
+      top: 0.4rem;
+      left: 0.4rem;
+      z-index: 3;
+      font-size: 0.52rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #fff;
+      background: var(--red);
+      border-radius: 999px;
+      padding: 0.22rem 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    /* Champions — stronger stamp */
+    .champ {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 1.35rem 0.5rem 0.5rem;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0, 13, 36, 0.35) 18%,
+        rgba(0, 13, 36, 0.88) 55%,
+        rgba(0, 8, 20, 0.98) 100%
+      );
+      border-top: 1px solid rgba(201, 162, 39, 0.35);
+    }
+    .champ__title {
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.3rem;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .champ__row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-top: 0.18rem;
+    }
+    /*
+     * Short division codes (save space on posters):
+     *   G S B  = Gold / Silver / Bronze brackets
+     *   O D E R = Open / D / E / Rec
+     *   U L    = Upper / Lower
+     * These are division initials, not “place medals.”
+     */
+    .champ__code {
+      flex: 0 0 auto;
+      width: 1.15rem;
+      min-width: 1.15rem;
+      font-size: 0.55rem;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      padding: 0.1rem 0;
+      border-radius: 0.2rem;
+      text-align: center;
+      line-height: 1.2;
+      color: #0a1628;
+      background: rgba(255, 255, 255, 0.88);
+    }
+    /* Gold / Silver / Bronze brackets get metal-tinted chips for quick scan */
+    .champ__code--g {
+      background: linear-gradient(135deg, #ffd700, #c9a227);
+    }
+    .champ__code--s {
+      background: linear-gradient(135deg, #e8eef5, #8b9bb0);
+    }
+    .champ__code--b {
+      background: linear-gradient(135deg, #e8b090, #c47a4a);
+    }
+    .champ__team {
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    /* Multi-bracket: gender tabs + gold only */
+    .champ--tabs {
+      padding-top: 1.1rem;
+    }
+    .champ__tabs {
+      display: flex;
+      gap: 0.2rem;
+      margin-bottom: 0.35rem;
+    }
+    .champ__tabs button {
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.55);
+      font-size: 0.48rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.22rem 0.1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    .champ__tabs button.on {
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      border-color: rgba(201, 162, 39, 0.55);
+    }
+    .champ__panel { display: none; }
+    .champ__panel.on { display: block; }
+
+    .cta-stamp {
+      position: absolute;
+      left: 0.3rem;
+      right: 0.3rem;
+      bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.25rem;
+      padding: 0.28rem 0.35rem;
+      border-radius: 0.4rem;
+      background: rgba(8, 14, 28, 0.8);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .cta-stamp__when {
+      font-size: 0.5rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+    }
+    .cta-stamp__btn {
+      font-size: 0.5rem;
+      font-weight: 800;
+      color: #fff;
+      background: var(--red);
+      border: none;
+      border-radius: 999px;
+      padding: 0.2rem 0.45rem;
+      cursor: pointer;
+    }
+
+    .caption {
+      text-align: center;
+      margin-top: 0.15rem;
+      min-height: 2.6rem;
+    }
+    .caption__name {
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .caption__sub {
+      margin: 0.15rem 0 0;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+    }
+    .caption__role {
+      display: inline-block;
+      margin-top: 0.25rem;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+    }
+    .caption__role--next {
+      color: #f8a8ad;
+    }
+    .caption__role--past {
+      color: var(--gold);
+    }
+
+    .rail {
+      display: flex;
+      justify-content: center;
+      gap: 0.3rem;
+      margin-top: 0.35rem;
+    }
+    .rail button {
+      width: 0.35rem;
+      height: 0.35rem;
+      padding: 0;
+      border: none;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.22);
+      cursor: pointer;
+    }
+    .rail button.on {
+      width: 0.9rem;
+      background: #fff;
+    }
+
+    .dash {
+      margin-top: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 0.85rem;
+    }
+    @media (max-width: 700px) {
+      .dash { grid-template-columns: 1fr; }
+      :root { --card-w: 8.25rem; }
+      .stage { height: 13.5rem; }
+    }
+    .glass {
+      border-radius: 1rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: linear-gradient(
+        145deg,
+        rgba(180, 40, 70, 0.18) 0%,
+        rgba(0, 40, 104, 0.3) 50%,
+        rgba(0, 13, 36, 0.5) 100%
+      );
+      padding: 1rem;
+      min-height: 7.5rem;
+    }
+    .glass h3 {
+      margin: 0 0 0.45rem;
+      font-size: 0.9rem;
+    }
+    .glass p {
+      margin: 0;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.4;
+    }
+
+    .banner {
+      padding: 0.6rem 1.25rem;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.5);
+    }
+    .banner a { color: #9ec1ff; }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    Mockup — infinite loop · 5 visible · center full color · completed tag + louder champions.
+    <a href="/">Live home</a>
+  </div>
+
+  <header class="bar">
+    <div class="bar__mark">AFA SlowPitch</div>
+    <nav class="bar__nav">
+      <span>Tournaments</span>
+      <span>Rules</span>
+      <span>Register</span>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero__copy">
+      <h1>Softball as it should be</h1>
+      <p>Great events, good times, family fun, best prizes, politics free.</p>
+      <div class="hero__btns">
+        <span class="pill">Tournaments</span>
+        <span class="pill pill--ghost">Register</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="deck-section">
+      <div class="deck-head">
+        <div>
+          <h2>Season flyers</h2>
+          <p>Loops forever · completed posters stamped</p>
+        </div>
+        <div class="deck-controls">
+          <button type="button" id="prev" aria-label="Previous">‹</button>
+          <button type="button" id="next" aria-label="Next">›</button>
+        </div>
+      </div>
+
+      <div class="stage" id="stage" aria-label="Poster carousel">
+        <!-- order: past, past, NEXT, upcoming, upcoming (+ extras for rotation) -->
+        <div class="slot" data-i="0" data-kind="past">
+          <div class="poster">
+            <img src="/posters/2026-heat-stroker.jpg" alt="Heat Stroker" />
+            <span class="done-tag">Completed</span>
+            <!-- Coed: G/S/B = Gold/Silver/Bronze division codes -->
+            <div class="champ">
+              <div class="champ__title">Champions · Coed</div>
+              <div class="champ__row">
+                <span class="champ__code champ__code--g">G</span>
+                <span class="champ__team">Backwards K</span>
+              </div>
+              <div class="champ__row">
+                <span class="champ__code champ__code--s">S</span>
+                <span class="champ__team">GWZ</span>
+              </div>
+              <div class="champ__row">
+                <span class="champ__code champ__code--b">B</span>
+                <span class="champ__team">Ball Busters</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-bracket sample: W Upper/Lower · M Open/D/E/Rec · Coed D/E/Rec -->
+        <div class="slot" data-i="1" data-kind="past">
+          <div class="poster">
+            <img src="/posters/2026-halloween.jpg" alt="Sample multi-bracket tourney" />
+            <span class="done-tag">Completed</span>
+            <!-- Short codes: U/L · O/D/E/R · D/E/R — all division initials -->
+            <div class="champ champ--tabs" data-champ-tabs>
+              <div class="champ__title">Champions</div>
+              <div class="champ__tabs" role="tablist">
+                <button type="button" class="on" data-g="w">W</button>
+                <button type="button" data-g="m">M</button>
+                <button type="button" data-g="c">Coed</button>
+              </div>
+              <div class="champ__panel on" data-g="w">
+                <div class="champ__row">
+                  <span class="champ__code">U</span>
+                  <span class="champ__team">Diamond Divas</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">L</span>
+                  <span class="champ__team">Softball Queens</span>
+                </div>
+              </div>
+              <div class="champ__panel" data-g="m">
+                <div class="champ__row">
+                  <span class="champ__code">O</span>
+                  <span class="champ__team">Thunder</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">D</span>
+                  <span class="champ__team">Backwards K</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">E</span>
+                  <span class="champ__team">Dirtbags</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">R</span>
+                  <span class="champ__team">Sunday Slow</span>
+                </div>
+              </div>
+              <div class="champ__panel" data-g="c">
+                <div class="champ__row">
+                  <span class="champ__code">D</span>
+                  <span class="champ__team">Mixed Nuts</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">E</span>
+                  <span class="champ__team">Bat Intentions</span>
+                </div>
+                <div class="champ__row">
+                  <span class="champ__code">R</span>
+                  <span class="champ__team">Just For Fun</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="slot" data-i="2" data-kind="next">
+          <div class="poster">
+            <img src="/posters/2026-coed-fredonia.jpg" alt="Fredonia" />
+            <div class="cta-stamp">
+              <span class="cta-stamp__when">Aug 7 · 7 PM AZ</span>
+              <button type="button" class="cta-stamp__btn">Register</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="slot" data-i="3" data-kind="up">
+          <div class="poster">
+            <img src="/posters/2026-t-shirt.jpg" alt="T-Shirts" />
+            <div class="cta-stamp">
+              <span class="cta-stamp__when">Aug 22–23</span>
+              <button type="button" class="cta-stamp__btn">Register</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="slot" data-i="4" data-kind="up">
+          <div class="poster">
+            <img src="/posters/2026-best-of-the-west.jpg" alt="Best of the West" />
+            <div class="cta-stamp">
+              <span class="cta-stamp__when">Aug 21–23</span>
+              <button type="button" class="cta-stamp__btn">Details</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="slot" data-i="5" data-kind="up">
+          <div class="poster">
+            <img src="/posters/2026-hit-and-sit.jpg" alt="Hit and Sit" />
+            <div class="cta-stamp">
+              <span class="cta-stamp__when">Sep 11–13</span>
+              <button type="button" class="cta-stamp__btn">Details</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="slot" data-i="6" data-kind="up">
+          <div class="poster">
+            <img src="/posters/2026-halloween.jpg" alt="Halloween" />
+            <div class="cta-stamp">
+              <span class="cta-stamp__when">Oct 23–24</span>
+              <button type="button" class="cta-stamp__btn">Register</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="caption" id="caption">
+        <p class="caption__name">—</p>
+        <p class="caption__sub">—</p>
+        <span class="caption__role">—</span>
+      </div>
+      <div class="rail" id="rail" aria-hidden="true"></div>
+    </section>
+
+    <div class="dash">
+      <div class="glass">
+        <h3>Upcoming Events</h3>
+        <p>List stays for scanning. Deck is the visual flip of the same season.</p>
+      </div>
+      <div class="glass">
+        <h3>Recent Results</h3>
+        <p>Past posters in the deck already carry Gold / Silver / Bronze stamps.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const META = [
+      { name: "Coed Heat Stroker", sub: "Jul 24–26 · Canyons", role: "Completed", roleClass: "caption__role--past" },
+      { name: "Sample weekend (W / M / Coed)", sub: "Upper·Lower · Open·D·E·Rec · Coed D·E·Rec", role: "Completed", roleClass: "caption__role--past" },
+      { name: "Coed Softball Tournament", sub: "Aug 7 · Fredonia Park · $300", role: "Next up", roleClass: "caption__role--next" },
+      { name: "Do It for the T-Shirts", sub: "Aug 22–23 · Canyons", role: "Upcoming", roleClass: "" },
+      { name: "Best of the West", sub: "Series", role: "Upcoming", roleClass: "" },
+      { name: "Hit & Sit", sub: "Northern Utah", role: "Upcoming", roleClass: "" },
+      { name: "Halloween", sub: "Oct 23–24 · Canyons", role: "Upcoming", roleClass: "" },
+    ];
+
+    const slots = [...document.querySelectorAll(".slot")];
+    const n = slots.length;
+    // Start centered on "next" (index 2)
+    let center = 2;
+
+    const caption = document.getElementById("caption");
+    const rail = document.getElementById("rail");
+
+    /** Shortest circular distance in index space (−floor((n-1)/2) … +floor(n/2)) */
+    function wrapDelta(i, c) {
+      let d = i - c;
+      if (d > n / 2) d -= n;
+      if (d < -n / 2) d += n;
+      return d;
+    }
+
+    function buildRail() {
+      rail.innerHTML = "";
+      for (let i = 0; i < n; i++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.addEventListener("click", () => {
+          center = i;
+          layout();
+        });
+        rail.appendChild(b);
+      }
+    }
+
+    function layout() {
+      slots.forEach((el, i) => {
+        const delta = wrapDelta(i, center);
+        if (delta < -2 || delta > 2) {
+          el.dataset.pos = "hide";
+          el.classList.remove("is-center");
+          return;
+        }
+        el.dataset.pos = String(delta);
+        el.classList.toggle("is-center", delta === 0);
+      });
+
+      const m = META[center];
+      caption.innerHTML = `
+        <p class="caption__name">${m.name}</p>
+        <p class="caption__sub">${m.sub}</p>
+        <span class="caption__role ${m.roleClass}">${m.role}</span>
+      `;
+
+      [...rail.children].forEach((b, i) => b.classList.toggle("on", i === center));
+    }
+
+    function step(dir) {
+      center = (center + dir + n) % n;
+      layout();
+    }
+
+    document.getElementById("prev").onclick = () => step(-1);
+    document.getElementById("next").onclick = () => step(1);
+
+    slots.forEach((el, i) => {
+      el.addEventListener("click", (e) => {
+        // Don't rotate when tapping gender tabs on multi-bracket stamps
+        if (e.target.closest("[data-champ-tabs] button")) return;
+        center = i;
+        layout();
+      });
+    });
+
+    // Gender tabs on multi-bracket champion stamps
+    document.querySelectorAll("[data-champ-tabs]").forEach((root) => {
+      root.querySelectorAll(".champ__tabs button").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const g = btn.dataset.g;
+          root.querySelectorAll(".champ__tabs button").forEach((b) => b.classList.remove("on"));
+          root.querySelectorAll(".champ__panel").forEach((p) => p.classList.remove("on"));
+          btn.classList.add("on");
+          root.querySelector(`.champ__panel[data-g="${g}"]`)?.classList.add("on");
+        });
+      });
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    });
+
+    buildRail();
+    layout();
+  </script>
+</body>
+</html>

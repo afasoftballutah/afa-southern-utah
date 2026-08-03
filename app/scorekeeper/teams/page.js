@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { listTeams, scopeLabel, genderLabel } from "@/lib/director";
+import { listTeams, scopeLabel, genderLabel, moneyCents } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
@@ -9,14 +9,15 @@ import DirectorTable from "@/components/scorekeeper/DirectorTable";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Teams — Control Center" };
 
-// Plain data only — see the note in the People list.
+// Balance = sum of (entry fee − amount paid) across live registrations.
+// Not a payment processor — fee from tournament, paid_at / amount from director.
 const COLUMNS = [
   { key: "name", label: "Team" },
   { key: "class", label: "Class", width: "5rem" },
   { key: "division", label: "Division", width: "6rem" },
   { key: "manager", label: "Manager", hideBelow: "sm" },
   { key: "events", label: "Events", align: "right", width: "5rem" },
-  { key: "paid", label: "Paid", type: "check", align: "center", width: "5rem" },
+  { key: "balance", label: "Balance", align: "right", width: "6.5rem" },
 ];
 
 const FILTERS = [
@@ -25,6 +26,33 @@ const FILTERS = [
   { key: "womens", label: "Women's", tag: "womens" },
   { key: "coed", label: "Coed", tag: "coed" },
 ];
+
+function balanceCell(money) {
+  if (!money || money.liveCount === 0) {
+    return <span className="text-afa-muted/60">—</span>;
+  }
+  if (money.balanceTotal != null) {
+    if (money.balanceTotal > 0) {
+      return (
+        <span className="font-semibold text-afa-red">
+          {moneyCents(money.balanceTotal)}
+          {money.unknownUnpaid > 0 ? "*" : ""}
+        </span>
+      );
+    }
+    return (
+      <span className="font-semibold text-afa-go">
+        {moneyCents(0)}
+        {money.unknownUnpaid > 0 ? "*" : ""}
+      </span>
+    );
+  }
+  // Fee unknown for every live reg — fall back to paid/unpaid language
+  if (money.hasUnpaid) {
+    return <span className="font-semibold text-afa-red">Unpaid</span>;
+  }
+  return <span className="font-semibold text-afa-go">Paid</span>;
+}
 
 export default async function TeamsPage() {
   const store = await cookies();
@@ -40,11 +68,16 @@ export default async function TeamsPage() {
   const teams = await listTeams();
 
   const rows = teams.map((t) => {
-    const live = t.registrations.filter((r) => r.status !== "withdrawn");
-    const unpaid = live.filter((r) => !r.paid).length;
+    const money = t.money;
     const tags = [];
-    if (unpaid > 0) tags.push("unpaid");
+    if (money?.hasUnpaid) tags.push("unpaid");
     if (t.gender) tags.push(t.gender);
+    // Sort: unknown unpaid last among balances; null balance sorts as -1 when paid, 1e12 when unpaid
+    let sortBalance = 0;
+    if (money?.liveCount) {
+      if (money.balanceTotal != null) sortBalance = money.balanceTotal;
+      else sortBalance = money.hasUnpaid ? 1e12 : 0;
+    }
     return {
       key: t.id,
       href: `/scorekeeper/teams/${t.id}`,
@@ -52,15 +85,17 @@ export default async function TeamsPage() {
       search: `${t.name} ${scopeLabel(t.gender, t.className)} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       cells: {
         name: t.name,
-        // A team IS its name plus gender and class, so both are columns, not
-        // a subtitle. Fallen D and Fallen E are two teams.
         class: t.className ?? "—",
         division: genderLabel(t.gender) ?? "—",
         manager: t.registrations[0]?.managerName ?? "—",
         events: t.registrations.length,
-        paid: live.length > 0 && unpaid === 0,
+        balance: balanceCell(money),
       },
-      sortValues: { name: t.name.toLowerCase(), events: t.registrations.length },
+      sortValues: {
+        name: t.name.toLowerCase(),
+        events: t.registrations.length,
+        balance: sortBalance,
+      },
     };
   });
 
@@ -75,9 +110,13 @@ export default async function TeamsPage() {
         searchPlaceholder="Team, class or tournament…"
       />
       <p className="t-meta">
-        A team is a name plus gender and class, so the same name in Men&rsquo;s D
-        and Coed E is two teams.{" "}
-        <Link href="/scorekeeper/players" className="underline">Players</Link>
+        A team is name + manager + gender (class not in the key — clubs promote).
+        Most Heat Stroker rows were bulk-entered from results with no manager,
+        so they show — until you set one on the registration. Balance is entry
+        fee minus recorded paid.{" "}
+        <Link href="/scorekeeper/players" className="underline">
+          Players
+        </Link>
       </p>
     </DirectorShell>
   );

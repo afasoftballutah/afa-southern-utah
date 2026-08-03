@@ -23,7 +23,7 @@ async function getRegistrations() {
       "id, team_name, class, class_id, status, paid_at, amount_paid_cents, director_notes, " +
         "roster_token, manage_token, pdf_storage_path, submitted_at, manager_name, manager_email, " +
         "manager_phone, team_id, tournament_id, division_id, " +
-        "tournaments(id, name, slug, start_date), divisions(name, display_name)"
+        "tournaments(id, name, slug, start_date, entry_fee_cents, deposit_cents), divisions(name, display_name)"
     )
     .order("submitted_at", { ascending: false });
   if (error) throw error;

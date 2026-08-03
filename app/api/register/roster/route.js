@@ -1,6 +1,10 @@
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer } from "@/lib/identity";
+import {
+  assertPlayerFreeForTeam,
+  releaseMemberToPool,
+} from "@/lib/roster-eligibility";
 
 export const runtime = "nodejs";
 
@@ -19,13 +23,42 @@ async function registrationFor(supabase, token) {
   if (!token) return null;
   const { data } = await supabase
     .from("registrations")
-    .select("id, status, manager_member_id")
+    .select(
+      "id, status, manager_member_id, tournament_id, team_name, divisions(gender, display_name, name)"
+    )
     .eq("manage_token", token)
     .maybeSingle();
   return data ?? null;
 }
 
-/** Add a person to the roster. */
+/** List open free agents for this tournament (same gender as this team). */
+export async function GET(request) {
+  const token = new URL(request.url).searchParams.get("token");
+  const supabase = getServiceClient();
+  const registration = await registrationFor(supabase, token);
+  if (!registration) return bad("Management link not found", 404);
+
+  const gender = registration.divisions?.gender ?? null;
+  let q = supabase
+    .from("tournament_player_pool")
+    .select("id, name, birth_date, division_gender, released_at, source_registration_id")
+    .eq("tournament_id", registration.tournament_id)
+    .is("claimed_at", null)
+    .order("released_at", { ascending: false });
+
+  // Only show pool players whose gender matches this team's division
+  if (gender) q = q.eq("division_gender", gender);
+
+  const { data, error } = await q;
+  if (error) {
+    // Table may not exist yet in a stale env
+    console.error("pool list failed", error);
+    return Response.json({ ok: true, pool: [] });
+  }
+  return Response.json({ ok: true, pool: data ?? [] });
+}
+
+/** Add a person to the roster, or claim from the free-agent pool. */
 export async function POST(request) {
   let body;
   try {
@@ -34,12 +67,7 @@ export async function POST(request) {
     return bad("Invalid request");
   }
 
-  const { token, name, birthDate, address, role } = body ?? {};
-  if (!name?.trim()) return bad("A name is required");
-  if (role && !["player", "coach"].includes(role)) {
-    return bad("Role must be player or coach");
-  }
-
+  const { token, name, birthDate, address, role, poolId } = body ?? {};
   const supabase = getServiceClient();
   const registration = await registrationFor(supabase, token);
   if (!registration) return bad("Management link not found", 404);
@@ -47,12 +75,155 @@ export async function POST(request) {
     return bad("This team has withdrawn. Ask the director to reinstate it first.", 409);
   }
 
+  const origin = new URL(request.url).origin;
+
+  // ---- Claim from free-agent pool ------------------------------------
+  if (poolId) {
+    const { data: entry } = await supabase
+      .from("tournament_player_pool")
+      .select("*")
+      .eq("id", poolId)
+      .is("claimed_at", null)
+      .maybeSingle();
+
+    if (!entry) return bad("That free agent is no longer available", 409);
+    if (entry.tournament_id !== registration.tournament_id) {
+      return bad("That player is not in this tournament's pool", 409);
+    }
+    const teamGender = registration.divisions?.gender ?? null;
+    if (
+      entry.division_gender &&
+      teamGender &&
+      entry.division_gender !== teamGender
+    ) {
+      return bad("That player is not eligible for this division gender", 409);
+    }
+
+    const gate = await assertPlayerFreeForTeam(supabase, {
+      tournamentId: registration.tournament_id,
+      divisionGender: teamGender,
+      name: entry.name,
+      birthDate: entry.birth_date,
+      playerId: entry.player_id,
+      exceptRegistrationId: registration.id,
+    });
+    if (!gate.ok) return bad(gate.error, 409);
+
+    // Restore original member row if it was soft-removed, else insert new
+    let member;
+    if (entry.source_member_id) {
+      const { data: source } = await supabase
+        .from("roster_members")
+        .select("id, registration_id, removed_at, signing_token, name")
+        .eq("id", entry.source_member_id)
+        .maybeSingle();
+
+      if (source && source.registration_id === registration.id && source.removed_at) {
+        const { data, error } = await supabase
+          .from("roster_members")
+          .update({ removed_at: null })
+          .eq("id", source.id)
+          .select("id, name, signing_token")
+          .single();
+        if (error) return bad("Could not restore that player", 500);
+        member = data;
+      } else if (source && source.removed_at) {
+        // Move: reattach member row to this registration (keep signing token)
+        const { data, error } = await supabase
+          .from("roster_members")
+          .update({
+            registration_id: registration.id,
+            removed_at: null,
+            role: "player",
+          })
+          .eq("id", source.id)
+          .select("id, name, signing_token")
+          .single();
+        if (error) {
+          // Fall through to insert if move fails (e.g. unique constraints)
+          console.error("pool claim move failed", error);
+        } else {
+          member = data;
+        }
+      }
+    }
+
+    if (!member) {
+      const { data, error } = await supabase
+        .from("roster_members")
+        .insert({
+          registration_id: registration.id,
+          role: "player",
+          name: entry.name,
+          birth_date: entry.birth_date,
+          player_id: entry.player_id,
+        })
+        .select("id, name, signing_token")
+        .single();
+      if (error) {
+        console.error("pool claim insert failed", error);
+        return bad("Could not add that player — please try again", 500);
+      }
+      member = data;
+    }
+
+    await supabase
+      .from("tournament_player_pool")
+      .update({
+        claimed_at: new Date().toISOString(),
+        claimed_registration_id: registration.id,
+      })
+      .eq("id", entry.id);
+
+    try {
+      await regenerateAndStoreWaiverPdf(registration.id);
+    } catch (err) {
+      console.error("PDF regeneration after pool claim failed", err);
+    }
+
+    return Response.json({
+      ok: true,
+      member: {
+        id: member.id,
+        name: member.name,
+        birthDate: entry.birth_date,
+        signLink: `${origin}/register/sign/${member.signing_token}`,
+      },
+    });
+  }
+
+  // ---- Add by name ---------------------------------------------------
+  if (!name?.trim()) return bad("A name is required");
+  if (role && !["player", "coach"].includes(role)) {
+    return bad("Role must be player or coach");
+  }
+
+  let playerId = null;
+  try {
+    playerId = await resolvePlayer(supabase, {
+      name: name.trim(),
+      birthDate: birthDate || null,
+    });
+  } catch (err) {
+    console.error("player resolution failed on roster add", err);
+  }
+
+  const gate = await assertPlayerFreeForTeam(supabase, {
+    tournamentId: registration.tournament_id,
+    divisionGender: registration.divisions?.gender ?? null,
+    name: name.trim(),
+    birthDate: birthDate || null,
+    playerId,
+    exceptRegistrationId: registration.id,
+  });
+  if (!gate.ok) return bad(gate.error, 409);
+
   // Someone already on the roster who was removed comes BACK rather than
   // arriving twice — a manager who removes the wrong person and re-adds them
   // should not end up with two rows and two signing links.
   const { data: existing } = await supabase
     .from("roster_members")
-    .select("id, removed_at, signing_token")
+    .select("id, removed_at, signing_token, name")
     .eq("registration_id", registration.id)
     .ilike("name", name.trim())
     .maybeSingle();
@@ -61,7 +232,11 @@ export async function POST(request) {
   if (existing?.removed_at) {
     const { data, error } = await supabase
       .from("roster_members")
-      .update({ removed_at: null })
+      .update({
+        removed_at: null,
+        birth_date: birthDate || null,
+        ...(playerId ? { player_id: playerId } : {}),
+      })
       .eq("id", existing.id)
       .select("id, name, signing_token")
       .single();
@@ -78,6 +253,7 @@ export async function POST(request) {
         name: name.trim(),
         birth_date: birthDate || null,
         address: address || null,
+        ...(playerId ? { player_id: playerId } : {}),
       })
       .select("id, name, signing_token")
       .single();
@@ -88,36 +264,28 @@ export async function POST(request) {
     member = data;
   }
 
-  // Same identity resolution the register route does, so someone added on
-  // Saturday is the same person as the one who played in June. Soft: a
-  // missing birth date leaves it unlinked rather than failing the add.
-  try {
-    const playerId = await resolvePlayer(supabase, { name: member.name, birthDate });
-    if (playerId) {
-      await supabase.from("roster_members").update({ player_id: playerId }).eq("id", member.id);
-    }
-  } catch (err) {
-    console.error("player resolution failed on roster add", err);
-  }
-
   try {
     await regenerateAndStoreWaiverPdf(registration.id);
   } catch (err) {
     console.error("PDF regeneration after roster add failed", err);
   }
 
-  const origin = new URL(request.url).origin;
   return Response.json({
     ok: true,
     member: {
       id: member.id,
       name: member.name,
+      birthDate: birthDate || null,
       signLink: `${origin}/register/sign/${member.signing_token}`,
     },
   });
 }
 
-/** Remove a person from the roster. Soft delete, always. */
+/**
+ * Remove a person from the roster.
+ * body.toPool = true → soft-remove and put them in the tournament free-agent pool
+ * (so another team can claim them). Default is soft-remove only.
+ */
 export async function DELETE(request) {
   let body;
   try {
@@ -126,12 +294,33 @@ export async function DELETE(request) {
     return bad("Invalid request");
   }
 
-  const { token, memberId } = body ?? {};
+  const { token, memberId, toPool } = body ?? {};
   if (!memberId) return bad("Which player?");
 
   const supabase = getServiceClient();
   const registration = await registrationFor(supabase, token);
   if (!registration) return bad("Management link not found", 404);
+
+  if (toPool) {
+    if (memberId === registration.manager_member_id) {
+      return bad("You cannot release yourself to the pool", 409);
+    }
+    const result = await releaseMemberToPool(supabase, memberId);
+    if (!result.ok) return bad(result.error, 409);
+
+    try {
+      await regenerateAndStoreWaiverPdf(registration.id);
+    } catch (err) {
+      console.error("PDF regeneration after pool release failed", err);
+    }
+
+    return Response.json({
+      ok: true,
+      removed: { id: memberId, name: result.member?.name },
+      pooled: true,
+      poolEntry: result.poolEntry,
+    });
+  }
 
   const { data: member } = await supabase
     .from("roster_members")
@@ -143,14 +332,10 @@ export async function DELETE(request) {
   if (!member) return bad("That player is not on this roster", 404);
   if (member.removed_at) return bad(`${member.name} is already off the roster`, 409);
 
-  // The manager cannot remove herself. Her row carries the signature on the
-  // form's manager line, and a team with no manager has nobody to fix it.
   if (member.id === registration.manager_member_id) {
     return bad("You cannot remove yourself — ask the director to change the manager", 409);
   }
 
-  // NEVER hard delete. A signature is a legal record, and the PDF regenerated
-  // below simply stops listing them.
   const { error } = await supabase
     .from("roster_members")
     .update({ removed_at: new Date().toISOString() })
@@ -167,5 +352,5 @@ export async function DELETE(request) {
     console.error("PDF regeneration after roster remove failed", err);
   }
 
-  return Response.json({ ok: true, removed: { id: member.id, name: member.name } });
+  return Response.json({ ok: true, removed: { id: member.id, name: member.name }, pooled: false });
 }

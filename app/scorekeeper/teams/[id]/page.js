@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { getTeam, listTeams, scopeLabel } from "@/lib/director";
+import { getTeam, listTeams, scopeLabel, moneyCents } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
@@ -11,17 +11,55 @@ import ContactButton from "@/components/scorekeeper/ContactButton";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 
-// Same table as everywhere else. This page used to be a bespoke list of cards
-// with 44px buttons, which is why it looked like a different product from the
-// four pages around it (JD, 2026-07-27: "We need the formatting to be
-// consistent everywhere").
 const COLUMNS = [
   { key: "tournament", label: "Tournament" },
   { key: "manager", label: "Manager" },
   { key: "status", label: "Status", width: "7rem" },
-  { key: "paid", label: "Paid", type: "check", align: "center", width: "5rem" },
+  { key: "due", label: "Due", align: "right", width: "5rem" },
+  { key: "paid", label: "Paid", align: "right", width: "5rem" },
+  { key: "balance", label: "Balance", align: "right", width: "5.5rem" },
   { key: "actions", label: "", align: "right", width: "11rem" },
 ];
+
+function dueCell(r) {
+  if (r.external && r.dueCents == null) {
+    return <span className="text-afa-muted/70">External</span>;
+  }
+  if (r.dueCents == null) return <span className="text-afa-muted/60">—</span>;
+  return moneyCents(r.dueCents);
+}
+
+function paidCell(r) {
+  if (r.paid || (r.paidCents ?? 0) > 0) {
+    if (r.amountPaidCents != null || r.dueCents != null) {
+      return (
+        <span className="font-semibold text-afa-go">
+          {moneyCents(r.paidCents) ?? "☑"}
+        </span>
+      );
+    }
+    return <span className="font-semibold text-afa-go">☑</span>;
+  }
+  return <span className="text-afa-muted/60">—</span>;
+}
+
+function balanceCell(r) {
+  if (r.status === "withdrawn") {
+    return <span className="text-afa-muted/60">—</span>;
+  }
+  if (r.balanceCents != null) {
+    if (r.balanceCents > 0) {
+      return (
+        <span className="font-semibold text-afa-red">{moneyCents(r.balanceCents)}</span>
+      );
+    }
+    return <span className="font-semibold text-afa-go">{moneyCents(0)}</span>;
+  }
+  if (r.fullyPaid) {
+    return <span className="font-semibold text-afa-go">Paid</span>;
+  }
+  return <span className="font-semibold text-afa-red">Unpaid</span>;
+}
 
 // Titles are PUBLIC — Next runs this for anyone who requests the URL.
 export async function generateMetadata({ params }) {
@@ -54,19 +92,44 @@ export default async function TeamPage({ params }) {
       label: `${t.name}${scopeLabel(t.gender, t.className) ? ` (${scopeLabel(t.gender, t.className)})` : ""}`,
     }));
 
+  const money = team.money;
+  const countBits = [
+    scopeLabel(team.gender, team.className) || "No division scope",
+    money?.balanceTotal != null
+      ? money.balanceTotal > 0
+        ? `Owes ${moneyCents(money.balanceTotal)}`
+        : "Balance $0"
+      : money?.hasUnpaid
+        ? "Unpaid"
+        : money?.liveCount
+          ? "Paid"
+          : null,
+  ].filter(Boolean);
+
   const rows = team.registrations.map((r) => ({
     key: r.registrationId,
     search: `${r.tournamentName} ${r.managerName ?? ""}`,
-    sortValues: { tournament: r.startDate ?? "", manager: r.managerName ?? "" },
+    sortValues: {
+      tournament: r.startDate ?? "",
+      manager: r.managerName ?? "",
+      due: r.dueCents ?? -1,
+      paid: r.paidCents ?? 0,
+      balance: r.balanceCents ?? (r.fullyPaid ? 0 : 1e12),
+    },
     cells: {
       tournament: (
         <Link href={`/scorekeeper/registrations/${r.registrationId}`} className="hover:underline">
           {r.tournamentName}
+          {r.external ? (
+            <span className="t-meta ml-1">(external)</span>
+          ) : null}
         </Link>
       ),
       manager: r.managerName ?? "—",
       status: r.status,
-      paid: r.paid,
+      due: dueCell(r),
+      paid: paidCell(r),
+      balance: balanceCell(r),
       actions: (
         <span className="flex justify-end gap-2">
           <ContactButton name={r.managerName} phone={r.managerPhone} email={r.managerEmail} />
@@ -81,7 +144,7 @@ export default async function TeamPage({ params }) {
   return (
     <DirectorShell
       title={team.name}
-      count={scopeLabel(team.gender, team.className) || "No division scope"}
+      count={countBits.join(" · ")}
       back="/scorekeeper/teams"
       inline={
         <RowAction
@@ -103,8 +166,12 @@ export default async function TeamPage({ params }) {
         defaultSort={{ key: "tournament", dir: "desc" }}
         empty="This team has not entered a tournament yet."
         searchPlaceholder="Find a tournament…"
-        width="max-w-4xl"
+        width="max-w-5xl"
       />
+      <p className="t-meta">
+        Due is the tournament entry fee. Paid is what the director recorded.
+        Balance is what is still owed.
+      </p>
     </DirectorShell>
   );
 }

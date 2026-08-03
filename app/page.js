@@ -1,35 +1,42 @@
 import Link from "next/link";
 import {
-  getLastCompletedTournamentResults,
+  getRecentCompletedTournaments,
   getSeasonListByRegion,
+  withArchiveSummaries,
   formatFee,
+  isRealPoster,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { leagueToday } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
-import MatchupCard from "@/components/ui/MatchupCard";
+import { buildPosterDeckSlides } from "@/lib/poster-deck";
 import Card from "@/components/ui/Card";
 import MyTeamStrip from "@/components/MyTeamStrip";
+import PosterCarousel from "@/components/PosterCarousel";
+import HomeRecentResults from "@/components/HomeRecentResults";
+import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
 
 export const revalidate = 30;
-
-const GENDER_COLS = [
-  { key: "womens", label: "Women's" },
-  { key: "mens", label: "Men's" },
-  { key: "coed", label: "Coed" },
-];
 
 // Home — Last Tournament + Upcoming Events | Recent Results.
 // Upcoming is date-derived (end_date >= today). Never trust status —
 // Heat Stroker stayed "upcoming" after it finished (spec-signup-flow).
 export default async function Home() {
   const configured = isSupabaseConfigured();
-  const [lastResults, seasonGroups] = configured
+  const [recentCompleted, rawSeasonGroups] = configured
     ? await Promise.all([
-        getLastCompletedTournamentResults(),
+        getRecentCompletedTournaments(8),
         getSeasonListByRegion(),
       ])
-    : [null, []];
+    : [[], []];
+
+  // Newest finished event (placements gallery + left-column “Last Tournament”)
+  const lastResults = recentCompleted[0] ?? null;
+
+  // finished + champions for poster deck (and any archive-aware home UI)
+  const seasonGroups = configured
+    ? await withArchiveSummaries(rawSeasonGroups)
+    : [];
 
   const hasPlacements = (lastResults?.divisions ?? []).some(
     (d) => (d.placements ?? []).length > 0
@@ -50,6 +57,11 @@ export default async function Home() {
 
   const southernAll =
     seasonGroups.find((g) => g.region === "southern_utah")?.tournaments ?? [];
+
+  const posterSlides = buildPosterDeckSlides(seasonGroups, {
+    today,
+    formatWhen: formatDateRangeNoYear,
+  });
 
   // Last finished: prefer archive helper; else latest past by end date.
   let lastTournament = lastResults;
@@ -83,9 +95,9 @@ export default async function Home() {
       }
     : null;
 
-  // Truly upcoming only — soonest first, max 3.
+  // Truly upcoming + real event poster only (no schedule placeholders).
   const upcomingEvents = southernAll
-    .filter(isUpcomingByDate)
+    .filter((t) => isUpcomingByDate(t) && isRealPoster(t))
     .slice()
     .sort((a, b) => {
       const da = String(a.start_date ?? "");
@@ -103,11 +115,33 @@ export default async function Home() {
       gg: t.game_guarantee,
     }));
 
-  // Championship finals for Women's / Men's / Coed from last finished event.
-  const genderFinals = championshipsByGender(lastResults ?? lastTournament);
+  // Recent Results dropdown: finished events that have at least one final.
+  const resultEvents = (recentCompleted.length > 0
+    ? recentCompleted
+    : lastTournament
+      ? [lastTournament]
+      : []
+  )
+    .map((t) => {
+      const genderFinals = championshipsByGender(t);
+      const hasFinal = GENDER_KEYS.some(
+        (k) => (genderFinals[k] ?? []).length > 0
+      );
+      if (!hasFinal) return null;
+      return {
+        id: t.id,
+        slug: t.slug,
+        name: t.name,
+        when: formatDateRangeNoYear(t.start_date, t.end_date),
+        genderFinals,
+      };
+    })
+    .filter(Boolean);
 
   return (
     <div className="home">
+      <HomeHeaderScrollLock />
+      {/* Hero is its own band; dash floats up over the foot (Imagine separation). */}
       <section className="home-hero" aria-label="AFA Southern Utah">
         <div
           className="home-hero__bg"
@@ -116,16 +150,16 @@ export default async function Home() {
         />
         <div className="home-hero__inner">
           <div className="home-hero__copy">
-            <h1 className="home-hero__title">Softball played as it should be.</h1>
+            <h1 className="home-hero__title">Softball as it should be</h1>
             <p className="home-hero__tagline">
               Great events, good times, family fun, best prizes, politics free.
             </p>
             <div className="home-hero__ctas">
               <Link href="/tournaments" className="home-cta home-cta--action">
-                Find Tournaments
+                Tournaments
               </Link>
               <Link href="/register" className="home-cta home-cta--action">
-                Register Now
+                Register
               </Link>
             </div>
           </div>
@@ -133,6 +167,8 @@ export default async function Home() {
       </section>
 
       <div className="home-dash-wrap">
+        {posterSlides.length > 0 && <PosterCarousel slides={posterSlides} />}
+
         <div className="home-me">
           <MyTeamStrip />
         </div>
@@ -200,113 +236,62 @@ export default async function Home() {
             </Link>
           </article>
 
-          <article className="home-dash__card home-dash__card--results">
-            <h2>Recent Results</h2>
-            {lastEvent && (
-              <div className="home-events home-events--results-tour">
-                <Link
-                  href={`/tournaments/${lastEvent.slug}`}
-                  className="home-event home-event--date-name"
-                >
-                  <span className="home-event__when">{lastEvent.when}</span>
-                  <span className="home-event__name">{lastEvent.name}</span>
-                </Link>
-              </div>
-            )}
-            <div className="home-results__grid">
-              {GENDER_COLS.map((col) => {
-                const finals = genderFinals[col.key] ?? [];
-                return (
-                  <div key={col.key} className="home-gender-card">
-                    <header className="home-gender-card__head">
-                      <h3 className="home-gender-card__title">{col.label}</h3>
-                      <span className="home-gender-card__count">
-                        {finals.length > 0
-                          ? `${finals.length} bracket${finals.length === 1 ? "" : "s"}`
-                          : "—"}
-                      </span>
-                    </header>
-                    <div className="home-gender-card__body">
-                      {finals.length > 0 ? (
-                        <div className="home-results__stack">
-                          {finals.map((final) => (
-                            <MatchupCard
-                              key={final.key}
-                              caption={final.caption}
-                              division={final.divisionTint}
-                              team1={final.team1}
-                              team2={final.team2}
-                              score1={final.score1}
-                              score2={final.score2}
-                              isFinal
-                              className="home-results__matchup"
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="home-results__empty">No final yet</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </article>
+          <HomeRecentResults events={resultEvents} />
         </section>
 
-        {/* News — full width; poster is the AFA “We Want You” recruitment piece */}
-        <section className="home-news" aria-label="News">
-          <h2 className="home-news__title">News</h2>
-          <div className="home-news__poster-wrap">
-            <a
-              href="https://www.afasoftball.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="home-news__poster-link"
-            >
-              <img
-                src="/afa-we-want-you.png"
-                alt="AFA We Want You — play for AFA. America's recreational sport played as it should be."
-                className="home-news__poster"
-                width={800}
-                height={1000}
-              />
-            </a>
-            <div className="home-news__aside">
-              <p className="home-news__aside-lead">We want you — to play for AFA.</p>
-              <p className="home-news__aside-body">
-                Ask about our leagues and tournaments in your area. Follow AFA
-                Sports and AFA Nation on Facebook.
-              </p>
-              <ul className="home-news__aside-links">
-                <li>
-                  <Link href="/register" className="home-cta home-cta--action">
-                    Register a team
-                  </Link>
-                </li>
-                <li>
-                  <a
-                    href="https://www.afasoftball.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="home-news__ext"
-                  >
-                    afasoftball.com →
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://www.afaslowpitch.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="home-news__ext"
-                  >
-                    afaslowpitch.com →
-                  </a>
-                </li>
-              </ul>
-            </div>
+        {/* News — under dash; poster is the AFA “We Want You” piece */}
+        <section id="news" className="home-news" aria-label="News">
+        <h2 className="home-news__title">News</h2>
+        <div className="home-news__poster-wrap">
+          <a
+            href="https://www.afasoftball.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="home-news__poster-link"
+          >
+            <img
+              src="/afa-we-want-you.png"
+              alt="AFA We Want You — play for AFA. America's recreational sport played as it should be."
+              className="home-news__poster"
+              width={800}
+              height={1000}
+            />
+          </a>
+          <div className="home-news__aside">
+            <p className="home-news__aside-lead">We want you — to play for AFA.</p>
+            <p className="home-news__aside-body">
+              Ask about our leagues and tournaments in your area. Follow AFA
+              Sports and AFA Nation on Facebook.
+            </p>
+            <ul className="home-news__aside-links">
+              <li>
+                <Link href="/register" className="home-cta home-cta--action">
+                  Register a team
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://www.afasoftball.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-news__ext"
+                >
+                  afasoftball.com →
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.afaslowpitch.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-news__ext"
+                >
+                  afaslowpitch.com →
+                </a>
+              </li>
+            </ul>
           </div>
+        </div>
         </section>
       </div>
 
@@ -319,6 +304,8 @@ export default async function Home() {
     </div>
   );
 }
+
+const GENDER_KEYS = ["womens", "mens", "coed"];
 
 /**
  * Every decided championship final, grouped by gender (Women's / Men's / Coed).

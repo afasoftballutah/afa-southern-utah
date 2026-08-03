@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
+import RegisterBack from "@/components/RegisterBack";
 
 export const metadata = { title: "Sign Your Waiver — AFA Southern Utah" };
 
@@ -65,10 +66,25 @@ export default async function RosterSigningPage({ params }) {
   const signed = roster.signers.filter((s) => s.signed).length;
   const total = roster.signers.length;
   const official = signed === total;
-  const scope = [roster.divisionName, roster.className].filter(Boolean).join(" · ");
+  // Division often already includes class ("Coed D") — don't append "D" again.
+  const scope = (() => {
+    const div = (roster.divisionName ?? "").trim();
+    const cls = (roster.className ?? "").trim();
+    if (!div && !cls) return "";
+    if (!cls) return div;
+    if (!div) return cls;
+    if (div.toLowerCase().includes(cls.toLowerCase())) return div;
+    if (cls.toLowerCase().includes(div.toLowerCase())) return cls;
+    return `${div} · ${cls}`;
+  })();
+
+  const backHref = roster.tournamentSlug
+    ? `/tournaments/${roster.tournamentSlug}`
+    : "/tournaments";
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
+      <RegisterBack href={backHref} label={roster.tournamentName || "Tournament"} />
       <div>
         <h1 className="team-name text-2xl">{roster.teamName}</h1>
         <p className="t-meta">
@@ -115,18 +131,13 @@ export default async function RosterSigningPage({ params }) {
         ))}
       </ul>
 
-      <p className="t-meta">
-        Signing is what makes the registration official. Submitting only put
-        the team on the list.
-        {roster.tournamentSlug && (
-          <>
-            {" "}
-            <Link href={`/tournaments/${roster.tournamentSlug}`} className="underline">
-              Tournament details
-            </Link>
-          </>
-        )}
-      </p>
+      {roster.tournamentSlug && (
+        <p className="t-meta">
+          <Link href={`/tournaments/${roster.tournamentSlug}`} className="underline">
+            Tournament details
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

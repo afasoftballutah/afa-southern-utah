@@ -21,7 +21,7 @@ export async function POST(request) {
     return bad("Invalid JSON body");
   }
 
-  const { token, signaturePng } = body ?? {};
+  const { token, signaturePng, address, birthDate } = body ?? {};
   if (!token) return bad("Missing token");
   if (!signaturePng) return bad("Signature is required");
 
@@ -39,7 +39,7 @@ export async function POST(request) {
   const { data: member, error: findError } = await supabase
     .from("roster_members")
     .select(
-      "id, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id)"
+      "id, role, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id)"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -53,9 +53,24 @@ export async function POST(request) {
   // A removed player must not be able to sign their way back onto a roster.
   if (member.removed_at) return bad("You are no longer on this roster", 410);
 
+  const isManager = member.registrations?.manager_member_id === member.id;
+  const needsAddress = member.role === "player" || isManager;
+  const addressTrim = typeof address === "string" ? address.trim() : "";
+  if (needsAddress && !addressTrim) {
+    return bad("Address is required on the waiver");
+  }
+
+  const patch = {
+    signature_png: signaturePng,
+    signed_at: now,
+  };
+  // Players fill these on the signing page (manager may have left them blank).
+  if (typeof address === "string") patch.address = addressTrim || null;
+  if (typeof birthDate === "string" && birthDate) patch.birth_date = birthDate;
+
   const { error: updateError } = await supabase
     .from("roster_members")
-    .update({ signature_png: signaturePng, signed_at: now })
+    .update(patch)
     .eq("id", member.id);
 
   if (updateError) {
@@ -66,7 +81,7 @@ export async function POST(request) {
   // If this signer IS the manager, mirror it onto the registration so the
   // "Manager's Signature" line on the form is filled by the same act. One
   // signature, two places it appears — never two things to sign.
-  if (member.registrations?.manager_member_id === member.id) {
+  if (isManager) {
     await supabase
       .from("registrations")
       .update({ manager_signature_png: signaturePng, manager_signed_at: now })

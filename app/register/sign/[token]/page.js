@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import SignRosterMember from "@/components/SignRosterMember";
+import RegisterBack from "@/components/RegisterBack";
 
 export const metadata = { title: "Sign Your Waiver — AFA Southern Utah" };
 
@@ -21,7 +22,7 @@ async function getSignerByToken(token) {
   const { data: member, error } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id)"
+      "id, role, name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -37,9 +38,10 @@ async function getSignerByToken(token) {
   if (member.removed_at) return null;
 
   const isManager = member.registrations?.manager_member_id === member.id;
+  const reg = member.registrations;
 
   return {
-    teamName: member.registrations?.team_name,
+    teamName: reg?.team_name,
     role: isManager ? "manager" : member.role,
     name: member.name,
     // A manager who plays is still a player on the form — her birth date and
@@ -49,6 +51,9 @@ async function getSignerByToken(token) {
     email: member.email,
     phone: member.phone,
     alreadySigned: Boolean(member.signed_at),
+    rosterToken: reg?.roster_token ?? null,
+    tournamentSlug: reg?.tournaments?.slug ?? null,
+    tournamentName: reg?.tournaments?.name ?? null,
   };
 }
 
@@ -57,8 +62,18 @@ export default async function SignPage({ params }) {
   const signer = await getSignerByToken(token);
   if (!signer) notFound();
 
+  const backHref = signer.rosterToken
+    ? `/register/roster/${signer.rosterToken}`
+    : signer.tournamentSlug
+      ? `/tournaments/${signer.tournamentSlug}`
+      : "/tournaments";
+  const backLabel = signer.rosterToken
+    ? "Team roster"
+    : signer.tournamentName || "Tournaments";
+
   return (
     <div className="max-w-lg mx-auto space-y-4">
+      <RegisterBack href={backHref} label={backLabel} />
       <h1 className="t-title">Sign Your Waiver</h1>
       <p className="text-afa-ink/80">
         {signer.teamName} &mdash; {ROLE_LABEL[signer.role] ?? "Player"}

@@ -160,7 +160,11 @@ export async function POST(request) {
   const patch = { manager_member_id: managerRow?.id ?? null };
 
   try {
-    patch.team_id = await resolveTeam(supabase, { teamName: teamName.trim(), divisionId });
+    patch.team_id = await resolveTeam(supabase, {
+      teamName: teamName.trim(),
+      divisionId,
+      managerName: manager?.name ?? null,
+    });
 
     await Promise.all(
       insertedRoster.map(async (row) => {

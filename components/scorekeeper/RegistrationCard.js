@@ -28,9 +28,20 @@ export default function RegistrationCard({ registration, classes = [], divisions
   // Zero of zero signed is the truth about it, not a reason to crash.
   const { active_members: active, signed_members: signed } =
     reg.progress ?? { active_members: 0, signed_members: 0 };
-  const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? null;
+  const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? reg.class ?? null;
   const division = reg.divisions?.display_name ?? reg.divisions?.name;
   const sug = reg.suggestion;
+  // Prefer division label alone when it already carries class ("Coed D").
+  // Token match — not substring ("D" is inside "Coed").
+  const titleScope = (() => {
+    if (!division && !enteredClass) return null;
+    if (!division) return enteredClass;
+    if (!enteredClass) return division;
+    const tokens = division.toLowerCase().split(/[\s/·.\-]+/).filter(Boolean);
+    if (tokens.includes(String(enteredClass).toLowerCase())) return division;
+    if (division.toLowerCase() === String(enteredClass).toLowerCase()) return division;
+    return `${division} · ${enteredClass}`;
+  })();
 
   return (
     // max-w-3xl because this card is a line of facts and a row of pills — it
@@ -46,7 +57,7 @@ export default function RegistrationCard({ registration, classes = [], divisions
       {showTitle && (
         <div className="flex items-baseline justify-between gap-3">
           <p className="team-name text-lg">{reg.team_name}</p>
-          <p className="t-meta">{[division, enteredClass].filter(Boolean).join(" · ")}</p>
+          {titleScope && <p className="t-meta">{titleScope}</p>}
         </div>
       )}
 
@@ -56,7 +67,22 @@ export default function RegistrationCard({ registration, classes = [], divisions
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 dense-controls">
         <span className="t-label">{STATUS_LABEL[reg.status] ?? reg.status}</span>
         <span className="t-body">
-          {reg.paid_at ? `Paid ${money(reg.amount_paid_cents)}`.trim() : "Unpaid"}
+          {(() => {
+            const due = reg.tournaments?.entry_fee_cents ?? null;
+            const deposit = reg.tournaments?.deposit_cents ?? null;
+            const paid = reg.amount_paid_cents;
+            if (reg.paid_at || paid != null) {
+              const paidLabel = paid != null ? money(paid) : "paid";
+              if (due != null && paid != null && paid < due) {
+                const left = money(due - paid);
+                return `Paid ${paidLabel} · owes ${left}`;
+              }
+              return paid != null ? `Paid ${paidLabel}` : "Paid";
+            }
+            if (due != null) return `Unpaid · due ${money(due)}`;
+            if (deposit != null) return `Unpaid · deposit ${money(deposit)}`;
+            return "Unpaid";
+          })()}
         </span>
         <span className="t-body">
           {signed} of {active} signed

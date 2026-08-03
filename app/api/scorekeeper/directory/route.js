@@ -147,9 +147,33 @@ export async function POST(request) {
       }
       if (member.removed_at) return bad("That person is off the roster", 409);
 
+      const { data: reg } = await supabase
+        .from("registrations")
+        .select("id, team_name, division_id")
+        .eq("id", registrationId)
+        .maybeSingle();
+      if (!reg) return bad("Registration not found", 404);
+
+      // Manager is part of team identity — re-resolve so name+manager+gender
+      // lands on the right teams row (and no longer sits on a no-manager stub).
+      let teamId = null;
+      try {
+        teamId = await resolveTeam(supabase, {
+          teamName: reg.team_name,
+          divisionId: reg.division_id,
+          managerName: member.name,
+        });
+      } catch (err) {
+        console.error("setManager team re-resolve failed", err);
+      }
+
       const { error } = await supabase
         .from("registrations")
-        .update({ manager_member_id: memberId, manager_name: member.name })
+        .update({
+          manager_member_id: memberId,
+          manager_name: member.name,
+          ...(teamId ? { team_id: teamId } : {}),
+        })
         .eq("id", registrationId);
       if (error) {
         console.error("set manager failed", error);
@@ -585,7 +609,7 @@ export async function POST(request) {
           manager_email: managerEmail?.trim() || null,
           manager_phone: managerPhone?.trim() || null,
           release_text_version: RELEASE_TEXT_VERSION,
-          director_notes: "Entered by a director, not through the public form.",
+          director_notes: null,
         })
         .select("id, roster_token, manage_token")
         .single();
@@ -641,7 +665,11 @@ export async function POST(request) {
       // typed in is the same team next season. Soft — a failure here leaves
       // nulls to fix, never a lost registration.
       try {
-        const teamId = await resolveTeam(supabase, { teamName: teamName.trim(), divisionId });
+        const teamId = await resolveTeam(supabase, {
+          teamName: teamName.trim(),
+          divisionId,
+          managerName: managerName ?? null,
+        });
         await supabase
           .from("registrations")
           .update({ team_id: teamId, manager_member_id: managerRow?.id ?? null })
@@ -735,7 +763,7 @@ export async function POST(request) {
             team_name: n,
             class_id: division.class_id ?? null,
             release_text_version: RELEASE_TEXT_VERSION,
-            director_notes: "Entered by a director. No manager yet.",
+            director_notes: null,
           }))
         )
         .select("id, team_name");
@@ -750,7 +778,12 @@ export async function POST(request) {
       try {
         await Promise.all(
           (made ?? []).map(async (r) => {
-            const teamId = await resolveTeam(supabase, { teamName: r.team_name, divisionId });
+            // Bulk director entry has no manager yet — empty manager key.
+            const teamId = await resolveTeam(supabase, {
+              teamName: r.team_name,
+              divisionId,
+              managerName: null,
+            });
             if (teamId) await supabase.from("registrations").update({ team_id: teamId }).eq("id", r.id);
           })
         );

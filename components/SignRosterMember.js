@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { writeMe } from "@/lib/me";
 import SignaturePad from "./SignaturePad";
+import AddressInput from "./AddressInput";
 import { RELEASE_TEXT } from "@/lib/waiver";
 
 const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing" };
 
+// Players (and managers who play) enter their own address here if the manager
+// left it blank — managers shouldn't have to type everyone else's street.
 export default function SignRosterMember({ token, member }) {
   // Someone opening a link they already used is still telling us who they
   // are — remember it without making them sign twice.
@@ -16,10 +19,20 @@ export default function SignRosterMember({ token, member }) {
     }
   }, [member.alreadySigned, member.name, member.teamName]);
 
+  const needsPlayerFields = member.role === "player" || member.role === "manager";
+
+  const [birthDate, setBirthDate] = useState(member.birthDate ?? "");
+  const [address, setAddress] = useState(member.address ?? "");
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
   const [state, setState] = useState(member.alreadySigned ? "done" : "idle");
   const [error, setError] = useState("");
+
+  const canSign =
+    agreed &&
+    signature &&
+    state !== "submitting" &&
+    (!needsPlayerFields || address.trim().length > 0);
 
   async function submit() {
     setState("submitting");
@@ -28,7 +41,12 @@ export default function SignRosterMember({ token, member }) {
       const res = await fetch("/api/register/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, signaturePng: signature }),
+        body: JSON.stringify({
+          token,
+          signaturePng: signature,
+          address: address.trim() || null,
+          birthDate: birthDate || null,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save your signature");
@@ -50,8 +68,8 @@ export default function SignRosterMember({ token, member }) {
           {member.alreadySigned ? "Already signed — thanks." : "Signed. Thanks."}
         </p>
         <p className="text-sm text-afa-ink/70 mt-1">
-          {member.name}, you&rsquo;re on record for {ROLE_VERB[member.role] ?? ROLE_VERB.player} this
-          team.
+          {member.name}, you&rsquo;re on record for{" "}
+          {ROLE_VERB[member.role] ?? ROLE_VERB.player} this team.
         </p>
       </div>
     );
@@ -62,16 +80,6 @@ export default function SignRosterMember({ token, member }) {
       <dl className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
         <dt className="font-semibold">Name</dt>
         <dd>{member.name}</dd>
-        {/* Driven by what this person actually has, not by their role — a
-            manager who plays for her own team carries both sets. */}
-        {(member.birthDate || member.address) && (
-          <>
-            <dt className="font-semibold">Birth Date</dt>
-            <dd>{member.birthDate || "—"}</dd>
-            <dt className="font-semibold">Address</dt>
-            <dd>{member.address || "—"}</dd>
-          </>
-        )}
         {(member.email || member.phone) && (
           <>
             <dt className="font-semibold">Email</dt>
@@ -82,16 +90,46 @@ export default function SignRosterMember({ token, member }) {
         )}
       </dl>
 
-      <div className="max-h-48 overflow-y-auto rounded-xl bg-white p-3 text-sm card">{RELEASE_TEXT}</div>
+      {needsPlayerFields && (
+        <div className="space-y-3 form-surface p-3">
+          <label className="block">
+            <span className="form-label">Birth date</span>
+            <input
+              type="date"
+              className="form-field"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            <span className="form-label">Address</span>
+            <AddressInput
+              value={address}
+              onChange={setAddress}
+              placeholder="Start typing your address…"
+              required
+            />
+          </label>
+          <p className="t-meta">
+            Your address goes on the AFA waiver. Only you fill this in.
+          </p>
+        </div>
+      )}
 
-      <label className="flex items-start gap-2 text-sm">
+      <div className="max-h-48 overflow-y-auto rounded-xl bg-white p-3 text-sm card">
+        {RELEASE_TEXT}
+      </div>
+
+      <label className="register-agree">
         <input
           type="checkbox"
-          className="mt-1 w-5 h-5"
+          className="register-agree__box"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
         />
-        I have read this release and waiver of liability and I agree to it.
+        <span className="register-agree__text">
+          I have read this release and waiver of liability and I agree to it.
+        </span>
       </label>
 
       <div>
@@ -99,11 +137,13 @@ export default function SignRosterMember({ token, member }) {
         <SignaturePad onChange={setSignature} />
       </div>
 
-      {state === "error" && <p className="text-afa-ink text-sm font-bold underline">{error}</p>}
+      {state === "error" && (
+        <p className="text-afa-ink text-sm font-bold underline">{error}</p>
+      )}
 
       <button
         type="button"
-        disabled={!agreed || !signature || state === "submitting"}
+        disabled={!canSign}
         onClick={submit}
         className="btn-action-block disabled:opacity-40"
       >

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import ManageRoster from "@/components/ManageRoster";
+import RegisterBack from "@/components/RegisterBack";
 
 export const metadata = { title: "Manage Your Roster — AFA Southern Utah" };
 
@@ -17,7 +18,7 @@ async function getManageable(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, status, roster_token, manager_member_id, tournaments(name, slug), divisions(name, display_name)"
+      "id, team_name, class, status, roster_token, manager_member_id, tournaments(name, slug), divisions(name, display_name, gender)"
     )
     .eq("manage_token", token)
     .maybeSingle();
@@ -56,10 +57,30 @@ export default async function ManageRosterPage({ params }) {
   const data = await getManageable(token);
   if (!data) notFound();
 
-  const scope = [data.divisionName, data.className].filter(Boolean).join(" · ");
+  // Division often already includes class ("Coed D") — don't append "D" again.
+  const scope = (() => {
+    const div = (data.divisionName ?? "").trim();
+    const cls = (data.className ?? "").trim();
+    if (!div && !cls) return "";
+    if (!cls) return div;
+    if (!div) return cls;
+    if (div.toLowerCase().includes(cls.toLowerCase())) return div;
+    if (cls.toLowerCase().includes(div.toLowerCase())) return cls;
+    return `${div} · ${cls}`;
+  })();
+
+  const backHref = data.rosterToken
+    ? `/register/roster/${data.rosterToken}`
+    : data.tournamentSlug
+      ? `/tournaments/${data.tournamentSlug}`
+      : "/tournaments";
+  const backLabel = data.rosterToken
+    ? "Team roster"
+    : data.tournamentName || "Tournaments";
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
+      <RegisterBack href={backHref} label={backLabel} />
       <div>
         <h1 className="team-name text-2xl">{data.teamName}</h1>
         <p className="t-meta">
@@ -71,8 +92,10 @@ export default async function ManageRosterPage({ params }) {
       <div className="card p-4 space-y-1">
         <p className="t-strong">Manage your roster</p>
         <p className="t-meta">
-          Keep this link to yourself. The team link is the other one — it lets
-          people sign, and nothing else.
+          Keep this link to yourself. Add players, release someone to the
+          free-agent pool (if your team folds or they need a new team), or claim
+          free agents. A player cannot be on two teams in the same gender for
+          this tournament.
         </p>
       </div>
 
@@ -83,7 +106,12 @@ export default async function ManageRosterPage({ params }) {
         </p>
       )}
 
-      <ManageRoster token={token} initialMembers={data.members} rosterToken={data.rosterToken} />
+      <ManageRoster
+        token={token}
+        initialMembers={data.members}
+        rosterToken={data.rosterToken}
+        canEdit={data.status !== "withdrawn"}
+      />
 
       {data.tournamentSlug && (
         <p className="t-meta">

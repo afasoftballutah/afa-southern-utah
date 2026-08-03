@@ -5,9 +5,11 @@ import DirectorForm, { Field, Input, Select, Combo, directorPost } from "./Direc
 import { venueLabel, resolveVenue } from "@/lib/director";
 
 const REGIONS = [
-  { value: "southern_utah", label: "Southern UT/NV" },
+  { value: "southern_utah", label: "Southern Utah" },
   { value: "northern_utah", label: "Northern Utah" },
-  { value: "series", label: "AFA Tournament Series" },
+  { value: "colorado", label: "Colorado" },
+  { value: "arizona", label: "Arizona" },
+  { value: "nevada", label: "Nevada" },
 ];
 
 export default function NewTournament({ venues = [] }) {

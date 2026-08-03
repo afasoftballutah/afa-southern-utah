@@ -25,11 +25,14 @@ create table if not exists public.tournaments (
   contacts jsonb not null default '[]', -- [{name, phone}]
   is_placeholder boolean not null default false,
   status text not null default 'upcoming', -- upcoming | complete
-  -- region added 2026-07-23 (JD ruling): southern_utah is home base (registration,
-  -- brackets, scorekeeper). northern_utah and series are published-schedule-only for
-  -- now — same shape, so they can graduate to full tournaments later with no redo.
+  -- region: southern_utah is home base (registration, brackets, scorekeeper).
+  -- northern_utah / colorado / arizona / nevada are published-schedule-only
+  -- for now — same shape, so they can graduate to full tournaments later
+  -- with no redo.
+  -- (Team identity lives on public.teams: name + manager + gender; see
+  -- migration-2026-08-03-team-manager-key.sql.)
   region text not null default 'southern_utah'
-    check (region in ('southern_utah', 'northern_utah', 'series')),
+    check (region in ('southern_utah', 'northern_utah', 'colorado', 'arizona', 'nevada')),
   -- notes added 2026-07-23: short plain-text operational lines that have no
   -- dedicated column (e.g. "$10/game ump fees", "6-team minimum per
   -- division"). Nullable — most tournaments have none. Superseded for

@@ -66,6 +66,6 @@ select
   e.class_id,
   null, null,
   'confirmed',
-  'Played this bracket. Entered from the results, not through the form.'
+  null
 from entered e
 on conflict do nothing;

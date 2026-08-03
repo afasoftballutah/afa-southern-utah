@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — Champions stamped on posters</title>
+  <style>
+    :root {
+      --ground: #000d24;
+      --blue: #002868;
+      --red: #e31c25;
+      --gold: #c9a227;
+      --silver: #8b9bb0;
+      --bronze: #c47a4a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--ground);
+      color: #fff;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0 0 0.35rem;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.95rem;
+      max-width: 40rem;
+      line-height: 1.45;
+      margin: 0 0 1.75rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: 1.75rem;
+      max-width: 72rem;
+    }
+    figure {
+      margin: 0;
+    }
+    figcaption {
+      margin-top: 0.65rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.4;
+    }
+    figcaption strong {
+      color: rgba(255,255,255,0.9);
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.2rem;
+      font-size: 0.9rem;
+    }
+
+    /* Poster frame */
+    .poster {
+      position: relative;
+      border-radius: 0.85rem;
+      overflow: hidden;
+      background: #111;
+      box-shadow:
+        0 20px 50px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(255,255,255,0.1);
+      aspect-ratio: 3 / 4;
+    }
+    .poster img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    /* --- A: Bottom glass medal strip --- */
+    .stamp-a {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 0.65rem 0.7rem 0.75rem;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0, 13, 36, 0.55) 18%,
+        rgba(0, 13, 36, 0.92) 100%
+      );
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .stamp-a__title {
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 0.1rem;
+    }
+    .medal-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .medal-row__tag {
+      flex: 0 0 auto;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-width: 2.6rem;
+    }
+    .medal-row__tag--g { color: var(--gold); }
+    .medal-row__tag--s { color: var(--silver); }
+    .medal-row__tag--b { color: var(--bronze); }
+    .medal-row__team {
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* --- B: Wax seal / champion badge corner --- */
+    .stamp-b {
+      position: absolute;
+      top: 0.65rem;
+      right: 0.65rem;
+      width: 5.25rem;
+      height: 5.25rem;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), transparent 45%),
+        linear-gradient(145deg, #d4af37 0%, #9a7420 45%, #c9a227 70%, #6b4e12 100%);
+      box-shadow:
+        0 6px 18px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        0 0 0 3px rgba(0,13,36,0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0.4rem;
+      transform: rotate(8deg);
+    }
+    .stamp-b__star {
+      font-size: 0.85rem;
+      line-height: 1;
+      margin-bottom: 0.1rem;
+    }
+    .stamp-b__label {
+      font-size: 0.48rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(10, 22, 40, 0.85);
+    }
+    .stamp-b__team {
+      font-size: 0.62rem;
+      font-weight: 900;
+      color: #0a1628;
+      line-height: 1.15;
+      margin-top: 0.15rem;
+      text-transform: uppercase;
+    }
+    .stamp-b__sub {
+      font-size: 0.42rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(10, 22, 40, 0.65);
+      margin-top: 0.1rem;
+    }
+
+    /* --- C: Diagonal “CHAMPIONS” tape + chips --- */
+    .stamp-c__tape {
+      position: absolute;
+      top: 1.4rem;
+      left: -2rem;
+      right: -2rem;
+      background: var(--red);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0.35rem 0;
+      transform: rotate(-12deg);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .stamp-c__list {
+      position: absolute;
+      left: 0.55rem;
+      right: 0.55rem;
+      bottom: 0.55rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 0.4rem;
+      background: rgba(8, 14, 28, 0.78);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .chip__m { font-size: 0.85rem; }
+    .chip__t { color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .note {
+      max-width: 72rem;
+      margin-top: 2rem;
+      padding: 1rem 1.15rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+    }
+    .note code {
+      font-size: 0.8em;
+      color: #9ec1ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mockup — Champions stamped on posters</h1>
+  <p class="lede">
+    Using the real Heat Stroker flyer with sample Coed bracket winners
+    (Backwards K / GWZ / Ball Busters). Three stamp styles for the home
+    poster deck — open this file in a browser: <code>/mockups/poster-champions.html</code>
+  </p>
+
+  <div class="grid">
+    <!-- A -->
+    <figure>
+      <div class="poster">
+        <img src="/posters/2026-heat-stroker.jpg" alt="Heat Stroker poster" />
+        <div class="stamp-a" aria-label="Champions">
+          <div class="stamp-a__title">Champions · Coed</div>
+          <div class="medal-row">
+            <span class="medal-row__tag medal-row__tag--g">Gold</span>
+            <span class="medal-row__team">Backwards K</span>
+          </div>
+          <div class="medal-row">
+            <span class="medal-row__tag medal-row__tag--s">Silver</span>
+            <span class="medal-row__team">GWZ</span>
+          </div>
+          <div class="medal-row">
+            <span class="medal-row__tag medal-row__tag--b">Bronze</span>
+            <span class="medal-row__team">Ball Busters</span>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>A · Bottom glass strip</strong>
+        Quiet, readable in a carousel. Scales to W/M/Coed columns or “Gold only” if space is tight.
+      </figcaption>
+    </figure>
+
+    <!-- B -->
+    <figure>
+      <div class="poster">
+        <img src="/posters/2026-heat-stroker.jpg" alt="Heat Stroker poster" />
+        <div class="stamp-b" aria-label="Gold champion">
+          <div class="stamp-b__star">🏆</div>
+          <div class="stamp-b__label">Champions</div>
+          <div class="stamp-b__team">Backwards&nbsp;K</div>
+          <div class="stamp-b__sub">Coed Gold</div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>B · Wax seal badge</strong>
+        One name only (overall / gold). Loud branding; less info. Great on past events.
+      </figcaption>
+    </figure>
+
+    <!-- C -->
+    <figure>
+      <div class="poster">
+        <img src="/posters/2026-heat-stroker.jpg" alt="Heat Stroker poster" />
+        <div class="stamp-c__tape">Champions</div>
+        <div class="stamp-c__list">
+          <div class="chip">
+            <span class="chip__m">🥇</span>
+            <span class="chip__t">Backwards K · Gold</span>
+          </div>
+          <div class="chip">
+            <span class="chip__m">🥈</span>
+            <span class="chip__t">GWZ · Silver</span>
+          </div>
+          <div class="chip">
+            <span class="chip__m">🥉</span>
+            <span class="chip__t">Ball Busters · Bronze</span>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <strong>C · Diagonal tape + chips</strong>
+        Most “flip-deck” energy. Can feel busy on dense flyer art.
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="note">
+    <strong style="color:#fff">Product notes</strong><br />
+    Overlay is CSS on top of the flyer file — no baked-in edit of the JPEG, so
+    names update when results change. Only show the stamp when the tournament
+    is finished and we have a champion. Upcoming posters stay clean (or show
+    “Register” instead). Multi-gender events can tab Gold W / M / Coed or show
+    three mini-rows under the strip.
+  </div>
+</body>
+</html>
