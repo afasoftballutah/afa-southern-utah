@@ -67,7 +67,8 @@ export async function POST(request) {
     return bad("Invalid request");
   }
 
-  const { token, name, birthDate, address, role, poolId } = body ?? {};
+  const { token, name, birthDate, address, role, poolId, restoreMemberId } =
+    body ?? {};
   const supabase = getServiceClient();
   const registration = await registrationFor(supabase, token);
   if (!registration) return bad("Management link not found", 404);
@@ -76,6 +77,72 @@ export async function POST(request) {
   }
 
   const origin = new URL(request.url).origin;
+
+  // ---- Restore a soft-removed member on this team --------------------
+  if (restoreMemberId) {
+    const { data: member } = await supabase
+      .from("roster_members")
+      .select("id, name, birth_date, player_id, removed_at, signing_token, signed_at")
+      .eq("id", restoreMemberId)
+      .eq("registration_id", registration.id)
+      .maybeSingle();
+
+    if (!member) return bad("That player is not on this roster", 404);
+    if (!member.removed_at) {
+      return bad(`${member.name} is already on this roster`, 409);
+    }
+
+    const teamGender = registration.divisions?.gender ?? null;
+    const gate = await assertPlayerFreeForTeam(supabase, {
+      tournamentId: registration.tournament_id,
+      divisionGender: teamGender,
+      name: member.name,
+      birthDate: member.birth_date,
+      playerId: member.player_id,
+      exceptRegistrationId: registration.id,
+      exceptMemberId: member.id,
+    });
+    if (!gate.ok) return bad(gate.error, 409);
+
+    const { data: restored, error } = await supabase
+      .from("roster_members")
+      .update({ removed_at: null })
+      .eq("id", member.id)
+      .select("id, name, signing_token, birth_date")
+      .single();
+    if (error) {
+      console.error("roster restore failed", error);
+      return bad("Could not restore that player — please try again", 500);
+    }
+
+    // If they were sitting open in the free-agent pool from this cut, pull
+    // the listing so another team cannot claim a player who is back.
+    await supabase
+      .from("tournament_player_pool")
+      .update({
+        claimed_at: new Date().toISOString(),
+        claimed_registration_id: registration.id,
+      })
+      .eq("source_member_id", member.id)
+      .is("claimed_at", null);
+
+    try {
+      await regenerateAndStoreWaiverPdf(registration.id);
+    } catch (err) {
+      console.error("PDF regeneration after roster restore failed", err);
+    }
+
+    return Response.json({
+      ok: true,
+      member: {
+        id: restored.id,
+        name: restored.name,
+        birthDate: restored.birth_date ?? member.birth_date,
+        signed: Boolean(member.signed_at),
+        signLink: `${origin}/register/sign/${restored.signing_token}`,
+      },
+    });
+  }
 
   // ---- Claim from free-agent pool ------------------------------------
   if (poolId) {

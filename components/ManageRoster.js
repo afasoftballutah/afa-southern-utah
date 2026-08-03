@@ -82,7 +82,8 @@ export default function ManageRoster({
   }
 
   async function claim(entry) {
-    if (!window.confirm(`Add ${entry.name} from the free-agent pool to your roster?`)) return;
+    const whose = managerLabel === "Manager" ? "this roster" : "your roster";
+    if (!window.confirm(`Add ${entry.name} from the free-agent pool to ${whose}?`)) return;
     setBusy(true);
     setError("");
     try {
@@ -115,6 +116,39 @@ export default function ManageRoster({
           },
         ];
       });
+      setAddedLink(json.member);
+      loadPool();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restore(member) {
+    if (!window.confirm(`Put ${member.name} back on the roster?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/register/roster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, restoreMemberId: member.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not restore");
+      setMembers((cur) =>
+        cur.map((m) =>
+          m.id === member.id
+            ? {
+                ...m,
+                removed: false,
+                birthDate: json.member?.birthDate ?? m.birthDate,
+                signed: json.member?.signed ?? m.signed,
+              }
+            : m
+        )
+      );
       setAddedLink(json.member);
       loadPool();
     } catch (err) {
@@ -159,10 +193,16 @@ export default function ManageRoster({
       <ul className="card divide-y divide-black/5">
         {active.map((m) => (
           <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="t-body">
+            <span className="t-body min-w-0">
               {m.name}
               {m.role !== "player" && <span className="t-meta"> &middot; {m.role}</span>}
-              {m.signed && <span className="t-meta"> &middot; signed</span>}
+              {m.gender ? <span className="t-meta"> &middot; {m.gender}</span> : null}
+              {m.rating ? <span className="t-meta"> &middot; {m.rating}</span> : null}
+              {m.signed ? (
+                <span className="t-meta"> &middot; signed</span>
+              ) : (
+                <span className="t-meta"> &middot; unsigned</span>
+              )}
               {!m.birthDate && <span className="t-meta"> &middot; no birth date</span>}
             </span>
             {m.isManager ? (
@@ -289,15 +329,31 @@ export default function ManageRoster({
       )}
 
       {removed.length > 0 && (
-        <details>
+        <details open={removed.length <= 5}>
           <summary className="t-meta cursor-pointer">
-            {removed.length} removed — add them back by name (or claim from pool if released)
+            {removed.length} removed
+            {canEdit ? " — restore to put them back" : ""}
           </summary>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 card divide-y divide-black/5">
             {removed.map((m) => (
-              <li key={m.id} className="t-meta">
-                {m.name}
-                {m.signed && " · had signed"}
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-3 px-4 py-2"
+              >
+                <span className="t-meta">
+                  {m.name}
+                  {m.signed ? " · had signed" : ""}
+                </span>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="t-label text-afa-flag-blue underline shrink-0"
+                    disabled={busy}
+                    onClick={() => restore(m)}
+                  >
+                    Restore
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
