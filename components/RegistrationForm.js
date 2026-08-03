@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import SignaturePad from "./SignaturePad";
 import AddressInput from "./AddressInput";
 import RegisterBack from "./RegisterBack";
 import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
 import { formatLeagueDateOnly } from "@/lib/league-time";
 import { REGION_ORDER, canonicalRegion } from "@/lib/data";
-import { getRegionPref } from "@/lib/region-pref";
+import {
+  getRegionPrefSnapshot,
+  getRegionPrefServerSnapshot,
+  subscribeRegionPref,
+} from "@/lib/region-pref";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -36,6 +40,13 @@ export default function RegistrationForm({
     return tournaments.find((t) => t.slug === initialTournamentSlug) ?? null;
   }, [tournaments, initialTournamentSlug]);
 
+  // Site-wide map region — updates live when the home map select/deselects.
+  const regionPref = useSyncExternalStore(
+    subscribeRegionPref,
+    getRegionPrefSnapshot,
+    getRegionPrefServerSnapshot
+  );
+
   // Series filter — "All" plus only the regions that have a registerable
   // tournament. Prefer the home map’s site-wide region when present.
   // Lists are always next-first (soonest start_date).
@@ -47,9 +58,12 @@ export default function RegistrationForm({
       if (r) setSeriesFilter(r);
       return;
     }
-    const pref = getRegionPref();
-    if (pref && REGION_ORDER.includes(pref)) setSeriesFilter(pref);
-  }, [initialTournament]);
+    if (regionPref && REGION_ORDER.includes(regionPref)) {
+      setSeriesFilter(regionPref);
+    } else {
+      setSeriesFilter("all");
+    }
+  }, [initialTournament, regionPref]);
   const filterOptions = useMemo(() => {
     const present = REGION_ORDER.filter((r) =>
       tournaments.some((t) => canonicalRegion(t) === r)

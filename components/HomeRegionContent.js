@@ -29,20 +29,52 @@ export default function HomeRegionContent({
     getRegionPrefServerSnapshot
   );
 
-  // Map pick wins; otherwise region of the next tournament site-wide.
-  const region = pref || defaultRegion;
+  // Explicit map pick filters one region. Clear/deselect → all regions again.
+  const filtered = Boolean(pref);
 
   const slides = useMemo(() => {
-    // No map pick: all regions, already ordered next-first overall.
-    if (!pref) return posterSlides;
-    // Map pick: that region only — first slide is that region’s next event.
+    if (!filtered) return posterSlides;
     return posterSlides.filter((s) => s.region === pref);
-  }, [posterSlides, pref]);
+  }, [posterSlides, pref, filtered]);
 
-  const lastEvent = lastByRegion[region] ?? null;
-  const upcomingEvents = upcomingByRegion[region] ?? [];
-  const resultEvents =
-    resultEventsByRegion[region] ?? resultEventsByRegion[defaultRegion] ?? [];
+  // Dash content must track select/deselect — not stick on defaultRegion after clear.
+  const lastEvent = useMemo(() => {
+    if (filtered) return lastByRegion[pref] ?? null;
+    // All regions: most recent "last" by region order of next event, prefer any non-null
+    // Prefer defaultRegion's last, else first available in REGION-ish order of keys
+    if (lastByRegion[defaultRegion]) return lastByRegion[defaultRegion];
+    for (const e of Object.values(lastByRegion)) {
+      if (e) return e;
+    }
+    return null;
+  }, [filtered, pref, lastByRegion, defaultRegion]);
+
+  const upcomingEvents = useMemo(() => {
+    if (filtered) return upcomingByRegion[pref] ?? [];
+    // Merge all regions, soonest first, cap 3
+    const merged = Object.values(upcomingByRegion).flatMap((list) => list ?? []);
+    return merged
+      .slice()
+      .sort((a, b) => {
+        // when is display text; prefer slug order from posterSlides startDate if needed
+        const ia = posterSlides.findIndex((s) => s.id === a.id);
+        const ib = posterSlides.findIndex((s) => s.id === b.id);
+        if (ia >= 0 && ib >= 0) return ia - ib;
+        return String(a.when ?? "").localeCompare(String(b.when ?? ""));
+      })
+      .slice(0, 3);
+  }, [filtered, pref, upcomingByRegion, posterSlides]);
+
+  const resultEvents = useMemo(() => {
+    if (filtered) {
+      return (
+        resultEventsByRegion[pref] ??
+        resultEventsByRegion[defaultRegion] ??
+        []
+      );
+    }
+    return Object.values(resultEventsByRegion).flatMap((list) => list ?? []);
+  }, [filtered, pref, resultEventsByRegion, defaultRegion]);
 
   // Lock card geometry to the *widest / tallest* region so switching stars
   // does not reflow the dash (empty regions would otherwise shrink the cards).
@@ -103,11 +135,18 @@ export default function HomeRegionContent({
 
   return (
     <>
-      {slides.length > 0 && (
+      {slides.length > 0 ? (
         <PosterCarousel
+          key={pref || "all"}
           slides={slides}
           resetKey={pref || "all"}
         />
+      ) : (
+        <p className="home-dash__empty" style={{ textAlign: "center", padding: "1rem" }}>
+          {filtered
+            ? "No flyers for this region yet — tap the star again for all regions."
+            : "No flyers yet."}
+        </p>
       )}
 
       <section
@@ -189,7 +228,10 @@ export default function HomeRegionContent({
           </Link>
         </article>
 
-        <HomeRecentResults events={resultEvents} />
+        <HomeRecentResults
+          key={pref || "all"}
+          events={resultEvents}
+        />
       </section>
     </>
   );

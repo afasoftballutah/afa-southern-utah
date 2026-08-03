@@ -55,8 +55,13 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
   const closeLightbox = useCallback(() => setLightboxId(null), []);
 
   // Side (gray) posters only rotate into center; only the featured center can open.
+  // Ignore clicks that started on a real control/link inside the card.
   const onSlotClick = useCallback(
-    (i, isCenter) => {
+    (i, isCenter, e) => {
+      const t = e?.target;
+      if (t && typeof t.closest === "function") {
+        if (t.closest("a, button, input, select, textarea, label")) return;
+      }
       if (!isCenter) {
         setCenter(i);
         return;
@@ -71,6 +76,11 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
       if (e.key === "Escape" && lightboxId != null) {
         e.preventDefault();
         closeLightbox();
+        return;
+      }
+      // Don't hijack arrows while typing or focused in other UI
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target?.isContentEditable) {
         return;
       }
       if (e.key === "ArrowLeft") {
@@ -130,13 +140,13 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
                 key={slide.id}
                 className={"poster-deck__slot" + (isCenter ? " is-center" : "")}
                 data-pos={pos}
-                onClick={() => onSlotClick(i, isCenter)}
+                onClick={(e) => onSlotClick(i, isCenter, e)}
                 role="button"
                 tabIndex={pos === "hide" ? -1 : 0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSlotClick(i, isCenter);
+                    onSlotClick(i, isCenter, e);
                   }
                 }}
                 aria-label={

@@ -82,6 +82,7 @@ export default function TournamentBrowser({ groups }) {
   }
 
   // Honor home map filter: only that region’s groups when set.
+  // Empty string from snapshot = all regions (deselected).
   const scopedGroups = useMemo(() => {
     if (!regionPref) return groups;
     return groups.filter((g) => g.region === regionPref);
@@ -133,7 +134,7 @@ export default function TournamentBrowser({ groups }) {
   return (
     <div className="space-y-6">
       {regionPref ? (
-        <p className="t-meta">
+        <p className="t-meta" key={regionPref}>
           Filtered to <strong>{REGION_LABEL[regionPref] ?? regionPref}</strong>
           {" · "}
           <Link href="/#region-map" className="underline">
