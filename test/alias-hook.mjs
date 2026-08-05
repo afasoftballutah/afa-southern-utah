@@ -16,5 +16,13 @@ export function resolve(specifier, context, next) {
     const withExt = /\.[cm]?jsx?$/.test(rel) ? rel : `${rel}.js`;
     return next(pathToFileURL(path.join(ROOT, withExt)).href, context);
   }
+  // Relative imports without extension (Next/webpack style) → .js for node:test
+  if (
+    (specifier.startsWith("./") || specifier.startsWith("../")) &&
+    !/\.[cm]?[jt]sx?$/.test(specifier) &&
+    context.parentURL?.startsWith("file:")
+  ) {
+    return next(`${specifier}.js`, context);
+  }
   return next(specifier, context);
 }

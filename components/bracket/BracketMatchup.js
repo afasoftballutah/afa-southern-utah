@@ -148,15 +148,14 @@ export default function BracketMatchup({
     }
 
     if (feedNum) {
-      return { label: null, tag: `${feedNum[1]} ${feedNum[2]}`, waiting: true };
+      // "Winner of Game 5" / materializeFeedPlaceholders → compact W5 / L5.
+      const kind = feedNum[1] === "Loser" ? "L" : "W";
+      return { label: null, tag: `${kind}${feedNum[2]}`, waiting: true };
     }
+    // source_game_id alone is not enough to paint a paper number here —
+    // DrawnBracket.materializeFeedPlaceholders fills the name first.
     if (feed) {
-      const n = game[`${srcKey}_round`];
-      return {
-        label: null,
-        tag: n ? `${feed === "loser" ? "Loser" : "Winner"} ${n}` : null,
-        waiting: true,
-      };
+      return { label: null, tag: null, waiting: true };
     }
     return { label: null, tag: null, waiting: true };
   };

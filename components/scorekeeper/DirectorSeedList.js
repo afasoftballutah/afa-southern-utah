@@ -4,40 +4,53 @@ import { useEffect, useMemo, useState } from "react";
 import { normalizeSeedOrder, isCompleteSeedOrder } from "@/lib/bracket/seed-order";
 
 /**
- * Director sets seed #1 … #N for a division (no pool required).
- * Saves via setDivisionSeedOrder; parent can re-read seedOrder after save.
+ * Director sets seed #1 … #N. Generate uses this list — not registration time.
+ * optional poolDefault: "Use pool finish" resets to that order.
  */
 export default function DirectorSeedList({
   divisionId,
   teamNames = [],
   initialOrder = null,
+  poolDefault = null,
   onSaved,
+  onOrderChange,
+  meta = null,
 }) {
   const baseline = useMemo(
-    () => normalizeSeedOrder(teamNames, initialOrder ?? teamNames),
-    [teamNames, initialOrder]
+    () => normalizeSeedOrder(teamNames, initialOrder ?? poolDefault ?? teamNames),
+    [teamNames, initialOrder, poolDefault]
   );
   const [order, setOrder] = useState(baseline);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
-  // Sync when server list changes (e.g. after refresh)
   useEffect(() => {
-    setOrder(normalizeSeedOrder(teamNames, initialOrder ?? teamNames));
-  }, [teamNames, initialOrder]);
+    const next = normalizeSeedOrder(teamNames, initialOrder ?? poolDefault ?? teamNames);
+    setOrder(next);
+    onOrderChange?.(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-sync when server/props change
+  }, [teamNames, initialOrder, poolDefault]);
 
   const complete = isCompleteSeedOrder(teamNames, order);
+
+  function setOrderAndNotify(next) {
+    setOrder(next);
+    setSaved(false);
+    onOrderChange?.(next);
+  }
 
   function move(i, dir) {
     const j = i + dir;
     if (j < 0 || j >= order.length) return;
-    setOrder((cur) => {
-      const next = [...cur];
-      [next[i], next[j]] = [next[j], next[i]];
-      return next;
-    });
-    setSaved(false);
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    setOrderAndNotify(next);
+  }
+
+  function usePoolFinish() {
+    if (!poolDefault?.length) return;
+    setOrderAndNotify(normalizeSeedOrder(teamNames, poolDefault));
   }
 
   async function save() {
@@ -65,25 +78,33 @@ export default function DirectorSeedList({
   }
 
   if (teamNames.length < 2) {
-    return (
-      <p className="t-meta">Need at least two registered teams to seed.</p>
-    );
+    return <p className="t-meta">Need at least two teams to seed.</p>;
   }
 
   return (
     <div className="card p-4 space-y-3">
-      <div>
-        <p className="t-strong">Seed order</p>
-        <p className="t-meta">
-          #1 is the top seed. Generate uses this list — not registration time.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="t-strong">Seed order</p>
+          <p className="t-meta">
+            {meta ||
+              "#1 is the top seed. Reorder freely, then generate. Not registration time."}
+          </p>
+        </div>
+        {poolDefault?.length >= 2 && (
+          <button
+            type="button"
+            className="pill shrink-0"
+            disabled={busy}
+            onClick={usePoolFinish}
+          >
+            Reset to pool finish
+          </button>
+        )}
       </div>
       <ol className="divide-y divide-black/5 border border-black/10 rounded-lg overflow-hidden">
         {order.map((name, i) => (
-          <li
-            key={name}
-            className="flex items-center gap-2 px-3 py-2 bg-white"
-          >
+          <li key={name} className="flex items-center gap-2 px-3 py-2 bg-white">
             <span className="t-label w-10 shrink-0">#{i + 1}</span>
             <span className="t-body flex-1 min-w-0 truncate">{name}</span>
             <button

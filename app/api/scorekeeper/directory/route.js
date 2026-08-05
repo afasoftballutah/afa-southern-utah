@@ -922,6 +922,68 @@ export async function POST(request) {
       return Response.json({ ok: true, seedOrder: order });
     }
 
+    // ---- Build Pool A round-robin from registered teams (demo / no QS) --
+    case "createPoolRoundRobin": {
+      const { divisionId, poolLetter = "A" } = body;
+      if (!divisionId) return bad("Which division?");
+      const letter = String(poolLetter || "A")
+        .trim()
+        .toUpperCase()
+        .slice(0, 1);
+      if (!/^[A-I]$/.test(letter)) return bad("Pool letter must be A–I");
+
+      const { data: existing, error: existErr } = await supabase
+        .from("pool_games")
+        .select("id")
+        .eq("division_id", divisionId)
+        .limit(1);
+      if (existErr) {
+        console.error(existErr);
+        return bad("Could not check pool games", 500);
+      }
+      if ((existing ?? []).length > 0) {
+        return bad("This division already has pool games", 409);
+      }
+
+      const { data: regs, error: regErr } = await supabase
+        .from("registrations")
+        .select("team_name")
+        .eq("division_id", divisionId)
+        .neq("status", "withdrawn");
+      if (regErr) {
+        console.error(regErr);
+        return bad("Could not load teams", 500);
+      }
+      const teamNames = (regs ?? []).map((r) => r.team_name).filter(Boolean);
+      if (teamNames.length < 2) return bad("Need at least 2 registered teams");
+
+      const { roundRobinPairs } = await import("@/lib/bracket/seed");
+      const pairs = roundRobinPairs(teamNames);
+      const rows = pairs.map(([team1_name, team2_name], i) => ({
+        division_id: divisionId,
+        pool: letter,
+        team1_name,
+        team2_name,
+        field: `Field ${(i % 2) + 1}`,
+        status: "scheduled",
+      }));
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("pool_games")
+        .insert(rows)
+        .select("id");
+      if (insErr) {
+        console.error("createPoolRoundRobin failed", insErr);
+        return bad("Could not create pool games", 500);
+      }
+      return Response.json({
+        ok: true,
+        pool: letter,
+        gameCount: inserted?.length ?? rows.length,
+        teamCount: teamNames.length,
+      });
+    }
+
     default:
       return bad("Unknown action");
   }

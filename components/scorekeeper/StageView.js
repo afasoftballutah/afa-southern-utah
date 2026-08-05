@@ -1,20 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SeedBrackets from "./SeedBrackets";
 import BracketEditor from "./BracketEditor";
 
-// StageView — the scorekeeper's two stages (redesign spec §1, §2).
-//
-// A tournament is in pool play or it is in the bracket, and the screen
-// says which. Confirming the bracket is the hinge: pool play becomes
-// final, its scores stop being editable, and this screen opens on the
-// bracket from then on.
-//
-// Reopening is deliberately one tap away behind a confirm. A locked
-// screen with no way out is a trap at a ballpark at midnight, and
-// directors do fix wrong scores.
+// StageView — pool play vs bracket.
+// Confirm locks pool scores (read-only). You can open the Bracket tab as soon
+// as a generated/transcribed bracket exists — no need to confirm first.
 
 function ConfirmRail({ open, title, detail, action, onCancel, onGo, busy }) {
   if (!open) return null;
@@ -54,14 +47,35 @@ function ConfirmRail({ open, title, detail, action, onCancel, onGo, busy }) {
   );
 }
 
-export default function StageView({ divisionId, tournamentSlug, poolGames, stages, confirmedAt }) {
+export default function StageView({
+  divisionId,
+  tournamentSlug,
+  poolGames,
+  stages,
+  confirmedAt,
+  /** Generated / own-division bracket UI (seed + generate + games) */
+  bracketPanel = null,
+  /** Prefer opening on Bracket after first generate */
+  preferBracket = false,
+}) {
   const router = useRouter();
   const confirmed = Boolean(confirmedAt);
-  const [stage, setStage] = useState(confirmed ? "bracket" : "pools");
+  const hasChildStages = (stages?.length ?? 0) > 0;
+  const canViewBracket = hasChildStages || Boolean(bracketPanel);
+
+  const [stage, setStage] = useState(() => {
+    if (confirmed && canViewBracket) return "bracket";
+    if (preferBracket && canViewBracket) return "bracket";
+    return "pools";
+  });
   const [ask, setAsk] = useState(null); // "confirm" | "reopen"
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [shown, setShown] = useState(stages?.[0]?.id ?? null);
+
+  // After generate (preferBracket flips true), jump to Bracket so you can preview.
+  useEffect(() => {
+    if (preferBracket && canViewBracket) setStage("bracket");
+  }, [preferBracket, canViewBracket]);
 
   const waiting = poolGames.filter((g) => g.status !== "final").length;
 
@@ -77,7 +91,7 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not update");
       setAsk(null);
-      if (next) setStage("bracket");
+      if (next && canViewBracket) setStage("bracket");
       router.refresh();
     } catch (err) {
       setError(err.message);
@@ -86,8 +100,6 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
       setBusy(false);
     }
   }
-
-  const bracket = stages?.find((s) => s.id === shown) ?? stages?.[0] ?? null;
 
   return (
     <div className="space-y-4">
@@ -101,7 +113,12 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
               key={key}
               type="button"
               aria-current={stage === key}
-              disabled={key === "bracket" && !stages?.length}
+              disabled={key === "bracket" && !canViewBracket}
+              title={
+                key === "bracket" && !canViewBracket
+                  ? "Generate a bracket first (or wait for stages)"
+                  : undefined
+              }
               onClick={() => setStage(key)}
             >
               {label}
@@ -112,18 +129,12 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
 
       {error && <p className="text-sm font-bold underline text-afa-ink">{error}</p>}
 
-      {/* The Pull from QuickScores button is gone. JD, 2026-07-27: "lets get
-          rid of the pull from quickscores link. thats not going to be a thing
-          much anymore, lets not depend on it." Scores are typed here now. The
-          hourly sync route is untouched, so nothing that already ran stops. */}
-
       {stage === "pools" ? (
         <>
           {confirmed && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm text-afa-ink/70 shadow-sm">
               <span>
-                <b className="text-afa-ink">Pool play is final.</b> The bracket was confirmed, so
-                scores here are read only.
+                <b className="text-afa-ink">Pool play is final.</b> Scores here are read only.
               </span>
               <button
                 type="button"
@@ -134,45 +145,62 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
               </button>
             </div>
           )}
-          {/* One surface, like the sample. Games live on their pool card,
-              and the by-time question — "what is on Field 3 at 10?" — is
-              answered by the field/time chips rather than by a second list
-              of the same 28 games underneath. */}
           <SeedBrackets
             divisionId={divisionId}
             tournamentSlug={tournamentSlug}
             poolGames={poolGames}
             readOnly={confirmed}
           />
+          {canViewBracket && !confirmed && (
+            <button
+              type="button"
+              className="w-full rounded-lg border border-afa-navy/30 py-3 text-sm font-semibold text-afa-navy"
+              onClick={() => setStage("bracket")}
+            >
+              Open Bracket — seed, preview, generate
+            </button>
+          )}
         </>
       ) : (
-        <BracketEditor stages={stages} />
+        <div className="space-y-4">
+          {!confirmed && (
+            <p className="rounded-xl bg-white px-4 py-3 text-sm text-afa-ink/70 shadow-sm">
+              <b className="text-afa-ink">Preview.</b> Look over seeds and the bracket. You can
+              rebuild before confirming. Confirm only locks pool scores — it does not invent a
+              bracket.
+            </p>
+          )}
+          {bracketPanel}
+          {hasChildStages && <BracketEditor stages={stages} />}
+          {!bracketPanel && !hasChildStages && (
+            <p className="t-meta">No bracket yet — generate one or finish seeding into stages.</p>
+          )}
+        </div>
       )}
 
-      {/* The one primary action, and it advances: confirm the bracket, then
-          say so. Red is the act colour, so it stops being red once there is
-          no act left to perform. */}
       {!confirmed ? (
         <button
           type="button"
           onClick={() => setAsk("confirm")}
           className="btn-action-block"
         >
-          Confirm bracket
+          Confirm pool play final
         </button>
       ) : (
         <p className="rounded-lg bg-[rgba(70,160,106,.14)] py-3 text-center font-bold text-[#2f7a4f]">
-          ✓ Bracket confirmed
+          ✓ Pool play locked
         </p>
       )}
 
       <ConfirmRail
         open={ask === "confirm"}
-        title="Confirm the bracket?"
-        detail={`Pool play becomes final and its scores stop being editable, and this screen moves to the bracket.${
-          waiting ? ` ${waiting} pool game${waiting === 1 ? " is" : "s are"} still unscored.` : ""
-        } You can reopen pool play afterwards if a score was wrong.`}
-        action="Confirm bracket"
+        title="Lock pool scores?"
+        detail={`Pool scores become read-only. You can still view and (if draft) rebuild the bracket.${
+          waiting
+            ? ` ${waiting} pool game${waiting === 1 ? " is" : "s are"} still unscored.`
+            : ""
+        } You can reopen pool play later if a score was wrong.`}
+        action="Lock pool play"
         busy={busy}
         onCancel={() => setAsk(null)}
         onGo={() => send(true)}
@@ -180,7 +208,7 @@ export default function StageView({ divisionId, tournamentSlug, poolGames, stage
       <ConfirmRail
         open={ask === "reopen"}
         title="Reopen pool play?"
-        detail="Scores become editable again and the bracket stays exactly as it is. Any change you make still has to be re-applied to move a team."
+        detail="Scores become editable again. The bracket stays as it is until you rebuild it."
         action="Reopen it"
         busy={busy}
         onCancel={() => setAsk(null)}

@@ -1,0 +1,17 @@
+THREE-GAME-GUARANTEE BRACKET GENERATOR — for Grok
+
+One file, no dependencies: three-game-guarantee.js
+
+Usage:
+  const { generate3GG } = require('./three-game-guarantee') // or paste inline
+  const games = generate3GG(9)                 // any pool size 4..24
+  // optional: generate3GG(9, { reentry: "strict" })
+
+Returns an ordered array of games:
+  { g: 11, a: "L9", b: "L10", note: "survivor" }
+  g = game number. a/b = slot references:
+  "seed4" = seeded team, "W9" = winner of game 9, "L9" = loser of game 9.
+
+Render the array as a bracket, advance teams by the references.
+Elimination: two losses with a win = out; winless teams take three losses.
+Do NOT re-derive the bracket logic — the array IS the bracket.

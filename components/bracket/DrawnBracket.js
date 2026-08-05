@@ -54,7 +54,9 @@ const BOX_H = 92;
 const HEADER_H = 26;
 const TOP_PAD = 16;
 const LEFT_PAD = 72; // reserved margin for the Winners/Losers/Final captions
-const BAND_GAP = 56; // tight vertical gap between the winners and losers bands
+// Losers sit well below winners so the sheet reads as two bands, not one
+// long rightward march (JD: "move losers / survivor down lower").
+const BAND_GAP = 120;
 const MIN_GAP = 1; // row units — the "clear gap" floor between two games in one column
 const CAPTION_ROOM = 24; // canvas padding reserved below the lowest box so its caption (outside all layout math) never clips
 
@@ -109,10 +111,9 @@ function drawnFeedersOf(game, byRound, roundByGameId) {
 
 // Column (x) = longest-path depth from the feed graph, memoised DFS. A
 // game with no feed slots is depth 0; otherwise 1 + max(feeder depths).
-// This is band-blind on purpose — a losers game's column comes only from
-// its feeders' columns, never adjusted to align with a band. Returns null
-// if a cycle is detected (malformed data) so the caller can bail to the
-// fallback list rather than looping forever.
+// Used first for band classification; each band is then recompressed so
+// columns pack left (JD: "shift every branch as far left as we can").
+// Returns null if a cycle is detected (malformed data).
 function computeDepths(byRound, roundByGameId) {
   const memo = new Map();
   const visiting = new Set();
@@ -132,15 +133,82 @@ function computeDepths(byRound, roundByGameId) {
   }
   for (const round of byRound.keys()) depth(round);
   if (cycle) return null;
-
-  // NO SLIDING. A round is a FACT about the tournament — how many games a
-  // team had to win to be standing there — not a layout variable. Earlier
-  // passes moved games rightward to shorten connectors, which made the
-  // column headers lie: Gold's Games 1-4 are all Round 1 (every slot comes
-  // straight from a pool), yet two of them were being drawn in Round 2.
-  // Crossings are solved by the TREE layout in computeBandRows, vertically,
-  // never by moving a game out of its true round (JD, 2026-07-25).
   return memo;
+}
+
+// Per-band columns: longest path *inside* that band only. Roots (no same-band
+// feeder) sit at column 0. Winners and losers each pack from the left so the
+// losers band does not inherit winners depth and read as "more advancement".
+function compressBandDepths(depthByRound, byRound, band, bandName, roundByGameId) {
+  const memo = new Map();
+  const visiting = new Set();
+  function bandDepth(round) {
+    if (memo.has(round)) return memo.get(round);
+    if (band.get(round) !== bandName) return depthByRound.get(round) ?? 0;
+    if (visiting.has(round)) return 0;
+    visiting.add(round);
+    const sameBand = feedersOf(byRound.get(round), byRound, roundByGameId).filter(
+      (f) => band.get(f) === bandName
+    );
+    const d = sameBand.length === 0 ? 0 : 1 + Math.max(...sameBand.map(bandDepth));
+    visiting.delete(round);
+    memo.set(round, d);
+    return d;
+  }
+  for (const r of byRound.keys()) {
+    if (band.get(r) === bandName) depthByRound.set(r, bandDepth(r));
+  }
+}
+
+// Final sits just past both champions (max feeder column + 1).
+function placeFinalDepths(depthByRound, byRound, band, roundByGameId) {
+  const finals = [...byRound.keys()]
+    .filter((r) => band.get(r) === "final")
+    .sort((a, b) => a - b);
+  for (const r of finals) {
+    const feeders = feedersOf(byRound.get(r), byRound, roundByGameId);
+    depthByRound.set(
+      r,
+      feeders.length === 0 ? 0 : 1 + Math.max(...feeders.map((f) => depthByRound.get(f) ?? 0))
+    );
+  }
+}
+
+// Drop unused column indices so x positions pack left with no empty gutters.
+function packColumnIndices(depthByRound) {
+  const used = [...new Set(depthByRound.values())].sort((a, b) => a - b);
+  if (used.length === 0) return;
+  const remap = new Map(used.map((d, i) => [d, i]));
+  for (const [r, d] of depthByRound) {
+    depthByRound.set(r, remap.get(d) ?? d);
+  }
+}
+
+// Engine brackets store provenance on source_game_id with null names.
+// Transcribed QS brackets put "Winner of Game 5" in the name. BracketMatchup
+// only paints W/L labels from that text (or a non-existent *_round field),
+// so engine previews showed empty pills. Fill the same words from the paper
+// game number already sitting in `round` (DrawnBracket's contract).
+function materializeFeedPlaceholders(games) {
+  const list = games ?? [];
+  const roundById = new Map();
+  for (const g of list) {
+    if (g?.id != null && g.round != null) roundById.set(g.id, g.round);
+  }
+  return list.map((g) => {
+    let next = g;
+    for (const side of ["team1", "team2"]) {
+      const nameKey = `${side}_name`;
+      if (next[nameKey]) continue;
+      const srcId = next[`${side}_source_game_id`];
+      if (!srcId || !roundById.has(srcId)) continue;
+      const res = String(next[`${side}_source_result`] ?? "winner").toLowerCase();
+      const label = `${res === "loser" ? "Loser" : "Winner"} of Game ${roundById.get(srcId)}`;
+      if (next === g) next = { ...g };
+      next[nameKey] = label;
+    }
+    return next;
+  });
 }
 
 // Band classification, processed in ascending-depth order so every
@@ -204,39 +272,41 @@ function computeBands(byRound, depthByRound, roundByGameId) {
 // mean (one feeder inherits it exactly); collisions within the same
 // column are nudged down to keep a clear gap, same as before.
 function computeBandRows(byRound, depthByRound, band, bandName, roundByGameId) {
-  // A bracket is a SYMMETRIC BINARY TREE and must be laid out from the root
-  // backwards (JD, 2026-07-25): the final sits at the centre, its two feeders
-  // take the upper and lower halves of its span, and so on down. Each subtree
-  // then owns a CONTIGUOUS vertical band, which is what makes crossings
-  // structurally impossible rather than something to detect and patch.
+  // Symmetric binary tree from winner-feed edges only (JD, 2026-07-25).
   //
-  // What this replaces placed each game at the AVERAGE of its feeders' rows,
-  // with roots numbered by an arbitrary counter. Nothing owned a band, so a
-  // subtree could land anywhere the arithmetic put it — Gold's Game 2 sat on
-  // a low branch while its winner belonged to Game 7 up top, and the
-  // connector had to climb across the branch below it.
-  //
-  // Implementation: leaves are numbered in depth-first traversal order, and
-  // every parent takes the midpoint of its children. Traversal order is what
-  // guarantees contiguity; the midpoint is what makes it look like a bracket.
+  // IMPORTANT (3GG): the same losers-band game can feed TWO later games —
+  // its winner (e.g. G12 ← W9/W10) and its loser (e.g. G11 ← L9/L10 survivor).
+  // If both parents claim those feeders as exclusive tree children, they
+  // collapse onto the same midpoint and paint on top of each other (mockup
+  // showed G12 W9/W10 sitting on G11's survivor card). Winner-of edges own
+  // the tree; pure loser-feed games (survivor / nets) sit on the mean of
+  // their feeders after the winner tree is placed.
   const bandRounds = [...byRound.keys()].filter((r) => band.get(r) === bandName);
   if (bandRounds.length === 0) return new Map();
 
   const inBand = new Set(bandRounds);
-  const childrenOf = new Map(); // round -> feeder rounds inside this band
+  const childrenOf = new Map(); // round -> winner-feed children in this band
   const consumed = new Set();
   for (const r of bandRounds) {
-    const kids = feedersOf(byRound.get(r), byRound, roundByGameId)
+    const kids = drawnFeedersOf(byRound.get(r), byRound, roundByGameId)
       .filter((f) => inBand.has(f))
       .sort((a, b) => (depthByRound.get(b) ?? 0) - (depthByRound.get(a) ?? 0) || a - b);
     childrenOf.set(r, kids);
     for (const k of kids) consumed.add(k);
   }
 
-  // Roots: games nothing else in this band feeds from — deepest last so the
-  // tree reads top to bottom in play order.
+  // Roots of the winner-feed tree (deepest last). Skip pure loser-feed
+  // games (survivor/net) — they are placed in a second pass.
   const roots = bandRounds
-    .filter((r) => !consumed.has(r))
+    .filter((r) => {
+      if (consumed.has(r)) return false;
+      const winKids = childrenOf.get(r) ?? [];
+      const anyInBand = feedersOf(byRound.get(r), byRound, roundByGameId).some((f) =>
+        inBand.has(f)
+      );
+      if (winKids.length === 0 && anyInBand) return false;
+      return true;
+    })
     .sort((a, b) => (depthByRound.get(b) ?? 0) - (depthByRound.get(a) ?? 0) || a - b);
 
   const rowByRound = new Map();
@@ -260,9 +330,41 @@ function computeBandRows(byRound, depthByRound, band, bandName, roundByGameId) {
   }
 
   for (const root of roots) place(root);
-  // Anything unreachable from a root (malformed data) still gets a row so it
-  // renders rather than vanishing.
-  for (const r of bandRounds) if (!rowByRound.has(r)) place(r);
+
+  // Pure loser-feed games (survivor L9/L10, guarantee nets): sit on the mean
+  // of their same-band feeders, or take the next leaf if feeders aren't placed.
+  const loserFeedOnly = bandRounds
+    .filter((r) => !rowByRound.has(r))
+    .sort((a, b) => (depthByRound.get(a) ?? 0) - (depthByRound.get(b) ?? 0) || a - b);
+  for (const r of loserFeedOnly) {
+    const feeders = feedersOf(byRound.get(r), byRound, roundByGameId).filter((f) => inBand.has(f));
+    const placed = feeders.map((f) => rowByRound.get(f)).filter((y) => y != null);
+    if (placed.length) {
+      rowByRound.set(r, (Math.min(...placed) + Math.max(...placed)) / 2);
+    } else {
+      const row = nextLeafRow;
+      nextLeafRow += 1;
+      rowByRound.set(r, row);
+    }
+  }
+
+  // Collision nudge: two games in the same depth column must not share a row.
+  const byDepth = new Map();
+  for (const r of bandRounds) {
+    const d = depthByRound.get(r) ?? 0;
+    if (!byDepth.has(d)) byDepth.set(d, []);
+    byDepth.get(d).push(r);
+  }
+  for (const [, group] of byDepth) {
+    group.sort((a, b) => (rowByRound.get(a) ?? 0) - (rowByRound.get(b) ?? 0) || a - b);
+    for (let i = 1; i < group.length; i++) {
+      const prev = rowByRound.get(group[i - 1]) ?? 0;
+      const cur = rowByRound.get(group[i]) ?? 0;
+      if (cur < prev + MIN_GAP) {
+        rowByRound.set(group[i], prev + MIN_GAP);
+      }
+    }
+  }
 
   return rowByRound;
 }
@@ -516,7 +618,10 @@ function crossesBoxAtY(depth, y, rects) {
  * column headers, band captions, and the canvas size.
  */
 export function computeLayout(games) {
-  const real = (games ?? []).filter((g) => g && g.round != null);
+  const withFeeds = materializeFeedPlaceholders(
+    (games ?? []).filter((g) => g && g.round != null)
+  );
+  const real = withFeeds;
   if (real.length === 0) return null;
 
   const byRound = new Map();
@@ -530,8 +635,13 @@ export function computeLayout(games) {
   if (!depthByRound) return { cycle: true };
 
   const rounds = [...byRound.keys()];
-  const maxDepth = Math.max(...rounds.map((r) => depthByRound.get(r)));
   const band = computeBands(byRound, depthByRound, roundByGameId);
+  // Each band packs from column 0; then finals; then collapse empty columns.
+  compressBandDepths(depthByRound, byRound, band, "winners", roundByGameId);
+  compressBandDepths(depthByRound, byRound, band, "losers", roundByGameId);
+  placeFinalDepths(depthByRound, byRound, band, roundByGameId);
+  packColumnIndices(depthByRound);
+  const maxDepth = Math.max(0, ...rounds.map((r) => depthByRound.get(r) ?? 0));
 
   const winnersRows = computeBandRows(byRound, depthByRound, band, "winners", roundByGameId);
   const losersRows = computeBandRows(byRound, depthByRound, band, "losers", roundByGameId);
@@ -539,6 +649,7 @@ export function computeLayout(games) {
   const winnersTop = TOP_PAD + HEADER_H;
   const winnersMaxRow = winnersRows.size ? Math.max(...winnersRows.values()) : 0;
   const winnersHeight = winnersRows.size ? (winnersMaxRow + 1) * ROW_UNIT_H : 0;
+  // Extra air under the winners band so losers/survivor read as a separate sheet.
   const losersTop = winnersTop + winnersHeight + (losersRows.size ? BAND_GAP : 0);
 
   // Every rect.y is rounded to a whole pixel here, once, at the source —
@@ -847,6 +958,16 @@ export default function DrawnBracket({
     const byRef = seeds?.byRef ?? null;
     return (ref) => {
       if (!ref) return null;
+      // Director seed: "Seed #3" → tag #3 (not the accidental "D3" from "See*d* #3")
+      const dir = /^\[?Seed #(\d+)\]?$/i.exec(String(ref).trim());
+      if (dir) {
+        const label = `#${dir[1]}`;
+        return {
+          label,
+          name: byRef ? byRef.get(label) ?? byRef.get(`Seed #${dir[1]}`) ?? null : null,
+        };
+      }
+      // Pool seed: "A #1" / "[A #1]" → A1
       const m = /\[?\s*([A-Za-z])\s*#\s*(\d+)\s*\]?/.exec(ref);
       if (!m) return null;
       const label = `${m[1].toUpperCase()}${m[2]}`;

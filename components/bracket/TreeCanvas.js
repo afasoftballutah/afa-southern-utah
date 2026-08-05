@@ -11,6 +11,7 @@ import {
   slotDisplay,
   formatFieldTime,
 } from "@/lib/bracket/tree";
+import { loserAlwaysZeroTwo, alwaysZeroTwoLoserNumbers } from "@/lib/bracket/lives";
 
 // ONE GRID. The whole bracket renders from a single coordinate system: columns =
 // rounds (fixed cellW + fixed colGap), rows = slot units (center * rowH). Every
@@ -81,7 +82,21 @@ function TeamPill({ text, weightClass, score, won, pending, pillStyle, scoreW, f
  * part in centering — the fixed-height pills wrapper is the whole game unit and
  * the connector enters at its exact center.
  */
-function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide }) {
+function MatchCell({
+  game,
+  x,
+  y,
+  w,
+  box,
+  fontClass,
+  dashed,
+  numberByGameId,
+  gamesById,
+  wide,
+  /** 3GG: loser of this game is always 0–2 → survivor pool (e.g. L9 from G9) */
+  loserToPool = false,
+  paperNum = null,
+}) {
   if (!game) return null;
   const pending = game.status === "pending";
   const fieldTime = formatFieldTime(game);
@@ -104,8 +119,8 @@ function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide
     const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
     pills = <TeamPill {...common} text={name} weightClass="font-bold" score={null} won={false} />;
   } else {
-    const t1 = slotDisplay(game, "team1", numberByGameId);
-    const t2 = slotDisplay(game, "team2", numberByGameId);
+    const t1 = slotDisplay(game, "team1", numberByGameId, gamesById);
+    const t2 = slotDisplay(game, "team2", numberByGameId, gamesById);
     const w1 = game.winner_slot === "team1";
     const w2 = game.winner_slot === "team2";
     pills = (
@@ -116,11 +131,24 @@ function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide
     );
   }
 
+  const poolLabel =
+    loserToPool && paperNum != null
+      ? `L${paperNum} → survivor pool`
+      : loserToPool
+        ? "Loser → survivor pool"
+        : null;
+
   return (
     <div
       className="absolute"
       style={{ left: x, top: y, width: w }}
-      title={game.is_bye ? undefined : `${slotDisplay(game, "team1", numberByGameId).text} vs ${slotDisplay(game, "team2", numberByGameId).text}`}
+      title={
+        game.is_bye
+          ? undefined
+          : `${slotDisplay(game, "team1", numberByGameId, gamesById).text} vs ${slotDisplay(game, "team2", numberByGameId, gamesById).text}${
+              poolLabel ? ` · ${poolLabel}` : ""
+            }`
+      }
     >
       {/* The game unit: the two pills alone, fixed height. The connector enters
           at this box's exact vertical center. */}
@@ -131,6 +159,17 @@ function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide
       {fieldTime && (
         <div className={`${wide ? "text-[11px]" : "text-[10px]"} leading-none text-afa-muted whitespace-nowrap mt-1 px-0.5`}>
           {fieldTime}
+        </div>
+      )}
+      {/* 3GG always-0–2: show where the loser goes (not drawn as a feeder line). */}
+      {poolLabel && !fieldTime && (
+        <div className="text-[9px] leading-tight font-semibold text-afa-navy/75 whitespace-nowrap mt-0.5 px-0.5">
+          {poolLabel}
+        </div>
+      )}
+      {poolLabel && fieldTime && (
+        <div className="text-[9px] leading-tight font-semibold text-afa-navy/75 whitespace-nowrap px-0.5">
+          {poolLabel}
         </div>
       )}
     </div>
@@ -147,13 +186,40 @@ function MatchCell({ game, x, y, w, box, fontClass, dashed, numberByGameId, wide
  * pills, no transform:scale, horizontal scroll if wider than the container.
  * `fit` adds a SECOND, print-only scaled-to-page variant.
  */
-export default function TreeCanvas({ games, scale = 1, isMobile = false, showRoundStrip = false, fit = false }) {
+export default function TreeCanvas({
+  games,
+  /**
+   * Full main/consolation group for feeder walk-through (bye shells, unnumbered
+   * pads). Layout still uses `games` only. Without this, slots fed through
+   * unnumbered shells paint "—" instead of L2/L3.
+   */
+  allGames = null,
+  scale = 1,
+  isMobile = false,
+  showRoundStrip = false,
+  fit = false,
+  /** When true, stay inside the parent (scorekeeper). Public page uses full-bleed. */
+  contained = false,
+  /** 3GG hybrid: annotate games whose loser is always 0–2 → survivor pool. */
+  threeGg = false,
+}) {
   const scrollRef = useRef(null);
   const base = isMobile ? MOBILE : DESKTOP;
   const C = useMemo(() => scaled(base, scale), [base, scale]);
   const fontClass = "text-[13px]"; // sizing-contract floor at every viewport
   const wideCaption = scale >= 1 && !isMobile;
-  const numberByGameId = useMemo(() => assignGameNumbers(games), [games]);
+  // Number + resolve labels from the full graph so bye shells stay reachable.
+  const lookupGames = allGames ?? games;
+  const numberByGameId = useMemo(() => assignGameNumbers(lookupGames), [lookupGames]);
+  const gamesById = useMemo(
+    () => new Map((lookupGames ?? []).map((g) => [g.id, g])),
+    [lookupGames]
+  );
+  // N-agnostic: every game whose loser is structurally always 0–2.
+  const poolFeederNums = useMemo(
+    () => (threeGg ? alwaysZeroTwoLoserNumbers(numberByGameId, gamesById) : []),
+    [threeGg, numberByGameId, gamesById]
+  );
 
   const gameUnitH = 2 * C.teamRowH + C.pillGap;
   const finalUnitH = gameUnitH * FINAL_SCALE;
@@ -170,7 +236,8 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     const centersL = computeCenters(losers);
 
     const unitH = 2 * C.teamRowH + C.pillGap;
-    const leftPad = 2;
+    // Room for "G12" labels to the left of the first column (was flushing off-screen).
+    const leftPad = 28;
     const xForCol = (idx) => leftPad + idx * (C.cellW + C.colGap);
     // A connector enters a game at the exact vertical center of its two-pill
     // pair — the fixed-height unit, caption excluded. Every game uses this same
@@ -192,9 +259,11 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
     const roundHeaders = [];
     const roundStops = [];
     const posByKey = new Map();
+    const posById = new Map(); // actual feeder lines use source_game_id, not slot geometry
 
     const addLabel = (g, gx, unitTop) => {
       const n = numberByGameId.get(g.id);
+      // Byes / cancelled have no paper number — don't paint a blank G
       if (n != null) gameLabels.push({ n, x: gx, y: unitTop });
     };
 
@@ -213,47 +282,75 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           const y = boxTop + center * C.rowH;
           const key = `${sideName}-${r.round}-${g.slot}`;
           const pcY = boxCenterY(y);
-          posByKey.set(key, { x, y, pcY });
+          const pos = { x, y, pcY };
+          posByKey.set(key, pos);
+          posById.set(g.id, pos);
           cells.push({ game: g, x, y, key });
           addLabel(g, x, y);
         });
-        if (idx > 0) {
-          const prev = rounds[idx - 1];
-          r.games.forEach((g) => {
-            const ratio = r.games.length / prev.games.length;
-            const cur = posByKey.get(`${sideName}-${r.round}-${g.slot}`);
-            const feeders = ratio === 1 ? [g.slot] : [g.slot * 2, g.slot * 2 + 1];
-            feeders.forEach((slot) => {
-              const p = prev.games.find((x2) => x2.slot === slot);
-              if (!p) return;
-              const pp = posByKey.get(`${sideName}-${prev.round}-${p.slot}`);
-              connectors.push(elbowPath(pp.x + C.cellW, pp.pcY, cur.x, cur.pcY));
-            });
-          });
-        }
       });
     }
 
     layoutSide(winners, centersW, winnersBoxTop, "winners");
     layoutSide(losers, centersL, losersBoxTop, "losers");
 
+    // Connectors follow real feeders (3GG losers is not slot-aligned DE geometry).
+    // Geometric fallback only when a game has no source ids (seeded WR1).
+    function connectFeeders(gameList) {
+      for (const g of gameList) {
+        const cur = posById.get(g.id);
+        if (!cur) continue;
+        const srcs = [g.team1_source_game_id, g.team2_source_game_id].filter(Boolean);
+        if (srcs.length > 0) {
+          for (const srcId of srcs) {
+            const pp = posById.get(srcId);
+            if (!pp) continue;
+            connectors.push(elbowPath(pp.x + C.cellW, pp.pcY, cur.x, cur.pcY));
+          }
+          continue;
+        }
+        // Fallback: standard DE column geometry (winners half / 1:1)
+        const sideName = g.bracket_side;
+        const rounds = sideName === "winners" ? winners : losers;
+        const ri = rounds.findIndex((r) => r.round === g.round);
+        if (ri <= 0) continue;
+        const prev = rounds[ri - 1];
+        const ratio = rounds[ri].games.length / prev.games.length;
+        const feederSlots = ratio === 1 ? [g.slot] : [g.slot * 2, g.slot * 2 + 1];
+        for (const slot of feederSlots) {
+          const p = prev.games.find((x2) => x2.slot === slot);
+          if (!p) continue;
+          const pp = posById.get(p.id);
+          if (pp) connectors.push(elbowPath(pp.x + C.cellW, pp.pcY, cur.x, cur.pcY));
+        }
+      }
+    }
+    connectFeeders(winners.flatMap((r) => r.games));
+    connectFeeders(losers.flatMap((r) => r.games));
+
     const dividers = [];
     if (losers.length) dividers.push({ y: winnersTop + winnersBlockH + C.sideGap / 2 });
 
-    // The Final sits on the EXACT midpoint of its two feeders (symmetry law #3,
-    // no exceptions). finalCenterY is the midpoint of the winners-champ and
-    // losers-champ entry points; the Final box centers on it and the converging
-    // lines mirror around it.
+    // Final: midpoint of its real feeders when known, else last W / last L cells.
     const winnersRightX = winners.length ? xForCol(winners.length - 1) + C.cellW : 0;
     const losersRightX = losers.length ? xForCol(losers.length - 1) + C.cellW : 0;
     const finalX0 = Math.max(winnersRightX, losersRightX) + C.finalGap;
     const finalW = C.cellW * FINAL_SCALE;
     const fUnitH = unitH * FINAL_SCALE;
 
-    const wLast = winners.length ? winners[winners.length - 1].games[0] : null;
-    const lLast = losers.length ? losers[losers.length - 1].games[0] : null;
-    const wp = wLast ? posByKey.get(`winners-${winners[winners.length - 1].round}-${wLast.slot}`) : null;
-    const lp = lLast ? posByKey.get(`losers-${losers[losers.length - 1].round}-${lLast.slot}`) : null;
+    const [gf1Early] = final;
+    let wp = null;
+    let lp = null;
+    if (gf1Early?.team1_source_game_id) wp = posById.get(gf1Early.team1_source_game_id) ?? null;
+    if (gf1Early?.team2_source_game_id) lp = posById.get(gf1Early.team2_source_game_id) ?? null;
+    if (!wp) {
+      const wLast = winners.length ? winners[winners.length - 1].games[0] : null;
+      wp = wLast ? posById.get(wLast.id) : null;
+    }
+    if (!lp) {
+      const lLast = losers.length ? losers[losers.length - 1].games[0] : null;
+      lp = lLast ? posById.get(lLast.id) : null;
+    }
     let finalCenterY;
     if (wp && lp) finalCenterY = (wp.pcY + lp.pcY) / 2;
     else if (wp) finalCenterY = wp.pcY;
@@ -385,22 +482,48 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           {h.label}
         </div>
       ))}
-      {/* Game numbers on the LEFT of each pair, above the top pill — clear of
-          every connector path. */}
+      {/* Game numbers — only contested games (byes unnumbered). */}
       {layout.gameLabels.map((g, i) => (
         <div
           key={i}
-          className="absolute text-[9px] leading-none text-afa-muted tabular-nums pointer-events-none"
-          style={{ left: g.x + 1, top: g.y - 11 }}
+          className="absolute text-[10px] leading-none font-bold text-afa-navy/70 tabular-nums pointer-events-none"
+          style={{ left: g.x + 1, top: g.y - 12 }}
         >
           G{g.n}
         </div>
       ))}
       {layout.cells.map(({ game, x, y, key }) => (
-        <MatchCell key={key} game={game} x={x} y={y} w={C.cellW} box={pillBox} fontClass={fontClass} numberByGameId={numberByGameId} wide={wideCaption} />
+        <MatchCell
+          key={key}
+          game={game}
+          x={x}
+          y={y}
+          w={C.cellW}
+          box={pillBox}
+          fontClass={fontClass}
+          numberByGameId={numberByGameId}
+          gamesById={gamesById}
+          wide={wideCaption}
+          loserToPool={threeGg && loserAlwaysZeroTwo(game, gamesById)}
+          paperNum={numberByGameId.get(game.id) ?? null}
+        />
       ))}
       {layout.finalCells.map(({ game, x, y, w, dashed }) => (
-        <MatchCell key={game.id} game={game} x={x} y={y} w={w} box={finalPillBox} fontClass={finalFont} dashed={dashed} numberByGameId={numberByGameId} wide />
+        <MatchCell
+          key={game.id}
+          game={game}
+          x={x}
+          y={y}
+          w={w}
+          box={finalPillBox}
+          fontClass={finalFont}
+          dashed={dashed}
+          numberByGameId={numberByGameId}
+          gamesById={gamesById}
+          wide
+          loserToPool={false}
+          paperNum={numberByGameId.get(game.id) ?? null}
+        />
       ))}
       {/* Champion cell — the tree's one appearance of the Anton display face,
           scaled to the Final's designed-moment weight, centered on the line. */}
@@ -426,8 +549,31 @@ export default function TreeCanvas({ games, scale = 1, isMobile = false, showRou
           ))}
         </div>
       )}
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
-        <div ref={scrollRef} className="overflow-x-auto px-4 sm:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
+      {threeGg && poolFeederNums.length > 0 && (
+        <div className="mb-2 mx-1 rounded-lg border border-afa-navy/15 bg-afa-navy/[0.04] px-3 py-2 text-[11px] text-afa-ink/80">
+          <span className="font-bold text-afa-navy">Survivor pool</span>
+          <span className="text-afa-ink/60"> — loser is always 0–2 (any field size): </span>
+          <span className="font-semibold tabular-nums text-afa-navy">
+            {poolFeederNums.map((n) => `L${n}`).join(", ")}
+          </span>
+          <span className="text-afa-ink/60">
+            {" "}
+            → wait for a second 0–2, then play (or re-enter alone if no partner left).
+          </span>
+        </div>
+      )}
+      <div
+        className={
+          contained
+            ? "relative"
+            : "relative left-1/2 right-1/2 -mx-[50vw] w-screen"
+        }
+      >
+        <div
+          ref={scrollRef}
+          className={`overflow-x-auto ${contained ? "px-2 sm:px-3" : "px-4 sm:px-6"}`}
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           <div className="relative" style={{ width: layout.totalWidth, height: layout.totalHeight }}>
             {canvasBody}
           </div>

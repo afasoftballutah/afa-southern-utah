@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { leagueToday } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
+import { venueParts } from "@/lib/director";
 import Card from "@/components/ui/Card";
 import MyTeamStrip from "@/components/MyTeamStrip";
 import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
@@ -64,12 +65,14 @@ export default async function Home() {
 
   function toEventCard(t) {
     if (!t) return null;
+    // Short venue for dense home cards ("Canyons", not "The Canyons Sports Complex")
+    const venueShort = venueParts(t.venue_name, t.venue_address).name || t.venue_name;
     return {
       id: t.id,
       slug: t.slug,
       name: t.name,
       when: formatDateRangeNoYear(t.start_date, t.end_date),
-      where: t.venue_name,
+      where: venueShort || null,
       fee: t.entry_fee_cents != null ? formatFee(t.entry_fee_cents) : null,
       gg: t.game_guarantee,
     };

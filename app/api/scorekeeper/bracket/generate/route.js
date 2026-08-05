@@ -1,5 +1,6 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { generateBracket } from "@/lib/bracket/generate";
+import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { isBracketDraft } from "@/lib/bracket/propagate";
 import { getServiceClient } from "@/lib/supabase";
 
@@ -16,7 +17,7 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { divisionId, format, seedOrder } = body ?? {};
+  const { divisionId, format, seedOrder, fromPools, overrides } = body ?? {};
   if (!divisionId) return Response.json({ error: "Missing divisionId" }, { status: 400 });
 
   const draft = await isBracketDraft(divisionId);
@@ -35,6 +36,26 @@ export async function POST(request) {
         : "double_elim";
 
   try {
+    if (fromPools) {
+      const supabase = getServiceClient();
+      const { data: poolGames, error: pgErr } = await supabase
+        .from("pool_games")
+        .select("pool, team1_name, team2_name, team1_score, team2_score, status")
+        .eq("division_id", divisionId);
+      if (pgErr) throw new Error(pgErr.message);
+      const derived = seedOrderFromPools(poolGames ?? [], overrides ?? {});
+      if (!derived.complete) {
+        return Response.json(
+          { error: derived.reason || "Pools are not ready to seed from" },
+          { status: 400 }
+        );
+      }
+      const result = await generateBracket(divisionId, fmt, derived.order, {
+        teamNames: derived.order,
+      });
+      return Response.json({ ok: true, fromPools: true, ...result });
+    }
+
     const result = await generateBracket(
       divisionId,
       fmt,

@@ -11,6 +11,7 @@ import {
   schedulePosterForRegion,
   REGION_LABEL,
 } from "@/lib/data";
+import { venueParts } from "@/lib/director";
 import { parseLeagueDateOnly } from "@/lib/league-time";
 import {
   getRegionPrefSnapshot,
@@ -212,7 +213,11 @@ function UnpublishedScheduleBlock({ tournaments }) {
             <li key={t.id} className="tournament-unpublished__row">
               <span className="tournament-unpublished__name">{t.name}</span>
               <span className="tournament-unpublished__meta">
-                {[formatDateRange(t.start_date, t.end_date), t.venue_name, t.regionLabel]
+                {[
+                  formatDateRange(t.start_date, t.end_date),
+                  venueParts(t.venue_name, t.venue_address).name || t.venue_name,
+                  t.regionLabel,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
@@ -378,7 +383,10 @@ function TournamentRow({ t, linked, showRegionChip }) {
         : rawDivisionChips;
 
   // Facts line (JD ruling, dispatch-brief-3): date · venue · fee · GG.
-  const factsParts = [formatDateRange(t.start_date, t.end_date), t.venue_name];
+  // Short venue reading ("Canyons"), not the full stored sports-complex string.
+  const venueShort =
+    venueParts(t.venue_name, t.venue_address).name || t.venue_name;
+  const factsParts = [formatDateRange(t.start_date, t.end_date), venueShort];
   if (t.entry_fee_cents != null) factsParts.push(formatFee(t.entry_fee_cents));
   if (t.game_guarantee) factsParts.push(t.game_guarantee);
 

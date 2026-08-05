@@ -5,6 +5,8 @@ import {
   resolveSeeds,
   computeSeedWrites,
   parseSeedRef,
+  seedOrderFromPools,
+  roundRobinPairs,
 } from "@/lib/bracket/seed";
 
 function played(pool, t1, s1, t2, s2) {
@@ -75,4 +77,50 @@ test("computeSeedWrites fills team names from seed refs", () => {
     team1_name: "Alpha",
     team2_name: "Bravo",
   });
+});
+
+test("seedOrderFromPools is incomplete until every pool game is final", () => {
+  const games = [
+    played("A", "Alpha", 10, "Bravo", 5),
+    {
+      pool: "A",
+      team1_name: "Alpha",
+      team2_name: "Charlie",
+      team1_score: null,
+      team2_score: null,
+      status: "pending",
+    },
+  ];
+  const out = seedOrderFromPools(games);
+  assert.equal(out.complete, false);
+  assert.equal(out.order.length, 0);
+});
+
+test("seedOrderFromPools single pool finish order is seed #1…#N", () => {
+  const games = [
+    played("A", "Alpha", 10, "Bravo", 5),
+    played("A", "Alpha", 12, "Charlie", 4),
+    played("A", "Bravo", 8, "Charlie", 7),
+  ];
+  const out = seedOrderFromPools(games);
+  assert.equal(out.complete, true);
+  assert.equal(out.order[0], "Alpha");
+  assert.equal(out.order.length, 3);
+  assert.ok(out.order.includes("Bravo"));
+  assert.ok(out.order.includes("Charlie"));
+});
+
+test("seedOrderFromPools multi-pool ranks interleave A#1 B#1 then A#2 B#2", () => {
+  const games = [
+    played("A", "A1", 10, "A2", 1),
+    played("B", "B1", 10, "B2", 1),
+  ];
+  const out = seedOrderFromPools(games);
+  assert.equal(out.complete, true);
+  assert.deepEqual(out.order, ["A1", "B1", "A2", "B2"]);
+});
+
+test("roundRobinPairs is every unique pair once", () => {
+  assert.equal(roundRobinPairs(["A", "B", "C"]).length, 3);
+  assert.equal(roundRobinPairs(["A", "B", "C", "D"]).length, 6);
 });

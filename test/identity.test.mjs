@@ -127,11 +127,47 @@ test("a team with no name or no division is left unresolved", async () => {
   assert.equal(db.inserted.length, 0);
 });
 
-test("an existing team in the same division is reused", async () => {
+// Team key is name + manager + gender. Without a manager we never merge —
+// two bulk "Fallen" adds stay two rows until managers are known.
+
+test("without a manager, same team name always creates a new team", async () => {
   const db = fakeDb({
-    teams: [{ id: "t1", normalized_name: "fallen", gender: "coed", class_id: null }],
+    teams: [
+      {
+        id: "t1",
+        normalized_name: "fallen",
+        gender: "coed",
+        class_id: null,
+        manager_normalized_name: null,
+      },
+    ],
   });
-  assert.equal(await resolveTeam(db, { teamName: "FALLEN", divisionId: "d1" }), "t1");
+  assert.equal(await resolveTeam(db, { teamName: "Fallen", divisionId: "d1" }), "new-id");
+  assert.equal(db.inserted.length, 1);
+  assert.equal(db.inserted[0].manager_normalized_name, null);
+});
+
+test("an existing team with the same name + manager + gender is reused", async () => {
+  const db = fakeDb({
+    teams: [
+      {
+        id: "t1",
+        normalized_name: "fallen",
+        gender: "coed",
+        class_id: null,
+        manager_name: "JD Willcox",
+        manager_normalized_name: "jd willcox",
+      },
+    ],
+  });
+  assert.equal(
+    await resolveTeam(db, {
+      teamName: "FALLEN",
+      divisionId: "d1",
+      managerName: "  JD   Willcox ",
+    }),
+    "t1"
+  );
   assert.equal(db.inserted.length, 0);
 });
 
@@ -143,17 +179,65 @@ test("a merged-away team resolves to the survivor", async () => {
         normalized_name: "fallen",
         gender: "coed",
         class_id: null,
+        manager_name: "JD Willcox",
+        manager_normalized_name: "jd willcox",
         merged_into_id: "keeper",
       },
     ],
   });
-  assert.equal(await resolveTeam(db, { teamName: "Fallen", divisionId: "d1" }), "keeper");
+  assert.equal(
+    await resolveTeam(db, {
+      teamName: "Fallen",
+      divisionId: "d1",
+      managerName: "JD Willcox",
+    }),
+    "keeper"
+  );
 });
 
-test("the same team name under a different gender is a different team", async () => {
+test("same name + manager under a different gender is a different team", async () => {
   // The fake division is always coed, so a mens row must not match.
   const db = fakeDb({
-    teams: [{ id: "t1", normalized_name: "fallen", gender: "mens", class_id: null }],
+    teams: [
+      {
+        id: "t1",
+        normalized_name: "fallen",
+        gender: "mens",
+        class_id: null,
+        manager_normalized_name: "jd willcox",
+      },
+    ],
   });
-  assert.equal(await resolveTeam(db, { teamName: "Fallen", divisionId: "d1" }), "new-id");
+  assert.equal(
+    await resolveTeam(db, {
+      teamName: "Fallen",
+      divisionId: "d1",
+      managerName: "JD Willcox",
+    }),
+    "new-id"
+  );
+});
+
+test("same name, different managers are different teams", async () => {
+  const db = fakeDb({
+    teams: [
+      {
+        id: "t1",
+        normalized_name: "fallen",
+        gender: "coed",
+        class_id: null,
+        manager_normalized_name: "alice smith",
+      },
+    ],
+  });
+  assert.equal(
+    await resolveTeam(db, {
+      teamName: "Fallen",
+      divisionId: "d1",
+      managerName: "Bob Jones",
+    }),
+    "new-id"
+  );
+  assert.equal(db.inserted.length, 1);
+  assert.equal(db.inserted[0].manager_normalized_name, "bob jones");
 });

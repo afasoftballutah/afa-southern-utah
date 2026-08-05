@@ -2170,11 +2170,12 @@ textarea.form-field {
 }
 /* Nested event tiles — translucent chips, light red wash */
 .home-event {
+  /* Same 3-col grid for last + upcoming so names and trailing controls align */
   display: grid;
-  grid-template-columns: minmax(5.5rem, 7.5rem) 1fr auto;
+  grid-template-columns: minmax(4.75rem, 6.25rem) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.4rem 0.65rem;
-  padding: 0.65rem 0.85rem;
+  gap: 0.35rem 0.5rem;
+  padding: 0.65rem 0.65rem 0.65rem 0.75rem;
   border-radius: 0.85rem;
   background: linear-gradient(
     135deg,
@@ -2209,40 +2210,42 @@ textarea.form-field {
   font-weight: 700;
   color: #fff;
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Full name — no ellipsis */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 .home-event__where {
   display: block;
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 0.15rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+/* Trailing column: same width for Results pill and → so columns line up */
+.home-event__cta,
+.home-event__results-pill {
+  flex-shrink: 0;
+  justify-self: end;
+  min-width: 4.5rem;
+  box-sizing: border-box;
+  text-align: center;
 }
 .home-event__cta {
-  flex-shrink: 0;
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1;
   color: var(--afa-red);
   white-space: nowrap;
 }
-/* Completed (Last Tournament): room for Results pill — tourney sits left */
-.home-event--completed {
-  grid-template-columns: minmax(4.75rem, 6.25rem) minmax(0, 1fr) auto;
-  gap: 0.35rem 0.5rem;
-  padding-right: 0.65rem;
-}
 .home-event__results-pill {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 1.65rem;
-  padding: 0.2rem 0.75rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
   /* Solid red action pill — same family as .btn-action / Show full list */
   border: 2px solid var(--afa-red);

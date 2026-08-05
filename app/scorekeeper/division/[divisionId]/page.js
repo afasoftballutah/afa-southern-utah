@@ -4,11 +4,11 @@ import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getPublicClient, getServiceClient } from "@/lib/supabase";
 import { getDivisionCompletion } from "@/lib/bracket/status";
 import { isBracketDraft } from "@/lib/bracket/propagate";
+import { seedOrderFromPools } from "@/lib/bracket/seed";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
 import BracketScores from "@/components/scorekeeper/BracketScores";
-import PoolPlayManager from "@/components/scorekeeper/PoolPlayManager";
-import SeedBrackets from "@/components/scorekeeper/SeedBrackets";
+import CreatePoolRoundRobin from "@/components/scorekeeper/CreatePoolRoundRobin";
 import StageView from "@/components/scorekeeper/StageView";
 
 export const dynamic = "force-dynamic";
@@ -108,15 +108,21 @@ export default async function ScorekeeperDivisionPage({ params }) {
   //  - games but no `brackets` row -> a transcribed bracket (Gold/Silver/
   //    Bronze, dispatch-brief-24). Read and score them; never offer to
   //    generate a new structure over live games.
-  //  - pool play and no games of its own -> nothing here. Its teams are
-  //    still in pools and its bracket games live in the Gold/Silver/Bronze
-  //    divisions, filled from Seed Brackets above. BracketManager's "no
-  //    bracket yet" screen used to render in this spot offering to build a
-  //    double elimination out of `registrations`, a table these divisions
-  //    do not use: it read "0 teams registered" with the button disabled,
-  //    below a pool sheet listing 28 played games (JD, 2026-07-25).
+  //  - no pool, no games -> generate from director seed order.
+  //  - pools finished, no bracket yet -> generate from pool finish order.
+  //  - pools in progress -> StageView only (score pools first).
   const transcribed = !data.mainBracket && data.games.length > 0;
-  const generatable = !data.mainBracket && data.games.length === 0 && data.poolGames.length === 0;
+  const poolState = seedOrderFromPools(data.poolGames);
+  const poolsReady = data.poolGames.length > 0 && poolState.complete;
+  const noPoolPath =
+    !data.mainBracket && data.games.length === 0 && data.poolGames.length === 0;
+  const generatable =
+    !data.mainBracket && data.games.length === 0 && (noPoolPath || poolsReady);
+  const canCreatePool =
+    !data.mainBracket &&
+    data.games.length === 0 &&
+    data.poolGames.length === 0 &&
+    data.teamNames.length >= 2;
 
   return (
     <div className="space-y-4">
@@ -124,6 +130,12 @@ export default async function ScorekeeperDivisionPage({ params }) {
         <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
         <h1 className="t-title">{data.division.name}</h1>
       </div>
+      {canCreatePool && (
+        <CreatePoolRoundRobin
+          divisionId={divisionId}
+          teamCount={data.teamNames.length}
+        />
+      )}
       {data.poolGames.length > 0 && (
         <StageView
           divisionId={divisionId}
@@ -131,10 +143,30 @@ export default async function ScorekeeperDivisionPage({ params }) {
           poolGames={data.poolGames}
           stages={data.stages}
           confirmedAt={data.confirmedAt}
+          preferBracket={Boolean(data.mainBracket)}
+          bracketPanel={
+            data.mainBracket || generatable ? (
+              <BracketManager
+                divisionId={divisionId}
+                mainBracket={data.mainBracket}
+                consolationBracket={data.consolationBracket}
+                games={data.games}
+                teamNames={data.teamNames}
+                seedOrder={data.seedOrder}
+                poolGames={data.poolGames}
+                mainDraft={data.mainDraft}
+                consolationDraft={data.consolationDraft}
+                completion={data.completion}
+                tournamentSlug={data.division.tournaments?.slug}
+                divisionName={data.division.display_name || data.division.name}
+              />
+            ) : null
+          }
         />
       )}
       {transcribed && <BracketScores games={data.games} />}
-      {(data.mainBracket || generatable) && (
+      {/* No-pool path: bracket tools live on the page (not under StageView). */}
+      {data.poolGames.length === 0 && (data.mainBracket || generatable) && (
         <BracketManager
           divisionId={divisionId}
           mainBracket={data.mainBracket}
@@ -142,9 +174,12 @@ export default async function ScorekeeperDivisionPage({ params }) {
           games={data.games}
           teamNames={data.teamNames}
           seedOrder={data.seedOrder}
+          poolGames={data.poolGames}
           mainDraft={data.mainDraft}
           consolationDraft={data.consolationDraft}
           completion={data.completion}
+          tournamentSlug={data.division.tournaments?.slug}
+          divisionName={data.division.display_name || data.division.name}
         />
       )}
     </div>

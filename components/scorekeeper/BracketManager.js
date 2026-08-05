@@ -4,19 +4,18 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlacementsUpload from "./PlacementsUpload";
 import DirectorSeedList from "./DirectorSeedList";
-import { isCompleteSeedOrder } from "@/lib/bracket/seed-order";
+import DrawnBracket from "@/components/bracket/DrawnBracket";
+import { isCompleteSeedOrder, normalizeSeedOrder } from "@/lib/bracket/seed-order";
+import { seedOrderFromPools } from "@/lib/bracket/seed";
+import { forDrawnBracket } from "@/lib/bracket/for-drawn-bracket";
+import { isSurvivorPoolGame } from "@/lib/bracket/lives";
 import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
 
-const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
-
-function roundLabel(side, round) {
-  if (side === "final") {
-    if (round === 1) return "Grand Final";
-    if (round === 2) return "If Necessary";
-    if (round === 3) return "3GG Super Final";
-  }
-  return `Round ${round}`;
-}
+const FORMATS = [
+  { value: "three_gg_hybrid", label: "3GG" },
+  { value: "double_elim", label: "Double elim" },
+  { value: "double_elim_consolation", label: "Double elim + consol" },
+];
 
 export default function BracketManager({
   divisionId,
@@ -25,36 +24,79 @@ export default function BracketManager({
   games,
   teamNames,
   seedOrder: seedOrderProp = null,
+  poolGames = [],
   mainDraft,
   consolationDraft,
   completion,
+  tournamentSlug = null,
+  divisionName = "Draft",
 }) {
   const router = useRouter();
-  const [format, setFormat] = useState("three_gg_hybrid");
-  const [seedOrder, setSeedOrder] = useState(seedOrderProp);
+  const poolDerived = useMemo(() => seedOrderFromPools(poolGames), [poolGames]);
+  const poolsComplete = poolGames.length > 0 && poolDerived.complete;
+
+  const teams = useMemo(() => {
+    if (teamNames?.length >= 2) return teamNames;
+    if (poolsComplete) return poolDerived.order;
+    return teamNames ?? [];
+  }, [teamNames, poolsComplete, poolDerived.order]);
+
+  const defaultOrder = useMemo(() => {
+    if (isCompleteSeedOrder(teams, seedOrderProp)) {
+      return normalizeSeedOrder(teams, seedOrderProp);
+    }
+    if (poolsComplete) return poolDerived.order;
+    return normalizeSeedOrder(teams, teams);
+  }, [teams, seedOrderProp, poolsComplete, poolDerived.order]);
+
+  const [format, setFormat] = useState(
+    mainBracket?.format || (poolGames.length > 0 ? "double_elim" : "three_gg_hybrid")
+  );
+  const [seedOrder, setSeedOrder] = useState(defaultOrder);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const seedsReady = useMemo(
-    () => isCompleteSeedOrder(teamNames, seedOrder),
-    [teamNames, seedOrder]
+  const seedsReady = isCompleteSeedOrder(teams, seedOrder);
+  const anyDraft = mainDraft || (consolationBracket ? consolationDraft : false);
+  const hasBracket = !!mainBracket;
+
+  const mainGames = useMemo(
+    () => (games ?? []).filter((g) => g.bracket_group === "main"),
+    [games]
+  );
+  const consolationGames = useMemo(
+    () => (games ?? []).filter((g) => g.bracket_group === "consolation"),
+    [games]
   );
 
-  async function generate() {
+  /** Director seeds for DrawnBracket pills: every team shows [#n]. */
+  const directorSeeds = useMemo(() => {
+    const byTeam = new Map();
+    const byRef = new Map();
+    (seedOrder ?? []).forEach((name, i) => {
+      const tag = `#${i + 1}`;
+      byTeam.set(name, tag);
+      byRef.set(tag, name);
+      byRef.set(`Seed #${i + 1}`, name);
+    });
+    return { byTeam, byRef };
+  }, [seedOrder]);
+
+  async function runGenerate() {
+    if (!seedsReady) {
+      setError("Set seed order #1 through every team first.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/scorekeeper/bracket/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          divisionId,
-          format,
-          seedOrder: seedOrder ?? undefined,
-        }),
+        body: JSON.stringify({ divisionId, format, seedOrder }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not generate bracket");
+      if (!res.ok) throw new Error(json.error || "Could not generate");
       router.refresh();
     } catch (err) {
       setError(err.message);
@@ -63,166 +105,128 @@ export default function BracketManager({
     }
   }
 
-  async function regenerate() {
-    const msg =
-      consolationBracket || format === "double_elim_consolation"
-        ? "Regenerate both brackets from the saved seed order? This replaces every unplayed game in both."
-        : "Regenerate the bracket from the saved seed order? This replaces every unplayed game.";
-    if (!window.confirm(msg)) return;
-    await generate();
+  async function clearAndGenerate() {
+    if (hasBracket) {
+      const ok = window.confirm(
+        anyDraft
+          ? "Clear this draft and generate a new bracket from the seeds above?"
+          : "Clear the current bracket and generate a new one from the seeds above? All scores will be wiped."
+      );
+      if (!ok) return;
+    }
+    await runGenerate();
   }
 
-  if (!mainBracket) {
-    return (
-      <div className="space-y-4">
-        <DirectorSeedList
-          divisionId={divisionId}
-          teamNames={teamNames}
-          initialOrder={seedOrder}
-          onSaved={(order) => setSeedOrder(order)}
-        />
-        <div className="card p-4 space-y-3">
-          <p className="text-sm text-afa-ink/70">
-            {teamNames.length} team{teamNames.length === 1 ? "" : "s"} registered.
-            {" "}
-            {seedsReady ? "Seeds ready — generate when the field is set." : "Set seed order above before generating."}
-          </p>
-          <label className="block">
-            <span className="block text-sm font-semibold mb-1">Format</span>
-            <select
-              className="w-full border border-afa-navy/30 rounded px-3 py-2"
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-            >
-              <option value="three_gg_hybrid">3GG (hybrid — 0–2 gets a third life)</option>
-              <option value="double_elim">Double Elimination</option>
-              <option value="double_elim_consolation">Double Elimination + Consolation</option>
-            </select>
-          </label>
-          {format === "three_gg_hybrid" && (
-            <p className="text-xs text-afa-ink/60">
-              No pool. Everyone is double-elim except a team that goes{" "}
-              <strong>0–2</strong> in the bracket — they get a third life and can still win.
-              A 1–2 team is out at two losses. Seed order is required.
-            </p>
-          )}
-          {format === "double_elim_consolation" && (
-            <p className="text-xs text-afa-ink/60">
-              A team drops into the consolation bracket on its 2nd loss in the
-              championship bracket, starting fresh at 0 losses there.
-            </p>
-          )}
-          {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
-          <button
-            type="button"
-            disabled={busy || teamNames.length < 2 || !seedsReady}
-            onClick={generate}
-            className="w-full bg-afa-navy text-white font-bold py-3 rounded-lg disabled:opacity-40"
-          >
-            {busy ? "Generating…" : "Generate Bracket"}
-          </button>
-          {teamNames.length < 2 && (
-            <p className="text-xs text-afa-ink/60">Need at least 2 registered teams first.</p>
-          )}
-          {!seedsReady && teamNames.length >= 2 && (
-            <p className="text-xs text-afa-ink/60">Save a complete seed order (#1 through #{teamNames.length}) first.</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const mainGames = games.filter((g) => g.bracket_group === "main");
-  const consolationGames = games.filter((g) => g.bracket_group === "consolation");
-  const anyDraft = mainDraft || (consolationBracket ? consolationDraft : false);
+  const canGenerate = !busy && teams.length >= 2 && seedsReady;
 
   return (
-    <div className="space-y-6">
-      {anyDraft && (
-        <div className="flex justify-end">
-          <button type="button" onClick={regenerate} disabled={busy} className="text-afa-navy underline text-sm font-semibold">
-            Regenerate
-          </button>
-        </div>
-      )}
-      {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
-
-      {completion.complete && <PlacementsUpload divisionId={divisionId} completion={completion} />}
-
-      <BracketSection
-        label="Championship Bracket"
-        games={mainGames}
-        draft={mainDraft}
-        teamNames={teamNames}
-        onChanged={() => router.refresh()}
+    <div className="space-y-5">
+      {/* 1. Seeds */}
+      <DirectorSeedList
+        divisionId={divisionId}
+        teamNames={teams}
+        initialOrder={defaultOrder}
+        poolDefault={poolsComplete ? poolDerived.order : null}
+        onOrderChange={setSeedOrder}
+        onSaved={setSeedOrder}
       />
 
-      {consolationBracket && (
-        <>
-          <div className="border-t border-afa-navy/10" />
-          <BracketSection
-            label="Consolation Bracket"
-            games={consolationGames}
-            draft={consolationDraft}
-            teamNames={teamNames}
+      {/* 2. Format + one action */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="border border-afa-navy/30 rounded-lg px-3 py-2.5 text-sm font-semibold bg-white min-w-[10rem]"
+          value={format}
+          onChange={(e) => setFormat(e.target.value)}
+          aria-label="Bracket format"
+        >
+          {FORMATS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={!canGenerate}
+          onClick={clearAndGenerate}
+          className="bg-afa-navy text-white font-bold px-5 py-2.5 rounded-lg disabled:opacity-40 text-sm"
+        >
+          {busy ? "Working…" : hasBracket ? "Clear & generate" : "Generate"}
+        </button>
+      </div>
+      {error && <p className="text-afa-ink font-bold underline text-sm">{error}</p>}
+
+      {completion?.complete && <PlacementsUpload divisionId={divisionId} completion={completion} />}
+
+      {/* 3. Drawing — pass director seeds so every team shows [#n] */}
+      {hasBracket && mainGames.length > 0 && (
+        <DrawnBracket
+          games={forDrawnBracket(mainGames)}
+          division={divisionName}
+          seeds={directorSeeds}
+        />
+      )}
+      {hasBracket && consolationGames.length > 0 && (
+        <DrawnBracket
+          games={forDrawnBracket(consolationGames)}
+          division={`${divisionName} consol`}
+          seeds={directorSeeds}
+        />
+      )}
+
+      {/* 4. Score */}
+      {hasBracket && mainGames.length > 0 && (
+        <div className="space-y-4">
+          <ScoreList
+            games={mainGames}
+            draft={mainDraft}
+            teamNames={teams}
             onChanged={() => router.refresh()}
           />
-        </>
+          {consolationBracket && consolationGames.length > 0 && (
+            <ScoreList
+              games={consolationGames}
+              draft={consolationDraft}
+              teamNames={teams}
+              onChanged={() => router.refresh()}
+            />
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function BracketSection({ label, games, draft, teamNames, onChanged }) {
-  const bySide = { winners: [], losers: [], final: [] };
-  for (const g of games) bySide[g.bracket_side]?.push(g);
+function ScoreList({ games, draft, teamNames, onChanged }) {
+  const sorted = useMemo(() => {
+    const sideRank = { winners: 0, losers: 1, final: 2 };
+    return [...(games ?? [])].sort((a, b) => {
+      if (sideRank[a.bracket_side] !== sideRank[b.bracket_side]) {
+        return (sideRank[a.bracket_side] ?? 9) - (sideRank[b.bracket_side] ?? 9);
+      }
+      if (a.round !== b.round) return a.round - b.round;
+      return a.slot - b.slot;
+    });
+  }, [games]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-bold text-afa-navy">{label}</h2>
-        <p className={"text-xs font-bold " + (draft ? "text-afa-navy" : "text-afa-ink/60")}>
-          {draft ? "DRAFT — every slot editable" : "LOCKED"}
-        </p>
-      </div>
-
-      {["winners", "losers", "final"].map((side) =>
-        bySide[side].length === 0 ? null : (
-          <div key={side} className="space-y-3">
-            <h3 className="text-sm font-bold text-afa-navy">{SIDE_LABELS[side]}</h3>
-            <div>
-              {Object.entries(groupByRound(bySide[side])).map(([round, roundGames], i) => (
-                <div key={round}>
-                  {i > 0 && <div className="border-t border-afa-navy/10" />}
-                  <p className="text-xs font-semibold text-afa-ink/50 mt-2 mb-1">
-                    {roundLabel(side, Number(round))}
-                  </p>
-                  <div className="space-y-2">
-                    {roundGames.map((g) => (
-                      <GameRow key={g.id} game={g} teamNames={teamNames} draft={draft} onChanged={onChanged} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      )}
+    <div className="space-y-2">
+      {sorted.map((g) => (
+        <GameRow
+          key={g.id}
+          game={g}
+          teamNames={teamNames}
+          draft={draft}
+          onChanged={onChanged}
+        />
+      ))}
     </div>
   );
-}
-
-function groupByRound(list) {
-  const out = {};
-  for (const g of list) {
-    (out[g.round] ??= []).push(g);
-  }
-  return out;
 }
 
 function slotLabel(name, isOpenEntry) {
   if (name) return name;
-  return isOpenEntry ? "awaiting eliminated team" : "TBD";
+  return isOpenEntry ? "awaiting team" : "—";
 }
 
 function GameRow({ game, teamNames, draft, onChanged }) {
@@ -237,6 +241,7 @@ function GameRow({ game, teamNames, draft, onChanged }) {
   const [error, setError] = useState("");
 
   const playable = game.team1_name && game.team2_name && game.status === "pending";
+  const thirdLife = isSurvivorPoolGame(game) || String(game.field ?? "") === "Guarantee net";
 
   async function saveSlots() {
     setBusy(true);
@@ -299,23 +304,30 @@ function GameRow({ game, teamNames, draft, onChanged }) {
     }
   }
 
-  const label =
-    game.status === "cancelled"
-      ? "Not needed"
-      : `${slotLabel(game.team1_name, game.team1_is_open_entry)} vs ${slotLabel(game.team2_name, game.team2_is_open_entry)}`;
+  if (game.status === "cancelled") return null;
+
+  const label = `${slotLabel(game.team1_name, game.team1_is_open_entry)} vs ${slotLabel(game.team2_name, game.team2_is_open_entry)}`;
 
   return (
-    <div className="border border-afa-navy/10 rounded p-3 space-y-2">
+    <div
+      className={
+        "border rounded-lg p-3 space-y-2 " +
+        (thirdLife ? "border-afa-navy/40 bg-afa-navy/[0.03]" : "border-afa-navy/10")
+      }
+    >
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="w-full flex items-center justify-between text-left"
+        className="w-full flex items-center justify-between text-left gap-2"
       >
-        <span className="font-semibold text-sm">{label}</span>
+        <span className="font-semibold text-sm min-w-0">
+          <span className="text-afa-navy/50 tabular-nums mr-2">G{game.round}</span>
+          {label}
+        </span>
         {game.status === "final" && (
-          <span className="text-sm text-afa-ink/70">
+          <span className="text-sm text-afa-ink/70 shrink-0 tabular-nums">
             {game.team1_score}–{game.team2_score}
-            {game.is_bye ? " (bye)" : ""}
+            {game.is_bye ? " bye" : ""}
           </span>
         )}
       </button>
@@ -324,14 +336,8 @@ function GameRow({ game, teamNames, draft, onChanged }) {
         <div className="space-y-3 pt-2 border-t border-afa-navy/10">
           {draft && game.status === "pending" && (
             <div className="grid grid-cols-2 gap-2">
-              <label className="block">
-                <span className="block text-xs font-semibold mb-1">Team 1</span>
-                <TeamSelect value={team1} onChange={setTeam1} teamNames={teamNames} />
-              </label>
-              <label className="block">
-                <span className="block text-xs font-semibold mb-1">Team 2</span>
-                <TeamSelect value={team2} onChange={setTeam2} teamNames={teamNames} />
-              </label>
+              <TeamSelect value={team1} onChange={setTeam1} teamNames={teamNames} />
+              <TeamSelect value={team2} onChange={setTeam2} teamNames={teamNames} />
               <button
                 type="button"
                 onClick={saveSlots}
@@ -344,37 +350,32 @@ function GameRow({ game, teamNames, draft, onChanged }) {
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="block text-xs font-semibold mb-1">Field</span>
-              <input
-                className="w-full border border-afa-navy/30 rounded px-2 py-2"
-                value={field}
-                onChange={(e) => setField(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="block text-xs font-semibold mb-1">Time</span>
-              <input
-                type="datetime-local"
-                className="w-full border border-afa-navy/30 rounded px-2 py-2"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
-            </label>
+            <input
+              className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+              placeholder="Field"
+              value={field}
+              onChange={(e) => setField(e.target.value)}
+            />
+            <input
+              type="datetime-local"
+              className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
             <button
               type="button"
               onClick={saveSchedule}
               disabled={busy}
               className="col-span-2 text-afa-navy underline text-sm font-semibold text-left"
             >
-              Save field &amp; time
+              Save schedule
             </button>
           </div>
 
           {playable && (
             <div className="grid grid-cols-2 gap-2 items-end">
-              <label className="block">
-                <span className="block text-xs font-semibold mb-1">{game.team1_name}</span>
+              <label className="block min-w-0">
+                <span className="block text-xs font-semibold mb-1 truncate">{game.team1_name}</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -383,8 +384,8 @@ function GameRow({ game, teamNames, draft, onChanged }) {
                   onChange={(e) => setScore1(e.target.value)}
                 />
               </label>
-              <label className="block">
-                <span className="block text-xs font-semibold mb-1">{game.team2_name}</span>
+              <label className="block min-w-0">
+                <span className="block text-xs font-semibold mb-1 truncate">{game.team2_name}</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -399,7 +400,7 @@ function GameRow({ game, teamNames, draft, onChanged }) {
                 onClick={submitScore}
                 className="col-span-2 bg-afa-navy text-white font-bold py-3 rounded-lg disabled:opacity-40"
               >
-                Submit Score
+                Score
               </button>
             </div>
           )}
@@ -414,11 +415,11 @@ function GameRow({ game, teamNames, draft, onChanged }) {
 function TeamSelect({ value, onChange, teamNames }) {
   return (
     <select
-      className="w-full border border-afa-navy/30 rounded px-2 py-2"
+      className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">TBD</option>
+      <option value="">—</option>
       {teamNames.map((name) => (
         <option key={name} value={name}>
           {name}
@@ -427,4 +428,3 @@ function TeamSelect({ value, onChange, teamNames }) {
     </select>
   );
 }
-

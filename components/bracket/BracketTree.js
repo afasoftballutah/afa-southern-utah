@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { gamesForGroup } from "@/lib/bracket/tree";
+import { gamesForGroup, isContestedGame } from "@/lib/bracket/tree";
 import TreeCanvas from "./TreeCanvas";
 import ListView from "./ListView";
 
@@ -62,10 +62,23 @@ function getStoredViewServer() {
  * print-only scaled-to-page variant for desktop-context divisions (sizing
  * contract's one exception); it no longer changes what's shown on screen.
  */
-export default function BracketTree({ division }) {
-  const mainGames = gamesForGroup(division.games ?? [], "main");
-  const consolationGames = gamesForGroup(division.games ?? [], "consolation");
+/** Hide cancelled, byes, and empty shells so the tree isn't full of "—". */
+function playableGames(list) {
+  const all = list ?? [];
+  const byId = new Map(all.map((g) => [g.id, g]));
+  return all.filter((g) => {
+    if (!g || g.status === "cancelled" || g.is_bye) return false;
+    // Keep finals even early (placeholders W/L)
+    if (g.bracket_side === "final") return true;
+    return isContestedGame(g, byId);
+  });
+}
 
+export default function BracketTree({ division }) {
+  const mainAll = gamesForGroup(division.games ?? [], "main");
+  const consolationAll = gamesForGroup(division.games ?? [], "consolation");
+  const mainGames = playableGames(mainAll);
+  const consolationGames = playableGames(consolationAll);
   const isDesktop = useSyncExternalStore(subscribeDesktop, getIsDesktop, getIsDesktopServer);
   const isMobile = !isDesktop;
 
@@ -107,13 +120,26 @@ export default function BracketTree({ division }) {
 
       {/* Tree — visible when selected, and always in print regardless of the toggle. */}
       <div className={`${view === "bracket" ? "block" : "hidden"} print:block`}>
-        <TreeCanvas games={mainGames} scale={1} isMobile={isMobile} showRoundStrip={isMobile} fit={!isMobile} />
+        <TreeCanvas
+          games={mainGames}
+          allGames={mainAll}
+          scale={1}
+          isMobile={isMobile}
+          showRoundStrip={isMobile}
+          fit={!isMobile}
+        />
         {consolationGames.length > 0 && (
           <div className="mt-8">
-            {/* Site chalk-line separates the consolation tree from the losers bracket above. */}
             <div className="border-t border-afa-navy/10" />
             <p className="font-display text-afa-navy text-sm mb-2 mt-4">Consolation</p>
-            <TreeCanvas games={consolationGames} scale={0.82} isMobile={isMobile} showRoundStrip={false} fit={!isMobile} />
+            <TreeCanvas
+              games={consolationGames}
+              allGames={consolationAll}
+              scale={0.82}
+              isMobile={isMobile}
+              showRoundStrip={false}
+              fit={!isMobile}
+            />
           </div>
         )}
       </div>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>9-team 3GG — site bracket language</title>
+<style>
+  :root {
+    --afa-navy: #1e3a6e;
+    --afa-ink: #16233d;
+    --afa-muted: #5a6578;
+    --afa-cream: #f7f4ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    background: var(--afa-cream); color: var(--afa-ink);
+  }
+  .wrap { padding: 24px; }
+  h1 { font-size: 1.25rem; color: var(--afa-navy); margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--afa-muted); font-size: 13px; margin-bottom: 16px; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; font-size: 12px;
+  }
+  .legend span {
+    background: #fff; border: 1px solid rgba(30,58,110,.15); border-radius: 999px;
+    padding: 4px 10px; color: var(--afa-navy); font-weight: 600;
+  }
+  .board {
+    position: relative; background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(22,35,61,.06), 0 12px 28px -18px rgba(22,35,61,.45);
+    overflow: auto; padding: 16px;
+  }
+  .canvas { position: relative; }
+  .band {
+    position: absolute; left: 0; font-size: 11px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--afa-navy);
+    writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+  .divider {
+    position: absolute; left: 28px; right: 16px; border-top: 1px solid rgba(30,58,110,.12);
+  }
+  .hdr {
+    position: absolute; text-align: center; font-size: 11px; font-weight: 700;
+    letter-spacing: .08em; color: var(--afa-navy); text-transform: uppercase;
+  }
+  .cell { position: absolute; width: 200px; }
+  .gnum {
+    font-size: 10px; font-weight: 700; color: rgba(30,58,110,.7); margin-bottom: 2px;
+  }
+  .card {
+    border: 1px solid var(--afa-navy); border-radius: 3px; background: #fff;
+    overflow: hidden; box-shadow: 0 1px 0 rgba(22,35,61,.04);
+  }
+  .card.survivor { border-color: #6b3fa0; box-shadow: 0 0 0 1px rgba(107,63,160,.25); }
+  .card.net { border-color: #0d6e6e; }
+  .pill {
+    display: flex; align-items: center; min-height: 26px; padding: 0 8px;
+    font-size: 13px; border-top: 2px solid var(--afa-navy);
+  }
+  .pill + .pill { border-top: 1px solid rgba(30,58,110,.2); }
+  .pill.muted { color: var(--afa-muted); font-weight: 500; }
+  .pill.seed { color: var(--afa-ink); font-weight: 600; }
+  .tag {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    margin-top: 3px; color: var(--afa-navy); opacity: .85;
+  }
+  .tag.surv { color: #6b3fa0; }
+  .tag.net { color: #0d6e6e; }
+  svg.lines { position: absolute; inset: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>9-team 3GG hybrid</h1>
+  <p class="sub">Site bracket language — paper G# · W#/L# provenance · winners above · losers below · finals right</p>
+  <div class="legend">
+    <span>Winners</span>
+    <span style="border-color:#6b3fa0;color:#6b3fa0">Survivor pool</span>
+    <span style="border-color:#0d6e6e;color:#0d6e6e">Guarantee net</span>
+    <span>Final + if necessary</span>
+  </div>
+  <div class="board">
+    <div class="canvas" style="width:3044px;height:708px">
+      <div class="band" style="top:76px">Winners</div>
+      <div class="band" style="top:516px">Losers</div>
+      <div class="divider" style="top:432px"></div>
+      <svg class="lines" width="3044" height="708">
+        <path d="M 236 64 H 250 V 64 H 264" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 64 H 478 V 108 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 152 H 478 V 108 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 240 H 478 V 284 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 328 H 478 V 284 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 692 108 H 706 V 196 H 720" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 692 284 H 706 V 196 H 720" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 236 64 H 136 V 512 H 36" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 152 H 250 V 512 H 36" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 240 H 250 V 600 H 36" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 328 H 250 V 600 H 36" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 236 512 H 250 V 556 H 264" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 236 600 H 250 V 556 H 264" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 236 512 H 364 V 556 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 236 600 H 364 V 556 H 492" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 64 H 592 V 556 H 720" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 464 556 H 592 V 556 H 720" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 692 556 H 820 V 556 H 948" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 920 556 H 934 V 556 H 948" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 692 108 H 934 V 556 H 1176" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1148 556 H 1162 V 556 H 1176" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 692 284 H 934 V 556 H 1176" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 920 556 H 1048 V 556 H 1176" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1376 556 H 1390 V 556 H 1404" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1376 556 H 1390 V 556 H 1404" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1376 556 H 1504 V 556 H 1632" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1376 556 H 1504 V 556 H 1632" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 920 196 H 1390 V 556 H 1860" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1832 556 H 1846 V 556 H 1860" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 1604 556 H 1846 V 556 H 2088" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2060 556 H 2074 V 556 H 2088" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2288 556 H 2302 V 556 H 2316" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2060 556 H 2188 V 556 H 2316" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 920 196 H 1748 V 320 H 2576" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2516 556 H 2546 V 320 H 2576" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2776 320 H 2790 V 320 H 2804" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+<path d="M 2776 320 H 2790 V 320 H 2804" fill="none" stroke="#1e3a6e" stroke-width="1"/>
+      </svg>
+      <div class="hdr" style="left:36px;top:8px;width:200px">ROUND 1</div><div class="hdr" style="left:264px;top:8px;width:200px">ROUND 2</div><div class="hdr" style="left:492px;top:8px;width:200px">ROUND 3</div><div class="hdr" style="left:720px;top:8px;width:200px">SEMIS</div>
+      <div class="hdr" style="left:36px;top:456px;width:200px">ELIMINATION 1</div><div class="hdr" style="left:264px;top:456px;width:200px">ELIMINATION 2</div><div class="hdr" style="left:492px;top:456px;width:200px">ELIMINATION 3</div><div class="hdr" style="left:720px;top:456px;width:200px">ELIMINATION 4</div><div class="hdr" style="left:948px;top:456px;width:200px">ELIMINATION 5</div><div class="hdr" style="left:1176px;top:456px;width:200px">ELIMINATION 6</div><div class="hdr" style="left:1404px;top:456px;width:200px">ELIMINATION 7</div><div class="hdr" style="left:1632px;top:456px;width:200px">ELIMINATION 8</div><div class="hdr" style="left:1860px;top:456px;width:200px">ELIMINATION 9</div><div class="hdr" style="left:2088px;top:456px;width:200px">ELIMINATION 10</div><div class="hdr" style="left:2316px;top:456px;width:200px">ELIMINATION 11</div>
+      <div class="hdr" style="left:2576px;top:270px;width:200px">CHAMPIONSHIP</div>
+      <div class="cell" style="left:36px;top:36px">
+          <div class="gnum">G1</div>
+          <div class="card ">
+            <div class="pill seed">Hotel</div>
+            <div class="pill seed">India</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:264px;top:36px">
+          <div class="gnum">G2</div>
+          <div class="card ">
+            <div class="pill seed">Alpha</div>
+            <div class="pill muted">W1</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:264px;top:124px">
+          <div class="gnum">G3</div>
+          <div class="card ">
+            <div class="pill seed">Delta</div>
+            <div class="pill seed">Echo</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:264px;top:212px">
+          <div class="gnum">G4</div>
+          <div class="card ">
+            <div class="pill seed">Bravo</div>
+            <div class="pill seed">Golf</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:264px;top:300px">
+          <div class="gnum">G5</div>
+          <div class="card ">
+            <div class="pill seed">Charlie</div>
+            <div class="pill seed">Foxtrot</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:492px;top:80px">
+          <div class="gnum">G6</div>
+          <div class="card ">
+            <div class="pill muted">W2</div>
+            <div class="pill muted">W3</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:492px;top:256px">
+          <div class="gnum">G7</div>
+          <div class="card ">
+            <div class="pill muted">W4</div>
+            <div class="pill muted">W5</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:720px;top:168px">
+          <div class="gnum">G8</div>
+          <div class="card ">
+            <div class="pill muted">W6</div>
+            <div class="pill muted">W7</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:36px;top:484px">
+          <div class="gnum">G9</div>
+          <div class="card ">
+            <div class="pill muted">L1</div>
+            <div class="pill muted">L3</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:36px;top:572px">
+          <div class="gnum">G10</div>
+          <div class="card ">
+            <div class="pill muted">L4</div>
+            <div class="pill muted">L5</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:264px;top:528px">
+          <div class="gnum">G11</div>
+          <div class="card survivor">
+            <div class="pill muted">L9</div>
+            <div class="pill muted">L10</div>
+          </div>
+          <div class="tag surv">Survivor · L exits 0–3</div>
+        </div>
+<div class="cell" style="left:492px;top:528px">
+          <div class="gnum">G12</div>
+          <div class="card ">
+            <div class="pill muted">W9</div>
+            <div class="pill muted">W10</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:720px;top:528px">
+          <div class="gnum">G13</div>
+          <div class="card ">
+            <div class="pill muted">L2</div>
+            <div class="pill muted">W11</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:948px;top:528px">
+          <div class="gnum">G14</div>
+          <div class="card ">
+            <div class="pill muted">W12</div>
+            <div class="pill muted">W13</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:1176px;top:528px">
+          <div class="gnum">G15</div>
+          <div class="card ">
+            <div class="pill muted">L6</div>
+            <div class="pill muted">W14</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:1176px;top:528px">
+          <div class="gnum">G16</div>
+          <div class="card ">
+            <div class="pill muted">L7</div>
+            <div class="pill muted">L13</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:1404px;top:528px">
+          <div class="gnum">G17</div>
+          <div class="card net">
+            <div class="pill muted">L15</div>
+            <div class="pill muted">L16</div>
+          </div>
+          <div class="tag net">Guarantee net</div>
+        </div>
+<div class="cell" style="left:1632px;top:528px">
+          <div class="gnum">G18</div>
+          <div class="card ">
+            <div class="pill muted">W15</div>
+            <div class="pill muted">W16</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:1860px;top:528px">
+          <div class="gnum">G19</div>
+          <div class="card ">
+            <div class="pill muted">L8</div>
+            <div class="pill muted">W18</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:2088px;top:528px">
+          <div class="gnum">G20</div>
+          <div class="card ">
+            <div class="pill muted">W17</div>
+            <div class="pill muted">W19</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:2316px;top:528px">
+          <div class="gnum">G21</div>
+          <div class="card ">
+            <div class="pill muted">W20</div>
+            <div class="pill muted">L19</div>
+          </div>
+          
+        </div>
+<div class="cell" style="left:2576px;top:292px">
+          <div class="gnum">G22</div>
+          <div class="card ">
+            <div class="pill muted">W8</div>
+            <div class="pill muted">W21</div>
+          </div>
+          <div class="tag">Grand final</div>
+        </div>
+<div class="cell" style="left:2804px;top:292px">
+          <div class="gnum">G23</div>
+          <div class="card ">
+            <div class="pill muted">W22</div>
+            <div class="pill muted">L22</div>
+          </div>
+          <div class="tag">If necessary</div>
+        </div>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:16px">Seeds 1–9 as Alpha–India. Rebuild scorekeeper 3GG to match this chart in-app.</p>
+</div>
+</body>
+</html>

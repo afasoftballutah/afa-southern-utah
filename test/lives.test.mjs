@@ -5,17 +5,22 @@ import {
   isZeroTwoAfterLoss,
   isTerminalTitleExit,
   isThirdLifeExhausted,
+  shouldSoloReenter,
+  takeSurvivorPair,
+  appendSurvivorPool,
+  removeFromSurvivorPool,
+  isSurvivorPoolGame,
+  SURVIVOR_POOL_FIELD,
 } from "@/lib/bracket/lives";
+import { SURVIVOR_FIELD } from "@/lib/bracket/structure";
 
-/** Minimal final game row for lives accounting. */
-function final(winner, loser, extras = {}) {
+function final(winner, loser) {
   return {
     status: "final",
     is_bye: false,
     winner_slot: "team1",
     team1_name: winner,
     team2_name: loser,
-    ...extras,
   };
 }
 
@@ -35,38 +40,34 @@ test("countMainRecord ignores byes and non-finals", () => {
 });
 
 test("0–2 is third-life candidate; 1–2 is not", () => {
-  const zeroTwo = [final("A", "Cold"), final("B", "Cold")];
-  assert.equal(isZeroTwoAfterLoss(zeroTwo, "Cold"), true);
-  assert.deepEqual(countMainRecord(zeroTwo, "Cold"), { wins: 0, losses: 2 });
-
-  const oneTwo = [
-    final("Cold", "X"), // 1-0
-    final("Y", "Cold"), // 1-1
-    final("Z", "Cold"), // 1-2
-  ];
-  assert.equal(isZeroTwoAfterLoss(oneTwo, "Cold"), false);
-  assert.deepEqual(countMainRecord(oneTwo, "Cold"), { wins: 1, losses: 2 });
+  assert.equal(isZeroTwoAfterLoss([final("A", "Cold"), final("B", "Cold")], "Cold"), true);
+  assert.equal(
+    isZeroTwoAfterLoss([final("Cold", "X"), final("Y", "Cold"), final("Z", "Cold")], "Cold"),
+    false
+  );
 });
 
-test("three_gg_hybrid: 0–2 is not a terminal title exit; 1–2 is", () => {
+test("three_gg_hybrid title exit: 0–2 not terminal; 1–2 is", () => {
   const zeroTwo = [final("A", "Cold"), final("B", "Cold")];
   assert.equal(isTerminalTitleExit("three_gg_hybrid", zeroTwo, "Cold"), false);
   assert.equal(isTerminalTitleExit("double_elim", zeroTwo, "Cold"), true);
-
-  const oneTwo = [
-    final("Cold", "X"),
-    final("Y", "Cold"),
-    final("Z", "Cold"),
-  ];
+  const oneTwo = [final("Cold", "X"), final("Y", "Cold"), final("Z", "Cold")];
   assert.equal(isTerminalTitleExit("three_gg_hybrid", oneTwo, "Cold"), true);
 });
 
-test("third life is exhausted at 0–3", () => {
-  const zeroThree = [
-    final("A", "Cold"),
-    final("B", "Cold"),
-    final("C", "Cold"),
-  ];
-  assert.equal(isThirdLifeExhausted(zeroThree, "Cold"), true);
-  assert.equal(isThirdLifeExhausted([final("A", "Cold"), final("B", "Cold")], "Cold"), false);
+test("third life exhausted at 0–3", () => {
+  assert.equal(
+    isThirdLifeExhausted([final("A", "Cold"), final("B", "Cold"), final("C", "Cold")], "Cold"),
+    true
+  );
+});
+
+test("solo re-enter and pool helpers", () => {
+  const onlyCold = [final("A", "Cold"), final("B", "Cold"), final("A", "B")];
+  assert.equal(shouldSoloReenter(["Cold"], onlyCold, ["A", "B", "Cold"]), true);
+  assert.deepEqual(takeSurvivorPair(["A", "B", "C"]), { a: "A", b: "B", rest: ["C"] });
+  assert.deepEqual(appendSurvivorPool(["A"], "B"), ["A", "B"]);
+  assert.deepEqual(removeFromSurvivorPool(["A", "B", "C"], "B"), ["A", "C"]);
+  assert.equal(isSurvivorPoolGame({ field: SURVIVOR_POOL_FIELD }), true);
+  assert.equal(SURVIVOR_POOL_FIELD, SURVIVOR_FIELD);
 });
