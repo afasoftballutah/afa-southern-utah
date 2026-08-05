@@ -9,6 +9,7 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
+import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
 import ContactButton from "@/components/scorekeeper/ContactButton";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -105,8 +106,12 @@ export default async function PlayersPage() {
       // First the actions, each sitting in the column it belongs to — merge
       // under the name because it is about who this person is, move under the
       // team because it is about which team they are on. Then every event, in
-      // these same columns.
-      detailRows: active.map((a, idx) => ({
+      // these same columns. Always one action row so Delete works even with
+      // zero roster appearances.
+      detailRows: (active.length
+        ? active
+        : [{ memberId: `solo-${p.id}`, registrationId: null, teamName: null, tournamentName: null, className: null, signed: false }]
+      ).map((a, idx) => ({
         key: a.memberId,
         cells: {
           // The person's own columns are blank on an event row, so the actions
@@ -114,22 +119,25 @@ export default async function PlayersPage() {
           // is about who this person is.
           name:
             idx === 0 ? (
-              <RowAction
-                label="Merge duplicate"
-                title={`Merge into ${p.full_name}`}
-                note="Everything on the duplicate moves here. Nothing is deleted."
-                placeholder="Pick the duplicate…"
-                action="mergePlayers"
-                valueKey="dropId"
-                payload={{ keepId: p.id }}
-                confirmText={`Merge {name} into ${p.full_name}? Nothing is deleted.`}
-                options={players
-                  .filter((o) => o.id !== p.id)
-                  .map((o) => ({
-                    id: o.id,
-                    label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
-                  }))}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <RowAction
+                  label="Merge duplicate"
+                  title={`Merge into ${p.full_name}`}
+                  note="Everything on the duplicate moves here. Nothing is deleted."
+                  placeholder="Pick the duplicate…"
+                  action="mergePlayers"
+                  valueKey="dropId"
+                  payload={{ keepId: p.id }}
+                  confirmText={`Merge {name} into ${p.full_name}? Nothing is deleted.`}
+                  options={players
+                    .filter((o) => o.id !== p.id)
+                    .map((o) => ({
+                      id: o.id,
+                      label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
+                    }))}
+                />
+                <DeletePlayer playerId={p.id} name={p.full_name} />
+              </div>
             ) : null,
           dob:
             idx === 0 ? (
@@ -141,7 +149,7 @@ export default async function PlayersPage() {
               />
             ) : null,
           rating:
-            idx === 0 ? (
+            idx === 0 && a.registrationId ? (
               <RowAction
                 label="Switch Team"
                 title={`Switch ${p.full_name}`}
@@ -154,18 +162,20 @@ export default async function PlayersPage() {
                 options={openRegistrations}
               />
             ) : null,
-          team: (
+          team: a.registrationId ? (
             <Link
               href={`/scorekeeper/registrations/${a.registrationId}`}
               className="text-afa-navy hover:underline"
             >
               {a.teamName}
             </Link>
+          ) : (
+            "—"
           ),
-          tournament: a.tournamentName,
+          tournament: a.tournamentName ?? "—",
           class: a.className ?? "—",
           // How the team finished, where the row above counts events.
-          events: formatResult(results.get(a.tournamentId, a.teamName)),
+          events: a.tournamentId ? formatResult(results.get(a.tournamentId, a.teamName)) : "—",
           waiver: a.signed,
         },
       })),

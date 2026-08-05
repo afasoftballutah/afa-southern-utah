@@ -13,8 +13,8 @@ export const runtime = "nodejs";
 // JD, 2026-07-27: "they need to be able to move teams around, players
 // around... Drill downs everywhere, simple confirms."
 //
-// Nothing here deletes. Moving re-points a row; merging marks a duplicate and
-// forwards it. A director who does the wrong thing can always do the opposite.
+// Most actions re-point or soft-merge. Hard deletes are explicit and rare
+// (tournaments, players the director wants off the file).
 
 function bad(message, status = 400) {
   return Response.json({ error: message }, { status });
@@ -196,6 +196,43 @@ export async function POST(request) {
         return bad(error.message || "Could not merge — please try again", 500);
       }
       return Response.json({ ok: true });
+    }
+
+    // ---- Hard-delete a player from the directory ---------------------
+    // Roster rows keep their name/waiver text; player_id is nulled (FK ON
+    // DELETE SET NULL). Merged-into pointers at this id are cleared so we
+    // never leave orphans. Prefer merge when cleaning duplicates.
+    case "deletePlayer": {
+      const { playerId } = body;
+      if (!playerId) return bad("Which player?");
+
+      const { data: player } = await supabase
+        .from("players")
+        .select("id, full_name, merged_into_id")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (!player) return bad("That player is not on file", 404);
+      if (player.merged_into_id) {
+        return bad("That row was already merged away — open the surviving player instead", 409);
+      }
+
+      // Anyone soft-merged into this person: clear so delete is not blocked
+      // by the self-FK (no ON DELETE CASCADE on merged_into_id).
+      const { error: unlinkMergeErr } = await supabase
+        .from("players")
+        .update({ merged_into_id: null })
+        .eq("merged_into_id", playerId);
+      if (unlinkMergeErr) {
+        console.error("clear merged_into_id failed", unlinkMergeErr);
+        return bad("Could not unlink merge history — please try again", 500);
+      }
+
+      const { error } = await supabase.from("players").delete().eq("id", playerId);
+      if (error) {
+        console.error("delete player failed", error);
+        return bad(error.message || "Could not delete that player — please try again", 500);
+      }
+      return Response.json({ ok: true, deleted: player.full_name });
     }
 
     // ---- Create a tournament -----------------------------------------
