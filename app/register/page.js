@@ -4,6 +4,7 @@ import { REGION_LABEL, isRealPoster } from "@/lib/data";
 import { isRegistrationOpen } from "@/lib/tournament-state";
 import RegistrationForm from "@/components/RegistrationForm";
 import RegisterBack from "@/components/RegisterBack";
+import MyRegistrations from "@/components/MyRegistrations";
 
 export const revalidate = 30;
 
@@ -45,11 +46,14 @@ export default async function RegisterPage({ searchParams }) {
     <div className="space-y-4">
       <RegisterBack href={backHref} label={backLabel} />
       <h1 className="t-title">Register a Team</h1>
+      {/* Managers who already registered — device memory + email lookup */}
+      <MyRegistrations />
       {registerable.length === 0 ? (
         <div className="form-surface p-6 text-center space-y-3">
           <p className="t-strong">Nothing open for registration yet — check back.</p>
           <p className="t-meta">
-            Registration opens once a tournament flyer is posted.
+            Registration opens once a tournament flyer is posted. If you already
+            registered, use <strong>Already registered?</strong> above.
           </p>
           <Link href="/tournaments" className="btn-transient">
             Tournaments

@@ -12,6 +12,8 @@ import {
   getRegionPrefServerSnapshot,
   subscribeRegionPref,
 } from "@/lib/region-pref";
+import { rememberRegistration, tokensFromLinks } from "@/lib/my-registrations";
+import { writeMe } from "@/lib/me";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -243,6 +245,30 @@ export default function RegistrationForm({
       setSigners(json.signers ?? []);
       setRosterLink(json.rosterLink ?? "");
       setManageLink(json.manageLink ?? "");
+      // Remember on this device so "Already registered?" works next visit
+      try {
+        const { manageToken, rosterToken } = tokensFromLinks({
+          manageLink: json.manageLink,
+          rosterLink: json.rosterLink,
+        });
+        if (manageToken) {
+          rememberRegistration({
+            teamName: teamName.trim(),
+            tournamentName: tournament?.name || "",
+            tournamentSlug: tournament?.slug || "",
+            manageToken,
+            rosterToken,
+            manageLink: json.manageLink,
+            rosterLink: json.rosterLink,
+            managerEmail: manager.email,
+          });
+        }
+        if (teamName.trim()) {
+          writeMe({ teamName: teamName.trim(), source: "picked" });
+        }
+      } catch {
+        /* localStorage optional */
+      }
       setSubmitState("done");
     } catch (err) {
       setSubmitState("error");
@@ -270,8 +296,26 @@ export default function RegistrationForm({
       <div className="rounded-xl bg-white p-6 space-y-4 card">
         <h2 className="t-title">Registration saved</h2>
         <p className="text-afa-ink/80">
-          {teamName} is on the books for {tournament?.name}.
+          {teamName} is on the books for {tournament?.name}. This phone will
+          remember the team under <strong>Already registered?</strong> on the
+          Register page.
         </p>
+        {manageLink && (
+          <div className="form-surface p-4 space-y-2">
+            <p className="t-strong">Your private manage link</p>
+            <p className="text-sm text-afa-ink/80">
+              Bookmark this or copy it. Later: open Register → your team is
+              listed, or look up with this same manager email. Do not put this
+              in the team chat &mdash; anyone who has it can change the roster.
+            </p>
+            <a href={manageLink} className="btn-action w-full text-center block">
+              Open my roster manager
+            </a>
+            <button type="button" onClick={() => copyLink(manageLink, "manage")} className="btn-transient w-full">
+              {copiedIndex === "manage" ? "Copied" : "Copy manage link"}
+            </button>
+          </div>
+        )}
         {rosterLink && (
           <div className="form-surface p-4 space-y-2">
             <p className="t-heading">Send one link to your team</p>
@@ -285,19 +329,6 @@ export default function RegistrationForm({
               className="btn-action w-full"
             >
               {copiedIndex === "roster" ? "Copied" : "Copy team link"}
-            </button>
-          </div>
-        )}
-        {manageLink && (
-          <div className="form-surface p-4 space-y-2">
-            <p className="t-strong">Keep this one to yourself</p>
-            <p className="text-sm text-afa-ink/80">
-              Your own link, for adding a player who turns up on Saturday or
-              taking someone off. Do not put it in the team chat &mdash; anyone
-              who has it can change the roster.
-            </p>
-            <button type="button" onClick={() => copyLink(manageLink, "manage")} className="btn-transient w-full">
-              {copiedIndex === "manage" ? "Copied" : "Copy my roster link"}
             </button>
           </div>
         )}

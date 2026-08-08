@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import ManageRoster from "@/components/ManageRoster";
 import RegisterBack from "@/components/RegisterBack";
+import RememberManageVisit from "@/components/RememberManageVisit";
 
 export const metadata = { title: "Manage Your Roster — AFA Southern Utah" };
 
@@ -39,6 +40,7 @@ async function getManageable(token) {
     className: registration.class,
     status: registration.status,
     rosterToken: registration.roster_token,
+    manageToken: token,
     managerMemberId: registration.manager_member_id,
     members: (members ?? []).map((m) => ({
       id: m.id,
@@ -80,6 +82,14 @@ export default async function ManageRosterPage({ params }) {
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
+      {/* Persist manage link on this device when the manager opens it */}
+      <RememberManageVisit
+        teamName={data.teamName}
+        tournamentName={data.tournamentName}
+        tournamentSlug={data.tournamentSlug}
+        manageToken={data.manageToken}
+        rosterToken={data.rosterToken}
+      />
       <RegisterBack href={backHref} label={backLabel} />
       <div>
         <h1 className="team-name text-2xl">{data.teamName}</h1>
