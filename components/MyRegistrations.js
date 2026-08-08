@@ -78,8 +78,8 @@ export default function MyRegistrations() {
       <div>
         <p className="t-heading">Already registered?</p>
         <p className="t-meta mt-0.5">
-          No login. Open a team you manage on this phone, or look up by the
-          email you used when you registered.
+          Open a team you manage on this device, or look up by the email you
+          used when you registered.
         </p>
       </div>
 
