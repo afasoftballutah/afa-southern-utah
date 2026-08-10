@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen, stillToPlayIn, playableIn, GAME_STATE_FIELDS } from "@/lib/tournament-state";
 import { genderLabel, venueParts } from "@/lib/director";
@@ -13,7 +12,7 @@ import TournamentSetup from "@/components/scorekeeper/TournamentSetup";
 import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Tournaments — Control Center" };
+export const metadata = { title: "Tournaments — Director" };
 
 // The tournament setup page. JD, 2026-07-28: "The top part should be 'Add
 // tournament' - once it is added, it should be selectable from a list with all
@@ -116,8 +115,8 @@ function planFrom(divisions, classes) {
 }
 
 export default async function TournamentsPage() {
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Tournaments</h1>

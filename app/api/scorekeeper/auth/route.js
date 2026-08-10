@@ -18,8 +18,14 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { pin } = body ?? {};
+  const { pin, role: rawRole } = body ?? {};
   if (!pin) return Response.json({ error: "PIN required" }, { status: 400 });
+
+  // director = full control center; scorekeeper = field-day tools only
+  const role =
+    rawRole === "scorekeeper" || rawRole === "field"
+      ? "scorekeeper"
+      : "director";
 
   // Gate before the bcrypt compare — cheaper, and a locked-out caller never
   // gets a timing signal from the compare at all.
@@ -47,7 +53,7 @@ export async function POST(request) {
     request.headers.get("x-forwarded-proto") ??
     new URL(request.url).protocol.replace(":", "");
   const store = await cookies();
-  store.set(SESSION_COOKIE_NAME, makeSessionCookieValue(), {
+  store.set(SESSION_COOKIE_NAME, makeSessionCookieValue(role), {
     httpOnly: true,
     secure: proto === "https",
     sameSite: "lax",
@@ -55,5 +61,5 @@ export async function POST(request) {
     path: "/",
   });
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, role });
 }

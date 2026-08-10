@@ -23,7 +23,7 @@ export default function DeleteTournament({ tournamentId, name }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not delete it");
-      window.location.href = "/scorekeeper/tournaments";
+      window.location.href = "/director/tournaments";
     } catch (err) {
       setError(err.message);
       setBusy(false);

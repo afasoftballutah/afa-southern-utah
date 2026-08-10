@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { hasValidDirectorSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 import { registrationScope } from "@/lib/director";
@@ -93,7 +94,7 @@ async function load(id) {
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) return { title: "Team at an event" };
+  if (!hasValidDirectorSession(store)) return { title: "Team at an event" };
   const data = await load(id);
   return {
     title: data
@@ -104,8 +105,8 @@ export async function generateMetadata({ params }) {
 
 export default async function RegistrationPage({ params }) {
   const { id } = await params;
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Team</h1>
@@ -154,7 +155,7 @@ export default async function RegistrationPage({ params }) {
     <DirectorShell
       title={r.team_name}
       count={`${r.tournaments?.name}${scope ? ` · ${scope}` : ""}`}
-      back="/scorekeeper/tournaments"
+      back="/director/tournaments"
     >
       <RegistrationCard
         registration={{

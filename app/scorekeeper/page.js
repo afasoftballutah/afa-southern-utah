@@ -1,44 +1,43 @@
 import { cookies } from "next/headers";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
-import { getDirectorCounts } from "@/lib/director";
+import Link from "next/link";
+import {
+  getSessionRole,
+  hasValidScorekeeperSession,
+} from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
-import { isRegistrationOpen, stillToPlayIn } from "@/lib/tournament-state";
+import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
-import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 
-export const dynamic = "force-dynamic"; // live tool, reads PII — never cached
-export const metadata = { title: "Control Center" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Scorekeeper" };
 
-// Three things, and only three. JD, 2026-07-27: "Tournaments, Teams, Players
-// - those are the things the director needs to fool with and drill into."
-//
-// Scores and registrations used to sit at this level. They do not belong
-// here: a score sheet and a registration both belong TO a tournament, so
-// they live inside one. That keeps this screen to three decisions.
-async function getHeadline() {
+// Scorekeeper room: pick a tournament, enter scores. Nothing else.
+// Director tools (teams, players, umpires, brackets) live at /director.
+
+async function listTournaments() {
   const supabase = getServiceClient();
   const { data } = await supabase
     .from("tournaments")
-    .select("id, name, start_date, end_date, registration_closes, is_placeholder, divisions(id, games(id, status, is_bye, round), pool_games(id, status))")
+    .select(
+      "id, name, start_date, end_date, is_placeholder, divisions(id, games(id, status, is_bye, round, team1_source_game_id, team2_source_game_id, team1_source_result, team2_source_result), pool_games(id, status))"
+    )
     .order("start_date");
 
   const real = (data ?? []).filter((t) => !t.is_placeholder);
-  let toScore = 0;
-  let running = 0;
-  for (const t of real) {
-    let left = 0;
-    for (const d of t.divisions ?? []) {
-      const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
-      if (games.length) left += stillToPlayIn(games).length;
-    }
-    if (left > 0) running += 1;
-    toScore += left;
-  }
-  return {
-    toScore,
-    running,
-    openForRegistration: real.filter((t) => isRegistrationOpen(t)).length,
-  };
+  return real
+    .map((t) => {
+      let left = 0;
+      for (const d of t.divisions ?? []) {
+        const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
+        left += stillToPlayIn(games).length;
+      }
+      return { id: t.id, name: t.name, start_date: t.start_date, left };
+    })
+    .sort((a, b) => {
+      if (a.left > 0 && b.left === 0) return -1;
+      if (b.left > 0 && a.left === 0) return 1;
+      return String(a.start_date).localeCompare(String(b.start_date));
+    });
 }
 
 export default async function ScorekeeperPage() {
@@ -51,54 +50,48 @@ export default async function ScorekeeperPage() {
     );
   }
 
-  const [counts, headline] = await Promise.all([getDirectorCounts(), getHeadline()]);
+  const role = getSessionRole(store);
+  const tournaments = await listTournaments();
 
   return (
     <div className="space-y-4">
-      <h1 className="t-title">Control Center</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="t-label text-afa-navy/60">Scorekeeper</p>
+          <h1 className="t-title">Enter scores</h1>
+          <p className="t-meta">Pick a tournament, then enter results. That is all.</p>
+        </div>
+        {role === "director" && (
+          <Link href="/director" className="btn-transient text-sm">
+            ← Director control center
+          </Link>
+        )}
+      </div>
 
-      <CardGrid>
-        <DirectorCard
-          href="/scorekeeper/tournaments"
-          title="Tournaments"
-          subtitle="Dates, fees, divisions, scores and who signed up"
-          stats={[
-            { label: "on file", value: String(counts.tournaments) },
-            { label: "taking teams", value: String(headline.openForRegistration) },
-            {
-              label: headline.toScore === 1 ? "game to score" : "games to score",
-              value: String(headline.toScore),
-              alert: headline.toScore > 0,
-            },
-          ]}
-        />
-        <DirectorCard
-          href="/scorekeeper/teams"
-          title="Teams"
-          subtitle="Every team, and the tournaments they entered"
-          stats={[
-            { label: "on file", value: String(counts.teams) },
-            {
-              label: counts.registrations === 1 ? "registration" : "registrations",
-              value: String(counts.registrations),
-            },
-          ]}
-        />
-        <DirectorCard
-          href="/scorekeeper/players"
-          title="Players"
-          subtitle="Every player and manager, across every tournament"
-          stats={[
-            { label: "on file", value: String(counts.players) },
-            {
-              label: "waiting to sign",
-              value: String(counts.outstandingSignatures),
-              alert: counts.outstandingSignatures > 0,
-            },
-          ]}
-        />
-      </CardGrid>
-
+      <div className="card divide-y divide-afa-navy/10">
+        {tournaments.length === 0 ? (
+          <p className="p-6 t-meta text-center">No tournaments on file.</p>
+        ) : (
+          tournaments.map((t) => (
+            <Link
+              key={t.id}
+              href={`/scorekeeper/games?tournament=${t.id}`}
+              className="flex items-center justify-between gap-3 px-4 py-3 min-h-[52px]"
+            >
+              <span className="min-w-0">
+                <span className="t-body font-semibold block truncate">{t.name}</span>
+                <span className="t-meta block">
+                  {t.start_date}
+                  {t.left > 0
+                    ? ` · ${t.left} left to score`
+                    : " · scored / no open games"}
+                </span>
+              </span>
+              <span className="t-meta shrink-0">→</span>
+            </Link>
+          ))
+        )}
+      </div>
     </div>
   );
 }

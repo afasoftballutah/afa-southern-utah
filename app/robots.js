@@ -3,7 +3,7 @@ export default function robots() {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/scorekeeper", "/register/sign"],
+      disallow: ["/director", "/scorekeeper", "/register/sign"],
     },
   };
 }

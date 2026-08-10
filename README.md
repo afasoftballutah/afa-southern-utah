@@ -314,7 +314,7 @@ running the tournament, not per-user accounts).
   new hash and update the `settings` row directly via the Supabase SQL
   runner (see `lib/scorekeeper-auth.js`'s `setPin` for the exact hashing
   call).
-- **Bracket builder + score entry**: `/scorekeeper/division/[divisionId]`
+- **Bracket builder + score entry**: `/director/division/[divisionId]`
   — generate the bracket, edit slots while draft, enter scores (big number
   inputs), reassign field/time on any game anytime. Team names for the
   slot-editor dropdowns come from `registrations.team_name` — the one

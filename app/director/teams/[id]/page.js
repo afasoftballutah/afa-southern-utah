@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { hasValidDirectorSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getTeam, listTeams, scopeLabel, moneyCents } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
@@ -65,15 +66,15 @@ function balanceCell(r) {
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) return { title: "Team" };
+  if (!hasValidDirectorSession(store)) return { title: "Team" };
   const team = await getTeam(id);
-  return { title: team ? `${team.name} — Control Center` : "Team" };
+  return { title: team ? `${team.name} — Director` : "Team" };
 }
 
 export default async function TeamPage({ params }) {
   const { id } = await params;
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Team</h1>
@@ -118,7 +119,7 @@ export default async function TeamPage({ params }) {
     },
     cells: {
       tournament: (
-        <Link href={`/scorekeeper/registrations/${r.registrationId}`} className="hover:underline">
+        <Link href={`/director/registrations/${r.registrationId}`} className="hover:underline">
           {r.tournamentName}
           {r.external ? (
             <span className="t-meta ml-1">(external)</span>
@@ -133,7 +134,7 @@ export default async function TeamPage({ params }) {
       actions: (
         <span className="flex justify-end gap-2">
           <ContactButton name={r.managerName} phone={r.managerPhone} email={r.managerEmail} />
-          <Link href={`/scorekeeper/registrations/${r.registrationId}`} className="pill">
+          <Link href={`/director/registrations/${r.registrationId}`} className="pill">
             Roster
           </Link>
         </span>
@@ -145,7 +146,7 @@ export default async function TeamPage({ params }) {
     <DirectorShell
       title={team.name}
       count={countBits.join(" · ")}
-      back="/scorekeeper/teams"
+      back="/director/teams"
       inline={
         <RowAction
           label="Merge duplicate"

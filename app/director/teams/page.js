@@ -1,13 +1,12 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { listTeams, scopeLabel, genderLabel, moneyCents } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Teams — Control Center" };
+export const metadata = { title: "Teams — Director" };
 
 // Balance = sum of (entry fee − amount paid) across live registrations.
 // Not a payment processor — fee from tournament, paid_at / amount from director.
@@ -55,8 +54,8 @@ function balanceCell(money) {
 }
 
 export default async function TeamsPage() {
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Teams</h1>
@@ -80,7 +79,7 @@ export default async function TeamsPage() {
     }
     return {
       key: t.id,
-      href: `/scorekeeper/teams/${t.id}`,
+      href: `/director/teams/${t.id}`,
       tags,
       search: `${t.name} ${scopeLabel(t.gender, t.className)} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       cells: {
@@ -114,7 +113,7 @@ export default async function TeamsPage() {
         Most Heat Stroker rows were bulk-entered from results with no manager,
         so they show — until you set one on the registration. Balance is entry
         fee minus recorded paid.{" "}
-        <Link href="/scorekeeper/players" className="underline">
+        <Link href="/director/players" className="underline">
           Players
         </Link>
       </p>

@@ -1,19 +1,13 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import PinPad from "@/components/scorekeeper/PinPad";
 import TeamTable from "@/components/scorekeeper/TeamTable";
 
 export const dynamic = "force-dynamic"; // live tool, and it reads PII — never cached
-export const metadata = { title: "Registrations — Scorekeeper" };
+export const metadata = { title: "Registrations — Director" };
 
-// Behind the scorekeeper session for now (JD, 2026-07-27: "lets defer the
-// security stuff til the end" / "this site isnt used yet"). That is ONE shared
-// PIN with no roles, so anyone who can enter a score can read every roster on
-// this page. The gate is this single call — swapping it for a director-only
-// check later is a one-line change here and in the two routes under
-// /api/scorekeeper/registrations.
+// Director-only. Field scorekeepers use /scorekeeper for games & umps.
 async function getRegistrations() {
   const supabase = getServiceClient();
 
@@ -70,8 +64,8 @@ async function getRegistrations() {
 }
 
 export default async function RegistrationsPage() {
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Registrations</h1>
@@ -91,12 +85,12 @@ export default async function RegistrationsPage() {
     <div className="space-y-5">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="t-title">Registrations</h1>
-        <Link href="/scorekeeper" className="t-meta underline">
+        <Link href="/director" className="t-meta underline">
           Back
         </Link>
       </div>
 
-      <Link href="/scorekeeper/registrations/new" className="pill">
+      <Link href="/director/registrations/new" className="pill">
         Add a team yourself
       </Link>
 

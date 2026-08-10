@@ -1,5 +1,4 @@
-import { cookies } from "next/headers";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
@@ -7,11 +6,11 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import NewRegistration from "@/components/scorekeeper/NewRegistration";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Add a team — Control Center" };
+export const metadata = { title: "Add a team — Director" };
 
 export default async function NewRegistrationPage() {
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Add a team</h1>
@@ -44,7 +43,7 @@ export default async function NewRegistrationPage() {
     .filter((t) => t.divisions.length > 0);
 
   return (
-    <DirectorShell title="Add a team" count="Entered by you, not by a manager" back="/scorekeeper/registrations">
+    <DirectorShell title="Add a team" count="Entered by you, not by a manager" back="/director/registrations">
       <NewRegistration tournaments={tournaments} />
     </DirectorShell>
   );

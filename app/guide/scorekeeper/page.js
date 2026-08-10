@@ -7,6 +7,7 @@ export const metadata = {
 };
 
 const SITE = "https://afa-southern-utah.vercel.app";
+const DIRECTOR = `${SITE}/director`;
 const SK = `${SITE}/scorekeeper`;
 const REGISTER = `${SITE}/register`;
 const TOURNAMENTS = `${SITE}/tournaments`;
@@ -17,8 +18,8 @@ const TOC = [
   { id: "register", label: "Register a team (managers)" },
   { id: "after-register", label: "After you register" },
   { id: "path", label: "Director game-day path" },
-  { id: "pin", label: "Unlock Scorekeeper" },
-  { id: "control", label: "Control Center" },
+  { id: "pin", label: "Unlock staff rooms" },
+  { id: "control", label: "Director Control Center" },
   { id: "tournament", label: "Tournament & scores" },
   { id: "scores", label: "Enter a score" },
   { id: "brackets", label: "Make a bracket" },
@@ -131,6 +132,12 @@ export default function ScorekeeperGuidePage() {
             Register a team
           </a>
           <a
+            href={DIRECTOR}
+            className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-2.5 font-semibold text-white text-center"
+          >
+            Director
+          </a>
+          <a
             href={SK}
             className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-2.5 font-semibold text-white text-center"
           >
@@ -138,7 +145,7 @@ export default function ScorekeeperGuidePage() {
           </a>
         </div>
         <p className="mt-4 text-sm text-white/60">
-          Scorekeeper PIN is not on this page — directors get it separately.
+          Staff PIN is not on this page — directors get it separately.
         </p>
       </header>
 
@@ -365,7 +372,7 @@ export default function ScorekeeperGuidePage() {
         <ol className="space-y-2">
           {[
             ["Home", "What teams and families see"],
-            ["Scorekeeper", "PIN pad — directors only"],
+            ["Director", "PIN pad — pick Director · full control"],
             ["Control Center", "Tournaments · Teams · Players"],
             ["Your tournament", "Open the event in the list"],
             ["Division → Scores", "Enter results and run brackets"],
@@ -390,29 +397,38 @@ export default function ScorekeeperGuidePage() {
         </Callout>
       </Section>
 
-      <Section id="pin" eyebrow="Directors" title="Unlock Scorekeeper">
+      <Section id="pin" eyebrow="Directors" title="Unlock staff rooms">
         <p className="text-[15px] text-afa-ink/75">
-          Private control room. Only directors. PIN is not printed here.
+          Private staff door. Pick <strong>Director</strong> (full control) or{" "}
+          <strong>Scorekeeper</strong> (games day only). PIN is not printed here.
         </p>
-        <Step n={1} title="Go to Scorekeeper">
+        <Step n={1} title="Go to Director or Scorekeeper">
           <p>
-            <ExtLink href={SK}>{SK}</ExtLink>
+            Director: <ExtLink href={DIRECTOR}>{DIRECTOR}</ExtLink>
           </p>
           <p>
-            Or type <code className="text-sm bg-afa-navy/10 px-1 rounded">/scorekeeper</code> after
-            the main site address.
+            Scorekeeper: <ExtLink href={SK}>{SK}</ExtLink>
+          </p>
+          <p>
+            Or type{" "}
+            <code className="text-sm bg-afa-navy/10 px-1 rounded">/director</code>{" "}
+            (full tools) or{" "}
+            <code className="text-sm bg-afa-navy/10 px-1 rounded">/scorekeeper</code>{" "}
+            (game day) after the main site address.
           </p>
         </Step>
-        <Step n={2} title="Tap the digits of the PIN">
+        <Step n={2} title="Pick Director or Scorekeeper, then enter the PIN">
           <p>Dots appear as you type. Use Del if you miss a digit.</p>
         </Step>
         <Step n={3} title="Tap Go">
-          <p>If the PIN is right, you land on Control Center.</p>
+          <p>
+            Director lands on Control Center. Scorekeeper lands on Game day.
+          </p>
         </Step>
         <Figure
           src="/guide/assets/pin-go.png"
-          alt="Scorekeeper PIN pad"
-          caption="Enter PIN, then tap Go"
+          alt="Staff PIN pad"
+          caption="Pick role, enter PIN, then tap Go"
         />
         <Callout tone="warn" title="Keep the PIN private">
           Do not post it on Facebook or paper posters. Text it only to directors.
@@ -643,6 +659,12 @@ export default function ScorekeeperGuidePage() {
               Register:{" "}
               <a href={REGISTER} className="text-red-200 break-all font-semibold">
                 {REGISTER}
+              </a>
+            </p>
+            <p>
+              Director:{" "}
+              <a href={DIRECTOR} className="text-red-200 break-all font-semibold">
+                {DIRECTOR}
               </a>
             </p>
             <p>

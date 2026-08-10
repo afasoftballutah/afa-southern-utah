@@ -1,4 +1,4 @@
-import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -6,12 +6,12 @@ export const runtime = "nodejs";
 // The `waivers` bucket is private, and stays private — a waiver carries names,
 // dates of birth, addresses and signatures. This hands out a short-lived
 // signed URL instead of a permanent one, so a link pasted somewhere by mistake
-// stops working within the hour.
+// stops working within the hour. Director-only (PII).
 const SIGNED_URL_SECONDS = 600;
 
 export async function GET(_request, { params }) {
-  if (!(await requireScorekeeperSession())) {
-    return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!(await requireDirectorSession())) {
+    return Response.json({ error: "Director only" }, { status: 403 });
   }
 
   const { id } = await params;

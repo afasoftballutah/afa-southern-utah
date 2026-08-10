@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
 // on the one page that has it.
 export default async function TournamentRedirect({ params }) {
   await params;
-  redirect("/scorekeeper/tournaments");
+  redirect("/director/tournaments");
 }

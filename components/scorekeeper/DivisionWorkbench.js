@@ -165,7 +165,7 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
                   : "none"
           }
         >
-          <Link className="pill" href={`/scorekeeper/division/${d.id}`}>
+          <Link className="pill" href={`/director/division/${d.id}`}>
             Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
           </Link>
         </Step>
@@ -210,7 +210,7 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
           {d.teams} {d.teams === 1 ? "team is" : "teams are"} in {d.label}.
           {d.teams < d.minTeams && ` It takes ${d.minTeams} to run this division.`}
         </p>
-        <Link href={`/scorekeeper/division/${d.id}`} className="pill">
+        <Link href={`/director/division/${d.id}`} className="pill">
           Build pools and brackets
         </Link>
       </div>
@@ -221,7 +221,7 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <AddTeams division={d} />
-        <Link href="/scorekeeper/registrations/new" className="pill">
+        <Link href="/director/registrations/new" className="pill">
           One team, with a manager
         </Link>
       </div>

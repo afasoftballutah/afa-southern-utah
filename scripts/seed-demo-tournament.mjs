@@ -156,7 +156,7 @@ async function printLinks(tournamentId) {
   console.log("Scorekeeper PIN unlock, then open:\n");
   for (const d of divs ?? []) {
     console.log(`  ${d.name}`);
-    console.log(`  ${ORIGIN}/scorekeeper/division/${d.id}\n`);
+    console.log(`  ${ORIGIN}/director/division/${d.id}\n`);
   }
   console.log("How to walk through:\n");
   console.log("  Pool path:");

@@ -1,18 +1,20 @@
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import Link from "next/link";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { getPublicClient, getServiceClient } from "@/lib/supabase";
 import { getDivisionCompletion } from "@/lib/bracket/status";
 import { isBracketDraft } from "@/lib/bracket/propagate";
 import { seedOrderFromPools } from "@/lib/bracket/seed";
+import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
 import BracketScores from "@/components/scorekeeper/BracketScores";
 import CreatePoolRoundRobin from "@/components/scorekeeper/CreatePoolRoundRobin";
 import StageView from "@/components/scorekeeper/StageView";
+import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Scorekeeper — Division" };
+export const metadata = { title: "Division — Director" };
 
 async function loadDivisionData(divisionId) {
   const supabase = getPublicClient();
@@ -71,6 +73,26 @@ async function loadDivisionData(divisionId) {
   const consolationDraft = consolationBracket ? await isBracketDraft(divisionId, "consolation") : true;
   const completion = mainBracket ? await getDivisionCompletion(divisionId) : { complete: false };
 
+  let umpires = [];
+  try {
+    const { data: umpRows } = await service
+      .from("umpires")
+      .select("id, first_name, last_name, pitch_fast, pitch_slow, status")
+      .eq("status", "active")
+      .order("last_name")
+      .order("first_name");
+    umpires = (umpRows ?? []).map((r) => ({
+      id: r.id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      pitchFast: r.pitch_fast,
+      pitchSlow: r.pitch_slow,
+      status: r.status,
+    }));
+  } catch {
+    umpires = [];
+  }
+
   return {
     division,
     stages: (children ?? []).filter((c) => (c.games ?? []).length > 0),
@@ -84,13 +106,14 @@ async function loadDivisionData(divisionId) {
     mainDraft,
     consolationDraft,
     completion,
+    umpires,
   };
 }
 
-export default async function ScorekeeperDivisionPage({ params }) {
+export default async function DirectorDivisionPage({ params }) {
   const { divisionId } = await params;
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="py-8">
         <PinPad />
@@ -124,11 +147,19 @@ export default async function ScorekeeperDivisionPage({ params }) {
     data.poolGames.length === 0 &&
     data.teamNames.length >= 2;
 
+  const openPool = stillToPlayIn(data.poolGames);
+  const openBracket = stillToPlayIn(data.games);
+
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
-        <h1 className="t-title">{data.division.name}</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
+          <h1 className="t-title">{data.division.name}</h1>
+        </div>
+        <Link href="/director/tournaments" className="btn-transient text-sm">
+          ← Tournaments
+        </Link>
       </div>
       {canCreatePool && (
         <CreatePoolRoundRobin
@@ -181,6 +212,55 @@ export default async function ScorekeeperDivisionPage({ params }) {
           tournamentSlug={data.division.tournaments?.slug}
           divisionName={data.division.display_name || data.division.name}
         />
+      )}
+
+      {(openPool.length > 0 || openBracket.length > 0) && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="t-heading">Assign umpires</h2>
+            <Link href="/director/umpires" className="btn-transient text-sm">
+              Umpire roster →
+            </Link>
+          </div>
+          {data.umpires.length === 0 ? (
+            <p className="t-meta">
+              No active umpires.{" "}
+              <Link href="/director/umpires" className="underline">
+                Add the roster
+              </Link>{" "}
+              first.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {openPool.map((g) => (
+                <GameUmpireAssign
+                  key={g.id}
+                  gameId={g.id}
+                  kind="pool"
+                  umpires={data.umpires}
+                  umpire1Id={g.umpire1_id}
+                  umpire2Id={g.umpire2_id}
+                  team1={g.team1_name}
+                  team2={g.team2_name}
+                  meta={g.pool ? `Pool ${g.pool}` : null}
+                />
+              ))}
+              {openBracket.map((g) => (
+                <GameUmpireAssign
+                  key={g.id}
+                  gameId={g.id}
+                  kind="bracket"
+                  umpires={data.umpires}
+                  umpire1Id={g.umpire1_id}
+                  umpire2Id={g.umpire2_id}
+                  team1={g.team1_name}
+                  team2={g.team2_name}
+                  meta={g.round != null ? `#${g.round}` : null}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

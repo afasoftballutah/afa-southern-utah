@@ -1,4 +1,4 @@
-import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { releaseMemberToPool } from "@/lib/roster-eligibility";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
@@ -7,12 +7,10 @@ export const runtime = "nodejs";
 
 const STATUSES = ["submitted", "confirmed", "withdrawn"];
 
-// Behind the scorekeeper session for now (JD, 2026-07-27: defer the security
-// work). One shared PIN, no roles. This gate and the one on the page are the
-// two places to change when a director-only door arrives.
+// Director-only — registration admin is not a field scorekeeper tool.
 export async function PATCH(request, { params }) {
-  if (!(await requireScorekeeperSession())) {
-    return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!(await requireDirectorSession())) {
+    return Response.json({ error: "Director only" }, { status: 403 });
   }
 
   const { id } = await params;

@@ -85,7 +85,7 @@ export default function NewRegistration({ tournaments }) {
         <button type="button" className="btn-transient w-full" onClick={() => copy(done.manageLink, "manage")}>
           {copied === "manage" ? "Copied" : "Copy manager link"}
         </button>
-        <a className="btn-transient w-full block text-center" href="/scorekeeper/registrations">
+        <a className="btn-transient w-full block text-center" href="/director/registrations">
           See all registrations
         </a>
       </div>

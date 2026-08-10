@@ -1,5 +1,4 @@
-import { cookies } from "next/headers";
-import { hasValidScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { requireDirectorPage } from "@/lib/staff-gate";
 import { listPeople, listTeams, resultsByTeamAndTournament, formatResult } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
 import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
@@ -15,7 +14,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
-export const metadata = { title: "Players — Control Center" };
+export const metadata = { title: "Players — Director" };
 
 // One line per player, sorted by last name, sorted by clicking a heading.
 // JD, 2026-07-27: "We dont want player cards, we want a list... alphabetized
@@ -50,8 +49,8 @@ const ratingRank = (r) => {
 };
 
 export default async function PlayersPage() {
-  const store = await cookies();
-  if (!hasValidScorekeeperSession(store)) {
+  const gate = await requireDirectorPage();
+  if (gate.needPin) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Players</h1>
@@ -164,7 +163,7 @@ export default async function PlayersPage() {
             ) : null,
           team: a.registrationId ? (
             <Link
-              href={`/scorekeeper/registrations/${a.registrationId}`}
+              href={`/director/registrations/${a.registrationId}`}
               className="text-afa-navy hover:underline"
             >
               {a.teamName}
@@ -208,7 +207,7 @@ export default async function PlayersPage() {
         ),
         team: lastAppearance ? (
           <Link
-            href={`/scorekeeper/registrations/${lastAppearance.registrationId}`}
+            href={`/director/registrations/${lastAppearance.registrationId}`}
             className="text-afa-navy hover:underline"
           >
             {lastAppearance.teamName}
