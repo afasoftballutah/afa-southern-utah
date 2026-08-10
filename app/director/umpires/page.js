@@ -60,10 +60,16 @@ export default async function UmpiresPage() {
 
   const { umpires, needsMigration } = await loadUmpires();
 
+  const active = umpires.filter((u) => u.status !== "inactive").length;
+
   return (
     <DirectorShell
       title="Umpires"
-      count={`${umpires.length} on file`}
+      count={
+        umpires.length === 0
+          ? "Empty roster"
+          : `${active} active · ${umpires.length} on file`
+      }
       back="/director"
     >
       {needsMigration && (
@@ -75,10 +81,6 @@ export default async function UmpiresPage() {
           </p>
         </div>
       )}
-      <p className="t-meta">
-        Roster matches the AFA State Umpire Batch Registration form. Assign
-        umpires on a division under Tournaments.
-      </p>
       <UmpireRoster initial={umpires} canEdit />
     </DirectorShell>
   );
