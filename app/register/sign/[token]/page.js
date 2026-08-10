@@ -22,7 +22,7 @@ async function getSignerByToken(token) {
   const { data: member, error } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
+      "id, role, name, legal_first_name, legal_last_name, preferred_name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -44,6 +44,9 @@ async function getSignerByToken(token) {
     teamName: reg?.team_name,
     role: isManager ? "manager" : member.role,
     name: member.name,
+    legalFirstName: member.legal_first_name,
+    legalLastName: member.legal_last_name,
+    preferredName: member.preferred_name,
     // A manager who plays is still a player on the form — her birth date and
     // address belong on her waiver like anyone else's.
     birthDate: member.birth_date,

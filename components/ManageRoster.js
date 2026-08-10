@@ -12,7 +12,10 @@ export default function ManageRoster({
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [pool, setPool] = useState([]);
-  const [name, setName] = useState("");
+  const [legalFirstName, setLegalFirstName] = useState("");
+  const [legalLastName, setLegalLastName] = useState("");
+  const [preferredName, setPreferredName] = useState("");
+  const [email, setEmail] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -37,6 +40,10 @@ export default function ManageRoster({
   }, [loadPool]);
 
   async function add() {
+    if (!legalFirstName.trim() || !legalLastName.trim()) {
+      setError("Legal first and last name are required");
+      return;
+    }
     setBusy(true);
     setError("");
     setAddedLink(null);
@@ -44,7 +51,14 @@ export default function ManageRoster({
       const res = await fetch("/api/register/roster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, name, birthDate: birthDate || null }),
+        body: JSON.stringify({
+          token,
+          legalFirstName: legalFirstName.trim(),
+          legalLastName: legalLastName.trim(),
+          preferredName: preferredName.trim() || null,
+          email: email.trim() || null,
+          birthDate: birthDate || null,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not add");
@@ -71,7 +85,10 @@ export default function ManageRoster({
         ];
       });
       setAddedLink(json.member);
-      setName("");
+      setLegalFirstName("");
+      setLegalLastName("");
+      setPreferredName("");
+      setEmail("");
       setBirthDate("");
       loadPool();
     } catch (err) {
@@ -238,12 +255,46 @@ export default function ManageRoster({
       {canEdit && (
         <div className="card p-4 space-y-3">
           <p className="t-strong">Add a player</p>
+          <p className="t-meta">
+            Legal name for the waiver. Preferred name and email for the roster.
+            No phone for players.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="block text-sm font-semibold mb-1">Legal first</span>
+              <input
+                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                value={legalFirstName}
+                onChange={(e) => setLegalFirstName(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="block text-sm font-semibold mb-1">Legal last</span>
+              <input
+                className="w-full border border-afa-navy/30 rounded px-3 py-2"
+                value={legalLastName}
+                onChange={(e) => setLegalLastName(e.target.value)}
+              />
+            </label>
+          </div>
           <label className="block">
-            <span className="block text-sm font-semibold mb-1">Name</span>
+            <span className="block text-sm font-semibold mb-1">
+              Preferred name <span className="font-normal text-afa-ink/60">optional</span>
+            </span>
             <input
               className="w-full border border-afa-navy/30 rounded px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={preferredName}
+              onChange={(e) => setPreferredName(e.target.value)}
+              placeholder="What they go by"
+            />
+          </label>
+          <label className="block">
+            <span className="block text-sm font-semibold mb-1">Email</span>
+            <input
+              type="email"
+              className="w-full border border-afa-navy/30 rounded px-3 py-2"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </label>
           <label className="block">
@@ -260,7 +311,9 @@ export default function ManageRoster({
           <button
             type="button"
             className="btn-action w-full"
-            disabled={busy || !name.trim()}
+            disabled={
+              busy || !legalFirstName.trim() || !legalLastName.trim()
+            }
             onClick={add}
           >
             {busy ? "Working…" : "Add to roster"}

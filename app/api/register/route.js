@@ -2,6 +2,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
+import { personFieldsFromInput, hasLegalName } from "@/lib/person-name";
 
 // NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
 // saves the registration, creates one roster_members row per player/coach
@@ -42,8 +43,30 @@ export async function POST(request) {
 
   if (!tournamentId || !divisionId) return bad("Missing tournament or division");
   if (!teamName || !teamName.trim()) return bad("Team name is required");
-  if (!manager?.name || !manager?.email) return bad("Manager name and email are required");
-  if (!Array.isArray(players) || players.length === 0) return bad("At least one player is required");
+
+  const managerPerson = personFieldsFromInput(manager, { allowPhone: true });
+  if (!managerPerson.displayName || !managerPerson.email) {
+    return bad("Manager legal name (or name) and email are required");
+  }
+  if (!Array.isArray(players) || players.length === 0) {
+    return bad("At least one player is required");
+  }
+
+  const playerPeople = players
+    .map((p) => personFieldsFromInput(p, { allowPhone: false }))
+    .filter((p) => p.displayName);
+  if (playerPeople.length === 0) {
+    return bad("At least one player with a name is required");
+  }
+  // Prefer legal first+last when provided; legacy single-name still accepted.
+  const incompletePlayer = players.find(
+    (p) =>
+      (p.legalFirstName || p.legalLastName) &&
+      !hasLegalName(personFieldsFromInput(p))
+  );
+  if (incompletePlayer) {
+    return bad("Each player needs both legal first and last name");
+  }
   // No signature check. JD, 2026-07-27: "should be able to sign it whenever,
   // even after submitting. Signing makes it official." Submitting records the
   // team; the manager gets her own signing link back and can use it later,
@@ -68,9 +91,9 @@ export async function POST(request) {
       team_name: teamName.trim(),
       class: className ?? null,
       afa_membership_number: afaMembershipNumber ?? null,
-      manager_name: manager.name,
-      manager_email: manager.email,
-      manager_phone: manager.phone ?? null,
+      manager_name: managerPerson.displayName,
+      manager_email: managerPerson.email,
+      manager_phone: managerPerson.phone ?? manager?.phone ?? null,
       manager_cell: manager.cell ?? null,
       manager_address: manager.address ?? null,
       manager_city: manager.city ?? null,
@@ -100,23 +123,35 @@ export async function POST(request) {
   const registrationId = inserted.id;
 
   const rosterRows = [
-    ...players
-      .filter((p) => p.name?.trim())
-      .map((p) => ({
+    ...playerPeople.map((p, i) => {
+      const raw = players.find(
+        (x) => personFieldsFromInput(x).displayName === p.displayName
+      ) ?? players[i];
+      return {
         registration_id: registrationId,
         role: "player",
-        name: p.name.trim(),
-        birth_date: p.birthDate || null,
-        address: p.address || null,
-      })),
+        name: p.displayName,
+        legal_first_name: p.legalFirstName,
+        legal_last_name: p.legalLastName,
+        preferred_name: p.preferredName,
+        email: p.email,
+        phone: null, // players: email only
+        birth_date: raw?.birthDate || null,
+        address: raw?.address || null,
+      };
+    }),
     ...(coaches ?? [])
-      .filter((c) => c.name?.trim())
+      .map((c) => personFieldsFromInput(c, { allowPhone: true }))
+      .filter((c) => c.displayName)
       .map((c) => ({
         registration_id: registrationId,
         role: "coach",
-        name: c.name.trim(),
-        email: c.email || null,
-        phone: c.phone || null,
+        name: c.displayName,
+        legal_first_name: c.legalFirstName,
+        legal_last_name: c.legalLastName,
+        preferred_name: c.preferredName,
+        email: c.email,
+        phone: c.phone,
       })),
   ];
 
@@ -126,13 +161,16 @@ export async function POST(request) {
   // out, add her rather than let the roster disagree with the form. Either
   // way she ends up with ONE row, ONE link and ONE signature.
   const same = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
-  if (!rosterRows.some((r) => same(r.name, manager.name))) {
+  if (!rosterRows.some((r) => same(r.name, managerPerson.displayName))) {
     rosterRows.push({
       registration_id: registrationId,
       role: "manager",
-      name: manager.name.trim(),
-      email: manager.email || null,
-      phone: manager.phone || null,
+      name: managerPerson.displayName,
+      legal_first_name: managerPerson.legalFirstName,
+      legal_last_name: managerPerson.legalLastName,
+      preferred_name: managerPerson.preferredName,
+      email: managerPerson.email,
+      phone: managerPerson.phone,
     });
   }
 
@@ -156,14 +194,16 @@ export async function POST(request) {
   // one weekend. Every failure here is SOFT: an unresolved row leaves a null
   // for a director to look at, and never costs the manager her registration.
   // Nothing below is allowed to throw past this point.
-  const managerRow = insertedRoster.find((r) => same(r.name, manager.name));
+  const managerRow = insertedRoster.find((r) =>
+    same(r.name, managerPerson.displayName)
+  );
   const patch = { manager_member_id: managerRow?.id ?? null };
 
   try {
     patch.team_id = await resolveTeam(supabase, {
       teamName: teamName.trim(),
       divisionId,
-      managerName: manager?.name ?? null,
+      managerName: managerPerson.displayName ?? null,
     });
 
     await Promise.all(
@@ -172,6 +212,10 @@ export async function POST(request) {
         const playerId = await resolvePlayer(supabase, {
           name: row.name,
           birthDate: source?.birth_date ?? null,
+          legalFirstName: source?.legal_first_name,
+          legalLastName: source?.legal_last_name,
+          preferredName: source?.preferred_name,
+          email: source?.email,
         });
         if (playerId) {
           await supabase.from("roster_members").update({ player_id: playerId }).eq("id", row.id);

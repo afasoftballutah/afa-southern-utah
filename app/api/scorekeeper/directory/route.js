@@ -659,15 +659,32 @@ export async function POST(request) {
         return bad("Could not save that team — please try again", 500);
       }
 
+      const { personFieldsFromInput } = await import("@/lib/person-name");
       const names = (players ?? [])
-        .map((p) => ({ name: String(p.name ?? "").trim(), birthDate: p.birthDate || null }))
-        .filter((p) => p.name);
+        .map((p) => {
+          const person = personFieldsFromInput(p, { allowPhone: false });
+          return {
+            ...person,
+            birthDate: p.birthDate || null,
+          };
+        })
+        .filter((p) => p.displayName);
       // A manager is on their own roster — one waiver, not two.
       if (
         managerName?.trim() &&
-        !names.some((p) => p.name.toLowerCase() === managerName.trim().toLowerCase())
+        !names.some(
+          (p) => p.displayName.toLowerCase() === managerName.trim().toLowerCase()
+        )
       ) {
-        names.unshift({ name: managerName.trim(), birthDate: null });
+        const mgr = personFieldsFromInput(
+          {
+            name: managerName.trim(),
+            email: managerEmail,
+            phone: managerPhone,
+          },
+          { allowPhone: true }
+        );
+        names.unshift({ ...mgr, birthDate: null });
       }
 
       // A team with no manager and no players is a name in a bracket, which is
@@ -680,7 +697,12 @@ export async function POST(request) {
             names.map((p) => ({
               registration_id: registration.id,
               role: "player",
-              name: p.name,
+              name: p.displayName,
+              legal_first_name: p.legalFirstName,
+              legal_last_name: p.legalLastName,
+              preferred_name: p.preferredName,
+              email: p.email,
+              phone: null,
               birth_date: p.birthDate,
             }))
           )
@@ -695,7 +717,9 @@ export async function POST(request) {
       }
 
       const managerRow = managerName?.trim()
-        ? roster.find((r) => r.name.toLowerCase() === managerName.trim().toLowerCase())
+        ? roster.find(
+            (r) => r.name.toLowerCase() === managerName.trim().toLowerCase()
+          )
         : null;
 
       // Same identity resolution the public form does, so a team the director

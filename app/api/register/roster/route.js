@@ -5,6 +5,7 @@ import {
   assertPlayerFreeForTeam,
   releaseMemberToPool,
 } from "@/lib/roster-eligibility";
+import { personFieldsFromInput } from "@/lib/person-name";
 
 export const runtime = "nodejs";
 
@@ -259,17 +260,39 @@ export async function POST(request) {
     });
   }
 
-  // ---- Add by name ---------------------------------------------------
-  if (!name?.trim()) return bad("A name is required");
+  // ---- Add by name (legal + preferred + email) ------------------------
+  const person = personFieldsFromInput(
+    {
+      name,
+      legalFirstName: body?.legalFirstName,
+      legalLastName: body?.legalLastName,
+      preferredName: body?.preferredName,
+      email: body?.email,
+      phone: body?.phone,
+    },
+    { allowPhone: role === "coach" }
+  );
+  if (!person.displayName) return bad("Legal first and last name are required");
   if (role && !["player", "coach"].includes(role)) {
     return bad("Role must be player or coach");
+  }
+  // Players: email only (no phone). Prefer legal first+last when provided.
+  if (
+    (body?.legalFirstName || body?.legalLastName) &&
+    !(person.legalFirstName && person.legalLastName)
+  ) {
+    return bad("Legal first and last name are both required");
   }
 
   let playerId = null;
   try {
     playerId = await resolvePlayer(supabase, {
-      name: name.trim(),
+      name: person.displayName,
       birthDate: birthDate || null,
+      legalFirstName: person.legalFirstName,
+      legalLastName: person.legalLastName,
+      preferredName: person.preferredName,
+      email: person.email,
     });
   } catch (err) {
     console.error("player resolution failed on roster add", err);
@@ -278,7 +301,7 @@ export async function POST(request) {
   const gate = await assertPlayerFreeForTeam(supabase, {
     tournamentId: registration.tournament_id,
     divisionGender: registration.divisions?.gender ?? null,
-    name: name.trim(),
+    name: person.displayName,
     birthDate: birthDate || null,
     playerId,
     exceptRegistrationId: registration.id,
@@ -292,35 +315,41 @@ export async function POST(request) {
     .from("roster_members")
     .select("id, removed_at, signing_token, name")
     .eq("registration_id", registration.id)
-    .ilike("name", name.trim())
+    .ilike("name", person.displayName)
     .maybeSingle();
+
+  const memberPatch = {
+    removed_at: null,
+    birth_date: birthDate || null,
+    legal_first_name: person.legalFirstName,
+    legal_last_name: person.legalLastName,
+    preferred_name: person.preferredName,
+    email: person.email,
+    phone: null,
+    name: person.displayName,
+    ...(playerId ? { player_id: playerId } : {}),
+  };
 
   let member;
   if (existing?.removed_at) {
     const { data, error } = await supabase
       .from("roster_members")
-      .update({
-        removed_at: null,
-        birth_date: birthDate || null,
-        ...(playerId ? { player_id: playerId } : {}),
-      })
+      .update(memberPatch)
       .eq("id", existing.id)
       .select("id, name, signing_token")
       .single();
     if (error) return bad("Could not restore that player — please try again", 500);
     member = data;
   } else if (existing) {
-    return bad(`${name.trim()} is already on this roster`, 409);
+    return bad(`${person.displayName} is already on this roster`, 409);
   } else {
     const { data, error } = await supabase
       .from("roster_members")
       .insert({
         registration_id: registration.id,
         role: role ?? "player",
-        name: name.trim(),
-        birth_date: birthDate || null,
         address: address || null,
-        ...(playerId ? { player_id: playerId } : {}),
+        ...memberPatch,
       })
       .select("id, name, signing_token")
       .single();
@@ -343,6 +372,7 @@ export async function POST(request) {
       id: member.id,
       name: member.name,
       birthDate: birthDate || null,
+      email: person.email,
       signLink: `${origin}/register/sign/${member.signing_token}`,
     },
   });

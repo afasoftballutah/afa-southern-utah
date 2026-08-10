@@ -123,17 +123,26 @@ export default function NewRegistration({ tournaments }) {
       )}
 
       <Field label="Team name"><Input value={teamName} onChange={(e) => setTeamName(e.target.value)} /></Field>
-      <Field label="Manager" hint="They go on the roster too — a manager plays.">
+      <Field
+        label="Manager name"
+        hint="Legal name if you have it. They go on the roster too."
+      >
         <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} />
       </Field>
-      <Field label="Manager phone"><Input value={managerPhone} onChange={(e) => setManagerPhone(e.target.value)} placeholder="702-555-0100" /></Field>
-      <Field label="Manager email" hint="Optional. Leave it blank if you do not have one.">
+      <Field label="Manager phone">
+        <Input
+          value={managerPhone}
+          onChange={(e) => setManagerPhone(e.target.value)}
+          placeholder="702-555-0100"
+        />
+      </Field>
+      <Field label="Manager email" hint="Optional. Leave blank if you do not have one.">
         <Input value={managerEmail} onChange={(e) => setManagerEmail(e.target.value)} />
       </Field>
 
       <Field
         label="Players"
-        hint="One per line. Add a birth date after a comma if you have it — without one they will not join the People list."
+        hint="One per line: Name, YYYY-MM-DD. Prefer legal name. Full public form collects legal first/last, preferred, and email."
       >
         <textarea
           rows={8}

@@ -78,14 +78,35 @@ export default function SignRosterMember({ token, member }) {
   return (
     <div className="space-y-4">
       <dl className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
-        <dt className="font-semibold">Name</dt>
+        <dt className="font-semibold">Name on roster</dt>
         <dd>{member.name}</dd>
-        {(member.email || member.phone) && (
+        {(member.legalFirstName || member.legalLastName) && (
+          <>
+            <dt className="font-semibold">Legal name</dt>
+            <dd>
+              {[member.legalFirstName, member.legalLastName]
+                .filter(Boolean)
+                .join(" ")}
+            </dd>
+          </>
+        )}
+        {member.preferredName && (
+          <>
+            <dt className="font-semibold">Preferred</dt>
+            <dd>{member.preferredName}</dd>
+          </>
+        )}
+        {member.email && (
           <>
             <dt className="font-semibold">Email</dt>
-            <dd>{member.email || "—"}</dd>
+            <dd>{member.email}</dd>
+          </>
+        )}
+        {/* Phone only for coaches/managers — not players */}
+        {member.phone && member.role !== "player" && (
+          <>
             <dt className="font-semibold">Phone</dt>
-            <dd>{member.phone || "—"}</dd>
+            <dd>{member.phone}</dd>
           </>
         )}
       </dl>

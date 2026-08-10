@@ -19,8 +19,26 @@ const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Su
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
-const emptyPlayer = () => ({ name: "", birthDate: "", address: "" });
-const emptyCoach = () => ({ name: "", email: "", phone: "" });
+const emptyPlayer = () => ({
+  legalFirstName: "",
+  legalLastName: "",
+  preferredName: "",
+  email: "",
+  birthDate: "",
+  address: "",
+});
+const emptyCoach = () => ({
+  legalFirstName: "",
+  legalLastName: "",
+  preferredName: "",
+  email: "",
+  phone: "",
+});
+const personDisplay = (p) => {
+  const preferred = (p.preferredName || "").trim();
+  if (preferred) return preferred;
+  return [p.legalFirstName, p.legalLastName].filter(Boolean).join(" ").trim() || (p.name || "").trim();
+};
 
 export default function RegistrationForm({
   tournaments,
@@ -155,7 +173,10 @@ export default function RegistrationForm({
   const [afaMembershipNumber, setAfaMembershipNumber] = useState("");
 
   const [manager, setManager] = useState({
-    name: "",
+    legalFirstName: "",
+    legalLastName: "",
+    preferredName: "",
+    name: "", // legacy / display helper
     email: "",
     phone: "",
     cell: "",
@@ -209,8 +230,19 @@ export default function RegistrationForm({
         (registerableDivisions.length === 0 || Boolean(effectiveDivisionId))
       );
     }
-    if (step === 2) return manager.name.trim().length > 0 && manager.email.trim().length > 0;
-    if (step === 3) return players.some((p) => p.name.trim().length > 0);
+    if (step === 2) {
+      const legalOk =
+        manager.legalFirstName.trim().length > 0 &&
+        manager.legalLastName.trim().length > 0;
+      return legalOk && manager.email.trim().length > 0;
+    }
+    if (step === 3) {
+      return players.some(
+        (p) =>
+          p.legalFirstName.trim().length > 0 &&
+          p.legalLastName.trim().length > 0
+      );
+    }
     if (step === 4) return true; // coaches optional
     return true;
   }
@@ -230,9 +262,45 @@ export default function RegistrationForm({
           registerableDivisions.find((d) => d.id === effectiveDivisionId)?.name ??
           null,
         afaMembershipNumber: afaMembershipNumber.trim(),
-        manager,
-        players: players.filter((p) => p.name.trim().length > 0),
-        coaches: coaches.filter((c) => c.name.trim().length > 0),
+        manager: {
+          legalFirstName: manager.legalFirstName.trim(),
+          legalLastName: manager.legalLastName.trim(),
+          preferredName: manager.preferredName.trim() || null,
+          email: manager.email.trim(),
+          phone: manager.phone.trim() || null,
+          cell: manager.cell?.trim() || null,
+          address: manager.address,
+          city: manager.city,
+          state: manager.state,
+          zip: manager.zip,
+        },
+        players: players
+          .filter(
+            (p) =>
+              p.legalFirstName.trim().length > 0 &&
+              p.legalLastName.trim().length > 0
+          )
+          .map((p) => ({
+            legalFirstName: p.legalFirstName.trim(),
+            legalLastName: p.legalLastName.trim(),
+            preferredName: p.preferredName.trim() || null,
+            email: p.email.trim() || null,
+            birthDate: p.birthDate || null,
+            address: p.address || null,
+          })),
+        coaches: coaches
+          .filter(
+            (c) =>
+              c.legalFirstName.trim().length > 0 &&
+              c.legalLastName.trim().length > 0
+          )
+          .map((c) => ({
+            legalFirstName: c.legalFirstName.trim(),
+            legalLastName: c.legalLastName.trim(),
+            preferredName: c.preferredName.trim() || null,
+            email: c.email.trim() || null,
+            phone: c.phone.trim() || null,
+          })),
         signaturePng: signature,
       };
       const res = await fetch("/api/register", {
@@ -598,17 +666,47 @@ export default function RegistrationForm({
 
         {step === 2 && (
           <div className="space-y-4">
-            <Field label="Manager's Name">
+            <p className="text-sm text-afa-ink/70">
+              Legal name is for the waiver. Preferred name is optional — what you
+              go by on the roster.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Legal first name">
+                <input
+                  className="form-field"
+                  autoComplete="given-name"
+                  value={manager.legalFirstName}
+                  onChange={(e) =>
+                    setManager({ ...manager, legalFirstName: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Legal last name">
+                <input
+                  className="form-field"
+                  autoComplete="family-name"
+                  value={manager.legalLastName}
+                  onChange={(e) =>
+                    setManager({ ...manager, legalLastName: e.target.value })
+                  }
+                />
+              </Field>
+            </div>
+            <Field label="Preferred name (optional)">
               <input
                 className="form-field"
-                value={manager.name}
-                onChange={(e) => setManager({ ...manager, name: e.target.value })}
+                value={manager.preferredName}
+                onChange={(e) =>
+                  setManager({ ...manager, preferredName: e.target.value })
+                }
+                placeholder="What you go by if different"
               />
             </Field>
             <Field label="Email">
               <input
                 type="email"
                 className="form-field"
+                autoComplete="email"
                 value={manager.email}
                 onChange={(e) => setManager({ ...manager, email: e.target.value })}
               />
@@ -679,23 +777,33 @@ export default function RegistrationForm({
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">
-              Add each player on the roster. At least one is required. Each
-              player signs their own copy later, on their own link — you&rsquo;re
-              just listing them here.
+              Legal name for the waiver, preferred name for the roster, and
+              email to reach them. No phone for players. At least one player is
+              required; each signs later on their own link.
             </p>
             {/* Managers play. If she has not listed herself, offer it rather
                 than adding it behind her back — the route adds her either
                 way, but doing it here means she can fill in her birth date. */}
-            {manager.name.trim() && !players.some((p) => sameName(p.name, manager.name)) && (
+            {personDisplay(manager) &&
+              !players.some((p) => sameName(personDisplay(p), personDisplay(manager))) && (
               <button
                 type="button"
                 onClick={() =>
-                  setPlayers((prev) => [{ ...emptyPlayer(), name: manager.name.trim() }, ...prev])
+                  setPlayers((prev) => [
+                    {
+                      ...emptyPlayer(),
+                      legalFirstName: manager.legalFirstName,
+                      legalLastName: manager.legalLastName,
+                      preferredName: manager.preferredName,
+                      email: manager.email,
+                    },
+                    ...prev,
+                  ])
                 }
                 className="form-field text-left"
               >
                 <span className="font-semibold text-afa-navy">
-                  Add {manager.name.trim()} to the roster
+                  Add {personDisplay(manager)} to the roster
                 </span>
                 <span className="block text-afa-ink/70">
                   Managers are normally on their own team. You sign one waiver
@@ -706,7 +814,15 @@ export default function RegistrationForm({
             {players.map((p, i) => (
               <div key={i} className="form-surface p-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <p className="font-semibold text-sm">Player {i + 1}</p>
+                  <p className="font-semibold text-sm">
+                    Player {i + 1}
+                    {personDisplay(p) ? (
+                      <span className="font-normal text-afa-ink/60">
+                        {" "}
+                        · {personDisplay(p)}
+                      </span>
+                    ) : null}
+                  </p>
                   {players.length > MIN_PLAYERS && (
                     <button
                       type="button"
@@ -719,11 +835,42 @@ export default function RegistrationForm({
                     </button>
                   )}
                 </div>
-                <Field label="Name">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Legal first">
+                    <input
+                      className="form-field"
+                      value={p.legalFirstName}
+                      onChange={(e) =>
+                        updatePlayer(i, "legalFirstName", e.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Legal last">
+                    <input
+                      className="form-field"
+                      value={p.legalLastName}
+                      onChange={(e) =>
+                        updatePlayer(i, "legalLastName", e.target.value)
+                      }
+                    />
+                  </Field>
+                </div>
+                <Field label="Preferred name (optional)">
                   <input
                     className="form-field"
-                    value={p.name}
-                    onChange={(e) => updatePlayer(i, "name", e.target.value)}
+                    value={p.preferredName}
+                    onChange={(e) =>
+                      updatePlayer(i, "preferredName", e.target.value)
+                    }
+                    placeholder="Roster name if different"
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    type="email"
+                    className="form-field"
+                    value={p.email}
+                    onChange={(e) => updatePlayer(i, "email", e.target.value)}
                   />
                 </Field>
                 <Field label="Birth Date">
@@ -770,11 +917,33 @@ export default function RegistrationForm({
                     Remove
                   </button>
                 </div>
-                <Field label="Name">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Legal first">
+                    <input
+                      className="form-field"
+                      value={c.legalFirstName}
+                      onChange={(e) =>
+                        updateCoach(i, "legalFirstName", e.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Legal last">
+                    <input
+                      className="form-field"
+                      value={c.legalLastName}
+                      onChange={(e) =>
+                        updateCoach(i, "legalLastName", e.target.value)
+                      }
+                    />
+                  </Field>
+                </div>
+                <Field label="Preferred name (optional)">
                   <input
                     className="form-field"
-                    value={c.name}
-                    onChange={(e) => updateCoach(i, "name", e.target.value)}
+                    value={c.preferredName}
+                    onChange={(e) =>
+                      updateCoach(i, "preferredName", e.target.value)
+                    }
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">

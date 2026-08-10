@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Umpires — Director" };
 
 function mapRow(r) {
+  const preferred = r.preferred_name?.trim() || "";
   return {
     id: r.id,
     firstName: r.first_name,
     lastName: r.last_name,
+    preferredName: r.preferred_name || "",
     cardNumber: r.card_number,
     address: r.address,
     city: r.city,
@@ -23,7 +25,7 @@ function mapRow(r) {
     pitchSlow: r.pitch_slow,
     status: r.status,
     notes: r.notes,
-    displayName: `${r.last_name}, ${r.first_name}`,
+    displayName: preferred || `${r.last_name}, ${r.first_name}`,
   };
 }
 

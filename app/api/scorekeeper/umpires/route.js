@@ -7,10 +7,13 @@ import {
 export const runtime = "nodejs";
 
 function mapRow(r) {
+  const preferred = r.preferred_name?.trim() || "";
+  const legal = `${r.last_name}, ${r.first_name}`;
   return {
     id: r.id,
     firstName: r.first_name,
     lastName: r.last_name,
+    preferredName: r.preferred_name || "",
     cardNumber: r.card_number,
     address: r.address,
     city: r.city,
@@ -22,7 +25,7 @@ function mapRow(r) {
     pitchSlow: r.pitch_slow,
     status: r.status,
     notes: r.notes,
-    displayName: `${r.last_name}, ${r.first_name}`,
+    displayName: preferred || legal,
   };
 }
 
@@ -67,7 +70,10 @@ export async function POST(request) {
   const first = String(body.firstName || "").trim();
   const last = String(body.lastName || "").trim();
   if (!first || !last) {
-    return Response.json({ error: "First and last name required" }, { status: 400 });
+    return Response.json(
+      { error: "Legal first and last name required" },
+      { status: 400 }
+    );
   }
 
   const pitchFast = Boolean(body.pitchFast);
@@ -85,6 +91,7 @@ export async function POST(request) {
     .insert({
       first_name: first,
       last_name: last,
+      preferred_name: body.preferredName?.trim() || null,
       card_number: body.cardNumber?.trim() || null,
       address: body.address?.trim() || null,
       city: body.city?.trim() || null,
@@ -123,6 +130,8 @@ export async function PATCH(request) {
   const patch = { updated_at: new Date().toISOString() };
   if (body.firstName != null) patch.first_name = String(body.firstName).trim();
   if (body.lastName != null) patch.last_name = String(body.lastName).trim();
+  if (body.preferredName !== undefined)
+    patch.preferred_name = body.preferredName?.trim() || null;
   if (body.cardNumber !== undefined)
     patch.card_number = body.cardNumber?.trim() || null;
   if (body.address !== undefined) patch.address = body.address?.trim() || null;

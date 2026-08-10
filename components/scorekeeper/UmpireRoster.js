@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 
 const empty = () => ({
-  firstName: "",
-  lastName: "",
+  firstName: "", // legal first
+  lastName: "", // legal last
+  preferredName: "",
   cardNumber: "",
   address: "",
   city: "",
@@ -17,6 +18,12 @@ const empty = () => ({
   status: "active",
   notes: "",
 });
+
+function umpDisplay(u) {
+  const p = (u.preferredName || "").trim();
+  if (p) return p;
+  return [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+}
 
 /** Visual identity for pitch type — color + short label. */
 function pitchKind(u) {
@@ -70,6 +77,14 @@ function pitchKind(u) {
 }
 
 function initials(u) {
+  const display = umpDisplay(u);
+  if (display) {
+    const parts = display.split(/\s+/);
+    if (parts.length >= 2) {
+      return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
+    }
+    return display.slice(0, 2).toUpperCase();
+  }
   const a = (u.firstName || "").trim()[0] || "";
   const b = (u.lastName || "").trim()[0] || "";
   return (a + b).toUpperCase() || "?";
@@ -160,6 +175,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     setForm({
       firstName: u.firstName || "",
       lastName: u.lastName || "",
+      preferredName: u.preferredName || "",
       cardNumber: u.cardNumber || "",
       address: u.address || "",
       city: u.city || "",
@@ -434,11 +450,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="t-body font-semibold leading-tight">
-                      {u.lastName}, {u.firstName}
+                      {umpDisplay(u)}
+                    </p>
+                    <p className="t-meta text-sm mt-0.5">
+                      Legal: {u.lastName}, {u.firstName}
+                      {u.preferredName ? ` · prefers ${u.preferredName}` : ""}
                     </p>
                     <p className="t-meta text-sm mt-0.5">
                       {u.cardNumber ? `Card ${u.cardNumber}` : "No card #"}
                       {u.phone ? ` · ${u.phone}` : ""}
+                      {u.email ? ` · ${u.email}` : ""}
                       {u.city ? ` · ${u.city}` : ""}
                     </p>
                   </div>
@@ -507,9 +528,14 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             </p>
           )}
 
-          <Section step="1" title="Name" hint="Required" accent="navy">
+          <Section
+            step="1"
+            title="Legal name"
+            hint="As on the AFA card / waiver"
+            accent="navy"
+          >
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Last">
+              <Field label="Legal last">
                 <input
                   required
                   autoComplete="family-name"
@@ -520,7 +546,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                   }
                 />
               </Field>
-              <Field label="First">
+              <Field label="Legal first">
                 <input
                   required
                   autoComplete="given-name"
@@ -532,6 +558,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 />
               </Field>
             </div>
+            <Field label="Preferred name (optional)">
+              <input
+                className={inputClass}
+                value={form.preferredName}
+                onChange={(e) =>
+                  setForm({ ...form, preferredName: e.target.value })
+                }
+                placeholder="What they go by if different"
+              />
+            </Field>
             <Field label="Card #">
               <input
                 className={inputClass}
@@ -547,7 +583,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           <Section
             step="2"
             title="Contact"
-            hint="Phone is the one you call on game day"
+            hint="Phone and email — both for umpires"
             accent="sky"
           >
             <Field label="Address">
