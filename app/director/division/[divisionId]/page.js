@@ -116,7 +116,7 @@ export default async function DirectorDivisionPage({ params }) {
   if (gate.needPin) {
     return (
       <div className="py-8">
-        <PinPad />
+        <PinPad room="director" />
       </div>
     );
   }

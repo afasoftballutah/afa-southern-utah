@@ -54,7 +54,7 @@ export default async function PlayersPage() {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Players</h1>
-        <PinPad />
+        <PinPad room="director" />
       </div>
     );
   }

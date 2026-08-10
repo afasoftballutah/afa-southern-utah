@@ -110,7 +110,7 @@ export default async function RegistrationPage({ params }) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Team</h1>
-        <PinPad />
+        <PinPad room="director" />
       </div>
     );
   }

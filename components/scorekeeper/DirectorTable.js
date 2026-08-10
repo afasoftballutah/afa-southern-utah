@@ -52,6 +52,8 @@ export default function DirectorTable({
   rows,
   filters = [],
   defaultSort,
+  /** Initial filter key, or "all". Score sheets default to "need a score". */
+  defaultFilter = "all",
   empty = "Nothing matches that.",
   searchPlaceholder = "Type a name…",
   // A list of four divisions does not need a box to find one in (JD,
@@ -66,9 +68,11 @@ export default function DirectorTable({
   // Rendered inside the same card, above the table. For a control that makes
   // the rows below it — a separate card left them looking unrelated.
   before = null,
+  /** Bigger, labeled filter chips with counts — for scorekeeper game lists. */
+  filterStyle = "default", // default | segmented
 }) {
   const [query, setQuery] = useState("");
-  const [filterKey, setFilterKey] = useState("all");
+  const [filterKey, setFilterKey] = useState(defaultFilter);
   const [sort, setSort] = useState(defaultSort ?? { key: columns[0]?.key, dir: "asc" });
   const [openKey, setOpenKey] = useState(openRow ?? null);
 
@@ -129,25 +133,81 @@ export default function DirectorTable({
         </>
         )}
 
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilterKey((cur) => (cur === f.key ? "all" : f.key))}
-            className={
-              "px-3 py-2 rounded-lg whitespace-nowrap t-label border " +
-              (filterKey === f.key
-                ? "bg-afa-navy text-white border-afa-navy"
-                : "border-afa-navy/20 text-afa-muted")
-            }
-          >
-            {f.label}
-          </button>
-        ))}
+        {filterStyle === "segmented" ? (
+          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              ...filters,
+              { key: "all", label: "All games", tag: null, tone: "neutral" },
+            ].map((f) => {
+              const count =
+                f.key === "all"
+                  ? rows.length
+                  : rows.filter((r) => (r.tags ?? []).includes(f.tag)).length;
+              const on = filterKey === f.key;
+              const tone = f.tone || "neutral";
+              const onCls =
+                tone === "action"
+                  ? "border-afa-red bg-afa-red text-white"
+                  : tone === "quiet"
+                    ? "border-emerald-700 bg-emerald-700 text-white"
+                    : "border-afa-navy bg-afa-navy text-white";
+              const offCls =
+                tone === "action"
+                  ? "border-red-200 bg-red-50 text-red-950"
+                  : tone === "quiet"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                    : "border-afa-navy/15 bg-white text-afa-navy";
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilterKey(f.key)}
+                  className={
+                    "rounded-xl border-2 px-3 py-2.5 text-left font-bold text-sm " +
+                    (on ? onCls : offCls)
+                  }
+                >
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span>{f.label}</span>
+                    <span className="tabular-nums text-lg font-black">{count}</span>
+                  </span>
+                  {f.hint && (
+                    <span
+                      className={
+                        "block text-xs font-medium mt-0.5 " +
+                        (on ? "opacity-85" : "opacity-65")
+                      }
+                    >
+                      {f.hint}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          filters.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilterKey((cur) => (cur === f.key ? "all" : f.key))}
+              className={
+                "px-3 py-2 rounded-lg whitespace-nowrap t-label border " +
+                (filterKey === f.key
+                  ? "bg-afa-navy text-white border-afa-navy"
+                  : "border-afa-navy/20 text-afa-muted")
+              }
+            >
+              {f.label}
+            </button>
+          ))
+        )}
 
-        <span className="t-meta ml-auto whitespace-nowrap">
-          {visible.length} of {rows.length}
-        </span>
+        {filterStyle !== "segmented" && (
+          <span className="t-meta ml-auto whitespace-nowrap">
+            {visible.length} of {rows.length}
+          </span>
+        )}
       </div>
       )}
 

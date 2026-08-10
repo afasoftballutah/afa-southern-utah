@@ -63,7 +63,7 @@ export default async function DirectorPage() {
   if (!hasValidScorekeeperSession(store)) {
     return (
       <div className="py-8">
-        <PinPad />
+        <PinPad room="director" />
       </div>
     );
   }

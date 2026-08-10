@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { requireStaffPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import ScoreTable from "@/components/scorekeeper/ScoreTable";
+import TournamentPickList from "@/components/scorekeeper/TournamentPickList";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scores — Scorekeeper" };
@@ -50,7 +50,7 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
     return (
       <div className="max-w-sm mx-auto space-y-4">
         <h1 className="t-title">Scores</h1>
-        <PinPad />
+        <PinPad room="scorekeeper" />
       </div>
     );
   }
@@ -72,32 +72,7 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
   if (!selected) {
     return (
       <DirectorShell title="Enter scores" count="Pick a tournament" back="/scorekeeper">
-        <div className="card divide-y divide-afa-navy/10">
-          {ordered.length === 0 ? (
-            <p className="p-6 t-meta text-center">No tournaments on file.</p>
-          ) : (
-            ordered.map((t) => (
-              <Link
-                key={t.id}
-                href={`/scorekeeper/games?tournament=${t.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 min-h-[52px]"
-              >
-                <span className="min-w-0">
-                  <span className="t-body font-semibold block truncate">
-                    {t.name}
-                  </span>
-                  <span className="t-meta block">
-                    {t.start_date}
-                    {t.left > 0
-                      ? ` · ${t.left} left to score`
-                      : " · scored / no open games"}
-                  </span>
-                </span>
-                <span className="t-meta shrink-0">→</span>
-              </Link>
-            ))
-          )}
-        </div>
+        <TournamentPickList tournaments={ordered} />
       </DirectorShell>
     );
   }
@@ -111,12 +86,14 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
       title={selected.name}
       count={
         selected.left > 0
-          ? `${selected.left} left to score`
-          : "All scored / no open games"
+          ? `${selected.left} need a score`
+          : "All scored"
       }
       back="/scorekeeper"
     >
-      <p className="t-meta">Enter scores. Brackets, umpires, and rosters are under Director.</p>
+      <p className="t-meta">
+        Red filter = games that still need numbers. Green = already in.
+      </p>
 
       <div className="space-y-8">
         {divisions.map((d) => {

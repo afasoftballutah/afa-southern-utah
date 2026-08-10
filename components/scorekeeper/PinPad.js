@@ -2,26 +2,45 @@
 
 import { useState } from "react";
 
-export default function PinPad() {
+/**
+ * @param {"scorekeeper"|"director"|"pick"} room
+ *   scorekeeper — only scores door (no director mention)
+ *   director — only director door
+ *   pick — choose role (default on mixed pages)
+ */
+export default function PinPad({ room = "pick" }) {
+  const lockedRole =
+    room === "scorekeeper"
+      ? "scorekeeper"
+      : room === "director"
+        ? "director"
+        : null;
   const [pin, setPin] = useState("");
-  const [role, setRole] = useState("director"); // director | scorekeeper
+  const [role, setRole] = useState(lockedRole || "director"); // director | scorekeeper
   const [state, setState] = useState("idle"); // idle | submitting | error
   const [error, setError] = useState("");
 
   async function submit(value) {
     setState("submitting");
     setError("");
+    const sessionRole = lockedRole || role;
     try {
       const res = await fetch("/api/scorekeeper/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: value, role }),
+        body: JSON.stringify({ pin: value, role: sessionRole }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Wrong PIN");
-      // Land in the right room
-      window.location.href =
-        json.role === "scorekeeper" ? "/scorekeeper" : "/director";
+      // Land in the room they opened — scorekeeper never sees director
+      if (room === "scorekeeper") {
+        window.location.href = "/scorekeeper";
+      } else if (room === "director") {
+        window.location.href = "/director";
+      } else {
+        window.location.href =
+          json.role === "scorekeeper" ? "/scorekeeper" : "/director";
+      }
     } catch (err) {
       setState("error");
       setError(err.message || "Wrong PIN");
@@ -39,11 +58,25 @@ export default function PinPad() {
     setPin((p) => p.slice(0, -1));
   }
 
+  const title =
+    room === "scorekeeper"
+      ? "Scorekeeper"
+      : room === "director"
+        ? "Director"
+        : "Staff door";
+  const subtitle =
+    room === "scorekeeper"
+      ? "Enter the PIN to put in scores."
+      : room === "director"
+        ? "Enter the PIN for the control center."
+        : "PIN is the same. Pick who you are for this session.";
+
   return (
     <div className="max-w-xs mx-auto space-y-4 text-center">
-      <h1 className="t-title">Staff door</h1>
-      <p className="t-meta">PIN is the same. Pick who you are for this session.</p>
+      <h1 className="t-title">{title}</h1>
+      <p className="t-meta">{subtitle}</p>
 
+      {room === "pick" && (
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -74,6 +107,7 @@ export default function PinPad() {
           </span>
         </button>
       </div>
+      )}
 
       <div className="text-3xl font-mono tracking-widest text-afa-navy min-h-10">
         {"•".repeat(pin.length) || (

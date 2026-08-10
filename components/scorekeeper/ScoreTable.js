@@ -73,8 +73,20 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
   ];
 
   const filters = [
-    { key: "left", label: "Still to play", tag: "unplayed" },
-    { key: "done", label: "Scored", tag: "played" },
+    {
+      key: "left",
+      label: "Need a score",
+      tag: "unplayed",
+      hint: "Type the numbers here",
+      tone: "action",
+    },
+    {
+      key: "done",
+      label: "Already scored",
+      tag: "played",
+      hint: "Open to fix a mistake",
+      tone: "quiet",
+    },
   ];
 
   // The if-game the champion made unnecessary. It is on the printed sheet
@@ -164,9 +176,11 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
       columns={columns}
       rows={rows}
       filters={filters}
+      defaultFilter="left"
+      filterStyle="segmented"
       defaultSort={{ key: kind === "pool" ? "when" : "num", dir: "asc" }}
-      searchPlaceholder="Team, field or number…"
-      empty="No game matches that."
+      searchPlaceholder="Find a team name…"
+      empty="Nothing in this view. Tap a filter above — “Need a score” is where you enter numbers."
       before={<p className="t-strong">{title}</p>}
     />
   );
