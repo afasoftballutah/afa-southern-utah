@@ -14,6 +14,7 @@ export default function RulesBookEditor({
   initialTitle = "",
   initialSourceUrl = "",
   initialPublished = true,
+  onClose,
 }) {
   const [source, setSource] = useState(initialSource);
   const [sections, setSections] = useState(initialSections);
@@ -116,16 +117,18 @@ export default function RulesBookEditor({
   if (!editing) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+        <div className="rounded-lg border border-afa-navy/20 bg-afa-navy/5 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-afa-navy">
+              Viewing · not editing
+            </p>
             <p className="t-strong">{source.title}</p>
             <p className="t-meta">
-              {source.year ? `${source.year} · ` : ""}
-              {sections.length} sections · {ruleCount} rules
-              {savedAt ? ` · saved ${savedAt}` : ""}
+              Live on /rules · {sections.length} sections · {ruleCount} rules
+              {savedAt ? ` · last saved ${savedAt}` : ""}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             {source.url && (
               <a
                 href={source.url}
@@ -135,6 +138,11 @@ export default function RulesBookEditor({
               >
                 Original PDF
               </a>
+            )}
+            {onClose && (
+              <button type="button" className="btn-transient" onClick={onClose}>
+                Close
+              </button>
             )}
             <button
               type="button"
@@ -148,37 +156,37 @@ export default function RulesBookEditor({
         {error && (
           <p className="text-sm font-bold text-afa-ink underline">{error}</p>
         )}
-        <p className="t-meta text-sm">
-          This is the same book the public sees on{" "}
-          <a href="/rules" className="underline">
-            /rules
-          </a>
-          . Edit to change the live page.
-        </p>
         <RulesBrowser sections={sections} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="t-strong">Editing rule book</p>
-        <div className="flex flex-wrap gap-2">
+    <div className="space-y-4 rounded-xl border-2 border-afa-red/40 bg-red-50/40 p-3 sm:p-4">
+      <div className="rounded-lg bg-afa-red text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-90">
+            Editing rule book
+          </p>
+          <p className="font-bold text-lg leading-tight">
+            Changes are not live until you save
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button
             type="button"
-            className="btn-transient"
+            className="btn-transient bg-white text-afa-ink border-white"
             disabled={busy}
             onClick={() => {
               setEditing(false);
               setError("");
             }}
           >
-            Cancel
+            Cancel edit
           </button>
           <button
             type="button"
-            className="btn-action"
+            className="btn-action bg-white text-afa-red border-white hover:bg-afa-soft-gray"
             disabled={busy}
             onClick={save}
           >
@@ -190,7 +198,7 @@ export default function RulesBookEditor({
         <p className="text-sm font-bold text-afa-ink underline">{error}</p>
       )}
 
-      <div className="card p-4 space-y-3">
+      <div className="card p-4 space-y-3 bg-white">
         <label className="block space-y-1">
           <span className="form-label">Title</span>
           <input
@@ -329,7 +337,7 @@ export default function RulesBookEditor({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 sticky bottom-2 bg-white/95 border border-afa-red/30 rounded-lg p-2 shadow-sm">
         <button
           type="button"
           className="btn-action"
@@ -342,9 +350,12 @@ export default function RulesBookEditor({
           type="button"
           className="btn-transient"
           disabled={busy}
-          onClick={() => setEditing(false)}
+          onClick={() => {
+            setEditing(false);
+            setError("");
+          }}
         >
-          Done
+          Cancel edit
         </button>
       </div>
     </div>
