@@ -98,93 +98,129 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
     setTimeout(() => setCopied(""), 1500);
   }
 
+  function ActionRow({ label, children }) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="t-label w-16 shrink-0 text-afa-muted/80">{label}</span>
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">{children}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {reg.paid_at ? (
-          <>
+    <div className="space-y-2.5">
+      <div className="rounded-lg border border-afa-navy/10 bg-afa-navy/[0.02] px-3 py-2.5 space-y-2">
+        <ActionRow label="Money">
+          {reg.paid_at ? (
+            <>
+              <button className="pill" disabled={busy} onClick={openPayDialog}>
+                Edit amount
+                {reg.amount_paid_cents != null
+                  ? ` (${moneyLabel(reg.amount_paid_cents)})`
+                  : ""}
+              </button>
+              <button
+                className="pill"
+                disabled={busy}
+                onClick={() =>
+                  confirmThen(
+                    `Undo payment for ${reg.team_name}? The amount is cleared too.`,
+                    { paid: false },
+                    "Undo paid"
+                  )
+                }
+              >
+                Undo paid
+              </button>
+            </>
+          ) : (
             <button className="pill" disabled={busy} onClick={openPayDialog}>
-              Edit amount
-              {reg.amount_paid_cents != null ? ` (${moneyLabel(reg.amount_paid_cents)})` : ""}
+              Record payment
             </button>
+          )}
+        </ActionRow>
+
+        <ActionRow label="Status">
+          {reg.status !== "confirmed" && reg.status !== "withdrawn" && (
             <button
               className="pill"
               disabled={busy}
               onClick={() =>
                 confirmThen(
-                  `Undo payment for ${reg.team_name}? The amount is cleared too.`,
-                  { paid: false },
-                  "Undo paid"
+                  `Confirm ${reg.team_name} for this tournament?`,
+                  { status: "confirmed" },
+                  "Confirm"
                 )
               }
             >
-              Undo paid
+              Confirm
             </button>
-          </>
-        ) : (
-          <button className="pill" disabled={busy} onClick={openPayDialog}>
-            Record payment
+          )}
+          {reg.status !== "withdrawn" ? (
+            <button
+              className="pill"
+              disabled={busy}
+              onClick={() =>
+                confirmThen(
+                  `Withdraw ${reg.team_name}? Their name is freed for another team, and every non-manager player is released to the free-agent pool so other managers can claim them.`,
+                  { status: "withdrawn", releaseRosterToPool: true },
+                  "Withdraw"
+                )
+              }
+            >
+              Withdraw
+            </button>
+          ) : (
+            <button
+              className="pill"
+              disabled={busy}
+              onClick={() =>
+                confirmThen(
+                  `Reinstate ${reg.team_name}?`,
+                  { status: "submitted" },
+                  "Reinstate"
+                )
+              }
+            >
+              Reinstate
+            </button>
+          )}
+          {reg.status !== "withdrawn" && (
+            <RowAction
+              label="Move division"
+              title={`Move ${reg.team_name}`}
+              note="Same tournament only."
+              placeholder="Pick a division…"
+              emptyMessage="No other divisions in this tournament."
+              countSingular="division"
+              countPlural="divisions"
+              action="moveRegistration"
+              valueKey="divisionId"
+              payload={{ registrationId: reg.id }}
+              confirmText={`Move ${reg.team_name} into {name}?`}
+              options={divisions.filter((d) => d.id !== reg.division_id)}
+            />
+          )}
+        </ActionRow>
+
+        <ActionRow label="Links">
+          <button className="pill" onClick={() => copyLink("roster")}>
+            {copied === "roster" ? "Copied" : "Team link"}
           </button>
-        )}
-        {reg.status !== "confirmed" && (
-          <button
-            className="pill"
-            disabled={busy}
-            onClick={() =>
-              confirmThen(`Confirm ${reg.team_name} for this tournament?`, { status: "confirmed" }, "Confirm")
-            }
-          >
-            Confirm
+          <button className="pill" onClick={() => copyLink("manage")}>
+            {copied === "manage" ? "Copied" : "Manager link"}
           </button>
-        )}
-        {reg.status !== "withdrawn" ? (
-          <button
-            className="pill"
-            disabled={busy}
-            onClick={() =>
-              confirmThen(
-                `Withdraw ${reg.team_name}? Their name is freed for another team, and every non-manager player is released to the free-agent pool so other managers can claim them.`,
-                { status: "withdrawn", releaseRosterToPool: true },
-                "Withdraw"
-              )
-            }
-          >
-            Withdraw
-          </button>
-        ) : (
-          <button
-            className="pill"
-            disabled={busy}
-            onClick={() => confirmThen(`Reinstate ${reg.team_name}?`, { status: "submitted" }, "Reinstate")}
-          >
-            Reinstate
-          </button>
-        )}
-        <RowAction
-          label="Move division"
-          title={`Move ${reg.team_name}`}
-          note="Same tournament only."
-          placeholder="Pick a division…"
-          emptyMessage="No other divisions in this tournament."
-          countSingular="division"
-          countPlural="divisions"
-          action="moveRegistration"
-          valueKey="divisionId"
-          payload={{ registrationId: reg.id }}
-          confirmText={`Move ${reg.team_name} into {name}?`}
-          options={divisions.filter((d) => d.id !== reg.division_id)}
-        />
-        <button className="pill" onClick={() => copyLink("roster")}>
-          {copied === "roster" ? "Copied" : "Team link"}
-        </button>
-        <button className="pill" onClick={() => copyLink("manage")}>
-          {copied === "manage" ? "Copied" : "Manager link"}
-        </button>
-        {reg.pdf_storage_path && (
-          <a className="pill" href={`/api/scorekeeper/registrations/${reg.id}/waiver`} target="_blank" rel="noreferrer">
-            Waiver
-          </a>
-        )}
+          {reg.pdf_storage_path && (
+            <a
+              className="pill"
+              href={`/api/scorekeeper/registrations/${reg.id}/waiver`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Waiver
+            </a>
+          )}
+        </ActionRow>
       </div>
 
       {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
