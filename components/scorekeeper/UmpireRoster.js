@@ -82,7 +82,10 @@ function initials(u) {
   return (a + b).toUpperCase() || "?";
 }
 
-/** Placeholder as explainer; short label only once filled or focused. */
+/**
+ * Placeholder as explainer. Label always occupies the same height so focus
+ * does not bounce the row (no native required — we validate on Continue).
+ */
 function Field({
   label,
   explainer,
@@ -90,7 +93,6 @@ function Field({
   onChange,
   type = "text",
   autoComplete,
-  required = false,
 }) {
   const [focused, setFocused] = useState(false);
   const filled = String(value ?? "").trim().length > 0;
@@ -98,27 +100,26 @@ function Field({
 
   return (
     <label className="block">
+      {/* Fixed-height label slot — opacity only, never collapses */}
       <span
         className={
-          "t-label block transition-all " +
-          (showLabel
-            ? "mb-1 opacity-100"
-            : "mb-0 h-0 opacity-0 overflow-hidden")
+          "t-label block mb-1 min-h-[1rem] leading-4 " +
+          (showLabel ? "opacity-100" : "opacity-0")
         }
+        aria-hidden={!showLabel}
       >
         {label}
       </span>
       <input
         type={type}
         autoComplete={autoComplete}
-        required={required}
         value={value}
         onChange={onChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        placeholder={showLabel ? "" : explainer}
+        placeholder={explainer}
         className={
-          "w-full rounded-lg border border-afa-navy/20 bg-white px-3 py-2.5 text-[15px] placeholder:text-afa-muted/80 focus:outline-none focus:ring-2 focus:ring-afa-navy/20 focus:border-afa-navy/40 " +
+          "w-full rounded-lg border border-afa-navy/20 bg-white px-3 py-2.5 text-[15px] placeholder:text-afa-muted/70 focus:outline-none focus:ring-2 focus:ring-afa-navy/20 focus:border-afa-navy/40 " +
           (filled ? "border-afa-navy/25" : "")
         }
       />
@@ -368,7 +369,13 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
   const formCard = formOpen && canEdit && (
     <form
       id="umpire-form"
-      onSubmit={save}
+      onSubmit={(e) => {
+        // Never use browser native “Please fill out this field” on multi-page
+        e.preventDefault();
+        if (page < 3) goNext();
+        else save(e);
+      }}
+      noValidate
       className="rounded-xl border border-afa-navy/15 bg-white shadow-sm overflow-hidden max-w-md"
     >
       <div className="px-4 py-3 border-b border-afa-navy/10 flex items-center justify-between gap-2">
@@ -426,7 +433,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               <Field
                 label="Last name"
                 explainer="Last name"
-                required
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) =>
@@ -436,7 +442,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               <Field
                 label="First name"
                 explainer="First name"
-                required
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) =>
@@ -455,7 +460,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             <Field
               label="Phone"
               explainer="Phone"
-              required
               type="tel"
               autoComplete="tel"
               value={form.phone}
@@ -464,7 +468,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             <Field
               label="Email"
               explainer="Email"
-              required
               type="email"
               autoComplete="email"
               value={form.email}
@@ -498,7 +501,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               <Field
                 label="City"
                 explainer="City"
-                className="col-span-1"
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
               />
