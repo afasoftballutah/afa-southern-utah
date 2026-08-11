@@ -24,15 +24,14 @@ function isMainRuleBook(d) {
 }
 
 /**
- * Documents desk. Filter chips pick the kind.
- * Main rule book appears in the list; Edit opens the structured editor.
+ * Documents list. Edit / Unpublish / Delete per row.
+ * Main rule book Edit opens the structured editor.
  */
 export default function DocsAdmin({
   initialDocs = [],
-  ruleBook = null, // { source, sections, docId, title, sourceUrl, published }
+  ruleBook = null,
 }) {
   const [docs, setDocs] = useState(initialDocs);
-  const [filter, setFilter] = useState("all");
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -40,40 +39,32 @@ export default function DocsAdmin({
   const [error, setError] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
 
-  // Ensure the main rule book is always a list row (from DB or synthetic).
   const listDocs = useMemo(() => {
     const hasBook = docs.some(isMainRuleBook);
-    if (hasBook || !ruleBook) return docs;
-    return [
-      {
-        id: ruleBook.docId || "__rulebook__",
-        slug: RULEBOOK_SLUG,
-        kind: "rules",
-        title: ruleBook.title || ruleBook.source?.title || "Rule book",
-        body: "",
-        source_url: ruleBook.sourceUrl || ruleBook.source?.url || null,
-        published: ruleBook.published !== false,
-        version: null,
-        sort_order: -1,
-        _ruleBook: true,
-      },
-      ...docs,
-    ];
-  }, [docs, ruleBook]);
-
-  const filtered = useMemo(() => {
-    let rows = listDocs;
-    if (filter !== "all") {
-      rows = rows.filter((d) => d.kind === filter);
-    }
-    // Rule book first when present
-    return [...rows].sort((a, b) => {
+    const rows =
+      hasBook || !ruleBook
+        ? [...docs]
+        : [
+            {
+              id: ruleBook.docId || "__rulebook__",
+              slug: RULEBOOK_SLUG,
+              kind: "rules",
+              title: ruleBook.title || ruleBook.source?.title || "Rule book",
+              body: "",
+              source_url: ruleBook.sourceUrl || ruleBook.source?.url || null,
+              published: ruleBook.published !== false,
+              version: null,
+              sort_order: -1,
+            },
+            ...docs,
+          ];
+    return rows.sort((a, b) => {
       const ar = isMainRuleBook(a) ? 0 : 1;
       const br = isMainRuleBook(b) ? 0 : 1;
       if (ar !== br) return ar - br;
       return (a.sort_order ?? 0) - (b.sort_order ?? 0);
     });
-  }, [listDocs, filter]);
+  }, [docs, ruleBook]);
 
   function resetForm() {
     setForm(emptyForm());
@@ -82,23 +73,14 @@ export default function DocsAdmin({
     setError("");
   }
 
-  function chooseFilter(value) {
-    // Never leave an edit form open under a different filter chip.
-    resetForm();
-    setRulesOpen(false);
-    setFilter(value);
-  }
-
   function openRuleBook() {
     resetForm();
-    setFilter("rules");
     setRulesOpen(true);
   }
 
   function startNew() {
     setRulesOpen(false);
-    const kind = filter === "all" || filter === "rules" ? "other" : filter;
-    setForm({ ...emptyForm(), kind });
+    setForm(emptyForm());
     setEditingId(null);
     setShowForm(true);
     setError("");
@@ -110,13 +92,10 @@ export default function DocsAdmin({
       return;
     }
     setRulesOpen(false);
-    const kind = d.kind || "other";
-    // Keep chip in sync with the document being edited.
-    setFilter(kind);
     setEditingId(d.id);
     setForm({
       title: d.title || "",
-      kind,
+      kind: d.kind || "other",
       body: d.body || "",
       sourceUrl: d.source_url || "",
       version: d.version || "",
@@ -227,7 +206,9 @@ export default function DocsAdmin({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Could not delete");
       setDocs((cur) =>
-        cur.filter((x) => x.id !== id && !(isMainRuleBook(d) && isMainRuleBook(x)))
+        cur.filter(
+          (x) => x.id !== id && !(isMainRuleBook(d) && isMainRuleBook(x))
+        )
       );
       if (editingId === id) resetForm();
       if (isMainRuleBook(d)) setRulesOpen(false);
@@ -240,39 +221,15 @@ export default function DocsAdmin({
 
   if (rulesOpen && ruleBook) {
     return (
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { value: "all", label: "All" },
-            ...DOC_KINDS,
-          ].map((k) => {
-            const on = k.value === "rules";
-            return (
-              <button
-                key={k.value}
-                type="button"
-                className={on ? "btn-info" : "btn-transient"}
-                aria-pressed={on}
-                onClick={() => chooseFilter(k.value)}
-              >
-                {k.label}
-              </button>
-            );
-          })}
-        </div>
-        <RulesBookEditor
-          initialSource={ruleBook.source}
-          initialSections={ruleBook.sections}
-          docId={ruleBook.docId}
-          initialTitle={ruleBook.title}
-          initialSourceUrl={ruleBook.sourceUrl}
-          initialPublished={ruleBook.published}
-          onClose={() => {
-            setRulesOpen(false);
-            setFilter("all");
-          }}
-        />
-      </div>
+      <RulesBookEditor
+        initialSource={ruleBook.source}
+        initialSections={ruleBook.sections}
+        docId={ruleBook.docId}
+        initialTitle={ruleBook.title}
+        initialSourceUrl={ruleBook.sourceUrl}
+        initialPublished={ruleBook.published}
+        onClose={() => setRulesOpen(false)}
+      />
     );
   }
 
@@ -281,34 +238,6 @@ export default function DocsAdmin({
       {error && (
         <p className="text-sm font-bold text-afa-ink underline">{error}</p>
       )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { value: "all", label: "All" },
-          ...DOC_KINDS,
-        ].map((k) => {
-          const on = filter === k.value;
-          return (
-            <button
-              key={k.value}
-              type="button"
-              className={on ? "btn-info" : "btn-transient"}
-              aria-pressed={on}
-              onClick={() => chooseFilter(k.value)}
-            >
-              {k.label}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          className="btn-action ml-auto"
-          onClick={startNew}
-          disabled={busy}
-        >
-          + Add document
-        </button>
-      </div>
 
       {showForm && (
         <form onSubmit={save} className="card p-4 space-y-3">
@@ -335,12 +264,11 @@ export default function DocsAdmin({
                   setForm((f) => ({ ...f, kind: e.target.value }))
                 }
               >
-                {DOC_KINDS.filter((k) => k.value !== "rules").map((k) => (
+                {DOC_KINDS.map((k) => (
                   <option key={k.value} value={k.value}>
                     {k.label}
                   </option>
                 ))}
-                <option value="rules">House rules (extra)</option>
               </select>
             </label>
             <label className="block space-y-1">
@@ -428,13 +356,10 @@ export default function DocsAdmin({
       )}
 
       <ul className="card divide-y divide-black/5">
-        {filtered.length === 0 && (
-          <li className="p-6 text-center t-meta">
-            No documents{filter !== "all" ? ` in ${kindLabel(filter)}` : ""}{" "}
-            yet.
-          </li>
+        {listDocs.length === 0 && (
+          <li className="p-6 text-center t-meta">No documents yet.</li>
         )}
-        {filtered.map((d) => {
+        {listDocs.map((d) => {
           const mainBook = isMainRuleBook(d);
           const sectionN = ruleBook?.sections?.length;
           const published = d.published !== false;
@@ -448,7 +373,11 @@ export default function DocsAdmin({
                 <p className="t-meta">
                   {kindLabel(d.kind)}
                   {mainBook && sectionN ? ` · ${sectionN} sections` : ""}
-                  {mainBook ? (published ? " · live on /rules" : " · draft") : ""}
+                  {mainBook
+                    ? published
+                      ? " · live on /rules"
+                      : " · draft"
+                    : ""}
                   {!mainBook && (published ? "" : " · draft")}
                   {!mainBook && d.version ? ` · ${d.version}` : ""}
                   {d.source_url ? " · has link" : ""}
@@ -484,6 +413,17 @@ export default function DocsAdmin({
           );
         })}
       </ul>
+
+      {!showForm && (
+        <button
+          type="button"
+          className="btn-action w-full sm:w-auto"
+          onClick={startNew}
+          disabled={busy}
+        >
+          + Add document
+        </button>
+      )}
     </div>
   );
 }

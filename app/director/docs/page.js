@@ -36,8 +36,7 @@ export default async function DirectorDocsPage() {
       back="/director"
     >
       <p className="t-meta">
-        Filter by type, or open the rule book from the list. Waivers and
-        umpire agreements edit in place.
+        Rules, waivers, and umpire agreements. Edit from the list.
       </p>
       {needsMigration && (
         <div className="card p-4">
