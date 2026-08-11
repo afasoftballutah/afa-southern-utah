@@ -358,16 +358,8 @@ export default async function TournamentsPage() {
     };
   });
 
-  const missingFee = rows.filter((r) => r.tags.includes("nofee")).length;
-  const missingDeadline = rows.filter((r) => r.tags.includes("nodeadline")).length;
-
   return (
     <DirectorShell title="Tournaments" count={`${rows.length} on file`}>
-      {(missingFee > 0 || missingDeadline > 0) && (
-        <p className="t-meta">
-          {missingFee} without an entry fee, {missingDeadline} without a registration deadline.
-        </p>
-      )}
       <NewTournament venues={venues} />
       <DirectorTable
         columns={COLUMNS}
