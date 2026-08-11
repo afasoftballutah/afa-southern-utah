@@ -976,14 +976,14 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             type="button"
-                            className="btn-transient text-sm px-2.5 py-1"
+                            className="pill"
                             onClick={() => startEdit(u)}
                           >
                             Edit
                           </button>
                           <button
                             type="button"
-                            className="btn-transient text-sm px-2.5 py-1"
+                            className="pill"
                             onClick={() => {
                               setActionError("");
                               setMergeDropId("");
@@ -994,7 +994,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                           </button>
                           <button
                             type="button"
-                            className="pill text-sm text-afa-red border-afa-red/30 px-2.5 py-1"
+                            className="pill text-afa-red border-afa-red/30"
                             onClick={() => {
                               setActionError("");
                               setDeleteTarget(u);
