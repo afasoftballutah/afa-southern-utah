@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { requireDirectorSession } from "@/lib/scorekeeper-auth";
+import { uploadNewsImage } from "@/lib/news-upload";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,7 @@ export async function PATCH(request, { params }) {
     return bad("Invalid JSON");
   }
 
+  const supabase = getServiceClient();
   const patch = { updated_at: new Date().toISOString() };
   if ("title" in body) {
     const title = String(body.title ?? "").trim();
@@ -43,7 +45,24 @@ export async function PATCH(request, { params }) {
     if (body.published) patch.published_at = new Date().toISOString();
   }
 
-  const supabase = getServiceClient();
+  // Replace image list: existing URLs + optional new data URLs to upload
+  if ("imageUrls" in body || "imageDataUrls" in body) {
+    let urls = Array.isArray(body.imageUrls)
+      ? body.imageUrls.map((u) => String(u ?? "").trim()).filter(Boolean)
+      : [];
+    if (Array.isArray(body.imageDataUrls)) {
+      for (const dataUrl of body.imageDataUrls.slice(0, 12)) {
+        try {
+          const url = await uploadNewsImage(supabase, dataUrl);
+          if (url) urls.push(url);
+        } catch (err) {
+          return bad(err.message || "Image upload failed");
+        }
+      }
+    }
+    patch.image_urls = urls.slice(0, 12);
+  }
+
   const { data, error } = await supabase
     .from("news_posts")
     .update(patch)

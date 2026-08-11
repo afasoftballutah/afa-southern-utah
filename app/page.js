@@ -13,7 +13,7 @@ import { leagueToday } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import { venueParts } from "@/lib/director";
-import { listPublishedNews, formatNewsDate } from "@/lib/news";
+import { listPublishedNews, formatNewsDate, newsImageUrls } from "@/lib/news";
 import Card from "@/components/ui/Card";
 import MyTeamStrip from "@/components/MyTeamStrip";
 import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
@@ -226,29 +226,60 @@ export default async function Home() {
             <div className="home-news__aside">
               {newsPosts.length > 0 ? (
                 <ul className="home-news__feed">
-                  {newsPosts.map((p) => (
-                    <li key={p.id} className="home-news__item">
-                      <p className="home-news__item-date">
-                        {formatNewsDate(p.published_at)}
-                      </p>
-                      <p className="home-news__item-title">{p.title}</p>
-                      <p className="home-news__item-body">{p.body}</p>
-                      {p.link_url ? (
-                        <a
-                          href={p.link_url}
-                          className="home-news__item-link"
-                          {...(p.link_url.startsWith("http")
-                            ? {
-                                target: "_blank",
-                                rel: "noopener noreferrer",
-                              }
-                            : {})}
-                        >
-                          {p.link_label || "Read more →"}
-                        </a>
-                      ) : null}
-                    </li>
-                  ))}
+                  {newsPosts.map((p) => {
+                    const images = newsImageUrls(p);
+                    return (
+                      <li key={p.id} className="home-news__item">
+                        <p className="home-news__item-date">
+                          {formatNewsDate(p.published_at)}
+                        </p>
+                        <p className="home-news__item-title">{p.title}</p>
+                        <p className="home-news__item-body">{p.body}</p>
+                        {images.length > 0 ? (
+                          <ul
+                            className={
+                              images.length === 1
+                                ? "home-news__gallery home-news__gallery--one"
+                                : "home-news__gallery"
+                            }
+                          >
+                            {images.map((src, i) => (
+                              <li key={`${p.id}-img-${i}`}>
+                                <a
+                                  href={src}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="home-news__gallery-link"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={src}
+                                    alt=""
+                                    className="home-news__gallery-img"
+                                    loading="lazy"
+                                  />
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {p.link_url ? (
+                          <a
+                            href={p.link_url}
+                            className="home-news__item-link"
+                            {...(p.link_url.startsWith("http")
+                              ? {
+                                  target: "_blank",
+                                  rel: "noopener noreferrer",
+                                }
+                              : {})}
+                          >
+                            {p.link_label || "Read more →"}
+                          </a>
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <>
