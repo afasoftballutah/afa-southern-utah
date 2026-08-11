@@ -6,6 +6,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # AFA Southern Utah — product rules for agents
 
+## Names
+
+- **Legal first + last** — waiver, identity matching, record keeping only  
+- **Display everywhere** — **preferred + last**, or **first + last** if no preferred  
+- Use `composeDisplayName` / `directorPersonLabel` from `lib/person-name.js` — do not invent first-only labels on lists
+
 ## UI law: compact by default
 
 **Stay compact and simple. Reuse information we already have. Allow drilling down and correction when the user asks — not by default.**
