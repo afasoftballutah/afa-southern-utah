@@ -7,6 +7,12 @@ import {
   bornWithAge,
 } from "@/lib/names";
 import { leagueToday } from "@/lib/tournament-state";
+import { getServiceClient } from "@/lib/supabase";
+import {
+  isSuspensionActive,
+  listOpenSuspensions,
+  suspensionScopeLabel,
+} from "@/lib/suspensions";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
@@ -14,6 +20,7 @@ import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
 import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
 import EditPlayer from "@/components/scorekeeper/EditPlayer";
+import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
@@ -39,6 +46,7 @@ const COLUMNS = [
     hideBelow: "sm",
   },
   { key: "edit", label: "Edit", align: "center", width: "4rem", hideBelow: "sm" },
+  { key: "suspend", label: "Susp.", align: "center", width: "5rem", hideBelow: "sm" },
   { key: "merge", label: "Merge", align: "center", width: "5.5rem", hideBelow: "sm" },
   { key: "delete", label: "Delete", align: "center", width: "4.5rem", hideBelow: "sm" },
 ];
@@ -49,6 +57,7 @@ const FILTERS = [
   { key: "norating", label: "Unranked", tag: "norating" },
   { key: "nogender", label: "No M/F", tag: "nogender" },
   { key: "nodob", label: "No birth date", tag: "nodob" },
+  { key: "suspended", label: "Suspended", tag: "suspended" },
 ];
 
 const ratingRank = (r) => {
@@ -75,10 +84,38 @@ export default async function PlayersPage() {
     );
   }
 
-  const [{ players, unmatched }, teams] = await Promise.all([
-    listPeople(),
-    listTeams(),
-  ]);
+  const supabase = getServiceClient();
+  const [{ players, unmatched }, teams, openSuspensions, { data: tourRows }] =
+    await Promise.all([
+      listPeople(),
+      listTeams(),
+      listOpenSuspensions(supabase),
+      supabase
+        .from("tournaments")
+        .select("id, name, start_date")
+        .eq("is_placeholder", false)
+        .order("start_date", { ascending: false }),
+    ]);
+
+  const tournaments = (tourRows ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    start_date: t.start_date,
+  }));
+  const tourNameBy = new Map(tournaments.map((t) => [t.id, t.name]));
+
+  const suspensionsByPlayer = new Map();
+  for (const s of openSuspensions) {
+    if (!suspensionsByPlayer.has(s.player_id)) {
+      suspensionsByPlayer.set(s.player_id, []);
+    }
+    suspensionsByPlayer.get(s.player_id).push({
+      ...s,
+      tournament_name: s.tournament_id
+        ? tourNameBy.get(s.tournament_id)
+        : null,
+    });
+  }
 
   // Switch Team options: same tournament only, grouped by division.
   const openRegistrations = teams.flatMap((t) =>
@@ -116,21 +153,51 @@ export default async function PlayersPage() {
     const active = p.appearances.filter((a) => !a.removed);
     const unsigned = active.filter((a) => !a.signed).length;
 
+    const playerSuspensions = suspensionsByPlayer.get(p.id) ?? [];
+    // Active in any open scope (date-only, any tour, or open-ended).
+    const currentlySuspended = playerSuspensions.some((s) =>
+      isSuspensionActive(s, { asOf: today, tournamentId: s.tournament_id })
+    );
+
     const tags = [];
     if (unsigned > 0) tags.push("unsigned");
     if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
     if (!p.rating) tags.push("norating");
     if (!p.gender) tags.push("nogender");
+    if (currentlySuspended) tags.push("suspended");
 
-    const nameLabel = directoryNameLabel({
-      legalFirstName: p.legal_first_name,
-      legalLastName: p.legal_last_name,
-      preferredName: p.preferred_name,
-      fullName: p.full_name,
-    });
+    const nameLabel = (
+      <span className="inline-flex flex-wrap items-center gap-1.5 min-w-0">
+        <span className="truncate">
+          {directoryNameLabel({
+            legalFirstName: p.legal_first_name,
+            legalLastName: p.legal_last_name,
+            preferredName: p.preferred_name,
+            fullName: p.full_name,
+          })}
+        </span>
+        {currentlySuspended ? (
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-afa-red border border-afa-red/40 rounded px-1 py-0.5">
+            Susp.
+          </span>
+        ) : null}
+      </span>
+    );
 
     const editBtn = <EditPlayer player={p} />;
+    const suspendBtn = (
+      <SuspendPlayer
+        player={p}
+        tournaments={tournaments}
+        suspensions={playerSuspensions}
+        buttonClass={
+          currentlySuspended
+            ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red"
+            : "pill"
+        }
+      />
+    );
     const mergeBtn = (
       <RowAction
         label="Merge"
@@ -313,9 +380,24 @@ export default async function PlayersPage() {
         </dl>
         <div className="flex flex-wrap gap-2">
           {editBtn}
+          {suspendBtn}
           {mergeBtn}
           {deleteBtn}
         </div>
+        {currentlySuspended && (
+          <p className="t-meta text-[12px] text-afa-red">
+            Suspended:{" "}
+            {playerSuspensions
+              .filter((s) =>
+                isSuspensionActive(s, {
+                  asOf: today,
+                  tournamentId: s.tournament_id,
+                })
+              )
+              .map((s) => suspensionScopeLabel(s, tourNameBy))
+              .join("; ")}
+          </p>
+        )}
       </div>
     );
 
@@ -337,6 +419,7 @@ export default async function PlayersPage() {
         p.email,
         p.address,
         p.rating,
+        currentlySuspended ? "suspended" : "",
         ...active.map((a) => a.teamName),
         ...active.map((a) => a.tournamentName),
       ]
@@ -362,6 +445,7 @@ export default async function PlayersPage() {
         events: active.length,
         waiver: allWaiversOk,
         edit: editBtn,
+        suspend: suspendBtn,
         merge: mergeBtn,
         delete: deleteBtn,
       },

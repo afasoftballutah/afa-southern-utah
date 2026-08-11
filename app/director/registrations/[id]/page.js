@@ -7,6 +7,12 @@ import { getServiceClient } from "@/lib/supabase";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 import { registrationScope } from "@/lib/director";
 import { directorPersonLabel } from "@/lib/person-name";
+import { leagueToday } from "@/lib/tournament-state";
+import {
+  activeSuspensionMap,
+  loadSuspensionsForPlayers,
+  partitionRosterBySuspension,
+} from "@/lib/suspensions";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
@@ -74,6 +80,15 @@ async function load(id) {
     ...new Set((siblingDivisions ?? []).map((d) => d.class_id).filter(Boolean)),
   ];
 
+  const suspensionRows = await loadSuspensionsForPlayers(
+    supabase,
+    playerIds
+  );
+  const suspByPlayer = activeSuspensionMap(suspensionRows, {
+    tournamentId: registration.tournament_id,
+    asOf: leagueToday(),
+  });
+
   const active = (members ?? []).filter((m) => !m.removed_at);
   const roster = active.map((m) => {
     const person = m.player_id ? playerBy.get(m.player_id) : null;
@@ -84,6 +99,9 @@ async function load(id) {
       preferredName: m.preferred_name || person?.preferred_name,
       name: m.name,
     });
+    const suspension = m.player_id
+      ? suspByPlayer.get(m.player_id) ?? null
+      : null;
     return {
       id: m.id,
       playerId: m.player_id ?? null,
@@ -93,6 +111,8 @@ async function load(id) {
       gender: m.gender ?? person?.gender ?? null,
       birthDate: person?.birth_date ?? null,
       signed: Boolean(m.signed_at),
+      suspended: Boolean(suspension),
+      suspension,
     };
   });
 
@@ -123,8 +143,35 @@ async function load(id) {
     };
   });
 
+  // Suspended stay on the roster list but do not count for class / mins.
+  const { counting, suspended } = partitionRosterBySuspension(
+    roster,
+    suspByPlayer
+  );
+
   const enteredClass = (classes ?? []).find((c) => c.id === registration.class_id)?.name ?? null;
-  const suggestion = suggestClass(roster, classes ?? [], offeredClassIds);
+  const suggestion = suggestClass(counting, classes ?? [], offeredClassIds);
+  const check = checkEligibility(
+    counting,
+    enteredClass ?? suggestion.className
+  );
+  const composition = checkRoster(counting, {
+    minMen: registration.divisions?.min_men,
+    minWomen: registration.divisions?.min_women,
+  });
+  if (suspended.length > 0) {
+    composition.suspendedCount = suspended.length;
+    composition.hasSuspended = true;
+  }
+
+  // Load all open suspension rows per player for lift UI (not only active-for-this-event).
+  const suspensionsForRoster = suspensionRows.filter((s) => !s.lifted_at);
+
+  const { data: tourList } = await supabase
+    .from("tournaments")
+    .select("id, name, start_date")
+    .eq("is_placeholder", false)
+    .order("start_date", { ascending: false });
 
   return {
     registration,
@@ -134,12 +181,15 @@ async function load(id) {
     removed: (members ?? []).filter((m) => m.removed_at),
     knownPlayers,
     suggestion,
-    check: checkEligibility(roster, enteredClass ?? suggestion.className),
-    composition: checkRoster(roster, {
-      minMen: registration.divisions?.min_men,
-      minWomen: registration.divisions?.min_women,
-    }),
+    check,
+    composition,
     progress: progressRows?.[0] ?? { active_members: 0, signed_members: 0, is_official: false },
+    suspensionsForRoster,
+    tournaments: (tourList ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      start_date: t.start_date,
+    })),
   };
 }
 
@@ -181,11 +231,18 @@ export default async function RegistrationPage({ params }) {
   // "Do It for the T-Shirts · Coed D" — never "· Coed · Coed D · D"
   const scope = registrationScope(r.divisions, enteredClassName);
 
+  const suspById = new Map();
+  for (const s of data.suspensionsForRoster ?? []) {
+    if (!suspById.has(s.player_id)) suspById.set(s.player_id, []);
+    suspById.get(s.player_id).push(s);
+  }
+
   // Same shape ManageRoster expects (includes soft-removed for restore list).
   // Director view: full legal names, not preferred-only first names.
   const manageMembers = [
     ...roster.map((m) => ({
       id: m.id,
+      playerId: m.playerId,
       name: m.name,
       role: m.role,
       birthDate: m.birthDate,
@@ -194,9 +251,13 @@ export default async function RegistrationPage({ params }) {
       signed: m.signed,
       removed: false,
       isManager: m.role === "manager" || m.id === r.manager_member_id,
+      suspended: m.suspended,
+      suspension: m.suspension,
+      suspensions: m.playerId ? suspById.get(m.playerId) ?? [] : [],
     })),
     ...removed.map((m) => ({
       id: m.id,
+      playerId: m.player_id ?? null,
       name: directorPersonLabel({
         legalFirstName: m.legal_first_name,
         legalLastName: m.legal_last_name,
@@ -210,8 +271,12 @@ export default async function RegistrationPage({ params }) {
       signed: Boolean(m.signed_at),
       removed: true,
       isManager: m.id === r.manager_member_id,
+      suspended: false,
+      suspensions: [],
     })),
   ];
+
+  const suspendedCount = roster.filter((m) => m.suspended).length;
 
   return (
     <DirectorShell
@@ -240,6 +305,9 @@ export default async function RegistrationPage({ params }) {
           Add players, release them to the free-agent pool, or claim free agents.
           Same tools as the manager link — you can do it here without leaving
           the control center.
+          {suspendedCount > 0
+            ? ` ${suspendedCount} suspended — they stay listed but do not count toward roster requirements.`
+            : ""}
         </p>
         {r.manage_token ? (
           <ManageRoster
@@ -249,6 +317,9 @@ export default async function RegistrationPage({ params }) {
             canEdit={r.status !== "withdrawn"}
             managerLabel="Manager"
             knownPlayers={knownPlayers}
+            directorMode
+            tournamentId={r.tournament_id}
+            tournaments={data.tournaments}
           />
         ) : (
           <p className="t-meta text-afa-red font-semibold">

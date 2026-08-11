@@ -1,4 +1,7 @@
-import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import {
+  requireScorekeeperSession,
+  requireDirectorSession,
+} from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer, resolveTeam, normalizeName } from "@/lib/identity";
@@ -1138,6 +1141,144 @@ export async function POST(request) {
         gameCount: inserted?.length ?? rows.length,
         teamCount: teamNames.length,
       });
+    }
+
+    // ---- Player suspensions (director only, mid-tournament OK) -------
+    case "createSuspension": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const playerId = body.playerId;
+      if (!playerId) return bad("Which player?");
+
+      const tournamentId = body.tournamentId
+        ? String(body.tournamentId).trim()
+        : null;
+      const startsOn = body.startsOn
+        ? String(body.startsOn).trim().slice(0, 10)
+        : null;
+      const endsOn = body.endsOn
+        ? String(body.endsOn).trim().slice(0, 10)
+        : null;
+      const note = body.note != null ? String(body.note).trim() || null : null;
+
+      const dateOk = (d) => !d || /^\d{4}-\d{2}-\d{2}$/.test(d);
+      if (!dateOk(startsOn) || !dateOk(endsOn)) {
+        return bad("Dates must be YYYY-MM-DD");
+      }
+      if (startsOn && endsOn && startsOn > endsOn) {
+        return bad("Start date must be on or before end date");
+      }
+      // At least one scope, or open-ended until lift (allowed with a note).
+      if (!tournamentId && !startsOn && !endsOn && !note) {
+        return bad(
+          "Set a tournament, a date range, or a note (or all three)."
+        );
+      }
+
+      const { data: player } = await supabase
+        .from("players")
+        .select("id, full_name, merged_into_id")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (!player) return bad("That player is not on file", 404);
+      if (player.merged_into_id) {
+        return bad(
+          "That row was already merged away — open the surviving player instead",
+          409
+        );
+      }
+
+      if (tournamentId) {
+        const { data: tour } = await supabase
+          .from("tournaments")
+          .select("id, name")
+          .eq("id", tournamentId)
+          .maybeSingle();
+        if (!tour) return bad("That tournament does not exist", 404);
+      }
+
+      const now = new Date().toISOString();
+      const { data: row, error } = await supabase
+        .from("player_suspensions")
+        .insert({
+          player_id: playerId,
+          tournament_id: tournamentId || null,
+          starts_on: startsOn || null,
+          ends_on: endsOn || null,
+          note,
+          created_at: now,
+          updated_at: now,
+        })
+        .select(
+          "id, player_id, tournament_id, starts_on, ends_on, note, lifted_at, created_at"
+        )
+        .single();
+
+      if (error) {
+        console.error("create suspension failed", error);
+        if (
+          error.code === "42P01" ||
+          error.message?.includes("player_suspensions")
+        ) {
+          return bad(
+            "Suspensions table is missing — run migration-2026-08-11-player-suspensions.sql",
+            500
+          );
+        }
+        return bad(error.message || "Could not save suspension", 500);
+      }
+      return Response.json({ ok: true, suspension: row });
+    }
+
+    case "liftSuspension": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const suspensionId = body.suspensionId;
+      if (!suspensionId) return bad("Which suspension?");
+
+      const now = new Date().toISOString();
+      const { data: row, error } = await supabase
+        .from("player_suspensions")
+        .update({ lifted_at: now, updated_at: now })
+        .eq("id", suspensionId)
+        .is("lifted_at", null)
+        .select(
+          "id, player_id, tournament_id, starts_on, ends_on, note, lifted_at"
+        )
+        .maybeSingle();
+
+      if (error) {
+        console.error("lift suspension failed", error);
+        return bad(error.message || "Could not lift suspension", 500);
+      }
+      if (!row) return bad("That suspension is already lifted or missing", 404);
+      return Response.json({ ok: true, suspension: row });
+    }
+
+    case "updateSuspensionNote": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const suspensionId = body.suspensionId;
+      if (!suspensionId) return bad("Which suspension?");
+      const note = body.note != null ? String(body.note).trim() || null : null;
+      const now = new Date().toISOString();
+      const { data: row, error } = await supabase
+        .from("player_suspensions")
+        .update({ note, updated_at: now })
+        .eq("id", suspensionId)
+        .select(
+          "id, player_id, tournament_id, starts_on, ends_on, note, lifted_at"
+        )
+        .maybeSingle();
+      if (error) {
+        console.error("update suspension note failed", error);
+        return bad(error.message || "Could not update note", 500);
+      }
+      if (!row) return bad("That suspension was not found", 404);
+      return Response.json({ ok: true, suspension: row });
     }
 
     default:

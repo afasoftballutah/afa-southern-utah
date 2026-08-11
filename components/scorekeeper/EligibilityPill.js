@@ -13,15 +13,25 @@ import Modal from "./Modal";
 // each. The sentence is still there — it just waits until someone asks, and
 // when they do, the answer is the ROSTER with the offending players marked,
 // because that is the thing they are about to act on.
-export default function EligibilityPill({ teamName, enteredClass, suggestedClass, check, composition, roster }) {
+export default function EligibilityPill({
+  teamName,
+  enteredClass,
+  suggestedClass,
+  check,
+  composition,
+  roster,
+}) {
   const [open, setOpen] = useState(false);
 
-  // One pill, two questions: is this roster legal for the class, and does it
-  // have enough men and women for the division. Either failing means Check.
+  // Class legal, enough men/women, and no suspended players on the sheet.
   const classOk = check?.ok !== false;
   const compOk = composition?.ok !== false;
-  const ok = classOk && compOk;
-  const label = ok ? "OK" : "Check";
+  const suspendedCount =
+    composition?.suspendedCount ??
+    (roster ?? []).filter((m) => m.suspended).length;
+  const hasSuspended = suspendedCount > 0;
+  const ok = classOk && compOk && !hasSuspended;
+  const label = hasSuspended && classOk && compOk ? "Susp." : ok ? "OK" : "Check";
 
   return (
     <>
@@ -53,44 +63,88 @@ export default function EligibilityPill({ teamName, enteredClass, suggestedClass
             .join(" · ")}
           onClose={() => setOpen(false)}
         >
-          <div className={"rounded-lg p-3 space-y-1 " + (ok ? "bg-afa-go/[0.08]" : "bg-afa-red/10")}>
+          <div
+            className={
+              "rounded-lg p-3 space-y-1 " +
+              (ok ? "bg-afa-go/[0.08]" : "bg-afa-red/10")
+            }
+          >
             <p className={classOk ? "t-body" : "t-strong"}>
               <span className="tick">{classOk ? "☑" : "☐"}</span>{" "}
-              {enteredClass ?? suggestedClass ?? "Class"} allows {check?.limit ?? "this roster"}
-              {!classOk && check.over.length > 0 && ` — too many ${check.over.join(", ")}`}
+              {enteredClass ?? suggestedClass ?? "Class"} allows{" "}
+              {check?.limit ?? "this roster"}
+              {!classOk &&
+                check.over.length > 0 &&
+                ` — too many ${check.over.join(", ")}`}
             </p>
-            {composition && (composition.minMen != null || composition.minWomen != null) && (
-              <p className={compOk ? "t-body" : "t-strong"}>
-                <span className="tick">{compOk ? "☑" : "☐"}</span> Needs {composition.minMen ?? 0} men
-                and {composition.minWomen ?? 0} women — has {composition.men} and {composition.women}
-                {composition.unknown > 0 && `, ${composition.unknown} not recorded`}
+            {composition &&
+              (composition.minMen != null || composition.minWomen != null) && (
+                <p className={compOk ? "t-body" : "t-strong"}>
+                  <span className="tick">{compOk ? "☑" : "☐"}</span> Needs{" "}
+                  {composition.minMen ?? 0} men and {composition.minWomen ?? 0}{" "}
+                  women — has {composition.men} and {composition.women}
+                  {composition.unknown > 0 &&
+                    `, ${composition.unknown} not recorded`}
+                  {hasSuspended
+                    ? ` (suspended excluded from count)`
+                    : ""}
+                </p>
+              )}
+            {hasSuspended && (
+              <p className="t-strong">
+                <span className="tick">☐</span> {suspendedCount} suspended
+                player{suspendedCount === 1 ? "" : "s"} on roster — does not
+                count toward requirements
               </p>
             )}
           </div>
 
           <ul className="divide-y divide-black/5 max-h-[45vh] overflow-y-auto">
             {roster.map((m) => {
-              const flagged = !classOk && check.over.includes(m.rating);
+              const flagged =
+                !classOk && !m.suspended && check.over.includes(m.rating);
+              const susp = Boolean(m.suspended);
               return (
                 <li
                   key={m.id}
                   className={
                     "flex items-center justify-between gap-3 px-2 py-1.5 " +
-                    (flagged ? "bg-afa-red/10 rounded" : "")
+                    (susp
+                      ? "bg-afa-red/10 rounded"
+                      : flagged
+                        ? "bg-afa-red/10 rounded"
+                        : "")
                   }
                 >
-                  <span className="t-body truncate">{m.name}</span>
+                  <span className="t-body truncate">
+                    {m.name}
+                    {susp ? (
+                      <span className="t-meta text-afa-red font-semibold">
+                        {" "}
+                        · suspended
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="shrink-0 flex items-center gap-3">
-                    <span className={"t-label " + (m.gender ? "text-afa-navy" : "text-afa-muted")}>
+                    <span
+                      className={
+                        "t-label " +
+                        (m.gender ? "text-afa-navy" : "text-afa-muted")
+                      }
+                    >
                       {m.gender ?? "—"}
                     </span>
                     <span
                       className={
                         "t-label w-16 text-right " +
-                        (flagged ? "text-afa-red" : m.rating ? "text-afa-navy" : "text-afa-muted")
+                        (flagged || susp
+                          ? "text-afa-red"
+                          : m.rating
+                            ? "text-afa-navy"
+                            : "text-afa-muted")
                       }
                     >
-                      {m.rating ?? "unranked"}
+                      {susp ? "susp." : m.rating ?? "unranked"}
                     </span>
                   </span>
                 </li>

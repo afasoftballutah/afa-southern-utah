@@ -5,6 +5,7 @@ import ManagerPlayerFields, {
   managerPlayerDisplay,
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
+import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
 
 export default function ManageRoster({
   token,
@@ -15,6 +16,10 @@ export default function ManageRoster({
   managerLabel = "You",
   /** Directory people for the add-player dropdown (id, label, first, last, gender). */
   knownPlayers = [],
+  /** Director registration page: show suspend controls mid-tournament. */
+  directorMode = false,
+  tournamentId = null,
+  tournaments = [],
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [pool, setPool] = useState([]);
@@ -236,7 +241,10 @@ export default function ManageRoster({
         {active.map((m) => (
           <li
             key={m.id}
-            className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+            className={
+              "flex flex-wrap items-center justify-between gap-2 px-4 py-3 " +
+              (m.suspended ? "bg-afa-red/[0.06]" : "")
+            }
           >
             <span className="min-w-0">
               <span className="t-body font-semibold">
@@ -247,31 +255,61 @@ export default function ManageRoster({
                 {m.isManager ? (
                   <span className="t-meta font-normal"> · {managerLabel}</span>
                 ) : null}
+                {m.suspended ? (
+                  <span className="t-meta font-semibold text-afa-red">
+                    {" "}
+                    · Suspended
+                  </span>
+                ) : null}
               </span>
               <span className="t-meta block">
                 {m.signed ? "Signed" : "Waiting to sign"}
+                {m.suspended
+                  ? " · does not count toward roster requirements"
+                  : ""}
               </span>
+              {m.suspended && m.suspension?.note ? (
+                <span className="t-meta block text-[12px] text-afa-red/90">
+                  {m.suspension.note}
+                </span>
+              ) : null}
             </span>
-            {canEdit && !m.isManager ? (
-              <span className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="t-label underline"
-                  disabled={busy}
-                  onClick={() => remove(m, true)}
-                >
-                  To pool
-                </button>
-                <button
-                  type="button"
-                  className="t-label text-afa-red underline"
-                  disabled={busy}
-                  onClick={() => remove(m, false)}
-                >
-                  Remove
-                </button>
-              </span>
-            ) : null}
+            <span className="flex flex-wrap gap-2 items-center">
+              {directorMode && m.playerId ? (
+                <SuspendPlayer
+                  player={{ id: m.playerId, name: m.name }}
+                  tournaments={tournaments}
+                  suspensions={m.suspensions ?? []}
+                  defaultTournamentId={tournamentId}
+                  buttonLabel="Suspend"
+                  buttonClass={
+                    m.suspended
+                      ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red text-[12px]"
+                      : "pill text-[12px]"
+                  }
+                />
+              ) : null}
+              {canEdit && !m.isManager ? (
+                <>
+                  <button
+                    type="button"
+                    className="t-label underline"
+                    disabled={busy}
+                    onClick={() => remove(m, true)}
+                  >
+                    To pool
+                  </button>
+                  <button
+                    type="button"
+                    className="t-label text-afa-red underline"
+                    disabled={busy}
+                    onClick={() => remove(m, false)}
+                  >
+                    Remove
+                  </button>
+                </>
+              ) : null}
+            </span>
           </li>
         ))}
         {active.length === 0 && (
