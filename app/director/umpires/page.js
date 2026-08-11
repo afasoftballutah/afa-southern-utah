@@ -69,7 +69,7 @@ export default async function UmpiresPage() {
       title="Umpires"
       count={
         umpires.length === 0
-          ? "Empty roster"
+          ? "Add people to the roster"
           : `${active} active · ${umpires.length} on file`
       }
       back="/director"
