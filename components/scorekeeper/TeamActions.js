@@ -231,7 +231,7 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
             <RowAction
               label="Change division"
               title={`Move ${reg.team_name}`}
-              note={`Moving from ${currentDivisionLabel}. Same tournament only.`}
+              fromLabel={currentDivisionLabel}
               placeholder="Pick a new division…"
               emptyMessage="No other divisions in this tournament."
               countSingular="division"

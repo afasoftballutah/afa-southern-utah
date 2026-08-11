@@ -27,6 +27,8 @@ export default function RowAction({
   // (merge / pick-one-of-many people). Switch team passes a number so the
   // director can scan without opening the native menu.
   listSize,
+  // Optional "from" chip for moves (e.g. division): shows From → To instead of a sentence.
+  fromLabel,
   confirmText,
   payload,
   action,
@@ -92,10 +94,22 @@ export default function RowAction({
         <Modal
           title={title}
           subtitle={note}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            setChoice("");
+            setError("");
+          }}
           footer={
             <>
-              <button type="button" className="btn-transient" onClick={() => setOpen(false)}>
+              <button
+                type="button"
+                className="btn-transient"
+                onClick={() => {
+                  setOpen(false);
+                  setChoice("");
+                  setError("");
+                }}
+              >
                 Cancel
               </button>
               <button
@@ -109,6 +123,29 @@ export default function RowAction({
             </>
           }
         >
+          {fromLabel ? (
+            <div
+              className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-1"
+              aria-live="polite"
+            >
+              <span className="inline-flex items-center rounded-lg border-2 border-afa-navy/25 bg-white px-3 py-1.5 text-[15px] font-bold text-afa-navy tabular-nums">
+                {fromLabel}
+              </span>
+              <span className="text-afa-muted text-xl font-semibold leading-none" aria-hidden>
+                →
+              </span>
+              <span
+                className={
+                  "inline-flex items-center rounded-lg border-2 px-3 py-1.5 text-[15px] font-bold tabular-nums min-w-[4.5rem] justify-center " +
+                  (chosen
+                    ? "border-afa-navy bg-afa-navy text-white"
+                    : "border-dashed border-afa-navy/30 text-afa-muted")
+                }
+              >
+                {chosen ? chosen.label : "…"}
+              </span>
+            </div>
+          ) : null}
           {options.length === 0 ? (
             <p className="t-meta">{emptyMessage}</p>
           ) : (
@@ -116,6 +153,8 @@ export default function RowAction({
               <label className="block space-y-1">
                 {optionKey ? (
                   <span className="t-label">{optionKey}</span>
+                ) : fromLabel ? (
+                  <span className="t-label">New division</span>
                 ) : null}
                 <select
                   value={choice}
@@ -150,13 +189,15 @@ export default function RowAction({
                       ))}
                 </select>
               </label>
-              <p className="t-meta text-xs mt-2">
-                {options.length}{" "}
-                {options.length === 1
-                  ? countSingular
-                  : countPlural || `${countSingular}s`}
-                {chosen ? ` · selected: ${chosen.label}` : ""}
-              </p>
+              {!fromLabel && (
+                <p className="t-meta text-xs mt-2">
+                  {options.length}{" "}
+                  {options.length === 1
+                    ? countSingular
+                    : countPlural || `${countSingular}s`}
+                  {chosen ? ` · selected: ${chosen.label}` : ""}
+                </p>
+              )}
             </>
           )}
           {error && (
