@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import SignaturePad from "./SignaturePad";
 import RegisterBack from "./RegisterBack";
-import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
+import { RELEASE_TEXT, MAX_PLAYERS, MIN_PLAYERS } from "@/lib/waiver";
 import { formatLeagueDateOnly } from "@/lib/league-time";
 import { REGION_ORDER, canonicalRegion } from "@/lib/data";
 import {
@@ -20,7 +20,8 @@ import {
 } from "@/components/ManagerPlayerFields";
 import CompactPlayerAdd from "@/components/CompactPlayerAdd";
 
-const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
+// No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
+const STEPS = ["Tournament", "Team", "Manager", "Players", "Sign & Submit"];
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
@@ -30,15 +31,8 @@ const emptyPlayer = () => ({
   gender: "",
   playerId: null,
 });
-const emptyCoach = () => ({
-  legalFirstName: "",
-  legalLastName: "",
-  preferredName: "",
-  email: "",
-  phone: "",
-});
 const personDisplay = (p) => {
-  // Manager/coach still use legal + preferred; players use first + last.
+  // Manager uses legal + preferred; players use first + last.
   if (p.firstName || p.lastName) return managerPlayerDisplay(p);
   const preferred = (p.preferredName || "").trim();
   if (preferred) return preferred;
@@ -195,7 +189,6 @@ export default function RegistrationForm({
 
   // Start empty — managers add one at a time (compact list).
   const [players, setPlayers] = useState([]);
-  const [coaches, setCoaches] = useState([emptyCoach()]);
 
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
@@ -236,7 +229,6 @@ export default function RegistrationForm({
     if (step === 3) {
       return players.some((p) => managerPlayerReady(p));
     }
-    if (step === 4) return true; // coaches optional
     return true;
   }
 
@@ -275,19 +267,7 @@ export default function RegistrationForm({
             gender: p.gender,
             playerId: p.playerId || null,
           })),
-        coaches: coaches
-          .filter(
-            (c) =>
-              c.legalFirstName.trim().length > 0 &&
-              c.legalLastName.trim().length > 0
-          )
-          .map((c) => ({
-            legalFirstName: c.legalFirstName.trim(),
-            legalLastName: c.legalLastName.trim(),
-            preferredName: c.preferredName.trim() || null,
-            email: c.email.trim() || null,
-            phone: c.phone.trim() || null,
-          })),
+        coaches: [],
         signaturePng: signature,
       };
       const res = await fetch("/api/register", {
@@ -689,50 +669,6 @@ export default function RegistrationForm({
         )}
 
         {step === 4 && (
-          <div className="space-y-4">
-            <p className="text-sm text-afa-ink/70">Coaches (optional).</p>
-            {coaches.map((c, i) => (
-              <div key={i} className="form-surface p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold text-sm">Coach {i + 1}</p>
-                  <button
-                    type="button"
-                    className="btn-transient"
-                    onClick={() =>
-                      setCoaches((prev) => prev.filter((_, idx) => idx !== i))
-                    }
-                  >
-                    Remove
-                  </button>
-                </div>
-                <PersonWizard
-                  embedded
-                  variant="coach"
-                  value={c}
-                  onChange={(next) => {
-                    setCoaches((prev) => {
-                      const copy = [...prev];
-                      copy[i] = next;
-                      return copy;
-                    });
-                  }}
-                  completeLabel="Coach ready"
-                />
-              </div>
-            ))}
-            {coaches.length < MAX_COACHES && (
-              <button
-                type="button"
-                className="btn-transient w-full"
-                onClick={() => setCoaches((prev) => [...prev, emptyCoach()])}
-              >
-                + Add Coach
-              </button>
-            )}
-          </div>
-        )}
-
-        {step === 5 && (
           <div className="space-y-4">
             <div className="max-h-48 overflow-y-auto form-surface p-3 text-sm">
               {RELEASE_TEXT}

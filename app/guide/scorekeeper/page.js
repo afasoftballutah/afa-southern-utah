@@ -292,11 +292,7 @@ export default function ScorekeeperGuidePage() {
               one player name. Birth date / address when the form asks.
             </li>
             <li>
-              <strong className="text-afa-navy">5. Coaches</strong> — optional.
-              Skip with Next if you have none yet.
-            </li>
-            <li>
-              <strong className="text-afa-navy">6. Sign &amp; Submit</strong> —
+              <strong className="text-afa-navy">5. Sign &amp; Submit</strong> —
               read the release, check agree, sign on the pad if offered, then{" "}
               <strong>Submit Registration</strong>.
             </li>
@@ -305,13 +301,13 @@ export default function ScorekeeperGuidePage() {
 
         <Callout tone="ok" title="Tip">
           Use <strong>Back</strong> / <strong>Next</strong> at the bottom of
-          each step. The chips at the top show where you are (1–6).
+          each step. The chips at the top show where you are (1–5).
         </Callout>
 
         <Callout tone="warn" title="Outside registration">
           A few events register on another site (city rec, etc.). If you pick
           one of those, the form will point you to their link instead of our
-          six steps.
+          five steps.
         </Callout>
       </Section>
 
@@ -603,7 +599,7 @@ export default function ScorekeeperGuidePage() {
             <ul className="space-y-2 text-[15px] text-afa-ink/90">
               {[
                 "Open Register (or Register on the tournament page)",
-                "Tournament → Team → Manager → Players → Coaches → Sign & Submit",
+                "Tournament → Team → Manager → Players → Sign & Submit",
                 "Copy team link → paste in team chat for waivers",
                 "Copy manage link → save privately (do not share in chat)",
                 "Confirm players open the team link and sign",
