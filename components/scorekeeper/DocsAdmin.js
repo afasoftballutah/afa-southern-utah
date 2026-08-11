@@ -59,9 +59,10 @@ export default function DocsAdmin({
   }
 
   function chooseFilter(value) {
+    // Never leave an edit form open under a different filter chip.
+    resetForm();
     if (value === "rules" && ruleBook) {
       setRulesOpen(true);
-      setShowForm(false);
       setFilter("rules");
       return;
     }
@@ -71,7 +72,8 @@ export default function DocsAdmin({
 
   function startNew() {
     setRulesOpen(false);
-    setForm({ ...emptyForm(), kind: filter === "all" ? "other" : filter });
+    const kind = filter === "all" || filter === "rules" ? "other" : filter;
+    setForm({ ...emptyForm(), kind });
     setEditingId(null);
     setShowForm(true);
     setError("");
@@ -79,15 +81,19 @@ export default function DocsAdmin({
 
   function startEdit(d) {
     if (isMainRuleBook(d) && ruleBook) {
+      resetForm();
       setRulesOpen(true);
-      setShowForm(false);
+      setFilter("rules");
       return;
     }
     setRulesOpen(false);
+    const kind = d.kind || "other";
+    // Keep chip in sync with the document being edited.
+    setFilter(kind);
     setEditingId(d.id);
     setForm({
       title: d.title || "",
-      kind: d.kind || "other",
+      kind,
       body: d.body || "",
       sourceUrl: d.source_url || "",
       version: d.version || "",
