@@ -239,13 +239,17 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     else setForm({ ...form, pitchSlow: true, pitchFast: false });
   }
 
+  const isEditing = Boolean(editingId);
+
+  function nameOk() {
+    return String(form.lastName).trim() && String(form.firstName).trim();
+  }
+
+  /** Add wizard page 1 requires contact; edit can save with name only. */
   function page1Ok() {
-    return (
-      String(form.lastName).trim() &&
-      String(form.firstName).trim() &&
-      String(form.phone).trim() &&
-      String(form.email).trim()
-    );
+    if (!nameOk()) return false;
+    if (isEditing) return true;
+    return String(form.phone).trim() && String(form.email).trim();
   }
 
   function goBack() {
@@ -253,10 +257,14 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     setPage((p) => Math.max(1, p - 1));
   }
 
-  /** Single path for Continue / Enter — never double-advance past a page. */
+  /** Add: page 1→2→3→save. Edit: always save (single page). */
   function handleFormSubmit(e) {
     e.preventDefault();
     setError("");
+    if (isEditing) {
+      save();
+      return;
+    }
     if (page === 1) {
       if (!page1Ok()) {
         setError("Name, phone, and email are needed to continue.");
@@ -269,38 +277,56 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       setPage(3);
       return;
     }
-    // page 3 only
     save();
   }
 
   async function save() {
     if (!canEdit) return;
-    if (!page1Ok()) {
+    if (!nameOk()) {
+      if (!isEditing) setPage(1);
+      setError("First and last name are required.");
+      return;
+    }
+    if (!isEditing && (!String(form.phone).trim() || !String(form.email).trim())) {
       setPage(1);
-      setError("Name, phone, and email are required.");
+      setError("Phone and email are required for a new umpire.");
       return;
     }
     if (!form.pitchFast && !form.pitchSlow) {
-      setPage(3);
+      if (!isEditing) setPage(3);
       setError("Pick Slow, Fast, or Both before saving.");
       return;
     }
+    const id = editingId;
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/scorekeeper/umpires", {
-        method: editingId ? "PATCH" : "POST",
+        method: id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: editingId || undefined,
-          ...form,
+          id: id || undefined,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          preferredName: form.preferredName,
+          cardNumber: form.cardNumber,
+          address: form.address,
+          city: form.city,
+          state: form.state,
+          zip: form.zip,
+          phone: form.phone,
+          email: form.email,
+          pitchFast: form.pitchFast,
+          pitchSlow: form.pitchSlow,
+          status: form.status,
+          notes: form.notes,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Save failed");
       const row = json.umpire;
       setList((prev) => {
-        if (editingId) {
+        if (id) {
           return prev
             .map((u) => (u.id === row.id ? row : u))
             .sort((a, b) =>
@@ -321,6 +347,87 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function PitchPicker() {
+    return (
+      <div>
+        <p className="t-label mb-2">Pitch type</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            {
+              mode: "slow",
+              label: "Slow",
+              letter: "S",
+              on: "border-sky-700 bg-sky-700 text-white",
+              off: "border-sky-200 bg-sky-50 text-sky-950",
+            },
+            {
+              mode: "fast",
+              label: "Fast",
+              letter: "F",
+              on: "border-afa-red bg-afa-red text-white",
+              off: "border-red-200 bg-red-50 text-red-900",
+            },
+            {
+              mode: "both",
+              label: "Both",
+              letter: "B",
+              on: "border-emerald-700 bg-emerald-700 text-white",
+              off: "border-emerald-200 bg-emerald-50 text-emerald-900",
+            },
+          ].map((opt) => (
+            <button
+              key={opt.mode}
+              type="button"
+              onClick={() => setPitch(opt.mode)}
+              className={
+                "rounded-xl border-2 px-2 py-3 text-center " +
+                (pitchMode === opt.mode ? opt.on : opt.off)
+              }
+            >
+              <span className="block text-lg font-black leading-none">
+                {opt.letter}
+              </span>
+              <span className="block text-sm font-bold mt-1">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function StatusPicker() {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          {
+            value: "active",
+            label: "Active",
+            on: "border-afa-navy bg-afa-navy text-white",
+            off: "border-afa-navy/20 bg-white text-afa-navy",
+          },
+          {
+            value: "inactive",
+            label: "Inactive",
+            on: "border-afa-muted bg-afa-muted text-white",
+            off: "border-afa-navy/15 bg-white text-afa-muted",
+          },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setForm({ ...form, status: opt.value })}
+            className={
+              "rounded-xl border-2 px-3 py-2 text-sm font-bold " +
+              (form.status === opt.value ? opt.on : opt.off)
+            }
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    );
   }
 
   const pitchMode =
@@ -378,6 +485,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
 
   const formCard = formOpen && canEdit && (
     <form
+      key={editingId || "new"}
       id="umpire-form"
       onSubmit={handleFormSubmit}
       noValidate
@@ -386,12 +494,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       <div className="px-4 py-3 border-b border-afa-navy/10 flex items-center justify-between gap-2">
         <div>
           <p className="font-bold text-afa-navy">
-            {editingId ? "Edit umpire" : "Add umpire"}
+            {isEditing ? "Edit umpire" : "Add umpire"}
           </p>
           <p className="t-meta text-xs mt-0.5">
-            {page === 1 && "Name & how to reach them"}
-            {page === 2 && "Mailing address"}
-            {page === 3 && "Pitch type & card"}
+            {isEditing
+              ? "Update any field, then save"
+              : page === 1
+                ? "Name & how to reach them"
+                : page === 2
+                  ? "Mailing address"
+                  : "Pitch type & card"}
           </p>
         </div>
         <button
@@ -403,23 +515,24 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         </button>
       </div>
 
-      {/* Simple page dots */}
-      <div className="flex gap-1.5 px-4 pt-3">
-        {PAGES.map((p) => (
-          <div
-            key={p.id}
-            className={
-              "h-1 flex-1 rounded-full " +
-              (p.id === page
-                ? "bg-afa-navy"
-                : p.id < page
-                  ? "bg-afa-navy/40"
-                  : "bg-afa-navy/10")
-            }
-            title={p.title}
-          />
-        ))}
-      </div>
+      {!isEditing && (
+        <div className="flex gap-1.5 px-4 pt-3">
+          {PAGES.map((p) => (
+            <div
+              key={p.id}
+              className={
+                "h-1 flex-1 rounded-full " +
+                (p.id === page
+                  ? "bg-afa-navy"
+                  : p.id < page
+                    ? "bg-afa-navy/40"
+                    : "bg-afa-navy/10")
+              }
+              title={p.title}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="p-4 space-y-3">
         {error && (
@@ -431,8 +544,94 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </p>
         )}
 
-        {/* —— Page 1: Name, email, phone —— */}
-        {page === 1 && (
+        {/* —— Edit: one scrollable page with everything —— */}
+        {isEditing && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Field
+                label="Last name"
+                explainer="Last name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(e) =>
+                  setForm({ ...form, lastName: e.target.value })
+                }
+              />
+              <Field
+                label="First name"
+                explainer="First name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(e) =>
+                  setForm({ ...form, firstName: e.target.value })
+                }
+              />
+            </div>
+            <Field
+              label="Preferred name"
+              explainer="Preferred name (optional)"
+              value={form.preferredName}
+              onChange={(e) =>
+                setForm({ ...form, preferredName: e.target.value })
+              }
+            />
+            <Field
+              label="Phone"
+              explainer="Phone"
+              type="tel"
+              autoComplete="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+            <Field
+              label="Email"
+              explainer="Email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <Field
+              label="Street"
+              explainer="Street address"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+            />
+            <div className="grid grid-cols-3 gap-2">
+              <Field
+                label="City"
+                explainer="City"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+              />
+              <Field
+                label="State"
+                explainer="ST"
+                value={form.state}
+                onChange={(e) => setForm({ ...form, state: e.target.value })}
+              />
+              <Field
+                label="Zip"
+                explainer="Zip"
+                value={form.zip}
+                onChange={(e) => setForm({ ...form, zip: e.target.value })}
+              />
+            </div>
+            <PitchPicker />
+            <Field
+              label="Card #"
+              explainer="Umpire card # (optional)"
+              value={form.cardNumber}
+              onChange={(e) =>
+                setForm({ ...form, cardNumber: e.target.value })
+              }
+            />
+            <StatusPicker />
+          </>
+        )}
+
+        {/* —— Add wizard page 1 —— */}
+        {!isEditing && page === 1 && (
           <>
             <div className="grid grid-cols-2 gap-2">
               <Field
@@ -481,8 +680,8 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </>
         )}
 
-        {/* —— Page 2: Address, with page 1 fixed —— */}
-        {page === 2 && (
+        {/* —— Add wizard page 2 —— */}
+        {!isEditing && page === 2 && (
           <>
             <div className="rounded-lg bg-afa-soft-gray/80 border border-afa-navy/10 px-3 py-2.5 space-y-1">
               <FixedLine label="Name" value={displayName} />
@@ -522,71 +721,21 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 onChange={(e) => setForm({ ...form, zip: e.target.value })}
               />
             </div>
-            <p className="t-meta text-xs">Address is optional — skip if you don’t have it.</p>
+            <p className="t-meta text-xs">
+              Address is optional — skip if you don’t have it.
+            </p>
           </>
         )}
 
-        {/* —— Page 3: Softball —— */}
-        {page === 3 && (
+        {/* —— Add wizard page 3 —— */}
+        {!isEditing && page === 3 && (
           <>
             <div className="rounded-lg bg-afa-soft-gray/80 border border-afa-navy/10 px-3 py-2.5 space-y-1">
               <FixedLine label="Name" value={displayName} />
               <FixedLine label="Phone" value={form.phone} />
               <FixedLine label="Email" value={form.email} />
-              {(form.city || form.address) && (
-                <FixedLine
-                  label="Address"
-                  value={[form.address, form.city, form.state, form.zip]
-                    .filter(Boolean)
-                    .join(", ")}
-                />
-              )}
             </div>
-            <div>
-              <p className="t-label mb-2">Pitch type</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  {
-                    mode: "slow",
-                    label: "Slow",
-                    letter: "S",
-                    on: "border-sky-700 bg-sky-700 text-white",
-                    off: "border-sky-200 bg-sky-50 text-sky-950",
-                  },
-                  {
-                    mode: "fast",
-                    label: "Fast",
-                    letter: "F",
-                    on: "border-afa-red bg-afa-red text-white",
-                    off: "border-red-200 bg-red-50 text-red-900",
-                  },
-                  {
-                    mode: "both",
-                    label: "Both",
-                    letter: "B",
-                    on: "border-emerald-700 bg-emerald-700 text-white",
-                    off: "border-emerald-200 bg-emerald-50 text-emerald-900",
-                  },
-                ].map((opt) => (
-                  <button
-                    key={opt.mode}
-                    type="button"
-                    onClick={() => setPitch(opt.mode)}
-                    className={
-                      "rounded-xl border-2 px-2 py-3 text-center " +
-                      (pitchMode === opt.mode ? opt.on : opt.off)
-                    }
-                  >
-                    <span className="block text-lg font-black leading-none">
-                      {opt.letter}
-                    </span>
-                    <span className="block text-sm font-bold mt-1">
-                      {opt.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <PitchPicker />
             <Field
               label="Card #"
               explainer="Umpire card # (optional)"
@@ -595,51 +744,25 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 setForm({ ...form, cardNumber: e.target.value })
               }
             />
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                {
-                  value: "active",
-                  label: "Active",
-                  on: "border-afa-navy bg-afa-navy text-white",
-                  off: "border-afa-navy/20 bg-white text-afa-navy",
-                },
-                {
-                  value: "inactive",
-                  label: "Inactive",
-                  on: "border-afa-muted bg-afa-muted text-white",
-                  off: "border-afa-navy/15 bg-white text-afa-muted",
-                },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setForm({ ...form, status: opt.value })}
-                  className={
-                    "rounded-xl border-2 px-3 py-2 text-sm font-bold " +
-                    (form.status === opt.value ? opt.on : opt.off)
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <StatusPicker />
           </>
         )}
 
         <div className="flex flex-wrap gap-2 pt-2">
-          {page > 1 && (
+          {!isEditing && page > 1 && (
             <button type="button" className="btn-transient" onClick={goBack}>
               Back
             </button>
           )}
-          {/* One submit control only — click and Enter share handleFormSubmit */}
           <button type="submit" disabled={busy} className="btn-action">
-            {page < 3
-              ? "Continue"
-              : busy
+            {isEditing
+              ? busy
                 ? "Saving…"
-                : editingId
-                  ? "Save changes"
+                : "Save changes"
+              : page < 3
+                ? "Continue"
+                : busy
+                  ? "Saving…"
                   : "Save to roster"}
           </button>
         </div>
@@ -649,6 +772,9 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
 
   return (
     <div className="space-y-5">
+      {/* Form first so Edit is never below the fold / easy to miss */}
+      {formCard}
+
       {canEdit && !formOpen && (
         <button
           type="button"
@@ -783,8 +909,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           )}
         </div>
       )}
-
-      {formCard}
     </div>
   );
 }
