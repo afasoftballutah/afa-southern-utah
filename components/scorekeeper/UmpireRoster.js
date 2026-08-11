@@ -14,7 +14,7 @@ const empty = () => ({
   phone: "",
   email: "",
   pitchFast: false,
-  pitchSlow: true, // default Slow for this region
+  pitchSlow: false, // must pick on page 3 — do not pre-select
   status: "active",
   notes: "",
 });
@@ -248,22 +248,32 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     );
   }
 
-  function goNext() {
-    setError("");
-    if (page === 1 && !page1Ok()) {
-      setError("Name, phone, and email are needed to continue.");
-      return;
-    }
-    setPage((p) => Math.min(3, p + 1));
-  }
-
   function goBack() {
     setError("");
     setPage((p) => Math.max(1, p - 1));
   }
 
-  async function save(e) {
+  /** Single path for Continue / Enter — never double-advance past a page. */
+  function handleFormSubmit(e) {
     e.preventDefault();
+    setError("");
+    if (page === 1) {
+      if (!page1Ok()) {
+        setError("Name, phone, and email are needed to continue.");
+        return;
+      }
+      setPage(2);
+      return;
+    }
+    if (page === 2) {
+      setPage(3);
+      return;
+    }
+    // page 3 only
+    save();
+  }
+
+  async function save() {
     if (!canEdit) return;
     if (!page1Ok()) {
       setPage(1);
@@ -272,7 +282,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     }
     if (!form.pitchFast && !form.pitchSlow) {
       setPage(3);
-      setError("Pick Slow, Fast, or Both.");
+      setError("Pick Slow, Fast, or Both before saving.");
       return;
     }
     setBusy(true);
@@ -369,12 +379,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
   const formCard = formOpen && canEdit && (
     <form
       id="umpire-form"
-      onSubmit={(e) => {
-        // Never use browser native “Please fill out this field” on multi-page
-        e.preventDefault();
-        if (page < 3) goNext();
-        else save(e);
-      }}
+      onSubmit={handleFormSubmit}
       noValidate
       className="rounded-xl border border-afa-navy/15 bg-white shadow-sm overflow-hidden max-w-md"
     >
@@ -627,19 +632,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               Back
             </button>
           )}
-          {page < 3 ? (
-            <button type="button" className="btn-action" onClick={goNext}>
-              Continue
-            </button>
-          ) : (
-            <button type="submit" disabled={busy} className="btn-action">
-              {busy
+          {/* One submit control only — click and Enter share handleFormSubmit */}
+          <button type="submit" disabled={busy} className="btn-action">
+            {page < 3
+              ? "Continue"
+              : busy
                 ? "Saving…"
                 : editingId
                   ? "Save changes"
                   : "Save to roster"}
-            </button>
-          )}
+          </button>
         </div>
       </div>
     </form>
