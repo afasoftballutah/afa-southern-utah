@@ -228,25 +228,20 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
             </button>
           )}
           {reg.status !== "withdrawn" && (
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-              <span className="t-meta text-[12px] whitespace-nowrap">
-                Now in <span className="font-semibold text-afa-ink">{currentDivisionLabel}</span>
-              </span>
-              <RowAction
-                label="Change division"
-                title={`Move ${reg.team_name}`}
-                note={`Currently in ${currentDivisionLabel}. Same tournament only.`}
-                placeholder="Pick a new division…"
-                emptyMessage="No other divisions in this tournament."
-                countSingular="division"
-                countPlural="divisions"
-                action="moveRegistration"
-                valueKey="divisionId"
-                payload={{ registrationId: reg.id }}
-                confirmText={`Move ${reg.team_name} into {name}?`}
-                options={divisions.filter((d) => d.id !== reg.division_id)}
-              />
-            </div>
+            <RowAction
+              label="Change division"
+              title={`Move ${reg.team_name}`}
+              note={`Moving from ${currentDivisionLabel}. Same tournament only.`}
+              placeholder="Pick a new division…"
+              emptyMessage="No other divisions in this tournament."
+              countSingular="division"
+              countPlural="divisions"
+              action="moveRegistration"
+              valueKey="divisionId"
+              payload={{ registrationId: reg.id }}
+              confirmText={`Move ${reg.team_name} into {name}?`}
+              options={divisions.filter((d) => d.id !== reg.division_id)}
+            />
           )}
         </ActionRow>
 
