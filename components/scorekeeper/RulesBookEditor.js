@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import RulesBrowser from "@/components/RulesBrowser";
 
 /**
- * Same public rule-book page, with an Edit mode for directors.
- * Saves structured JSON via /api/scorekeeper/docs.
+ * Rule book for directors: same public browser, then edit section-by-section
+ * without a wall of empty Number / # / Title / list fields.
  */
 export default function RulesBookEditor({
   initialSource,
@@ -18,17 +18,15 @@ export default function RulesBookEditor({
 }) {
   const [source, setSource] = useState(initialSource);
   const [sections, setSections] = useState(initialSections);
-  const [title, setTitle] = useState(initialTitle || initialSource?.title || "");
-  const [sourceUrl, setSourceUrl] = useState(
-    initialSourceUrl || initialSource?.url || ""
-  );
-  const [year, setYear] = useState(initialSource?.year || "");
-  const [published, setPublished] = useState(initialPublished !== false);
+  const [title] = useState(initialTitle || initialSource?.title || "");
+  const [sourceUrl] = useState(initialSourceUrl || initialSource?.url || "");
+  const [year] = useState(initialSource?.year || "");
+  const [published] = useState(initialPublished !== false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState("");
-  const [openSection, setOpenSection] = useState(0);
+  const [openSection, setOpenSection] = useState(null);
 
   const ruleCount = useMemo(
     () => sections.reduce((n, s) => n + (s.rules?.length || 0), 0),
@@ -103,7 +101,7 @@ export default function RulesBookEditor({
       setSource(nextSource);
       setSavedAt(new Date().toLocaleTimeString());
       setEditing(false);
-      // If created, reload so next save has id
+      setOpenSection(null);
       if (!docId && json.doc?.id) {
         window.location.reload();
       }
@@ -147,7 +145,10 @@ export default function RulesBookEditor({
             <button
               type="button"
               className="btn-action"
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setEditing(true);
+                setOpenSection(0);
+              }}
             >
               Edit rule book
             </button>
@@ -162,14 +163,14 @@ export default function RulesBookEditor({
   }
 
   return (
-    <div className="space-y-4 rounded-xl border-2 border-afa-red/40 bg-red-50/40 p-3 sm:p-4">
+    <div className="space-y-3 rounded-xl border-2 border-afa-red/40 bg-red-50/30 p-3 sm:p-4">
       <div className="rounded-lg bg-afa-red text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider opacity-90">
             Editing rule book
           </p>
-          <p className="font-bold text-lg leading-tight">
-            Changes are not live until you save
+          <p className="font-bold leading-tight">
+            Open a section and edit the text. Save when done.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -179,10 +180,11 @@ export default function RulesBookEditor({
             disabled={busy}
             onClick={() => {
               setEditing(false);
+              setOpenSection(null);
               setError("");
             }}
           >
-            Cancel edit
+            Cancel
           </button>
           <button
             type="button"
@@ -194,81 +196,43 @@ export default function RulesBookEditor({
           </button>
         </div>
       </div>
+
       {error && (
         <p className="text-sm font-bold text-afa-ink underline">{error}</p>
       )}
 
-      <div className="card p-4 space-y-3 bg-white">
-        <label className="block space-y-1">
-          <span className="form-label">Title</span>
-          <input
-            className="form-field w-full"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1">
-            <span className="form-label">Year</span>
-            <input
-              className="form-field w-full"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="form-label">PDF / source link</span>
-            <input
-              className="form-field w-full"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-            />
-          </label>
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
-          />
-          Published on /rules
-        </label>
-      </div>
-
-      <div className="space-y-3">
-        {sections.map((section, si) => (
-          <div key={si} className="card overflow-hidden">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left bg-afa-soft-gray/50"
-              onClick={() =>
-                setOpenSection((cur) => (cur === si ? -1 : si))
+      <div className="space-y-2">
+        {sections.map((section, si) => {
+          const open = openSection === si;
+          const label = section.number
+            ? `${section.number} · ${section.heading || ""}`
+            : section.heading || `Section ${si + 1}`;
+          return (
+            <div
+              key={si}
+              className={
+                "card overflow-hidden bg-white " +
+                (open ? "ring-2 ring-afa-red/30" : "")
               }
             >
-              <span className="font-display text-afa-navy">
-                {section.number ? `${section.number} · ` : ""}
-                {section.heading || `Section ${si + 1}`}
-              </span>
-              <span className="t-meta text-xs">
-                {(section.rules || []).length} rules ·{" "}
-                {openSection === si ? "Hide" : "Edit"}
-              </span>
-            </button>
-            {openSection === si && (
-              <div className="p-4 space-y-4 border-t border-afa-navy/10">
-                <div className="grid gap-2 sm:grid-cols-4">
-                  <label className="block space-y-1 sm:col-span-1">
-                    <span className="form-label">Number</span>
-                    <input
-                      className="form-field w-full"
-                      value={section.number || ""}
-                      onChange={(e) =>
-                        updateSection(si, { number: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1 sm:col-span-3">
-                    <span className="form-label">Heading</span>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+                onClick={() => setOpenSection(open ? null : si)}
+              >
+                <span className="font-display text-afa-navy text-left">
+                  {label}
+                </span>
+                <span className="t-meta text-xs shrink-0">
+                  {(section.rules || []).length} rules ·{" "}
+                  {open ? "Done" : "Edit"}
+                </span>
+              </button>
+
+              {open && (
+                <div className="px-4 pb-4 space-y-4 border-t border-afa-navy/10 pt-3">
+                  <label className="block space-y-1">
+                    <span className="form-label">Section heading</span>
                     <input
                       className="form-field w-full"
                       value={section.heading || ""}
@@ -277,64 +241,55 @@ export default function RulesBookEditor({
                       }
                     />
                   </label>
+
+                  {(section.rules || []).map((rule, ri) => {
+                    const hasTitle = Boolean(
+                      String(rule.title || "").trim() ||
+                        String(rule.number || "").trim()
+                    );
+                    const hasItems =
+                      Array.isArray(rule.items) && rule.items.length > 0;
+                    return (
+                      <div key={ri} className="space-y-2">
+                        {hasTitle && (
+                          <p className="text-sm font-bold text-afa-navy">
+                            {[rule.number, rule.title].filter(Boolean).join(" ")}
+                          </p>
+                        )}
+                        <textarea
+                          className="form-field w-full min-h-[120px] text-sm leading-relaxed"
+                          value={rule.body || ""}
+                          onChange={(e) =>
+                            updateRule(si, ri, { body: e.target.value })
+                          }
+                          aria-label={
+                            hasTitle
+                              ? `Text for ${rule.title || rule.number}`
+                              : `Section text ${ri + 1}`
+                          }
+                        />
+                        {hasItems && (
+                          <label className="block space-y-1">
+                            <span className="form-label">List items</span>
+                            <textarea
+                              className="form-field w-full min-h-[80px] text-sm"
+                              value={itemsToText(rule.items)}
+                              onChange={(e) =>
+                                updateRule(si, ri, {
+                                  items: textToItems(e.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                {(section.rules || []).map((rule, ri) => (
-                  <div
-                    key={ri}
-                    className="rounded-lg border border-afa-navy/10 p-3 space-y-2"
-                  >
-                    <div className="grid gap-2 sm:grid-cols-4">
-                      <label className="block space-y-1">
-                        <span className="form-label">#</span>
-                        <input
-                          className="form-field w-full"
-                          value={rule.number || ""}
-                          onChange={(e) =>
-                            updateRule(si, ri, { number: e.target.value })
-                          }
-                        />
-                      </label>
-                      <label className="block space-y-1 sm:col-span-3">
-                        <span className="form-label">Title</span>
-                        <input
-                          className="form-field w-full"
-                          value={rule.title || ""}
-                          onChange={(e) =>
-                            updateRule(si, ri, { title: e.target.value })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <label className="block space-y-1">
-                      <span className="form-label">Body</span>
-                      <textarea
-                        className="form-field w-full min-h-[100px] text-sm"
-                        value={rule.body || ""}
-                        onChange={(e) =>
-                          updateRule(si, ri, { body: e.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <span className="form-label">
-                        List items (one per line, optional)
-                      </span>
-                      <textarea
-                        className="form-field w-full min-h-[72px] text-sm font-mono"
-                        value={itemsToText(rule.items)}
-                        onChange={(e) =>
-                          updateRule(si, ri, {
-                            items: textToItems(e.target.value),
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap gap-2 sticky bottom-2 bg-white/95 border border-afa-red/30 rounded-lg p-2 shadow-sm">
@@ -352,10 +307,11 @@ export default function RulesBookEditor({
           disabled={busy}
           onClick={() => {
             setEditing(false);
+            setOpenSection(null);
             setError("");
           }}
         >
-          Cancel edit
+          Cancel
         </button>
       </div>
     </div>
