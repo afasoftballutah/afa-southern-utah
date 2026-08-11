@@ -9,6 +9,7 @@ import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
 import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
+import EditPlayer from "@/components/scorekeeper/EditPlayer";
 import ContactButton from "@/components/scorekeeper/ContactButton";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -134,6 +135,7 @@ export default async function PlayersPage() {
           name:
             idx === 0 ? (
               <div className="flex flex-wrap items-center gap-2">
+                <EditPlayer player={p} />
                 <RowAction
                   label="Merge duplicate"
                   title={`Merge into ${p.full_name}`}

@@ -1,9 +1,14 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
-import { resolvePlayer, resolveTeam } from "@/lib/identity";
+import { resolvePlayer, resolveTeam, normalizeName } from "@/lib/identity";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
 import { RATINGS } from "@/lib/class";
+import {
+  composeDisplayName,
+  composeLegalName,
+  personFieldsFromInput,
+} from "@/lib/person-name";
 
 export const runtime = "nodejs";
 
@@ -857,6 +862,89 @@ export async function POST(request) {
         added: made?.length ?? 0,
         skipped: wanted.length - (made?.length ?? 0),
       });
+    }
+
+    // ---- Full edit of a player directory row -------------------------
+    case "updatePlayer": {
+      const { playerId } = body;
+      if (!playerId) return bad("Which player?");
+
+      const fields = personFieldsFromInput(body, { allowPhone: false });
+      if (!fields.legalFirstName || !fields.legalLastName) {
+        return bad("Legal first and last name are required");
+      }
+      const birthDate = String(body.birthDate ?? body.birth_date ?? "").trim();
+      if (!birthDate) return bad("Birth date is required");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+        return bad("Birth date must be YYYY-MM-DD");
+      }
+
+      const gender = body.gender ? String(body.gender).trim() : null;
+      if (gender && !["M", "F"].includes(gender)) {
+        return bad("Gender must be M or F, or blank");
+      }
+      const rating = body.rating ? String(body.rating).trim() : null;
+      if (rating && !RATINGS.includes(rating)) {
+        return bad(`Rating must be one of ${RATINGS.join(", ")}, or blank`);
+      }
+
+      const { data: player } = await supabase
+        .from("players")
+        .select("id, merged_into_id")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (!player) return bad("That player is not on file", 404);
+      if (player.merged_into_id) {
+        return bad(
+          "That row was already merged away — open the surviving player instead",
+          409
+        );
+      }
+
+      const legalName =
+        fields.legalName ||
+        composeLegalName({
+          legalFirstName: fields.legalFirstName,
+          legalLastName: fields.legalLastName,
+        });
+      const displayName =
+        fields.displayName ||
+        composeDisplayName({
+          preferredName: fields.preferredName,
+          legalFirstName: fields.legalFirstName,
+          legalLastName: fields.legalLastName,
+        });
+      const normalized = normalizeName(legalName);
+      if (!normalized) return bad("A legal name is required");
+
+      const patch = {
+        legal_first_name: fields.legalFirstName,
+        legal_last_name: fields.legalLastName,
+        preferred_name: fields.preferredName,
+        email: fields.email,
+        birth_date: birthDate,
+        full_name: displayName,
+        normalized_name: normalized,
+        gender: gender || null,
+        rating: rating || null,
+      };
+
+      const { error } = await supabase
+        .from("players")
+        .update(patch)
+        .eq("id", playerId);
+      if (error) {
+        console.error("update player failed", error);
+        // Unique on (normalized_name, birth_date) — another living player already is this person.
+        if (error.code === "23505") {
+          return bad(
+            "Another player already has that legal name and birth date. Merge the duplicate instead of editing into a collision.",
+            409
+          );
+        }
+        return bad(error.message || "Could not save that player — please try again", 500);
+      }
+      return Response.json({ ok: true, fullName: displayName });
     }
 
     // ---- Rate a player -----------------------------------------------
