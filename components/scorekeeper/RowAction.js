@@ -15,6 +15,8 @@ export default function RowAction({
   note,
   options,
   placeholder,
+  // Legend above the list — what each option line means
+  optionKey,
   confirmText,
   payload,
   action,
@@ -28,6 +30,23 @@ export default function RowAction({
   // Empty list still shows the pill so the director knows Switch exists but
   // there is nowhere to send them (e.g. only one team in the tournament).
   const chosen = options.find((o) => o.id === choice);
+
+  // Optional optgroups: options may carry `group` (e.g. division). Preserve
+  // first-seen group order so a pre-sorted list stays stable.
+  const grouped = (() => {
+    const hasGroups = options.some((o) => o.group);
+    if (!hasGroups) return null;
+    const map = new Map();
+    for (const o of options) {
+      const g = o.group || "Other";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(o);
+    }
+    return [...map.entries()].map(([groupLabel, items]) => ({
+      groupLabel,
+      items,
+    }));
+  })();
 
   async function go() {
     // No second prompt: this dialog already states what will happen and puts
@@ -87,23 +106,39 @@ export default function RowAction({
           ) : (
             <>
               <label className="block space-y-1">
-                <span className="t-label">Team · division · class · manager</span>
+                <span className="t-label">
+                  {optionKey || "Pick one"}
+                </span>
                 <select
                   value={choice}
                   onChange={(e) => setChoice(e.target.value)}
                   className="block w-full border border-afa-navy/30 rounded-lg px-3 py-2 text-[15px]"
-                  size={Math.min(12, options.length + 1)}
+                  size={Math.min(
+                    14,
+                    options.length + (grouped ? grouped.length : 0) + 1
+                  )}
                 >
                   <option value="">{placeholder}</option>
-                  {options.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
+                  {grouped
+                    ? grouped.map(({ groupLabel, items }) => (
+                        <optgroup key={groupLabel} label={groupLabel}>
+                          {items.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))
+                    : options.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
                 </select>
               </label>
               <p className="t-meta text-xs mt-2">
-                {options.length} team{options.length === 1 ? "" : "s"} listed
+                {options.length} team{options.length === 1 ? "" : "s"} in this
+                tournament
                 {chosen ? ` · selected: ${chosen.label}` : ""}
               </p>
             </>

@@ -65,27 +65,27 @@ export default async function PlayersPage() {
     resultsByTeamAndTournament(),
   ]);
 
-  // Live registrations for Switch Team. Label carries team · division · class
-  // · manager; options are filtered per appearance to the same tournament.
+  // Switch Team options: same tournament only (filtered per appearance below).
+  // Grouped by division so the director sees scope once as a header, then
+  // team · manager · paid on each line — enough key without repeating Coed D.
   const openRegistrations = teams.flatMap((t) =>
     t.registrations
       .filter((r) => r.status !== "withdrawn")
       .map((r) => ({
         id: r.registrationId,
         tournamentId: r.tournamentId,
-        // Prefer explicit switchLabel; fall back for older listTeams shapes
+        tournamentName: r.tournamentName,
+        group: r.switchGroup || r.divisionLabel || "Unassigned division",
         label:
           r.switchLabel ||
           [
             t.name,
-            r.divisionLabel,
-            r.className,
             r.managerName ? `mgr ${r.managerName}` : null,
+            r.paid ? "paid" : "unpaid",
           ]
             .filter(Boolean)
             .join(" · "),
-        // Group key for the dropdown note
-        tournamentName: r.tournamentName,
+        sortKey: `${r.switchGroup || ""}|${(t.name || "").toLowerCase()}`,
       }))
   );
   // One clock for the whole table, so two rows can never disagree about today.
@@ -169,21 +169,33 @@ export default async function PlayersPage() {
                 title={`Switch ${p.full_name}`}
                 note={
                   a.tournamentName
-                    ? `Only teams in ${a.tournamentName}. Both waivers are rebuilt.`
-                    : "Both waivers are rebuilt."
+                    ? `Same tournament only: ${a.tournamentName}. Both waivers are rebuilt.`
+                    : "No tournament on this roster row — cannot switch."
                 }
+                optionKey="Team · manager · paid  (grouped by division)"
                 placeholder="Pick a team in this tournament…"
                 action="movePlayer"
                 valueKey="toRegistrationId"
                 payload={{ memberId: a.memberId }}
                 confirmText={`Switch ${p.full_name} to {name}? Both waivers are rebuilt.`}
-                options={openRegistrations.filter(
-                  (o) =>
-                    o.id !== a.registrationId &&
-                    (a.tournamentId
-                      ? o.tournamentId === a.tournamentId
-                      : true)
-                )}
+                options={
+                  // Fail closed: without a tournament id we never list other events.
+                  a.tournamentId
+                    ? openRegistrations
+                        .filter(
+                          (o) =>
+                            o.id !== a.registrationId &&
+                            o.tournamentId === a.tournamentId
+                        )
+                        .sort((x, y) =>
+                          (x.sortKey || x.label).localeCompare(
+                            y.sortKey || y.label,
+                            undefined,
+                            { sensitivity: "base" }
+                          )
+                        )
+                    : []
+                }
               />
             ) : null,
           team: a.registrationId ? (
