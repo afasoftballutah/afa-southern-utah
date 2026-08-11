@@ -57,7 +57,14 @@ const ENDPOINTS = {
   },
 };
 
-export default function ScoreTable({ games, kind = "bracket", readOnly = false, title = "Games" }) {
+export default function ScoreTable({
+  games,
+  kind = "bracket",
+  readOnly = false,
+  title = "Games",
+  /** When true, parent owns filters (ScorekeeperBoard toolbar). */
+  hideFilters = false,
+}) {
   const router = useRouter();
   const api = ENDPOINTS[kind] ?? ENDPOINTS.bracket;
   const list = games ?? [];
@@ -72,12 +79,13 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
     { key: "done", label: "In", align: "center", width: "3.5rem" },
   ];
 
-  // Compact chips — not the huge segmented scorekeeper filters.
-  // Default is unscored games (99% of field work).
-  const filters = [
-    { key: "left", label: "Need score", tag: "unplayed" },
-    { key: "done", label: "Scored", tag: "played" },
-  ];
+  // Only used when this table owns its chrome (not under ScorekeeperBoard).
+  const filters = hideFilters
+    ? []
+    : [
+        { key: "left", label: "Need score", tag: "unplayed" },
+        { key: "done", label: "Scored", tag: "played" },
+      ];
 
   // The if-game the champion made unnecessary. It is on the printed sheet
   // because nobody knew in advance which way the final would go; it is not a
@@ -166,11 +174,16 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
       columns={columns}
       rows={rows}
       filters={filters}
-      defaultFilter="left"
+      defaultFilter={hideFilters ? "all" : "left"}
       filterStyle="default"
       defaultSort={{ key: kind === "pool" ? "when" : "num", dir: "asc" }}
+      search={!hideFilters}
       searchPlaceholder="Team…"
-      empty="No games need a score here. Tap Scored to fix one already in."
+      empty={
+        hideFilters
+          ? "No games in this section."
+          : "No games need a score here. Tap Scored to fix one already in."
+      }
       before={<p className="t-strong text-sm">{title}</p>}
     />
   );

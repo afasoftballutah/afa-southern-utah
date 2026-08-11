@@ -3,7 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import ScoreTable from "@/components/scorekeeper/ScoreTable";
+import ScorekeeperBoard from "@/components/scorekeeper/ScorekeeperBoard";
 import TournamentPickList from "@/components/scorekeeper/TournamentPickList";
 
 export const dynamic = "force-dynamic";
@@ -83,7 +83,7 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
 
   return (
     <DirectorShell
-      title={selected.name}
+      title="Scores"
       count={
         selected.left > 0
           ? `${selected.left} need a score`
@@ -91,39 +91,11 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
       }
       back="/scorekeeper"
     >
-      <div className="space-y-5">
-        {divisions.map((d) => {
-          const bracketGames = d.games ?? [];
-          const poolGames = d.pool_games ?? [];
-          if (!bracketGames.length && !poolGames.length) return null;
-          const label = d.display_name ?? d.name;
-
-          return (
-            <section key={d.id} className="space-y-2">
-              {poolGames.length > 0 && (
-                <ScoreTable
-                  games={poolGames}
-                  kind="pool"
-                  title={`${label} · pool`}
-                />
-              )}
-              {bracketGames.length > 0 && (
-                <ScoreTable
-                  games={bracketGames}
-                  kind="bracket"
-                  title={`${label} · bracket`}
-                />
-              )}
-            </section>
-          );
-        })}
-
-        {divisions.every((d) => !(d.games?.length || d.pool_games?.length)) && (
-          <div className="card p-4 text-center">
-            <p className="t-meta">No games scheduled yet.</p>
-          </div>
-        )}
-      </div>
+      <ScorekeeperBoard
+        tournamentName={selected.name}
+        divisions={divisions}
+        leftCount={selected.left}
+      />
     </DirectorShell>
   );
 }
