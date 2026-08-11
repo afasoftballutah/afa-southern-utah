@@ -3,11 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 /**
- * Free address field:
- *  - Browser autofill (Chrome/Safari saved addresses) via autocomplete attrs
- *  - Typeahead from OpenStreetMap Photon (no Google, no billing, no API key)
+ * Address field with typeahead.
+ * Uses Google Places via /api/address-suggest when the server has a key;
+ * otherwise OSM Photon. Browser autofill still works via autocomplete attrs.
  */
-
 export default function AddressInput({
   value,
   onChange,
@@ -26,6 +25,7 @@ export default function AddressInput({
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [active, setActive] = useState(-1);
+  const [busyPick, setBusyPick] = useState(false);
   const debounceRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -63,7 +63,7 @@ export default function AddressInput({
         const data = await res.json();
         const list = data.suggestions ?? [];
         setItems(list);
-        setOpen(true); // show panel even if empty (so user knows it tried)
+        setOpen(true);
         setActive(-1);
       } catch (err) {
         if (err?.name !== "AbortError") {
@@ -71,24 +71,48 @@ export default function AddressInput({
           setOpen(false);
         }
       }
-    }, 320);
+    }, 280);
   }
 
-  function pick(item) {
-    // Always put the FULL address in the field (street, city, state, zip).
-    const full = item.label || item.street || "";
-    const street = item.street || full;
-    onChange(full);
-    onPlace?.({
-      street,
-      city: item.city || "",
-      state: item.state || "",
-      zip: item.zip || "",
-      formatted: full,
-    });
-    setOpen(false);
-    setItems([]);
-    setActive(-1);
+  async function pick(item) {
+    setBusyPick(true);
+    try {
+      let street = item.street || "";
+      let city = item.city || "";
+      let state = item.state || "";
+      let zip = item.zip || "";
+      let full = item.label || street || "";
+
+      // Google suggestions need a details call for structured parts
+      if (item.placeId) {
+        const res = await fetch(
+          `/api/address-details?placeId=${encodeURIComponent(item.placeId)}`
+        );
+        if (res.ok) {
+          const d = await res.json();
+          street = d.street || street;
+          city = d.city || city;
+          state = d.state || state;
+          zip = d.zip || zip;
+          full = d.formatted || d.label || full;
+        }
+      }
+
+      if (!full) full = [street, city, state, zip].filter(Boolean).join(", ");
+      onChange(full);
+      onPlace?.({
+        street: street || full,
+        city,
+        state,
+        zip,
+        formatted: full,
+      });
+    } finally {
+      setBusyPick(false);
+      setOpen(false);
+      setItems([]);
+      setActive(-1);
+    }
   }
 
   function onKeyDown(e) {
@@ -129,7 +153,7 @@ export default function AddressInput({
         autoCapitalize="words"
         spellCheck={false}
         required={required}
-        disabled={disabled}
+        disabled={disabled || busyPick}
         enterKeyHint="done"
         role="combobox"
         aria-expanded={open}
@@ -137,18 +161,18 @@ export default function AddressInput({
         aria-autocomplete="list"
       />
       {open && (
-        <ul
-          id={`${id}-list`}
-          className="address-input__list"
-          role="listbox"
-        >
+        <ul id={`${id}-list`} className="address-input__list" role="listbox">
           {items.length === 0 ? (
             <li className="address-input__empty" role="presentation">
-              No matches — try street, city, and state (e.g. Main St, St George, UT)
+              No matches — try a street number and name
             </li>
           ) : (
             items.map((item, i) => (
-              <li key={`${item.label}-${i}`} role="option" aria-selected={i === active}>
+              <li
+                key={`${item.placeId || item.label}-${i}`}
+                role="option"
+                aria-selected={i === active}
+              >
                 <button
                   type="button"
                   className={
