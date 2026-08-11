@@ -6,6 +6,13 @@
 // desk, and 56rem was forcing both to wrap.
 //
 // Width is set via .scorekeeper-scope on the stylesheet (no page-local CSS).
+import StaffViewBar from "@/components/scorekeeper/StaffViewBar";
+
 export default function ScorekeeperLayout({ children }) {
-  return <div className="scorekeeper-scope">{children}</div>;
+  return (
+    <div className="scorekeeper-scope">
+      <StaffViewBar mode="scorekeeper" />
+      {children}
+    </div>
+  );
 }

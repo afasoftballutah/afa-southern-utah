@@ -369,6 +369,46 @@ body:has(.scorekeeper-scope) {
   --page-width: 84rem;
 }
 
+/* Staff mode strip — which desk you're on (director red / scorekeeper green) */
+.staff-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.staff-view-bar--director {
+  background: var(--afa-red);
+  color: var(--afa-white);
+}
+.staff-view-bar--scorekeeper {
+  background: #15803d; /* green-700 */
+  color: #fff;
+}
+.staff-view-bar__label {
+  min-width: 0;
+}
+.staff-view-bar__switch {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 0.75rem;
+  opacity: 0.95;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.staff-view-bar__switch:hover {
+  opacity: 1;
+}
+
 /* PIN pad — uniform keys; Go is action (red) */
 .pin-pad__key {
   display: flex;
