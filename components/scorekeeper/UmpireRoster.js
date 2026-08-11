@@ -820,19 +820,11 @@ export default function UmpireRoster({
           </div>
 
           {list.length === 0 ? (
-            canEdit ? (
-              <button
-                type="button"
-                onClick={openAdd}
-                className="w-full px-4 py-6 text-left flex items-center justify-center gap-2 hover:bg-afa-soft-gray/50 transition-colors"
-              >
-                <span className="pill pill-solid">+ Add umpire</span>
-              </button>
-            ) : (
-              <div className="p-6 text-center">
-                <p className="t-meta">No umpires on file.</p>
-              </div>
-            )
+            <div className="p-6 text-center">
+              <p className="t-meta">
+                {canEdit ? "Nobody on file yet." : "No umpires on file."}
+              </p>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="p-6 text-center space-y-2">
               <p className="t-strong">Nobody in this filter</p>
