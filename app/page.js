@@ -13,6 +13,7 @@ import { leagueToday } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import { venueParts } from "@/lib/director";
+import { listPublishedNews, formatNewsDate } from "@/lib/news";
 import Card from "@/components/ui/Card";
 import MyTeamStrip from "@/components/MyTeamStrip";
 import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
@@ -26,12 +27,13 @@ export const revalidate = 30;
 // Heat Stroker stayed "upcoming" after it finished (spec-signup-flow).
 export default async function Home() {
   const configured = isSupabaseConfigured();
-  const [recentCompleted, rawSeasonGroups] = configured
+  const [recentCompleted, rawSeasonGroups, newsPosts] = configured
     ? await Promise.all([
         getRecentCompletedTournaments(8),
         getSeasonListByRegion(),
+        listPublishedNews({ limit: 8 }),
       ])
-    : [[], []];
+    : [[], [], []];
 
   // Newest finished event (placements gallery + left-column “Last Tournament”)
   const lastResults = recentCompleted[0] ?? null;
@@ -203,59 +205,81 @@ export default async function Home() {
           <MyTeamStrip />
         </div>
 
-        {/* News — under dash; poster is the AFA “We Want You” piece */}
+        {/* News — director posts + optional AFA poster branding */}
         <section id="news" className="home-news" aria-label="News">
-        <h2 className="home-news__title">News</h2>
-        <div className="home-news__poster-wrap">
-          <a
-            href="https://www.afasoftball.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="home-news__poster-link"
-          >
-            <img
-              src="/afa-we-want-you.png"
-              alt="AFA We Want You — play for AFA. America's recreational sport played as it should be."
-              className="home-news__poster"
-              width={800}
-              height={1000}
-            />
-          </a>
-          <div className="home-news__aside">
-            <p className="home-news__aside-lead">We want you — to play for AFA.</p>
-            <p className="home-news__aside-body">
-              Ask about our leagues and tournaments in your area. Follow AFA
-              Sports and AFA Nation on Facebook.
-            </p>
-            <ul className="home-news__aside-links">
-              <li>
-                <Link href="/register" className="home-cta home-cta--action">
-                  Register a team
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="https://www.afasoftball.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="home-news__ext"
-                >
-                  afasoftball.com →
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://www.afaslowpitch.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="home-news__ext"
-                >
-                  afaslowpitch.com →
-                </a>
-              </li>
-            </ul>
+          <h2 className="home-news__title">News</h2>
+          <div className="home-news__poster-wrap">
+            <a
+              href="https://www.afasoftball.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="home-news__poster-link"
+            >
+              <img
+                src="/afa-we-want-you.png"
+                alt="AFA We Want You — play for AFA. America's recreational sport played as it should be."
+                className="home-news__poster"
+                width={800}
+                height={1000}
+              />
+            </a>
+            <div className="home-news__aside">
+              {newsPosts.length > 0 ? (
+                <ul className="home-news__feed">
+                  {newsPosts.map((p) => (
+                    <li key={p.id} className="home-news__item">
+                      <p className="home-news__item-date">
+                        {formatNewsDate(p.published_at)}
+                      </p>
+                      <p className="home-news__item-title">{p.title}</p>
+                      <p className="home-news__item-body">{p.body}</p>
+                      {p.link_url ? (
+                        <a
+                          href={p.link_url}
+                          className="home-news__item-link"
+                          {...(p.link_url.startsWith("http")
+                            ? {
+                                target: "_blank",
+                                rel: "noopener noreferrer",
+                              }
+                            : {})}
+                        >
+                          {p.link_label || "Read more →"}
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <>
+                  <p className="home-news__aside-lead">
+                    We want you — to play for AFA.
+                  </p>
+                  <p className="home-news__aside-body">
+                    Ask about our leagues and tournaments in your area. Follow
+                    AFA Sports and AFA Nation on Facebook.
+                  </p>
+                </>
+              )}
+              <ul className="home-news__aside-links">
+                <li>
+                  <Link href="/register" className="home-cta home-cta--action">
+                    Register a team
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://www.afasoftball.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="home-news__ext"
+                  >
+                    afasoftball.com →
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
         </section>
       </div>
 

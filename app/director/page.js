@@ -151,6 +151,14 @@ export default async function DirectorPage() {
             { label: "active", value: String(umpCount) },
           ]}
         />
+        <DirectorCard
+          href="/director/news"
+          title="News"
+          subtitle="Homepage posts players and managers see under News"
+          stats={[
+            { label: "desk", value: "→" },
+          ]}
+        />
       </CardGrid>
     </div>
   );
