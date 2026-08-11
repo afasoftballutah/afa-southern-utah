@@ -70,7 +70,14 @@ export async function POST(request) {
   const isManager = member.registrations?.manager_member_id === member.id;
   const needsPlayerFields = member.role === "player" || isManager;
 
-  const addressTrim = typeof address === "string" ? address.trim() : "";
+  const addressTrim =
+    typeof address === "string"
+      ? address
+          .trim()
+          .replace(/[,\s]+$/g, "")
+          .replace(/\s+,/g, ",")
+          .trim()
+      : "";
   const first = String(legalFirstName ?? "").trim();
   const last = String(legalLastName ?? "").trim();
   // Prefer explicit preferred; default to first name only (not full legal).

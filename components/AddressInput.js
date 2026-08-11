@@ -99,6 +99,11 @@ export default function AddressInput({
       }
 
       if (!full) full = [street, city, state, zip].filter(Boolean).join(", ");
+      // No trailing commas (e.g. "…84770," from some formatters)
+      full = full.replace(/[,\s]+$/g, "").replace(/\s+,/g, ",").trim();
+      street = String(street || full)
+        .replace(/[,\s]+$/g, "")
+        .trim();
       onChange(full);
       onPlace?.({
         street: street || full,
