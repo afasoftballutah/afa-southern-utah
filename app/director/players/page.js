@@ -181,6 +181,7 @@ export default async function PlayersPage() {
                 emptyMessage="No other teams in this tournament to switch to."
                 countSingular="team in this tournament"
                 countPlural="teams in this tournament"
+                listSize={12}
                 placeholder="Pick a team in this tournament…"
                 action="movePlayer"
                 valueKey="toRegistrationId"

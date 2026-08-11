@@ -23,6 +23,10 @@ export default function RowAction({
   // e.g. singular "person" / plural "people", or "team in this tournament"
   countSingular = "option",
   countPlural,
+  // When set, show that many rows as an open list. Omit for a normal dropdown
+  // (merge / pick-one-of-many people). Switch team passes a number so the
+  // director can scan without opening the native menu.
+  listSize,
   confirmText,
   payload,
   action,
@@ -117,10 +121,16 @@ export default function RowAction({
                   value={choice}
                   onChange={(e) => setChoice(e.target.value)}
                   className="block w-full border border-afa-navy/30 rounded-lg px-3 py-2 text-[15px]"
-                  size={Math.min(
-                    14,
-                    options.length + (grouped ? grouped.length : 0) + 1
-                  )}
+                  {...(listSize
+                    ? {
+                        size: Math.min(
+                          listSize,
+                          options.length +
+                            (grouped ? grouped.length : 0) +
+                            1
+                        ),
+                      }
+                    : {})}
                 >
                   <option value="">{placeholder}</option>
                   {grouped
