@@ -2,7 +2,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
-import { personFieldsFromInput, hasLegalName } from "@/lib/person-name";
+import { personFieldsFromInput } from "@/lib/person-name";
 
 // NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
 // saves the registration, creates one roster_members row per player/coach
@@ -52,20 +52,42 @@ export async function POST(request) {
     return bad("At least one player is required");
   }
 
-  const playerPeople = players
-    .map((p) => personFieldsFromInput(p, { allowPhone: false }))
+  // Manager-entered players: first + last + gender. Full identity at waiver sign.
+  const playerRows = (players ?? [])
+    .map((p) => {
+      const first = String(p.firstName ?? p.legalFirstName ?? "").trim();
+      const last = String(p.lastName ?? p.legalLastName ?? "").trim();
+      const gender =
+        p.gender === "M" || p.gender === "F" ? p.gender : null;
+      const person = personFieldsFromInput(
+        {
+          legalFirstName: first,
+          legalLastName: last,
+          preferredName: p.preferredName,
+          email: p.email,
+          name: p.name,
+        },
+        { allowPhone: false }
+      );
+      const displayName =
+        person.displayName || [first, last].filter(Boolean).join(" ");
+      return {
+        first,
+        last,
+        gender,
+        displayName,
+        person,
+        birthDate: p.birthDate || null,
+        address: p.address || null,
+      };
+    })
     .filter((p) => p.displayName);
-  if (playerPeople.length === 0) {
-    return bad("At least one player with a name is required");
+  if (playerRows.length === 0) {
+    return bad("At least one player with first and last name is required");
   }
-  // Prefer legal first+last when provided; legacy single-name still accepted.
-  const incompletePlayer = players.find(
-    (p) =>
-      (p.legalFirstName || p.legalLastName) &&
-      !hasLegalName(personFieldsFromInput(p))
-  );
-  if (incompletePlayer) {
-    return bad("Each player needs both legal first and last name");
+  const missingGender = playerRows.find((p) => !p.gender);
+  if (missingGender) {
+    return bad("Each player needs a gender (M or F)");
   }
   // No signature check. JD, 2026-07-27: "should be able to sign it whenever,
   // even after submitting. Signing makes it official." Submitting records the
@@ -123,23 +145,20 @@ export async function POST(request) {
   const registrationId = inserted.id;
 
   const rosterRows = [
-    ...playerPeople.map((p, i) => {
-      const raw = players.find(
-        (x) => personFieldsFromInput(x).displayName === p.displayName
-      ) ?? players[i];
-      return {
-        registration_id: registrationId,
-        role: "player",
-        name: p.displayName,
-        legal_first_name: p.legalFirstName,
-        legal_last_name: p.legalLastName,
-        preferred_name: p.preferredName,
-        email: p.email,
-        phone: null, // players: email only
-        birth_date: raw?.birthDate || null,
-        address: raw?.address || null,
-      };
-    }),
+    ...playerRows.map((p) => ({
+      registration_id: registrationId,
+      role: "player",
+      name: p.displayName,
+      // Manager stub names — player confirms legal/preferred at signing.
+      legal_first_name: p.first || p.person.legalFirstName,
+      legal_last_name: p.last || p.person.legalLastName,
+      preferred_name: null,
+      email: null,
+      phone: null,
+      gender: p.gender,
+      birth_date: null,
+      address: null,
+    })),
     ...(coaches ?? [])
       .map((c) => personFieldsFromInput(c, { allowPhone: true }))
       .filter((c) => c.displayName)

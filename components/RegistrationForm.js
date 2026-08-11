@@ -14,18 +14,19 @@ import {
 import { rememberRegistration, tokensFromLinks } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
 import PersonWizard from "@/components/forms/PersonWizard";
+import ManagerPlayerFields, {
+  managerPlayerDisplay,
+  managerPlayerReady,
+} from "@/components/ManagerPlayerFields";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
 const emptyPlayer = () => ({
-  legalFirstName: "",
-  legalLastName: "",
-  preferredName: "",
-  email: "",
-  birthDate: "",
-  address: "",
+  firstName: "",
+  lastName: "",
+  gender: "",
 });
 const emptyCoach = () => ({
   legalFirstName: "",
@@ -35,6 +36,8 @@ const emptyCoach = () => ({
   phone: "",
 });
 const personDisplay = (p) => {
+  // Manager/coach still use legal + preferred; players use first + last.
+  if (p.firstName || p.lastName) return managerPlayerDisplay(p);
   const preferred = (p.preferredName || "").trim();
   if (preferred) return preferred;
   return [p.legalFirstName, p.legalLastName].filter(Boolean).join(" ").trim() || (p.name || "").trim();
@@ -221,11 +224,7 @@ export default function RegistrationForm({
       return legalOk && manager.email.trim().length > 0;
     }
     if (step === 3) {
-      return players.some(
-        (p) =>
-          p.legalFirstName.trim().length > 0 &&
-          p.legalLastName.trim().length > 0
-      );
+      return players.some((p) => managerPlayerReady(p));
     }
     if (step === 4) return true; // coaches optional
     return true;
@@ -259,18 +258,11 @@ export default function RegistrationForm({
           zip: manager.zip,
         },
         players: players
-          .filter(
-            (p) =>
-              p.legalFirstName.trim().length > 0 &&
-              p.legalLastName.trim().length > 0
-          )
+          .filter((p) => managerPlayerReady(p))
           .map((p) => ({
-            legalFirstName: p.legalFirstName.trim(),
-            legalLastName: p.legalLastName.trim(),
-            preferredName: p.preferredName.trim() || null,
-            email: p.email.trim() || null,
-            birthDate: p.birthDate || null,
-            address: p.address || null,
+            firstName: p.firstName.trim(),
+            lastName: p.lastName.trim(),
+            gender: p.gender,
           })),
         coaches: coaches
           .filter(
@@ -663,26 +655,26 @@ export default function RegistrationForm({
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">
-              Each player needs a <strong>legal name</strong> (license / official
-              ID) and can add a <strong>preferred name</strong> for the roster.
-              No phone for players. At least one player is required; each signs
-              later on their own link.
+              For each player enter <strong>first name</strong>,{" "}
+              <strong>last name</strong>, and <strong>gender</strong> only.
+              They complete legal name, preferred name, birth date, email, and
+              address when they sign their own waiver. At least one player is
+              required.
             </p>
             {/* Managers play. If she has not listed herself, offer it rather
-                than adding it behind her back — the route adds her either
-                way, but doing it here means she can fill in her birth date. */}
+                than adding it behind her back — the route adds her either way. */}
             {personDisplay(manager) &&
-              !players.some((p) => sameName(personDisplay(p), personDisplay(manager))) && (
+              !players.some((p) =>
+                sameName(personDisplay(p), personDisplay(manager))
+              ) && (
               <button
                 type="button"
                 onClick={() =>
                   setPlayers((prev) => [
                     {
-                      ...emptyPlayer(),
-                      legalFirstName: manager.legalFirstName,
-                      legalLastName: manager.legalLastName,
-                      preferredName: manager.preferredName,
-                      email: manager.email,
+                      firstName: manager.legalFirstName,
+                      lastName: manager.legalLastName,
+                      gender: "",
                     },
                     ...prev,
                   ])
@@ -694,7 +686,7 @@ export default function RegistrationForm({
                 </span>
                 <span className="block text-afa-ink/70">
                   Managers are normally on their own team. You sign one waiver
-                  either way.
+                  either way — pick M/F for yourself after adding.
                 </span>
               </button>
             )}
@@ -707,6 +699,7 @@ export default function RegistrationForm({
                       <span className="font-normal text-afa-ink/60">
                         {" "}
                         · {personDisplay(p)}
+                        {p.gender ? ` · ${p.gender}` : ""}
                       </span>
                     ) : null}
                   </p>
@@ -722,9 +715,7 @@ export default function RegistrationForm({
                     </button>
                   )}
                 </div>
-                <PersonWizard
-                  embedded
-                  variant="player"
+                <ManagerPlayerFields
                   value={p}
                   onChange={(next) => {
                     setPlayers((prev) => {
@@ -733,7 +724,7 @@ export default function RegistrationForm({
                       return copy;
                     });
                   }}
-                  completeLabel="Player ready"
+                  idPrefix={`reg-player-${i}`}
                 />
               </div>
             ))}

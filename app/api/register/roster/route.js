@@ -260,48 +260,75 @@ export async function POST(request) {
     });
   }
 
-  // ---- Add by name (legal + preferred + email) ------------------------
+  // ---- Add by manager: first + last + gender (rest at waiver signing) --
+  // Also accepts legacy legalFirst/Last + preferred + email for older clients.
+  if (role && !["player", "coach"].includes(role)) {
+    return bad("Role must be player or coach");
+  }
+
+  const firstName = String(
+    body?.firstName ?? body?.legalFirstName ?? ""
+  ).trim();
+  const lastName = String(body?.lastName ?? body?.legalLastName ?? "").trim();
+  const genderRaw = body?.gender ? String(body.gender).trim() : "";
+  const gender = genderRaw === "M" || genderRaw === "F" ? genderRaw : null;
+
+  // Coaches may still send full contact; players are name + gender only.
+  const isCoach = (role ?? "player") === "coach";
   const person = personFieldsFromInput(
     {
-      name,
-      legalFirstName: body?.legalFirstName,
-      legalLastName: body?.legalLastName,
+      name: name || [firstName, lastName].filter(Boolean).join(" "),
+      legalFirstName: firstName || body?.legalFirstName,
+      legalLastName: lastName || body?.legalLastName,
       preferredName: body?.preferredName,
       email: body?.email,
       phone: body?.phone,
     },
-    { allowPhone: role === "coach" }
+    { allowPhone: isCoach }
   );
-  if (!person.displayName) return bad("Legal first and last name are required");
-  if (role && !["player", "coach"].includes(role)) {
-    return bad("Role must be player or coach");
+
+  if (!person.displayName && !(firstName && lastName)) {
+    return bad("First and last name are required");
   }
-  // Players: email only (no phone). Prefer legal first+last when provided.
-  if (
-    (body?.legalFirstName || body?.legalLastName) &&
-    !(person.legalFirstName && person.legalLastName)
-  ) {
-    return bad("Legal first and last name are both required");
+  const displayName =
+    person.displayName || [firstName, lastName].filter(Boolean).join(" ");
+
+  if (!isCoach && !gender) {
+    return bad("Gender (M or F) is required when adding a player");
   }
 
-  let playerId = null;
-  try {
-    playerId = await resolvePlayer(supabase, {
-      name: person.displayName,
-      birthDate: birthDate || null,
-      legalFirstName: person.legalFirstName,
-      legalLastName: person.legalLastName,
-      preferredName: person.preferredName,
-      email: person.email,
-    });
-  } catch (err) {
-    console.error("player resolution failed on roster add", err);
+  // Optional: manager picked someone already in the directory
+  let playerId = body?.playerId ? String(body.playerId) : null;
+  if (playerId) {
+    const { data: known } = await supabase
+      .from("players")
+      .select("id, full_name, gender, birth_date, merged_into_id")
+      .eq("id", playerId)
+      .maybeSingle();
+    if (!known || known.merged_into_id) {
+      return bad("That player is not on file", 404);
+    }
+    playerId = known.merged_into_id ?? known.id;
+  } else if (birthDate && person.legalFirstName && person.legalLastName) {
+    // Legacy path with birth date — resolve into directory now
+    try {
+      playerId = await resolvePlayer(supabase, {
+        name: displayName,
+        birthDate: birthDate || null,
+        legalFirstName: person.legalFirstName,
+        legalLastName: person.legalLastName,
+        preferredName: person.preferredName,
+        email: person.email,
+      });
+    } catch (err) {
+      console.error("player resolution failed on roster add", err);
+    }
   }
 
   const gate = await assertPlayerFreeForTeam(supabase, {
     tournamentId: registration.tournament_id,
     divisionGender: registration.divisions?.gender ?? null,
-    name: person.displayName,
+    name: displayName,
     birthDate: birthDate || null,
     playerId,
     exceptRegistrationId: registration.id,
@@ -315,18 +342,25 @@ export async function POST(request) {
     .from("roster_members")
     .select("id, removed_at, signing_token, name")
     .eq("registration_id", registration.id)
-    .ilike("name", person.displayName)
+    .ilike("name", displayName)
     .maybeSingle();
 
+  // Manager stub: roster name + gender only. Legal/preferred/email/DOB/address
+  // are filled by the player on the signing page (except coaches).
   const memberPatch = {
     removed_at: null,
-    birth_date: birthDate || null,
-    legal_first_name: person.legalFirstName,
-    legal_last_name: person.legalLastName,
-    preferred_name: person.preferredName,
-    email: person.email,
-    phone: null,
-    name: person.displayName,
+    name: displayName,
+    gender: gender,
+    birth_date: isCoach ? birthDate || null : birthDate || null,
+    legal_first_name: isCoach
+      ? person.legalFirstName
+      : firstName || person.legalFirstName,
+    legal_last_name: isCoach
+      ? person.legalLastName
+      : lastName || person.legalLastName,
+    preferred_name: isCoach ? person.preferredName : null,
+    email: isCoach ? person.email : person.email || null,
+    phone: isCoach ? person.phone : null,
     ...(playerId ? { player_id: playerId } : {}),
   };
 
@@ -336,22 +370,22 @@ export async function POST(request) {
       .from("roster_members")
       .update(memberPatch)
       .eq("id", existing.id)
-      .select("id, name, signing_token")
+      .select("id, name, signing_token, gender")
       .single();
     if (error) return bad("Could not restore that player — please try again", 500);
     member = data;
   } else if (existing) {
-    return bad(`${person.displayName} is already on this roster`, 409);
+    return bad(`${displayName} is already on this roster`, 409);
   } else {
     const { data, error } = await supabase
       .from("roster_members")
       .insert({
         registration_id: registration.id,
         role: role ?? "player",
-        address: address || null,
+        address: isCoach ? address || null : null,
         ...memberPatch,
       })
-      .select("id, name, signing_token")
+      .select("id, name, signing_token, gender")
       .single();
     if (error) {
       console.error("roster add failed", error);
@@ -371,8 +405,8 @@ export async function POST(request) {
     member: {
       id: member.id,
       name: member.name,
+      gender: member.gender ?? gender,
       birthDate: birthDate || null,
-      email: person.email,
       signLink: `${origin}/register/sign/${member.signing_token}`,
     },
   });

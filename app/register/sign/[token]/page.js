@@ -22,7 +22,7 @@ async function getSignerByToken(token) {
   const { data: member, error } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, legal_first_name, legal_last_name, preferred_name, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
+      "id, role, name, legal_first_name, legal_last_name, preferred_name, gender, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -47,6 +47,7 @@ async function getSignerByToken(token) {
     legalFirstName: member.legal_first_name,
     legalLastName: member.legal_last_name,
     preferredName: member.preferred_name,
+    gender: member.gender ?? null,
     // A manager who plays is still a player on the form — her birth date and
     // address belong on her waiver like anyone else's.
     birthDate: member.birth_date,
@@ -80,6 +81,10 @@ export default async function SignPage({ params }) {
       <h1 className="t-title">Sign Your Waiver</h1>
       <p className="text-afa-ink/80">
         {signer.teamName} &mdash; {ROLE_LABEL[signer.role] ?? "Player"}
+      </p>
+      <p className="t-meta">
+        Confirm your legal name and details yourself. They must match official
+        ID you can present on game day.
       </p>
       <SignRosterMember token={token} member={signer} />
     </div>

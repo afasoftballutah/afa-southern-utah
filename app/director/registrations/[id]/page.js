@@ -28,14 +28,27 @@ async function load(id) {
     .maybeSingle();
   if (!registration) return null;
 
-  const [{ data: members }, { data: classes }, { data: progressRows }] = await Promise.all([
+  const [
+    { data: members },
+    { data: classes },
+    { data: progressRows },
+    { data: directory },
+  ] = await Promise.all([
     supabase
       .from("roster_members")
-      .select("id, name, role, signed_at, removed_at, player_id, email, phone")
+      .select("id, name, role, gender, signed_at, removed_at, player_id, email, phone")
       .eq("registration_id", id)
       .order("created_at"),
     supabase.from("classes").select("id, name, sort_order").order("sort_order"),
     supabase.from("registration_signing_progress").select("*").eq("registration_id", id),
+    supabase
+      .from("players")
+      .select(
+        "id, full_name, legal_first_name, legal_last_name, preferred_name, gender, birth_date"
+      )
+      .is("merged_into_id", null)
+      .order("full_name")
+      .limit(500),
   ]);
 
   const playerIds = (members ?? []).map((m) => m.player_id).filter(Boolean);
@@ -62,9 +75,36 @@ async function load(id) {
       name: m.name,
       role: m.id === registration.manager_member_id ? "manager" : m.role,
       rating: person?.rating ?? null,
-      gender: person?.gender ?? null,
+      gender: m.gender ?? person?.gender ?? null,
       birthDate: person?.birth_date ?? null,
       signed: Boolean(m.signed_at),
+    };
+  });
+
+  const knownPlayers = (directory ?? []).map((p) => {
+    const first =
+      String(p.legal_first_name ?? "").trim() ||
+      String(p.full_name ?? "").trim().split(/\s+/)[0] ||
+      "";
+    const last =
+      String(p.legal_last_name ?? "").trim() ||
+      String(p.full_name ?? "")
+        .trim()
+        .split(/\s+/)
+        .slice(1)
+        .join(" ") ||
+      "";
+    const label =
+      [last, first].filter(Boolean).join(", ") ||
+      p.preferred_name ||
+      p.full_name ||
+      "—";
+    return {
+      id: p.id,
+      label: p.birth_date ? `${label} (${p.birth_date})` : label,
+      firstName: first,
+      lastName: last,
+      gender: p.gender === "M" || p.gender === "F" ? p.gender : null,
     };
   });
 
@@ -77,6 +117,7 @@ async function load(id) {
     divisions: (siblingDivisions ?? []).map((d) => ({ id: d.id, label: d.display_name ?? d.name })),
     roster,
     removed: (members ?? []).filter((m) => m.removed_at),
+    knownPlayers,
     suggestion,
     check: checkEligibility(roster, enteredClass ?? suggestion.className),
     composition: checkRoster(roster, {
@@ -117,7 +158,7 @@ export default async function RegistrationPage({ params }) {
 
   const data = await load(id);
   if (!data) notFound();
-  const { registration: r, roster, removed, classes } = data;
+  const { registration: r, roster, removed, classes, knownPlayers } = data;
   const enteredClassName =
     (data.classes ?? []).find((c) => c.id === r.class_id)?.name ??
     r.class ??
@@ -186,6 +227,7 @@ export default async function RegistrationPage({ params }) {
             rosterToken={r.roster_token}
             canEdit={r.status !== "withdrawn"}
             managerLabel="Manager"
+            knownPlayers={knownPlayers}
           />
         ) : (
           <p className="t-meta text-afa-red font-semibold">

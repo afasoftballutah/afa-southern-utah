@@ -1,5 +1,10 @@
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
+import { resolvePlayer, normalizeName } from "@/lib/identity";
+import {
+  composeDisplayName,
+  composeLegalName,
+} from "@/lib/person-name";
 
 // Personal remote-sign endpoint. No outbound comms here either — this only
 // ever writes a signature to the roster_members row that matches the token
@@ -21,7 +26,18 @@ export async function POST(request) {
     return bad("Invalid JSON body");
   }
 
-  const { token, signaturePng, address, birthDate } = body ?? {};
+  const {
+    token,
+    signaturePng,
+    address,
+    birthDate,
+    legalFirstName,
+    legalLastName,
+    preferredName,
+    gender,
+    email,
+    idAttested,
+  } = body ?? {};
   if (!token) return bad("Missing token");
   if (!signaturePng) return bad("Signature is required");
 
@@ -34,12 +50,10 @@ export async function POST(request) {
   // The relationship MUST be named. Two foreign keys now join these tables —
   // roster_members.registration_id and registrations.manager_member_id — so a
   // bare `registrations(...)` embed is ambiguous and PostgREST refuses it.
-  // Left unnamed, this returned an error, `member` came back null, and every
-  // valid signing link 404'd.
   const { data: member, error: findError } = await supabase
     .from("roster_members")
     .select(
-      "id, role, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id)"
+      "id, role, name, player_id, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id)"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -54,19 +68,99 @@ export async function POST(request) {
   if (member.removed_at) return bad("You are no longer on this roster", 410);
 
   const isManager = member.registrations?.manager_member_id === member.id;
-  const needsAddress = member.role === "player" || isManager;
+  const needsPlayerFields = member.role === "player" || isManager;
+
   const addressTrim = typeof address === "string" ? address.trim() : "";
-  if (needsAddress && !addressTrim) {
-    return bad("Address is required on the waiver");
+  const first = String(legalFirstName ?? "").trim();
+  const last = String(legalLastName ?? "").trim();
+  const preferred = String(preferredName ?? "").trim() || null;
+  const emailTrim = typeof email === "string" ? email.trim() || null : null;
+  const genderTrim =
+    gender === "M" || gender === "F" ? gender : null;
+  const birth =
+    typeof birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
+      ? birthDate
+      : null;
+
+  if (needsPlayerFields) {
+    if (!first || !last) {
+      return bad("Legal first and last name are required");
+    }
+    if (!genderTrim) return bad("Gender (M or F) is required");
+    if (!birth) return bad("Birth date is required");
+    if (!addressTrim) return bad("Address is required on the waiver");
+    if (!idAttested) {
+      return bad(
+        "You must certify that your information matches official identification"
+      );
+    }
   }
+
+  const legalName = composeLegalName({
+    legalFirstName: first,
+    legalLastName: last,
+  });
+  const displayName = composeDisplayName({
+    preferredName: preferred,
+    legalFirstName: first,
+    legalLastName: last,
+    name: member.name,
+  });
 
   const patch = {
     signature_png: signaturePng,
     signed_at: now,
   };
-  // Players fill these on the signing page (manager may have left them blank).
-  if (typeof address === "string") patch.address = addressTrim || null;
-  if (typeof birthDate === "string" && birthDate) patch.birth_date = birthDate;
+
+  if (needsPlayerFields) {
+    patch.legal_first_name = first;
+    patch.legal_last_name = last;
+    patch.preferred_name = preferred;
+    patch.name = displayName || member.name;
+    patch.gender = genderTrim;
+    patch.birth_date = birth;
+    patch.address = addressTrim;
+    if (emailTrim !== null) patch.email = emailTrim;
+    // phone stays null for players
+  } else {
+    // Coaches: address optional if they send it
+    if (typeof address === "string") patch.address = addressTrim || null;
+    if (birth) patch.birth_date = birth;
+  }
+
+  // Link / refresh the players directory once we have a safe identity key.
+  if (needsPlayerFields && birth && legalName) {
+    try {
+      const playerId = await resolvePlayer(supabase, {
+        name: legalName,
+        birthDate: birth,
+        legalFirstName: first,
+        legalLastName: last,
+        preferredName: preferred,
+        email: emailTrim,
+      });
+      if (playerId) {
+        patch.player_id = playerId;
+        // Keep directory gender in sync with what they certified.
+        await supabase
+          .from("players")
+          .update({
+            gender: genderTrim,
+            address: addressTrim,
+            email: emailTrim,
+            full_name: displayName || legalName,
+            normalized_name: normalizeName(legalName),
+            legal_first_name: first,
+            legal_last_name: last,
+            preferred_name: preferred,
+            birth_date: birth,
+          })
+          .eq("id", playerId);
+      }
+    } catch (err) {
+      console.error("player resolution on sign failed", err);
+    }
+  }
 
   const { error: updateError } = await supabase
     .from("roster_members")

@@ -26,11 +26,49 @@ async function getManageable(token) {
 
   if (!registration) return null;
 
-  const { data: members } = await supabase
-    .from("roster_members")
-    .select("id, name, role, birth_date, signed_at, removed_at")
-    .eq("registration_id", registration.id)
-    .order("created_at", { ascending: true });
+  const [{ data: members }, { data: directory }] = await Promise.all([
+    supabase
+      .from("roster_members")
+      .select("id, name, role, gender, birth_date, signed_at, removed_at")
+      .eq("registration_id", registration.id)
+      .order("created_at", { ascending: true }),
+    // Manage-token page only — directory for the add-player dropdown.
+    supabase
+      .from("players")
+      .select(
+        "id, full_name, legal_first_name, legal_last_name, preferred_name, gender, birth_date"
+      )
+      .is("merged_into_id", null)
+      .order("full_name")
+      .limit(500),
+  ]);
+
+  const knownPlayers = (directory ?? []).map((p) => {
+    const first =
+      String(p.legal_first_name ?? "").trim() ||
+      String(p.full_name ?? "").trim().split(/\s+/)[0] ||
+      "";
+    const last =
+      String(p.legal_last_name ?? "").trim() ||
+      String(p.full_name ?? "")
+        .trim()
+        .split(/\s+/)
+        .slice(1)
+        .join(" ") ||
+      "";
+    const label =
+      [last, first].filter(Boolean).join(", ") ||
+      p.preferred_name ||
+      p.full_name ||
+      "—";
+    return {
+      id: p.id,
+      label: p.birth_date ? `${label} (${p.birth_date})` : label,
+      firstName: first,
+      lastName: last,
+      gender: p.gender === "M" || p.gender === "F" ? p.gender : null,
+    };
+  });
 
   return {
     teamName: registration.team_name,
@@ -42,10 +80,12 @@ async function getManageable(token) {
     rosterToken: registration.roster_token,
     manageToken: token,
     managerMemberId: registration.manager_member_id,
+    knownPlayers,
     members: (members ?? []).map((m) => ({
       id: m.id,
       name: m.name,
       role: m.id === registration.manager_member_id ? "manager" : m.role,
+      gender: m.gender ?? null,
       birthDate: m.birth_date,
       signed: Boolean(m.signed_at),
       removed: Boolean(m.removed_at),
@@ -102,10 +142,11 @@ export default async function ManageRosterPage({ params }) {
       <div className="card p-4 space-y-1">
         <p className="t-strong">Manage your roster</p>
         <p className="t-meta">
-          Keep this link to yourself. Add players, release someone to the
-          free-agent pool (if your team folds or they need a new team), or claim
-          free agents. A player cannot be on two teams in the same gender for
-          this tournament.
+          Keep this link to yourself. Add players with first name, last name,
+          and gender only — they complete legal name, preferred name, birth
+          date, email, and address when they sign. Release someone to the
+          free-agent pool or claim free agents here. A player cannot be on two
+          teams in the same gender for this tournament.
         </p>
       </div>
 
@@ -121,6 +162,7 @@ export default async function ManageRosterPage({ params }) {
         initialMembers={data.members}
         rosterToken={data.rosterToken}
         canEdit={data.status !== "withdrawn"}
+        knownPlayers={data.knownPlayers}
       />
 
       {data.tournamentSlug && (

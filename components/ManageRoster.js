@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import PersonWizard from "@/components/forms/PersonWizard";
+import ManagerPlayerFields, {
+  managerPlayerDisplay,
+  managerPlayerReady,
+} from "@/components/ManagerPlayerFields";
 
 export default function ManageRoster({
   token,
@@ -10,15 +13,16 @@ export default function ManageRoster({
   canEdit = true,
   /** Shown on the manager's row — "You" for managers, "Manager" for directors. */
   managerLabel = "You",
+  /** Directory people for the add-player dropdown (id, label, first, last, gender). */
+  knownPlayers = [],
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [pool, setPool] = useState([]);
   const [person, setPerson] = useState({
-    legalFirstName: "",
-    legalLastName: "",
-    preferredName: "",
-    email: "",
-    birthDate: "",
+    firstName: "",
+    lastName: "",
+    gender: "",
+    playerId: null,
   });
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -45,9 +49,9 @@ export default function ManageRoster({
     loadPool();
   }, [loadPool]);
 
-  async function submitPerson(p) {
-    if (!p.legalFirstName?.trim() || !p.legalLastName?.trim()) {
-      setError("Legal first and last name are required");
+  async function submitPerson() {
+    if (!managerPlayerReady(person)) {
+      setError("First name, last name, and gender (M/F) are required");
       return;
     }
     setBusy(true);
@@ -59,11 +63,10 @@ export default function ManageRoster({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          legalFirstName: p.legalFirstName.trim(),
-          legalLastName: p.legalLastName.trim(),
-          preferredName: p.preferredName?.trim() || null,
-          email: p.email?.trim() || null,
-          birthDate: p.birthDate || null,
+          firstName: person.firstName.trim(),
+          lastName: person.lastName.trim(),
+          gender: person.gender,
+          playerId: person.playerId || null,
         }),
       });
       const json = await res.json();
@@ -76,7 +79,8 @@ export default function ManageRoster({
               ? {
                   ...m,
                   removed: false,
-                  birthDate: json.member.birthDate ?? m.birthDate,
+                  name: json.member.name ?? m.name,
+                  gender: json.member.gender ?? m.gender,
                 }
               : m
           );
@@ -87,7 +91,8 @@ export default function ManageRoster({
             id: json.member.id,
             name: json.member.name,
             role: "player",
-            birthDate: json.member.birthDate || p.birthDate || null,
+            gender: json.member.gender || person.gender,
+            birthDate: null,
             signed: false,
             removed: false,
             isManager: false,
@@ -95,13 +100,7 @@ export default function ManageRoster({
         ];
       });
       setAddedLink(json.member);
-      setPerson({
-        legalFirstName: "",
-        legalLastName: "",
-        preferredName: "",
-        email: "",
-        birthDate: "",
-      });
+      setPerson({ firstName: "", lastName: "", gender: "", playerId: null });
       setAdding(false);
       loadPool();
     } catch (err) {
@@ -149,6 +148,7 @@ export default function ManageRoster({
             name: json.member.name,
             role: "player",
             birthDate: json.member.birthDate ?? null,
+            gender: json.member.gender ?? null,
             signed: false,
             removed: false,
             isManager: false,
@@ -241,13 +241,15 @@ export default function ManageRoster({
             <span className="min-w-0">
               <span className="t-body font-semibold">
                 {m.name}
+                {m.gender ? (
+                  <span className="t-meta font-normal"> · {m.gender}</span>
+                ) : null}
                 {m.isManager ? (
                   <span className="t-meta font-normal"> · {managerLabel}</span>
                 ) : null}
               </span>
               <span className="t-meta block">
                 {m.signed ? "Signed" : "Waiting to sign"}
-                {m.birthDate ? ` · born ${m.birthDate}` : ""}
               </span>
             </span>
             {canEdit && !m.isManager ? (
@@ -329,30 +331,34 @@ export default function ManageRoster({
                 </button>
               </div>
               <p className="t-meta">
-                Legal name must match a license or official ID. Preferred name
-                is optional for the roster. Then birth date.
+                Just first name, last name, and gender. They fill in legal name,
+                preferred name, birth date, email, and address when they sign
+                their waiver.
               </p>
-              {busy ? (
-                <p className="t-meta">Saving…</p>
-              ) : (
-                <PersonWizard
-                  key="add-player"
-                  variant="addPlayer"
-                  value={person}
-                  onChange={setPerson}
-                  onComplete={submitPerson}
-                  completeLabel="Add to roster"
-                  fieldClass="w-full border border-afa-navy/30 rounded px-3 py-2"
-                />
-              )}
+              <ManagerPlayerFields
+                value={person}
+                onChange={setPerson}
+                knownPlayers={knownPlayers}
+                fieldClass="w-full border border-afa-navy/30 rounded px-3 py-2"
+              />
+              <button
+                type="button"
+                className="btn-action w-full"
+                disabled={busy || !managerPlayerReady(person)}
+                onClick={submitPerson}
+              >
+                {busy
+                  ? "Saving…"
+                  : `Add ${managerPlayerDisplay(person) || "to roster"}`}
+              </button>
             </>
           )}
 
           {addedLink && (
             <div className="rounded-xl bg-afa-navy/5 p-3 space-y-2">
               <p className="t-meta">
-                {addedLink.name} is on the roster. They can find their name on
-                the team link, or use this one directly.
+                {addedLink.name} is on the roster. They complete their own
+                details and sign on their link (or the team roster link).
               </p>
               <button
                 type="button"
