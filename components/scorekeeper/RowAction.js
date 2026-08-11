@@ -33,6 +33,7 @@ export default function RowAction({
   payload,
   action,
   valueKey,
+  buttonClass = "pill",
 }) {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState("");
@@ -85,7 +86,7 @@ export default function RowAction({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="pill"
+        className={buttonClass}
       >
         {label}
       </button>

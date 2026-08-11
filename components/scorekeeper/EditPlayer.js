@@ -40,7 +40,7 @@ function initialForm(player) {
  * Full edit of a player directory record (name, DOB, email, M/F, rating).
  * Inline selects still handle quick rating/gender; this is for everything else.
  */
-export default function EditPlayer({ player }) {
+export default function EditPlayer({ player, buttonClass = "pill" }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => initialForm(player));
   const [busy, setBusy] = useState(false);
@@ -102,7 +102,7 @@ export default function EditPlayer({ player }) {
 
   return (
     <>
-      <button type="button" className="pill" onClick={openEditor}>
+      <button type="button" className={buttonClass} onClick={openEditor}>
         Edit
       </button>
 

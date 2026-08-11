@@ -36,21 +36,33 @@ const COLUMNS = [
   { key: "dob", label: "DOB", width: "9rem" },
   { key: "address", label: "Address", hideBelow: "sm" },
   { key: "email", label: "Email", hideBelow: "sm" },
-  { key: "class", label: "Class", align: "center", width: "4.5rem", hideBelow: "sm" },
-  { key: "events", label: "#", align: "right", width: "3rem", hideBelow: "sm" },
+  { key: "class", label: "Class", align: "center", width: "4rem", hideBelow: "sm" },
+  { key: "events", label: "#", align: "center", width: "2.25rem", hideBelow: "sm" },
   {
     key: "waiver",
-    label: "Waiver",
+    label: "W",
     type: "check",
     align: "center",
-    width: "4.5rem",
+    width: "2.25rem",
     hideBelow: "sm",
   },
-  { key: "edit", label: "Edit", align: "center", width: "4rem", hideBelow: "sm" },
-  { key: "suspend", label: "Susp.", align: "center", width: "5rem", hideBelow: "sm" },
-  { key: "merge", label: "Merge", align: "center", width: "5.5rem", hideBelow: "sm" },
-  { key: "delete", label: "Delete", align: "center", width: "4.5rem", hideBelow: "sm" },
+  // One compact actions cluster — full Edit/Suspend/Merge/Delete columns ate the row.
+  {
+    key: "actions",
+    label: "",
+    align: "right",
+    width: "1%",
+    hideBelow: "sm",
+  },
 ];
+
+/** Tight pill for player row actions */
+const COMPACT =
+  "inline-flex items-center justify-center rounded border border-afa-navy/25 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-afa-navy leading-none whitespace-nowrap hover:border-afa-navy/50";
+const COMPACT_DANGER =
+  "inline-flex items-center justify-center rounded border border-afa-red/35 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-afa-red leading-none whitespace-nowrap hover:border-afa-red";
+const COMPACT_SUSP =
+  "inline-flex items-center justify-center rounded border border-afa-red/40 bg-afa-red/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-afa-red leading-none whitespace-nowrap";
 
 const FILTERS = [
   { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
@@ -187,35 +199,36 @@ export default async function PlayersPage() {
       </span>
     );
 
-    const editBtn = <EditPlayer player={p} />;
-    const suspendBtn = (
-      <SuspendPlayer
-        player={p}
-        tournaments={tournaments}
-        suspensions={playerSuspensions}
-        buttonClass={
-          currentlySuspended
-            ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red"
-            : "pill"
-        }
-      />
+    const actionsCell = (
+      <span className="inline-flex flex-nowrap items-center justify-end gap-0.5">
+        <EditPlayer player={p} buttonClass={COMPACT} />
+        <SuspendPlayer
+          player={p}
+          tournaments={tournaments}
+          suspensions={playerSuspensions}
+          buttonClass={currentlySuspended ? COMPACT_SUSP : COMPACT}
+        />
+        <RowAction
+          label="Merge"
+          title={`Merge into ${p.full_name}`}
+          note="Everything on the duplicate moves here. Nothing is deleted."
+          placeholder="Pick the duplicate…"
+          emptyMessage="No other people to merge."
+          countSingular="person"
+          countPlural="people"
+          action="mergePlayers"
+          valueKey="dropId"
+          payload={{ keepId: p.id }}
+          options={mergeOptionsFor(p.id)}
+          buttonClass={COMPACT}
+        />
+        <DeletePlayer
+          playerId={p.id}
+          name={p.full_name}
+          buttonClass={COMPACT_DANGER}
+        />
+      </span>
     );
-    const mergeBtn = (
-      <RowAction
-        label="Merge"
-        title={`Merge into ${p.full_name}`}
-        note="Everything on the duplicate moves here. Nothing is deleted."
-        placeholder="Pick the duplicate…"
-        emptyMessage="No other people to merge."
-        countSingular="person"
-        countPlural="people"
-        action="mergePlayers"
-        valueKey="dropId"
-        payload={{ keepId: p.id }}
-        options={mergeOptionsFor(p.id)}
-      />
-    );
-    const deleteBtn = <DeletePlayer playerId={p.id} name={p.full_name} />;
     const classSelect = (
       <InlineSelect
         label="Class"
@@ -440,10 +453,7 @@ export default async function PlayersPage() {
         class: classSelect,
         events: active.length,
         waiver: allWaiversOk,
-        edit: editBtn,
-        suspend: suspendBtn,
-        merge: mergeBtn,
-        delete: deleteBtn,
+        actions: actionsCell,
       },
       sortValues: {
         name: lastNameKey(

@@ -7,7 +7,11 @@ import ConfirmDialog from "./ConfirmDialog";
  * Hard-delete a person from the players directory.
  * Roster member rows stay (names/waivers); they just lose the player_id link.
  */
-export default function DeletePlayer({ playerId, name }) {
+export default function DeletePlayer({
+  playerId,
+  name,
+  buttonClass = "pill text-afa-red border-afa-red/30 hover:border-afa-red",
+}) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +39,7 @@ export default function DeletePlayer({ playerId, name }) {
     <>
       <button
         type="button"
-        className="pill text-afa-red border-afa-red/30 hover:border-afa-red"
+        className={buttonClass}
         disabled={busy}
         onClick={() => setAsk(true)}
       >
