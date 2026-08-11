@@ -8,6 +8,7 @@ import { getDirectorCounts } from "@/lib/director";
 import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen, stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
+import ChangePins from "@/components/scorekeeper/ChangePins";
 import DirectorCard, { CardGrid } from "@/components/scorekeeper/DirectorCard";
 import Link from "next/link";
 
@@ -87,9 +88,12 @@ export default async function DirectorPage() {
           <p className="t-label text-afa-navy/60">Director</p>
           <h1 className="t-title">Control Center</h1>
         </div>
-        <Link href="/scorekeeper" className="btn-transient text-sm">
-          Open Scorekeeper room →
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ChangePins />
+          <Link href="/scorekeeper" className="btn-transient text-sm">
+            Open Scorekeeper room →
+          </Link>
+        </div>
       </div>
 
       <CardGrid>

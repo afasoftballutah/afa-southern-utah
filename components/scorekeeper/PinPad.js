@@ -66,10 +66,10 @@ export default function PinPad({ room = "pick" }) {
         : "Staff door";
   const subtitle =
     room === "scorekeeper"
-      ? "Enter the PIN to put in scores."
+      ? "Enter the scorekeeper (field) PIN to put in scores."
       : room === "director"
-        ? "Enter the PIN for the control center."
-        : "PIN is the same. Pick who you are for this session.";
+        ? "Enter the director PIN for the control center."
+        : "Pick who you are — director and scorekeeper can use different PINs.";
 
   return (
     <div className="max-w-xs mx-auto space-y-4 text-center">
