@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SoftField, { FixedSummary, PageDots } from "./SoftField";
+import LegalIdBox from "./LegalIdBox";
 import AddressInput from "@/components/AddressInput";
 
 /**
@@ -194,30 +195,26 @@ export default function PersonWizard({
 
   const contactBlock = (
     <>
-      <p className="text-sm text-afa-ink/75">
-        <strong className="text-afa-navy">Legal name</strong>
-        {" must match a driver’s license or other official ID. "}
-        <strong className="text-afa-navy">Preferred name</strong>
-        {" is what shows on the roster if different."}
-      </p>
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <SoftField
-          label="Legal last name"
-          explainer="Legal last — as on license / ID"
-          autoComplete="family-name"
-          value={p.legalLastName}
-          onChange={(e) => set({ legalLastName: e.target.value })}
-          inputClassName={fieldClass}
-        />
-        <SoftField
-          label="Legal first name"
-          explainer="Legal first — as on license / ID"
-          autoComplete="given-name"
-          value={p.legalFirstName}
-          onChange={(e) => set({ legalFirstName: e.target.value })}
-          inputClassName={fieldClass}
-        />
-      </div>
+      <LegalIdBox detail="Preferred name (below) is what shows on the roster if different.">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <SoftField
+            label="Legal last name"
+            explainer="Legal last — as on license / ID"
+            autoComplete="family-name"
+            value={p.legalLastName}
+            onChange={(e) => set({ legalLastName: e.target.value })}
+            inputClassName={fieldClass}
+          />
+          <SoftField
+            label="Legal first name"
+            explainer="Legal first — as on license / ID"
+            autoComplete="given-name"
+            value={p.legalFirstName}
+            onChange={(e) => set({ legalFirstName: e.target.value })}
+            inputClassName={fieldClass}
+          />
+        </div>
+      </LegalIdBox>
       <SoftField
         label="Preferred name"
         explainer="Preferred name on the roster (optional)"
@@ -263,13 +260,10 @@ export default function PersonWizard({
   );
 
   const addressBlock = hasAddress && (
-    <>
-      <p className="text-sm text-afa-ink/75">
-        <strong className="text-afa-navy">Address</strong>
-        {
-          " must match a driver’s license or other official document (waiver)."
-        }
-      </p>
+    <LegalIdBox
+      title="Address on ID"
+      detail="Optional for now — the player can add it when they sign if needed."
+    >
       <label className="block">
         <span className="t-label block mb-1 min-h-[1rem]">
           Street (as on license / ID)
@@ -313,10 +307,7 @@ export default function PersonWizard({
           inputClassName={fieldClass}
         />
       </div>
-      <p className="t-meta text-xs">
-        Optional for now — the player can add it when they sign if needed.
-      </p>
-    </>
+    </LegalIdBox>
   );
 
   const birthBlock = hasBirth && (

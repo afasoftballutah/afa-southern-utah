@@ -5,6 +5,7 @@ import { writeMe } from "@/lib/me";
 import SignaturePad from "./SignaturePad";
 import AddressInput from "./AddressInput";
 import SoftField from "@/components/forms/SoftField";
+import LegalIdBox from "@/components/forms/LegalIdBox";
 import { RELEASE_TEXT } from "@/lib/waiver";
 
 const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing" };
@@ -132,27 +133,38 @@ export default function SignRosterMember({ token, member }) {
       {needsPlayerFields && (
         <div className="space-y-3 form-surface p-3">
           <p className="t-strong text-sm">Your information</p>
-          <p className="t-meta break-words whitespace-normal leading-snug">
-            Complete this yourself. Legal name and address must match a
-            driver&rsquo;s license or other official ID you can present on game
-            day.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SoftField
-              label="Legal first name"
-              explainer="As on license / ID"
-              value={legalFirstName}
-              onChange={(e) => setLegalFirstName(e.target.value)}
-              autoComplete="given-name"
-            />
-            <SoftField
-              label="Legal last name"
-              explainer="As on license / ID"
-              value={legalLastName}
-              onChange={(e) => setLegalLastName(e.target.value)}
-              autoComplete="family-name"
-            />
-          </div>
+          <p className="t-meta">Complete this yourself.</p>
+
+          <LegalIdBox detail="You must be able to present that ID on game day.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftField
+                label="Legal first name"
+                explainer="As on license / ID"
+                value={legalFirstName}
+                onChange={(e) => setLegalFirstName(e.target.value)}
+                autoComplete="given-name"
+              />
+              <SoftField
+                label="Legal last name"
+                explainer="As on license / ID"
+                value={legalLastName}
+                onChange={(e) => setLegalLastName(e.target.value)}
+                autoComplete="family-name"
+              />
+            </div>
+            <label className="block">
+              <span className="form-label">
+                Address (as on license / official ID)
+              </span>
+              <AddressInput
+                value={address}
+                onChange={setAddress}
+                placeholder="Street address as on license or official document"
+                required
+              />
+            </label>
+          </LegalIdBox>
+
           <SoftField
             label="Preferred name"
             explainer="Optional — what you go by on rosters / score sheets"
@@ -196,17 +208,6 @@ export default function SignRosterMember({ token, member }) {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
-          <label className="block">
-            <span className="form-label">
-              Address (as on license / official ID)
-            </span>
-            <AddressInput
-              value={address}
-              onChange={setAddress}
-              placeholder="Street address as on license or official document"
-              required
-            />
-          </label>
         </div>
       )}
 

@@ -1,5 +1,7 @@
 "use client";
 
+import LegalIdBox from "@/components/forms/LegalIdBox";
+
 /**
  * Manager-only player entry: first name, last name, gender.
  * Optional knownPlayers list becomes a datalist so they can pick someone
@@ -31,13 +33,6 @@ export default function ManagerPlayerFields({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-afa-ink/75 break-words whitespace-normal leading-snug">
-        Legal name and address must match a driver&rsquo;s license or other
-        official ID.
-        <span className="block mt-0.5 text-afa-muted">
-          The player confirms that when they sign their waiver.
-        </span>
-      </p>
       {knownPlayers.length > 0 && (
         <label className="block">
           <span className="form-label">Pick someone already on file (optional)</span>
@@ -65,32 +60,37 @@ export default function ManagerPlayerFields({
         </label>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="form-label">First name</span>
-          <input
-            className={fieldClass}
-            autoComplete="given-name"
-            value={v.firstName || ""}
-            onChange={(e) =>
-              set({ firstName: e.target.value, playerId: null })
-            }
-            placeholder="First"
-          />
-        </label>
-        <label className="block">
-          <span className="form-label">Last name</span>
-          <input
-            className={fieldClass}
-            autoComplete="family-name"
-            value={v.lastName || ""}
-            onChange={(e) =>
-              set({ lastName: e.target.value, playerId: null })
-            }
-            placeholder="Last"
-          />
-        </label>
-      </div>
+      <LegalIdBox
+        title="Player name"
+        detail="Use their legal first and last if you know it. They confirm legal name and address when they sign."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="form-label">First name</span>
+            <input
+              className={fieldClass}
+              autoComplete="given-name"
+              value={v.firstName || ""}
+              onChange={(e) =>
+                set({ firstName: e.target.value, playerId: null })
+              }
+              placeholder="First"
+            />
+          </label>
+          <label className="block">
+            <span className="form-label">Last name</span>
+            <input
+              className={fieldClass}
+              autoComplete="family-name"
+              value={v.lastName || ""}
+              onChange={(e) =>
+                set({ lastName: e.target.value, playerId: null })
+              }
+              placeholder="Last"
+            />
+          </label>
+        </div>
+      </LegalIdBox>
 
       <fieldset>
         <legend className="form-label mb-1">Gender</legend>

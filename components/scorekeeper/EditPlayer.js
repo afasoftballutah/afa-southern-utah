@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import SoftField from "@/components/forms/SoftField";
+import LegalIdBox from "@/components/forms/LegalIdBox";
 import { RATINGS } from "@/lib/class";
 
 function splitName(full) {
@@ -127,39 +128,37 @@ export default function EditPlayer({ player }) {
             </>
           }
         >
-          <p className="t-meta break-words whitespace-normal">
-            Legal name and address must match a driver&rsquo;s license or other
-            official ID. Preferred is what shows on rosters.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <LegalIdBox detail="Preferred name (below) is what shows on rosters if different.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftField
+                label="Legal first name"
+                explainer="As on license / ID"
+                value={form.legalFirstName}
+                onChange={set("legalFirstName")}
+                autoComplete="given-name"
+              />
+              <SoftField
+                label="Legal last name"
+                explainer="As on license / ID"
+                value={form.legalLastName}
+                onChange={set("legalLastName")}
+                autoComplete="family-name"
+              />
+            </div>
             <SoftField
-              label="Legal first name"
-              explainer="As on license / ID"
-              value={form.legalFirstName}
-              onChange={set("legalFirstName")}
-              autoComplete="given-name"
+              label="Address"
+              explainer="As on license / official ID"
+              value={form.address}
+              onChange={set("address")}
+              autoComplete="street-address"
             />
-            <SoftField
-              label="Legal last name"
-              explainer="As on license / ID"
-              value={form.legalLastName}
-              onChange={set("legalLastName")}
-              autoComplete="family-name"
-            />
-          </div>
+          </LegalIdBox>
           <SoftField
             label="Preferred name"
             explainer="Optional — what they go by on rosters"
             value={form.preferredName}
             onChange={set("preferredName")}
             autoComplete="nickname"
-          />
-          <SoftField
-            label="Address"
-            explainer="As on license / official ID"
-            value={form.address}
-            onChange={set("address")}
-            autoComplete="street-address"
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <SoftField
