@@ -1,27 +1,45 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import LegalIdBox from "@/components/forms/LegalIdBox";
 
 /**
  * Manager-only player entry: first name, last name, gender.
- * Optional knownPlayers list becomes a datalist so they can pick someone
- * already in the directory (manage page) without retyping.
+ * When knownPlayers is provided, managers can search/pick someone already
+ * in the directory instead of retyping.
  */
 export default function ManagerPlayerFields({
   value,
   onChange,
   knownPlayers = [],
   fieldClass = "form-field",
+  /** Hide people already on this roster (by player id). */
+  excludePlayerIds = [],
 }) {
   const v = value || {};
   const set = (patch) => onChange({ ...v, ...patch });
+  const [query, setQuery] = useState("");
+  const [listOpen, setListOpen] = useState(false);
 
-  function pickKnown(raw) {
-    const label = String(raw ?? "").trim();
-    if (!label) return;
-    const hit = knownPlayers.find(
-      (p) => p.label === label || p.id === label
-    );
+  const exclude = useMemo(
+    () => new Set((excludePlayerIds ?? []).filter(Boolean)),
+    [excludePlayerIds]
+  );
+
+  const options = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = (knownPlayers ?? []).filter((p) => !exclude.has(p.id));
+    if (q) {
+      list = list.filter(
+        (p) =>
+          (p.search && p.search.includes(q)) ||
+          (p.label && p.label.toLowerCase().includes(q))
+      );
+    }
+    return list.slice(0, 40);
+  }, [knownPlayers, exclude, query]);
+
+  function pickKnown(hit) {
     if (!hit) return;
     set({
       firstName: hit.firstName || "",
@@ -29,35 +47,97 @@ export default function ManagerPlayerFields({
       gender: hit.gender || v.gender || "",
       playerId: hit.id,
     });
+    setQuery("");
+    setListOpen(false);
   }
+
+  function clearPick() {
+    set({ playerId: null });
+  }
+
+  const picked =
+    v.playerId &&
+    knownPlayers.find((p) => p.id === v.playerId);
 
   return (
     <div className="space-y-3">
       {knownPlayers.length > 0 && (
-        <label className="block">
-          <span className="form-label">Pick someone already on file (optional)</span>
-          <select
-            className={fieldClass}
-            defaultValue=""
-            onChange={(e) => {
-              const id = e.target.value;
-              if (!id) return;
-              pickKnown(id);
-              e.target.value = "";
-            }}
-          >
-            <option value="">— New player —</option>
-            {knownPlayers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-                {p.gender ? ` (${p.gender})` : ""}
-              </option>
-            ))}
-          </select>
-          <span className="t-meta block mt-1">
-            Or type a new first and last name below.
+        <div className="space-y-1.5">
+          <span className="form-label">
+            Pick someone already on file (optional)
           </span>
-        </label>
+          {picked ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-afa-navy/15 bg-afa-soft-gray/40 px-3 py-2">
+              <span className="t-body text-sm font-semibold min-w-0">
+                {picked.label}
+                {picked.gender ? ` · ${picked.gender}` : ""}
+              </span>
+              <button
+                type="button"
+                className="t-label underline text-afa-muted shrink-0"
+                onClick={clearPick}
+              >
+                Clear
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                type="search"
+                className={fieldClass}
+                value={query}
+                placeholder="Search last name, first name…"
+                autoComplete="off"
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setListOpen(true);
+                }}
+                onFocus={() => setListOpen(true)}
+                onBlur={() => {
+                  // Delay so option click registers
+                  setTimeout(() => setListOpen(false), 150);
+                }}
+              />
+              {listOpen && query.trim() && (
+                <ul
+                  className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-afa-navy/15 bg-white shadow-lg"
+                  role="listbox"
+                >
+                  {options.length === 0 ? (
+                    <li className="px-3 py-2 t-meta text-sm">
+                      No match — type a new name below.
+                    </li>
+                  ) : (
+                    options.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-afa-navy/5"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickKnown(p)}
+                        >
+                          <span className="font-semibold">{p.label}</span>
+                          {p.gender ? (
+                            <span className="t-meta"> · {p.gender}</span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+              {!query.trim() && listOpen && (
+                <p className="t-meta text-[11px] mt-1">
+                  Type a few letters to search {knownPlayers.length} people on
+                  file.
+                </p>
+              )}
+            </div>
+          )}
+          <p className="t-meta text-[12px]">
+            Or enter a new first and last name below.
+          </p>
+        </div>
       )}
 
       <LegalIdBox

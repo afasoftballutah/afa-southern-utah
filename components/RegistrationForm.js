@@ -27,6 +27,7 @@ const emptyPlayer = () => ({
   firstName: "",
   lastName: "",
   gender: "",
+  playerId: null,
 });
 const emptyCoach = () => ({
   legalFirstName: "",
@@ -47,6 +48,8 @@ export default function RegistrationForm({
   tournaments,
   regionLabel,
   initialTournamentSlug = null,
+  /** Directory for pick-existing-player on the Players step. */
+  knownPlayers = [],
 }) {
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
@@ -268,6 +271,7 @@ export default function RegistrationForm({
             firstName: p.firstName.trim(),
             lastName: p.lastName.trim(),
             gender: p.gender,
+            playerId: p.playerId || null,
           })),
         coaches: coaches
           .filter(
@@ -666,11 +670,11 @@ export default function RegistrationForm({
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">
-              For each player enter <strong>first name</strong>,{" "}
-              <strong>last name</strong>, and <strong>gender</strong> only.
-              They complete legal name, preferred name, birth date, email, and
-              address when they sign their own waiver. At least one player is
-              required.
+              Pick someone already on file, or enter{" "}
+              <strong>first name</strong>, <strong>last name</strong>, and{" "}
+              <strong>gender</strong>. They complete legal name, preferred
+              name, birth date, email, and address when they sign their own
+              waiver. At least one player is required.
             </p>
             {/* Managers play. If she has not listed herself, offer it rather
                 than adding it behind her back — the route adds her either way. */}
@@ -735,7 +739,10 @@ export default function RegistrationForm({
                       return copy;
                     });
                   }}
-                  idPrefix={`reg-player-${i}`}
+                  knownPlayers={knownPlayers}
+                  excludePlayerIds={players
+                    .map((x, idx) => (idx !== i ? x.playerId : null))
+                    .filter(Boolean)}
                 />
               </div>
             ))}

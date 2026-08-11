@@ -53,6 +53,7 @@ export async function POST(request) {
   }
 
   // Manager-entered players: first + last + gender. Full identity at waiver sign.
+  // Optional playerId when manager picked someone already in the directory.
   const playerRows = (players ?? [])
     .map((p) => {
       const first = String(p.firstName ?? p.legalFirstName ?? "").trim();
@@ -79,6 +80,7 @@ export async function POST(request) {
         person,
         birthDate: p.birthDate || null,
         address: p.address || null,
+        knownPlayerId: p.playerId ? String(p.playerId) : null,
       };
     })
     .filter((p) => p.displayName);
@@ -228,16 +230,36 @@ export async function POST(request) {
     await Promise.all(
       insertedRoster.map(async (row) => {
         const source = rosterRows.find((r) => r.name === row.name);
-        const playerId = await resolvePlayer(supabase, {
-          name: row.name,
-          birthDate: source?.birth_date ?? null,
-          legalFirstName: source?.legal_first_name,
-          legalLastName: source?.legal_last_name,
-          preferredName: source?.preferred_name,
-          email: source?.email,
-        });
+        // Prefer manager-picked directory id when present.
+        const fromPick = playerRows.find(
+          (p) => p.displayName === row.name && p.knownPlayerId
+        )?.knownPlayerId;
+        let playerId = fromPick || null;
         if (playerId) {
-          await supabase.from("roster_members").update({ player_id: playerId }).eq("id", row.id);
+          const { data: known } = await supabase
+            .from("players")
+            .select("id, merged_into_id")
+            .eq("id", playerId)
+            .maybeSingle();
+          playerId = known
+            ? known.merged_into_id || known.id
+            : null;
+        }
+        if (!playerId) {
+          playerId = await resolvePlayer(supabase, {
+            name: row.name,
+            birthDate: source?.birth_date ?? null,
+            legalFirstName: source?.legal_first_name,
+            legalLastName: source?.legal_last_name,
+            preferredName: source?.preferred_name,
+            email: source?.email,
+          });
+        }
+        if (playerId) {
+          await supabase
+            .from("roster_members")
+            .update({ player_id: playerId })
+            .eq("id", row.id);
         }
       })
     );

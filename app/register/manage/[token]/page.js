@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
+import { loadKnownPlayers } from "@/lib/known-players";
 import ManageRoster from "@/components/ManageRoster";
 import RegisterBack from "@/components/RegisterBack";
 import RememberManageVisit from "@/components/RememberManageVisit";
@@ -26,49 +27,17 @@ async function getManageable(token) {
 
   if (!registration) return null;
 
-  const [{ data: members }, { data: directory }] = await Promise.all([
+  const [{ data: members }, knownPlayers] = await Promise.all([
     supabase
       .from("roster_members")
-      .select("id, name, role, gender, birth_date, signed_at, removed_at")
+      .select(
+        "id, name, role, gender, birth_date, signed_at, removed_at, player_id"
+      )
       .eq("registration_id", registration.id)
       .order("created_at", { ascending: true }),
-    // Manage-token page only — directory for the add-player dropdown.
-    supabase
-      .from("players")
-      .select(
-        "id, full_name, legal_first_name, legal_last_name, preferred_name, gender, birth_date"
-      )
-      .is("merged_into_id", null)
-      .order("full_name")
-      .limit(500),
+    // Manage-token page only — directory for the add-player search.
+    loadKnownPlayers(supabase),
   ]);
-
-  const knownPlayers = (directory ?? []).map((p) => {
-    const first =
-      String(p.legal_first_name ?? "").trim() ||
-      String(p.full_name ?? "").trim().split(/\s+/)[0] ||
-      "";
-    const last =
-      String(p.legal_last_name ?? "").trim() ||
-      String(p.full_name ?? "")
-        .trim()
-        .split(/\s+/)
-        .slice(1)
-        .join(" ") ||
-      "";
-    const label =
-      [last, first].filter(Boolean).join(", ") ||
-      p.preferred_name ||
-      p.full_name ||
-      "—";
-    return {
-      id: p.id,
-      label: p.birth_date ? `${label} (${p.birth_date})` : label,
-      firstName: first,
-      lastName: last,
-      gender: p.gender === "M" || p.gender === "F" ? p.gender : null,
-    };
-  });
 
   return {
     teamName: registration.team_name,
@@ -90,6 +59,7 @@ async function getManageable(token) {
       signed: Boolean(m.signed_at),
       removed: Boolean(m.removed_at),
       isManager: m.id === registration.manager_member_id,
+      playerId: m.player_id ?? null,
     })),
   };
 }
@@ -142,11 +112,12 @@ export default async function ManageRosterPage({ params }) {
       <div className="card p-4 space-y-1">
         <p className="t-strong">Manage your roster</p>
         <p className="t-meta">
-          Keep this link to yourself. Add players with first name, last name,
-          and gender only — they complete legal name, preferred name, birth
-          date, email, and address when they sign. Release someone to the
-          free-agent pool or claim free agents here. A player cannot be on two
-          teams in the same gender for this tournament.
+          Keep this link to yourself. Search the directory to add someone
+          already on file, or type first name, last name, and gender for a new
+          player — they complete legal name, preferred name, birth date, email,
+          and address when they sign. Release someone to the free-agent pool or
+          claim free agents here. A player cannot be on two teams in the same
+          gender for this tournament.
         </p>
       </div>
 

@@ -116,32 +116,8 @@ async function load(id) {
     };
   });
 
-  const knownPlayers = (directory ?? []).map((p) => {
-    const first =
-      String(p.legal_first_name ?? "").trim() ||
-      String(p.full_name ?? "").trim().split(/\s+/)[0] ||
-      "";
-    const last =
-      String(p.legal_last_name ?? "").trim() ||
-      String(p.full_name ?? "")
-        .trim()
-        .split(/\s+/)
-        .slice(1)
-        .join(" ") ||
-      "";
-    const label =
-      [last, first].filter(Boolean).join(", ") ||
-      p.preferred_name ||
-      p.full_name ||
-      "—";
-    return {
-      id: p.id,
-      label: p.birth_date ? `${label} (${p.birth_date})` : label,
-      firstName: first,
-      lastName: last,
-      gender: p.gender === "M" || p.gender === "F" ? p.gender : null,
-    };
-  });
+  const { mapDirectoryPlayers } = await import("@/lib/known-players");
+  const knownPlayers = mapDirectoryPlayers(directory ?? []);
 
   // Suspended stay on the roster list but do not count for class / mins.
   const { counting, suspended } = partitionRosterBySuspension(

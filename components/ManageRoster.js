@@ -29,6 +29,7 @@ export default function ManageRoster({
     gender: "",
     playerId: null,
   });
+  // person.playerId set when manager picks from the directory search.
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -369,14 +370,17 @@ export default function ManageRoster({
                 </button>
               </div>
               <p className="t-meta">
-                Just first name, last name, and gender. They fill in legal name,
-                preferred name, birth date, email, and address when they sign
-                their waiver.
+                Search for someone already on file, or type first name, last
+                name, and gender. They fill in legal name, preferred name, birth
+                date, email, and address when they sign their waiver.
               </p>
               <ManagerPlayerFields
                 value={person}
                 onChange={setPerson}
                 knownPlayers={knownPlayers}
+                excludePlayerIds={members
+                  .filter((m) => !m.removed && m.playerId)
+                  .map((m) => m.playerId)}
                 fieldClass="w-full border border-afa-navy/30 rounded px-3 py-2"
               />
               <button

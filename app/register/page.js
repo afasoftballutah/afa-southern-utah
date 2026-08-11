@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { getPublicClient, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  getPublicClient,
+  getServiceClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase";
 import { REGION_LABEL, isRealPoster } from "@/lib/data";
 import { isRegistrationOpen } from "@/lib/tournament-state";
+import { loadKnownPlayers } from "@/lib/known-players";
 import RegistrationForm from "@/components/RegistrationForm";
 import RegisterBack from "@/components/RegisterBack";
 import MyRegistrations from "@/components/MyRegistrations";
@@ -32,6 +37,17 @@ export default async function RegisterPage({ searchParams }) {
   const registerable = tournaments.filter(
     (t) => isRegistrationOpen(t) && isRealPoster(t)
   );
+
+  // Directory for manager pick-lists (service role — not public).
+  let knownPlayers = [];
+  if (isSupabaseConfigured() && registerable.length > 0) {
+    try {
+      knownPlayers = await loadKnownPlayers(getServiceClient());
+    } catch (err) {
+      console.error("register knownPlayers", err);
+      knownPlayers = [];
+    }
+  }
 
   const params = await searchParams;
   const initialTournamentSlug =
@@ -64,6 +80,7 @@ export default async function RegisterPage({ searchParams }) {
           tournaments={registerable}
           regionLabel={REGION_LABEL}
           initialTournamentSlug={initialTournamentSlug}
+          knownPlayers={knownPlayers}
         />
       )}
     </div>
