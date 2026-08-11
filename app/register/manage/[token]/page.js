@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import { loadKnownPlayers } from "@/lib/known-players";
+import { directorPersonLabel } from "@/lib/person-name";
 import ManageRoster from "@/components/ManageRoster";
 import RegisterBack from "@/components/RegisterBack";
 import RememberManageVisit from "@/components/RememberManageVisit";
@@ -31,7 +32,7 @@ async function getManageable(token) {
     supabase
       .from("roster_members")
       .select(
-        "id, name, role, gender, birth_date, signed_at, removed_at, player_id"
+        "id, name, role, gender, birth_date, signed_at, removed_at, player_id, legal_first_name, legal_last_name, preferred_name"
       )
       .eq("registration_id", registration.id)
       .order("created_at", { ascending: true }),
@@ -50,9 +51,16 @@ async function getManageable(token) {
     manageToken: token,
     managerMemberId: registration.manager_member_id,
     knownPlayers,
+    // Full legal name for managers — first-only `name` is score-sheet style
+    // and is not enough to tell teammates apart on this page.
     members: (members ?? []).map((m) => ({
       id: m.id,
-      name: m.name,
+      name: directorPersonLabel({
+        legalFirstName: m.legal_first_name,
+        legalLastName: m.legal_last_name,
+        preferredName: m.preferred_name,
+        name: m.name,
+      }),
       role: m.id === registration.manager_member_id ? "manager" : m.role,
       gender: m.gender ?? null,
       birthDate: m.birth_date,

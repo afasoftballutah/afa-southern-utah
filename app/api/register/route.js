@@ -147,20 +147,27 @@ export async function POST(request) {
   const registrationId = inserted.id;
 
   const rosterRows = [
-    ...playerRows.map((p) => ({
-      registration_id: registrationId,
-      role: "player",
-      name: p.displayName,
-      // Manager stub names — player confirms legal/preferred at signing.
-      legal_first_name: p.first || p.person.legalFirstName,
-      legal_last_name: p.last || p.person.legalLastName,
-      preferred_name: null,
-      email: null,
-      phone: null,
-      gender: p.gender,
-      birth_date: null,
-      address: null,
-    })),
+    ...playerRows.map((p) => {
+      // Manager list: first + last so manage/roster pages can tell people
+      // apart. Preferred stays empty until they sign (score sheets can use
+      // first name later).
+      const first = p.first || p.person.legalFirstName || "";
+      const last = p.last || p.person.legalLastName || "";
+      const full = [first, last].filter(Boolean).join(" ") || p.displayName;
+      return {
+        registration_id: registrationId,
+        role: "player",
+        name: full,
+        legal_first_name: first || null,
+        legal_last_name: last || null,
+        preferred_name: null,
+        email: null,
+        phone: null,
+        gender: p.gender,
+        birth_date: null,
+        address: null,
+      };
+    }),
     ...(coaches ?? [])
       .map((c) => personFieldsFromInput(c, { allowPhone: true }))
       .filter((c) => c.displayName)

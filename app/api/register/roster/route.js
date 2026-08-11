@@ -369,19 +369,23 @@ export async function POST(request) {
     .ilike("name", displayName)
     .maybeSingle();
 
-  // Manager stub: roster name + gender only. Legal/preferred/email/DOB/address
-  // are filled by the player on the signing page (except coaches).
+  // Manager stub: first + last on `name` so manage lists stay clear.
+  // Preferred stays null for players until they sign.
+  const legalFirst = isCoach
+    ? person.legalFirstName
+    : firstName || person.legalFirstName;
+  const legalLast = isCoach
+    ? person.legalLastName
+    : lastName || person.legalLastName;
+  const listName =
+    [legalFirst, legalLast].filter(Boolean).join(" ") || displayName;
   const memberPatch = {
     removed_at: null,
-    name: displayName,
+    name: listName,
     gender: gender,
     birth_date: isCoach ? birthDate || null : birthDate || null,
-    legal_first_name: isCoach
-      ? person.legalFirstName
-      : firstName || person.legalFirstName,
-    legal_last_name: isCoach
-      ? person.legalLastName
-      : lastName || person.legalLastName,
+    legal_first_name: legalFirst,
+    legal_last_name: legalLast,
     preferred_name: isCoach ? person.preferredName : null,
     email: isCoach ? person.email : person.email || null,
     phone: isCoach ? person.phone : null,
