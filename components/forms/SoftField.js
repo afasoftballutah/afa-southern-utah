@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
+
 /**
- * Always-visible label + optional placeholder tip.
- * Date/time and short fields need a permanent label — hiding it until
- * focus made empty rows look unlabeled (JD).
+ * Always-visible label + optional placeholder tip inside the field.
+ * Date/time inputs ignore native placeholders — we paint the tip over them
+ * when empty so "optional" still shows inside the control.
  */
 export default function SoftField({
   label,
@@ -17,19 +19,43 @@ export default function SoftField({
   className = "",
   inputClassName = "form-field",
 }) {
+  const [focused, setFocused] = useState(false);
+  const filled = String(value ?? "").trim().length > 0;
+  const needsOverlay =
+    Boolean(explainer) &&
+    !filled &&
+    !focused &&
+    (type === "date" || type === "time" || type === "datetime-local");
+
   return (
     <label className={"block " + className}>
       <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
-      <input
-        type={type}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        list={list}
-        value={value ?? ""}
-        onChange={onChange}
-        placeholder={explainer}
-        className={inputClassName + " w-full"}
-      />
+      <span className="relative block">
+        <input
+          type={type}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          list={list}
+          value={value ?? ""}
+          onChange={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={explainer}
+          className={
+            inputClassName +
+            " w-full " +
+            (needsOverlay ? "text-transparent" : "")
+          }
+        />
+        {needsOverlay && (
+          <span
+            className="pointer-events-none absolute inset-0 flex items-center px-3 text-afa-muted text-[1rem]"
+            aria-hidden
+          >
+            {explainer}
+          </span>
+        )}
+      </span>
     </label>
   );
 }

@@ -13,9 +13,8 @@ import WorkFocus from "@/components/forms/WorkFocus";
  */
 
 /**
- * Soft field for room forms. Label always on; placeholder is optional tip only
- * (examples like "300" or "e.g. Coed Heat Stroker") — not a second copy of the label.
- * optional → "optional" in the label line, quiet.
+ * Soft field for room forms. Label always on.
+ * optional → the word "optional" inside the empty field (placeholder / date overlay).
  * required is enforced by Continue disabled, not a stamp under every field.
  */
 export function RoomField({
@@ -30,20 +29,14 @@ export function RoomField({
   inputMode,
   ...rest
 }) {
-  const shownLabel = optional ? `${label} · optional` : label;
-  // Don't repeat the label as placeholder when the label is already visible.
-  const tip =
-    explainer && explainer !== label && explainer !== `${label} (optional)`
-      ? explainer
-      : optional
-        ? undefined
-        : explainer && explainer !== label
-          ? explainer
-          : undefined;
+  // Optional fields always show "optional" inside when empty.
+  // Required fields may use explainer as a tip (e.g. "e.g. Coed Heat Stroker").
+  let tip = optional ? "optional" : explainer;
+  if (!optional && tip === label) tip = undefined;
   return (
     <div className={"min-w-0 " + className}>
       <SoftField
-        label={shownLabel}
+        label={label}
         explainer={tip}
         inputClassName={inputClassName}
         list={list}
@@ -56,6 +49,7 @@ export function RoomField({
 
 /**
  * Select with the same quiet label as RoomField.
+ * Optional: empty option reads "optional" when value is blank.
  * Pass className for fixed widths (gender, rating, dates that shouldn't stretch).
  */
 export function RoomSelect({
@@ -67,17 +61,18 @@ export function RoomSelect({
   className = "",
   selectClassName = "form-field",
 }) {
-  const shownLabel = optional ? `${label} · optional` : label;
   return (
     <label className={"block min-w-0 " + className}>
-      <span className="t-label block mb-1 min-h-[1rem] leading-4">
-        {shownLabel}
-      </span>
+      <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
       <select
-        className={selectClassName + " w-full"}
+        className={
+          selectClassName +
+          " w-full " +
+          (optional && !value ? "text-afa-muted" : "")
+        }
         value={value ?? ""}
         onChange={onChange}
-        aria-label={shownLabel}
+        aria-label={optional ? `${label} (optional)` : label}
       >
         {children}
       </select>

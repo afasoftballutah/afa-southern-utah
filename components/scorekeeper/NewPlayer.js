@@ -204,7 +204,7 @@ export default function NewPlayer() {
                       setForm({ ...form, rating: e.target.value })
                     }
                   >
-                    <option value="">—</option>
+                    <option value="">optional</option>
                     {RATINGS.map((r) => (
                       <option key={r} value={r}>
                         {r}
