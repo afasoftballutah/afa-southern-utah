@@ -478,6 +478,11 @@ body:has(.scorekeeper-scope) {
   background: #fff;
   border: 2px solid var(--afa-flag-blue, #1e3a5f);
   border-radius: 0.75rem;
+  /* Tall room flows (add tournament) must scroll — not clip halfway. */
+  max-height: min(92vh, 52rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   /* Multi-layer depth: contact shadow + ambient + navy rim light */
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,

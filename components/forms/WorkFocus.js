@@ -19,7 +19,7 @@ export default function WorkFocus({ children, onScrimClick, className = "" }) {
         aria-hidden
         onClick={onScrimClick}
       />
-      <div className="work-focus__panel rounded-xl bg-white overflow-hidden w-full">
+      <div className="work-focus__panel rounded-xl bg-white w-full">
         {children}
       </div>
     </div>

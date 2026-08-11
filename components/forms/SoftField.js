@@ -13,6 +13,7 @@ export default function SoftField({
   onChange,
   type = "text",
   autoComplete,
+  inputMode,
   list,
   className = "",
   inputClassName = "form-field",
@@ -35,6 +36,7 @@ export default function SoftField({
       <input
         type={type}
         autoComplete={autoComplete}
+        inputMode={inputMode}
         list={list}
         value={value ?? ""}
         onChange={onChange}

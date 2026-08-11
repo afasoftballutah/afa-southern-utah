@@ -28,6 +28,7 @@ export function RoomField({
   className = "",
   inputClassName = "form-field",
   list,
+  inputMode,
   ...rest
 }) {
   const baseExplainer =
@@ -39,6 +40,7 @@ export function RoomField({
         explainer={baseExplainer}
         inputClassName={inputClassName}
         list={list}
+        inputMode={inputMode}
         {...rest}
       />
     </div>
@@ -283,8 +285,8 @@ export default function RoomShell({
     </>
   );
 
-  const frameClass =
-    "rounded-xl bg-white overflow-hidden max-w-md w-full " + className;
+  // No overflow-hidden here — WorkFocus panel scrolls tall multi-room flows.
+  const frameClass = "rounded-xl bg-white max-w-md w-full " + className;
 
   const panel = asForm ? (
     <form

@@ -244,8 +244,22 @@ export async function POST(request) {
     }
 
     // ---- Create a tournament -----------------------------------------
+    // Full build in the add dialog: name, when/where, and terms (fee, GG, closes).
+    // Poster and divisions stay on the list expand after create.
     case "createTournament": {
-      const { name, startDate, endDate, venueName, region } = body;
+      const {
+        name,
+        startDate,
+        endDate,
+        venueName,
+        region,
+        dayStartTime,
+        entryFeeCents,
+        depositCents,
+        umpFeeCents,
+        gameGuarantee,
+        registrationCloses,
+      } = body;
       if (!name?.trim()) return bad("A name is required");
       if (!startDate) return bad("A start date is required");
 
@@ -267,19 +281,32 @@ export async function POST(request) {
         slug = `${slug}-${n}`;
       }
 
+      const row = {
+        name: name.trim(),
+        slug,
+        start_date: startDate,
+        end_date: endDate || startDate,
+        venue_name: venueName?.trim() || "TBD",
+        region: region || "southern_utah",
+        status: "upcoming",
+        is_placeholder: false,
+        contacts: [],
+      };
+      if (dayStartTime) row.day_start_time = dayStartTime;
+      if (entryFeeCents != null && entryFeeCents !== "")
+        row.entry_fee_cents = Number(entryFeeCents);
+      if (depositCents != null && depositCents !== "")
+        row.deposit_cents = Number(depositCents);
+      if (umpFeeCents != null && umpFeeCents !== "")
+        row.ump_fee_cents = Number(umpFeeCents);
+      if (gameGuarantee != null && String(gameGuarantee).trim())
+        row.game_guarantee = String(gameGuarantee).trim();
+      if (registrationCloses)
+        row.registration_closes = registrationCloses;
+
       const { data, error } = await supabase
         .from("tournaments")
-        .insert({
-          name: name.trim(),
-          slug,
-          start_date: startDate,
-          end_date: endDate || startDate,
-          venue_name: venueName?.trim() || "TBD",
-          region: region || "southern_utah",
-          status: "upcoming",
-          is_placeholder: false,
-          contacts: [],
-        })
+        .insert(row)
         .select("id, slug")
         .single();
       if (error) {
