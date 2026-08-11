@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import ScoreTable from "./ScoreTable";
-import { stillToPlayIn } from "@/lib/tournament-state";
+import { isPlayableGame, isStillToPlay } from "@/lib/tournament-state";
 import { mootIfRounds } from "@/lib/bracket/if-game";
 
 /**
@@ -67,7 +67,9 @@ export default function ScorekeeperBoard({
   const [field, setField] = useState("all");
   const [query, setQuery] = useState("");
 
-  // Flatten every game with division + stage metadata.
+  // Flatten only games that can actually need a score: no byes, no cancelled,
+  // no if-games the undefeated side made unnecessary. Those never belong on
+  // a scorekeeper sheet (or in All / Scored counts).
   const catalog = useMemo(() => {
     const out = [];
     for (const d of divisions) {
@@ -76,29 +78,27 @@ export default function ScorekeeperBoard({
       const bracket = d.games ?? [];
       const moot = mootIfRounds(bracket);
       for (const g of pool) {
+        if (!isPlayableGame(g, null)) continue;
         out.push({
           game: g,
           kind: "pool",
           divisionId: d.id,
           divisionLabel: divLabel,
           fieldKey: fieldKey(g.field),
-          open:
-            g.status !== "final" &&
-            stillToPlayIn([g]).length > 0,
+          open: isStillToPlay(g, null),
           scored: g.status === "final",
         });
       }
       for (const g of bracket) {
-        const notNeeded = moot.has(g.round);
+        if (!isPlayableGame(g, moot)) continue;
         out.push({
           game: g,
           kind: "bracket",
           divisionId: d.id,
           divisionLabel: divLabel,
           fieldKey: fieldKey(g.field),
-          open: !notNeeded && stillToPlayIn([g]).length > 0,
+          open: isStillToPlay(g, moot),
           scored: g.status === "final",
-          notNeeded,
         });
       }
     }
