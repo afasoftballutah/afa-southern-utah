@@ -56,7 +56,10 @@ export async function GET(request) {
   return Response.json({ umpires: (data ?? []).map(mapRow) });
 }
 
-/** Create umpire — director only. */
+/**
+ * Create umpire, or merge two (action: "merge", keepId, dropId).
+ * Director only.
+ */
 export async function POST(request) {
   if (!(await requireDirectorSession())) {
     return Response.json({ error: "Director only" }, { status: 403 });
@@ -67,6 +70,101 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // ---- Merge duplicate into keeper -----------------------------------
+  if (body.action === "merge") {
+    const keepId = body.keepId;
+    const dropId = body.dropId;
+    if (!keepId || !dropId) {
+      return Response.json(
+        { error: "keepId and dropId required" },
+        { status: 400 }
+      );
+    }
+    if (keepId === dropId) {
+      return Response.json(
+        { error: "Cannot merge an umpire into itself" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getServiceClient();
+    const { data: keep, error: keepErr } = await supabase
+      .from("umpires")
+      .select("*")
+      .eq("id", keepId)
+      .maybeSingle();
+    const { data: drop, error: dropErr } = await supabase
+      .from("umpires")
+      .select("*")
+      .eq("id", dropId)
+      .maybeSingle();
+    if (keepErr || dropErr || !keep || !drop) {
+      return Response.json({ error: "Umpire not found" }, { status: 404 });
+    }
+
+    // Point every game assignment at the keeper
+    for (const table of ["games", "pool_games"]) {
+      for (const col of ["umpire1_id", "umpire2_id"]) {
+        const { error } = await supabase
+          .from(table)
+          .update({ [col]: keepId })
+          .eq(col, dropId);
+        if (error && error.code !== "42703" && !error.message?.includes("umpire")) {
+          // Missing column = migration not run; ignore reassign
+          if (!String(error.message || "").includes("does not exist")) {
+            console.error(`merge reassign ${table}.${col}`, error);
+          }
+        }
+      }
+    }
+
+    // Fill blank contact / card fields on the keeper from the duplicate
+    const fill = {};
+    const take = (keepKey, dropKey = keepKey) => {
+      if ((keep[keepKey] == null || keep[keepKey] === "") && drop[dropKey]) {
+        fill[keepKey] = drop[dropKey];
+      }
+    };
+    take("preferred_name");
+    take("card_number");
+    take("address");
+    take("city");
+    take("state");
+    take("zip");
+    take("phone");
+    take("email");
+    take("notes");
+    // Pitch: if keeper has only one type and drop has the other, set both
+    if (!keep.pitch_fast && drop.pitch_fast) fill.pitch_fast = true;
+    if (!keep.pitch_slow && drop.pitch_slow) fill.pitch_slow = true;
+    if (Object.keys(fill).length) {
+      fill.updated_at = new Date().toISOString();
+      await supabase.from("umpires").update(fill).eq("id", keepId);
+    }
+
+    const { error: delErr } = await supabase
+      .from("umpires")
+      .delete()
+      .eq("id", dropId);
+    if (delErr) {
+      return Response.json({ error: delErr.message }, { status: 500 });
+    }
+
+    const { data: updated } = await supabase
+      .from("umpires")
+      .select("*")
+      .eq("id", keepId)
+      .single();
+
+    return Response.json({
+      ok: true,
+      umpire: mapRow(updated ?? keep),
+      mergedAway: dropId,
+    });
+  }
+
+  // ---- Create --------------------------------------------------------
   const first = String(body.firstName || "").trim();
   const last = String(body.lastName || "").trim();
   if (!first || !last) {
@@ -110,6 +208,38 @@ export async function POST(request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ umpire: mapRow(data) });
+}
+
+/** Hard-delete umpire — director only. Games lose the assignment (ON DELETE SET NULL). */
+export async function DELETE(request) {
+  if (!(await requireDirectorSession())) {
+    return Response.json({ error: "Director only" }, { status: 403 });
+  }
+  const id =
+    new URL(request.url).searchParams.get("id") ||
+    (await request.json().catch(() => ({}))).id;
+  if (!id) {
+    return Response.json({ error: "id required" }, { status: 400 });
+  }
+
+  const supabase = getServiceClient();
+  const { data: existing } = await supabase
+    .from("umpires")
+    .select("id, first_name, last_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) {
+    return Response.json({ error: "Umpire not found" }, { status: 404 });
+  }
+
+  const { error } = await supabase.from("umpires").delete().eq("id", id);
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+  return Response.json({
+    ok: true,
+    deleted: `${existing.last_name}, ${existing.first_name}`,
+  });
 }
 
 /** Update umpire — director only. */

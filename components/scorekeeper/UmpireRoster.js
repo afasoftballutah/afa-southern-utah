@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
+import Modal from "./Modal";
 
 const empty = () => ({
   firstName: "",
@@ -237,6 +239,64 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     else if (mode === "fast")
       setForm({ ...form, pitchSlow: false, pitchFast: true });
     else setForm({ ...form, pitchSlow: true, pitchFast: false });
+  }
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [mergeKeep, setMergeKeep] = useState(null); // umpire we keep
+  const [mergeDropId, setMergeDropId] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  async function deleteUmpire() {
+    if (!deleteTarget) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const res = await fetch(
+        `/api/scorekeeper/umpires?id=${encodeURIComponent(deleteTarget.id)}`,
+        { method: "DELETE" }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not delete");
+      setList((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      if (editingId === deleteTarget.id) cancelForm();
+      setDeleteTarget(null);
+    } catch (err) {
+      setActionError(err.message || "Delete failed");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function mergeUmpires() {
+    if (!mergeKeep || !mergeDropId) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const res = await fetch("/api/scorekeeper/umpires", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "merge",
+          keepId: mergeKeep.id,
+          dropId: mergeDropId,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not merge");
+      setList((prev) =>
+        prev
+          .filter((u) => u.id !== mergeDropId)
+          .map((u) => (u.id === mergeKeep.id ? json.umpire : u))
+      );
+      if (editingId === mergeDropId) cancelForm();
+      setMergeKeep(null);
+      setMergeDropId("");
+    } catch (err) {
+      setActionError(err.message || "Merge failed");
+    } finally {
+      setActionBusy(false);
+    }
   }
 
   const isEditing = Boolean(editingId);
@@ -893,13 +953,36 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                         {p.short}
                       </span>
                       {canEdit && (
-                        <button
-                          type="button"
-                          className="btn-transient text-sm px-2.5 py-1"
-                          onClick={() => startEdit(u)}
-                        >
-                          Edit
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="btn-transient text-sm px-2.5 py-1"
+                            onClick={() => startEdit(u)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-transient text-sm px-2.5 py-1"
+                            onClick={() => {
+                              setActionError("");
+                              setMergeDropId("");
+                              setMergeKeep(u);
+                            }}
+                          >
+                            Merge
+                          </button>
+                          <button
+                            type="button"
+                            className="pill text-sm text-afa-red border-afa-red/30 px-2.5 py-1"
+                            onClick={() => {
+                              setActionError("");
+                              setDeleteTarget(u);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </div>
                   </li>
@@ -908,6 +991,97 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             </ul>
           )}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title={`Delete ${umpDisplay(deleteTarget)}`}
+          message={
+            `Remove ${umpDisplay(deleteTarget)} from the umpire roster.\n\nGames that listed them will show no umpire (not deleted). Prefer Merge if this is a duplicate.` +
+            (actionError ? `\n\n${actionError}` : "")
+          }
+          confirmLabel="Delete umpire"
+          busy={actionBusy}
+          onConfirm={deleteUmpire}
+          onCancel={() => {
+            if (!actionBusy) {
+              setDeleteTarget(null);
+              setActionError("");
+            }
+          }}
+        />
+      )}
+
+      {mergeKeep && (
+        <Modal
+          title={`Merge into ${umpDisplay(mergeKeep)}`}
+          subtitle="Pick the duplicate. Game assignments move here. Blank fields on this umpire are filled from the duplicate. The duplicate is removed."
+          onClose={() => {
+            if (!actionBusy) {
+              setMergeKeep(null);
+              setMergeDropId("");
+              setActionError("");
+            }
+          }}
+          footer={
+            <>
+              <button
+                type="button"
+                className="btn-transient"
+                disabled={actionBusy}
+                onClick={() => {
+                  setMergeKeep(null);
+                  setMergeDropId("");
+                  setActionError("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-action"
+                disabled={actionBusy || !mergeDropId}
+                onClick={mergeUmpires}
+              >
+                {actionBusy ? "Merging…" : "Merge duplicate"}
+              </button>
+            </>
+          }
+        >
+          <label className="block space-y-1">
+            <span className="t-label">Duplicate to fold in</span>
+            <select
+              className="w-full rounded-lg border border-afa-navy/30 px-3 py-2 text-[15px]"
+              value={mergeDropId}
+              onChange={(e) => setMergeDropId(e.target.value)}
+            >
+              <option value="">Pick the other record…</option>
+              {list
+                .filter((o) => o.id !== mergeKeep.id)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {umpDisplay(o)}
+                    {o.phone ? ` · ${o.phone}` : ""}
+                    {o.email ? ` · ${o.email}` : ""}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {list.filter((o) => o.id !== mergeKeep.id).length === 0 && (
+            <p className="t-meta mt-2">No other umpires to merge.</p>
+          )}
+          {actionError && (
+            <p className="t-meta text-afa-red font-semibold mt-2" role="alert">
+              {actionError}
+            </p>
+          )}
+        </Modal>
+      )}
+
+      {actionError && !mergeKeep && !deleteTarget && (
+        <p className="t-meta text-afa-red font-semibold" role="alert">
+          {actionError}
+        </p>
       )}
     </div>
   );
