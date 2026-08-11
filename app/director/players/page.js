@@ -387,12 +387,7 @@ export default async function PlayersPage() {
             ) : null}
           </dd>
         </dl>
-        <div className="flex flex-wrap gap-2">
-          {editBtn}
-          {suspendBtn}
-          {mergeBtn}
-          {deleteBtn}
-        </div>
+        <div className="flex flex-wrap gap-2">{actionsCell}</div>
         {currentlySuspended && (
           <p className="t-meta text-[12px] text-afa-red">
             Suspended:{" "}
