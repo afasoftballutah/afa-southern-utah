@@ -12,48 +12,89 @@ import WorkFocus from "@/components/forms/WorkFocus";
  * Not the home nav `Door` component.
  */
 
-/** Soft field + optional/required hint under the input. */
+/**
+ * Soft field for room forms. One quiet label system:
+ * - floating label when filled/focused
+ * - placeholder is the only explainer
+ * - optional → "(optional)" in the placeholder, no foot noise
+ * - required is enforced by Continue disabled, not a stamp under every field
+ */
 export function RoomField({
   label,
   explainer,
   optional = false,
-  required = false,
-  hint,
+  required: _required = false,
+  hint: _hint,
   className = "",
+  inputClassName = "form-field",
+  list,
   ...rest
 }) {
   const baseExplainer =
-    explainer ||
-    (optional ? `${label} (optional)` : label);
-  const foot =
-    hint ||
-    (optional ? "Optional" : required ? "Required" : null);
-  // Required = bold navy; optional = light muted (easy to scan which matters).
-  const labelClass = optional
-    ? "font-normal text-afa-muted"
-    : required
-      ? "font-bold text-afa-navy"
-      : "font-semibold text-afa-navy";
-  const footClass = optional
-    ? "text-[11px] font-normal tracking-wide uppercase text-afa-muted/80"
-    : "text-[11px] font-bold tracking-wide uppercase text-afa-navy";
+    explainer || (optional ? `${label} (optional)` : label);
   return (
-    <div className={"space-y-0.5 min-w-0 " + className}>
+    <div className={"min-w-0 " + className}>
       <SoftField
         label={label}
         explainer={baseExplainer}
-        labelClassName={labelClass}
+        inputClassName={inputClassName}
+        list={list}
         {...rest}
       />
-      {foot && <p className={footClass}>{foot}</p>}
     </div>
   );
 }
 
-/** Hall: prior answers strip. Re-export with room-flow name. */
-export function RoomHall({ lines, onEdit, editLabel = "Edit" }) {
+/**
+ * Select with the same quiet label as RoomField.
+ * Pass className for fixed widths (gender, rating, dates that shouldn't stretch).
+ */
+export function RoomSelect({
+  label,
+  optional = false,
+  value,
+  onChange,
+  children,
+  className = "",
+  selectClassName = "form-field",
+}) {
   return (
-    <FixedSummary lines={lines} onEdit={onEdit} editLabel={editLabel} />
+    <label className={"block min-w-0 " + className}>
+      <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
+      <select
+        className={selectClassName + " w-full"}
+        value={value ?? ""}
+        onChange={onChange}
+        aria-label={optional ? `${label} (optional)` : label}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Hall: prior answers as one quiet line — not a labeled card.
+ * Values only; Edit sits on the right.
+ */
+export function RoomHall({ lines, onEdit, editLabel = "Edit" }) {
+  const shown = (lines || []).filter((l) => l?.value);
+  if (shown.length === 0) return null;
+  return (
+    <div className="flex items-baseline gap-2 min-w-0 text-sm">
+      <p className="font-semibold text-afa-navy truncate min-w-0">
+        {shown.map((l) => l.value).join(" · ")}
+      </p>
+      {onEdit && (
+        <button
+          type="button"
+          className="t-label underline text-afa-muted shrink-0"
+          onClick={onEdit}
+        >
+          {editLabel}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -130,13 +171,16 @@ export default function RoomShell({
     <>
       <div className="px-4 py-3 border-b border-afa-navy/10 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-bold text-afa-navy">{title}</p>
-          {roomTitle && (
-            <p className="t-meta text-xs mt-0.5">
-              {roomTitle}
-              {showDots ? ` · ${page} of ${totalPages}` : ""}
-            </p>
-          )}
+          <p className="font-bold text-afa-navy">
+            {title}
+            {roomTitle ? (
+              <span className="font-normal text-afa-muted">
+                {" · "}
+                {roomTitle}
+                {showDots ? ` ${page}/${totalPages}` : ""}
+              </span>
+            ) : null}
+          </p>
         </div>
         <button
           type="button"
@@ -148,7 +192,7 @@ export default function RoomShell({
       </div>
 
       {showDots && (
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-2">
           <PageDots page={page} total={totalPages} />
         </div>
       )}
@@ -166,12 +210,12 @@ export default function RoomShell({
         {hall}
 
         {welcome && (
-          <p className="text-sm text-afa-ink/75 leading-relaxed">{welcome}</p>
+          <p className="t-meta leading-snug">{welcome}</p>
         )}
 
         {children}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           {onBack && (
             <button
               type="button"
@@ -274,3 +318,6 @@ export function RoomFlowTrigger({ label, onClick, className = "btn-transient w-f
     </button>
   );
 }
+
+// Keep FixedSummary available for non-hall uses if any import via RoomShell.
+export { FixedSummary };

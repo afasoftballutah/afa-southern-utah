@@ -4,6 +4,7 @@ import { useState } from "react";
 
 /**
  * Placeholder as explainer. Label row is fixed height so focus never bounces.
+ * One quiet label face (.t-label) — no competing weights per field.
  */
 export default function SoftField({
   label,
@@ -12,10 +13,9 @@ export default function SoftField({
   onChange,
   type = "text",
   autoComplete,
+  list,
   className = "",
   inputClassName = "form-field",
-  /** Extra classes on the floating label (e.g. bold required vs light optional). */
-  labelClassName = "",
 }) {
   const [focused, setFocused] = useState(false);
   const filled = String(value ?? "").trim().length > 0;
@@ -26,8 +26,7 @@ export default function SoftField({
       <span
         className={
           "t-label block mb-1 min-h-[1rem] leading-4 " +
-          (showLabel ? "opacity-100" : "opacity-0") +
-          (labelClassName ? " " + labelClassName : "")
+          (showLabel ? "opacity-100" : "opacity-0")
         }
         aria-hidden={!showLabel}
       >
@@ -36,16 +35,13 @@ export default function SoftField({
       <input
         type={type}
         autoComplete={autoComplete}
+        list={list}
         value={value ?? ""}
         onChange={onChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={explainer}
-        className={
-          inputClassName +
-          " w-full " +
-          (filled ? "" : "")
-        }
+        className={inputClassName + " w-full"}
       />
     </label>
   );

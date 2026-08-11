@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
+import RoomShell, {
+  RoomField,
+  RoomHall,
+  RoomSelect,
+} from "@/components/forms/RoomShell";
 import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
 import { directorPost } from "./DirectorForm";
 import { venueLabel, resolveVenue } from "@/lib/director";
@@ -112,8 +116,8 @@ export default function NewTournament({ venues = [] }) {
         error={error}
         welcome={
           page === 1
-            ? "What is this event called? You can set fees and the poster after it is created."
-            : "When and where it runs. End date and venue can wait."
+            ? "Fees and poster come after create."
+            : null
         }
         hall={
           page > 1 ? (
@@ -143,77 +147,57 @@ export default function NewTournament({ venues = [] }) {
         )}
         {page === 2 && (
           <>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block space-y-1 min-w-0">
-                <span className="form-label font-bold text-afa-navy">Start</span>
-                <input
-                  type="date"
-                  className="form-field w-full"
-                  value={form.startDate}
-                  onChange={(e) =>
-                    setForm({ ...form, startDate: e.target.value })
-                  }
-                  required
-                />
-                <p className="text-[11px] font-bold uppercase tracking-wide text-afa-navy">
-                  Required
-                </p>
-              </label>
-              <label className="block space-y-1 min-w-0">
-                <span className="form-label font-normal text-afa-muted">
-                  End
-                </span>
-                <input
-                  type="date"
-                  className="form-field w-full"
-                  value={form.endDate}
-                  onChange={(e) =>
-                    setForm({ ...form, endDate: e.target.value })
-                  }
-                />
-                <p className="text-[11px] font-normal uppercase tracking-wide text-afa-muted/80">
-                  Optional
-                </p>
-              </label>
-            </div>
-            <label className="block space-y-1">
-              <span className="form-label font-normal text-afa-muted">
-                Venue
-              </span>
-              <input
-                className="form-field w-full"
-                list="venues-new-room"
-                value={form.venueName}
+            <div className="flex flex-wrap items-end gap-2">
+              <RoomField
+                label="Start"
+                required
+                type="date"
+                className="w-[10.5rem] shrink-0"
+                value={form.startDate}
                 onChange={(e) =>
-                  setForm({ ...form, venueName: e.target.value })
+                  setForm({ ...form, startDate: e.target.value })
                 }
-                placeholder="Canyons"
-                autoComplete="off"
               />
-              <datalist id="venues-new-room">
-                {venues.map((v) => {
-                  const lab = venueLabel(v, null);
-                  return <option key={lab} value={lab} />;
-                })}
-              </datalist>
-              <p className="text-[11px] font-normal uppercase tracking-wide text-afa-muted/80">
-                Optional
-              </p>
-            </label>
-            <label className="block space-y-1">
-              <span className="form-label font-bold text-afa-navy">Region</span>
-              <select
-                className="form-field w-full"
-                value={form.region}
-                onChange={(e) => setForm({ ...form, region: e.target.value })}
-              >
-                {REGIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <RoomField
+                label="End"
+                optional
+                type="date"
+                className="w-[10.5rem] shrink-0"
+                value={form.endDate}
+                onChange={(e) =>
+                  setForm({ ...form, endDate: e.target.value })
+                }
+              />
+            </div>
+            <RoomField
+              label="Venue"
+              optional
+              explainer="Venue (optional)"
+              list="venues-new-room"
+              value={form.venueName}
+              onChange={(e) =>
+                setForm({ ...form, venueName: e.target.value })
+              }
+              autoComplete="off"
+            />
+            <datalist id="venues-new-room">
+              {venues.map((v) => {
+                const lab = venueLabel(v, null);
+                return <option key={lab} value={lab} />;
+              })}
+            </datalist>
+            <RoomSelect
+              label="Region"
+              className="max-w-[14rem]"
+              value={form.region}
+              onChange={(e) => setForm({ ...form, region: e.target.value })}
+            >
+              {REGIONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </RoomSelect>
           </>
         )}
       </RoomShell>
