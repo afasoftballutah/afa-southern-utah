@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SoftField, { FixedSummary, PageDots } from "./SoftField";
+import { RoomField } from "./RoomShell";
 import LegalIdBox from "./LegalIdBox";
 import AddressInput from "@/components/AddressInput";
 
@@ -141,17 +142,17 @@ export default function PersonWizard({
           />
         </div>
       </LegalIdBox>
-      <SoftField
+      <RoomField
         label="Preferred name"
-        explainer="Preferred name on the roster (optional)"
+        optional
         value={p.preferredName}
         onChange={(e) => set({ preferredName: e.target.value })}
         inputClassName={fieldClass}
       />
       {hasPhone && (
-        <SoftField
+        <RoomField
           label="Phone"
-          explainer="Phone"
+          required={variant === "manager" || variant === "coach"}
           type="tel"
           autoComplete="tel"
           value={p.phone}
@@ -160,22 +161,19 @@ export default function PersonWizard({
         />
       )}
       {hasCell && (
-        <SoftField
+        <RoomField
           label="Cell"
-          explainer="Cell (optional)"
+          optional
           type="tel"
           value={p.cell}
           onChange={(e) => set({ cell: e.target.value })}
           inputClassName={fieldClass}
         />
       )}
-      <SoftField
+      <RoomField
         label="Email"
-        explainer={
-          variant === "player" || variant === "addPlayer"
-            ? "Email (optional)"
-            : "Email"
-        }
+        optional={variant === "player" || variant === "addPlayer"}
+        required={variant === "manager" || variant === "coach"}
         type="email"
         autoComplete="email"
         value={p.email}
@@ -259,19 +257,39 @@ export default function PersonWizard({
     />
   );
 
+  // Address rooms are fully optional — Skip advances without requiring fields.
+  const addressRoomOptional =
+    !singlePage &&
+    page === 2 &&
+    (variant === "manager" || variant === "coach" || variant === "player");
+
   // Embedded parent forms (registration) use their own Next — last page is
   // just "Done" (no onComplete). Standalone wizards call onComplete.
   const nav = (
-    <div className="flex flex-wrap gap-2 pt-1">
+    <div className="flex flex-wrap items-center gap-2 pt-1">
       {page > 1 && !singlePage && (
         <button type="button" className="btn-transient" onClick={goBack}>
           Back
         </button>
       )}
+      {addressRoomOptional && (
+        <button
+          type="button"
+          className="btn-transient"
+          onClick={() => {
+            setError("");
+            if (page < totalPages) setPage(page + 1);
+            else if (onComplete) onComplete(p);
+            // embedded last page: leave empty address; parent Next continues
+          }}
+        >
+          Skip address
+        </button>
+      )}
       {(!onLast || onComplete || singlePage) && (
         <button
           type={embedded || singlePage ? "button" : "submit"}
-          className="btn-action"
+          className="btn-action ml-auto"
           onClick={embedded || singlePage ? handleSubmit : undefined}
         >
           {onLast ? completeLabel : "Continue"}

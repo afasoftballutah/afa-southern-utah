@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import Modal from "./Modal";
 import SuspendUmpire from "./SuspendUmpire";
+import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
 
 const empty = () => ({
   firstName: "",
@@ -85,72 +86,15 @@ function initials(u) {
   return (a + b).toUpperCase() || "?";
 }
 
-/**
- * Placeholder as explainer. Label always occupies the same height so focus
- * does not bounce the row (no native required — we validate on Continue).
- */
-function Field({
-  label,
-  explainer,
-  value,
-  onChange,
-  type = "text",
-  autoComplete,
-}) {
-  const [focused, setFocused] = useState(false);
-  const filled = String(value ?? "").trim().length > 0;
-  const showLabel = filled || focused;
-
-  return (
-    <label className="block">
-      {/* Fixed-height label slot — opacity only, never collapses */}
-      <span
-        className={
-          "t-label block mb-1 min-h-[1rem] leading-4 " +
-          (showLabel ? "opacity-100" : "opacity-0")
-        }
-        aria-hidden={!showLabel}
-      >
-        {label}
-      </span>
-      <input
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder={explainer}
-        className={
-          "w-full rounded-lg border border-afa-navy/20 bg-white px-3 py-2.5 text-[15px] placeholder:text-afa-muted/70 focus:outline-none focus:ring-2 focus:ring-afa-navy/20 focus:border-afa-navy/40 " +
-          (filled ? "border-afa-navy/25" : "")
-        }
-      />
-    </label>
-  );
-}
-
-function FixedLine({ label, value }) {
-  if (!value) return null;
-  return (
-    <div className="flex gap-2 text-sm">
-      <span className="t-meta shrink-0 w-16">{label}</span>
-      <span className="font-semibold text-afa-navy">{value}</span>
-    </div>
-  );
-}
-
-const PAGES = [
-  { id: 1, title: "Who" },
-  { id: 2, title: "Address" },
-  { id: 3, title: "Softball" },
-];
+const ROOM_TITLES = {
+  1: "Name & contact",
+  2: "Address",
+  3: "Pitch type & card",
+};
 
 /**
- * Zones: Add · Filters · List · Form (3 light pages)
- * Page 1: name, email, phone
- * Page 2: address (page 1 fixed above)
- * Page 3: pitch / card / status
+ * Room flow: door (name) → contact → optional address → pitch/card → save.
+ * Same shell as other create paths (RoomShell).
  */
 export default function UmpireRoster({
   initial = [],
@@ -203,17 +147,20 @@ export default function UmpireRoster({
     });
   }, [list, filter]);
 
+  const [formBaseline, setFormBaseline] = useState(() => JSON.stringify(empty()));
+
   function openAdd() {
+    const blank = empty();
     setEditingId(null);
-    setForm(empty());
+    setForm(blank);
+    setFormBaseline(JSON.stringify(blank));
     setError("");
     setPage(1);
     setFormOpen(true);
   }
 
   function startEdit(u) {
-    setEditingId(u.id);
-    setForm({
+    const next = {
       firstName: u.firstName || "",
       lastName: u.lastName || "",
       preferredName: u.preferredName || "",
@@ -228,7 +175,10 @@ export default function UmpireRoster({
       pitchSlow: !!u.pitchSlow,
       status: u.status || "active",
       notes: u.notes || "",
-    });
+    };
+    setEditingId(u.id);
+    setForm(next);
+    setFormBaseline(JSON.stringify(next));
     setError("");
     setPage(1);
     setFormOpen(true);
@@ -237,10 +187,13 @@ export default function UmpireRoster({
   function cancelForm() {
     setEditingId(null);
     setForm(empty());
+    setFormBaseline(JSON.stringify(empty()));
     setError("");
     setPage(1);
     setFormOpen(false);
   }
+
+  const formDirty = JSON.stringify(form) !== formBaseline;
 
   function setPitch(mode) {
     if (mode === "both") setForm({ ...form, pitchSlow: true, pitchFast: true });
@@ -561,311 +514,252 @@ export default function UmpireRoster({
     .filter(Boolean)
     .join(" ");
 
-  const formCard = formOpen && canEdit && (
-    <form
-      key={editingId || "new"}
-      id="umpire-form"
-      onSubmit={handleFormSubmit}
-      noValidate
-      className="rounded-xl border border-afa-navy/15 bg-white shadow-sm overflow-hidden max-w-md"
-    >
-      <div className="px-4 py-3 border-b border-afa-navy/10 flex items-center justify-between gap-2">
-        <div>
-          <p className="font-bold text-afa-navy">
-            {isEditing ? "Edit umpire" : "Add umpire"}
-          </p>
-          <p className="t-meta text-xs mt-0.5">
-            {isEditing
-              ? "Update any field, then save"
-              : page === 1
-                ? "Name & how to reach them"
-                : page === 2
-                  ? "Mailing address"
-                  : "Pitch type & card"}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="t-label underline text-afa-muted"
-          onClick={cancelForm}
-        >
-          Cancel
-        </button>
-      </div>
+  const roomWelcome = isEditing
+    ? "Legal name and address must match a driver’s license or other official ID."
+    : page === 1
+      ? "Legal name must match a driver’s license or other official ID. Preferred name is what we call them on the field if different."
+      : page === 2
+        ? "Address as on license / ID. Entire room is optional — Skip if you don’t have it yet."
+        : "How they umpire, and card number if you have it.";
 
-      {!isEditing && (
-        <div className="flex gap-1.5 px-4 pt-3">
-          {PAGES.map((p) => (
-            <div
-              key={p.id}
-              className={
-                "h-1 flex-1 rounded-full " +
-                (p.id === page
-                  ? "bg-afa-navy"
-                  : p.id < page
-                    ? "bg-afa-navy/40"
-                    : "bg-afa-navy/10")
-              }
-              title={p.title}
+  const primaryDisabled = isEditing
+    ? !nameOk()
+    : page === 1
+      ? !page1Ok()
+      : page === 3
+        ? !(form.pitchFast || form.pitchSlow)
+        : false;
+
+  const primaryLabel = isEditing
+    ? busy
+      ? "Saving…"
+      : "Save changes"
+    : page < 3
+      ? "Continue"
+      : busy
+        ? "Saving…"
+        : "Save to roster";
+
+  const formCard = formOpen && canEdit && (
+    <RoomShell
+      key={editingId || "new"}
+      title={isEditing ? "Edit umpire" : "Add umpire"}
+      roomTitle={
+        isEditing ? "All details" : ROOM_TITLES[page] || "Add umpire"
+      }
+      page={isEditing ? null : page}
+      totalPages={3}
+      dirty={formDirty}
+      onClose={cancelForm}
+      closeLabel="Close"
+      error={error}
+      welcome={roomWelcome}
+      hall={
+        !isEditing && page > 1 ? (
+          <RoomHall
+            lines={[
+              { label: "Name", value: displayName },
+              { label: "Phone", value: form.phone },
+              { label: "Email", value: form.email },
+            ]}
+            onEdit={() => setPage(1)}
+            editLabel="Edit contact"
+          />
+        ) : null
+      }
+      onBack={!isEditing && page > 1 ? goBack : null}
+      showSkip={!isEditing && page === 2}
+      onSkip={
+        !isEditing && page === 2
+          ? () => {
+              setError("");
+              setPage(3);
+            }
+          : null
+      }
+      skipLabel="Skip address"
+      primaryLabel={primaryLabel}
+      primaryDisabled={primaryDisabled || busy}
+      busy={busy}
+      onSubmit={handleFormSubmit}
+    >
+      {/* —— Edit: one scrollable page with everything —— */}
+      {isEditing && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <RoomField
+              label="Legal last name"
+              explainer="Legal last — as on license / ID"
+              required
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             />
-          ))}
-        </div>
+            <RoomField
+              label="Legal first name"
+              explainer="Legal first — as on license / ID"
+              required
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            />
+          </div>
+          <RoomField
+            label="Preferred name"
+            optional
+            value={form.preferredName}
+            onChange={(e) =>
+              setForm({ ...form, preferredName: e.target.value })
+            }
+          />
+          <RoomField
+            label="Phone"
+            type="tel"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <RoomField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <RoomField
+            label="Street (as on license / ID)"
+            optional
+            explainer="Street as on license / official document"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <RoomField
+              label="City"
+              optional
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+            />
+            <RoomField
+              label="State"
+              optional
+              explainer="ST"
+              value={form.state}
+              onChange={(e) => setForm({ ...form, state: e.target.value })}
+            />
+            <RoomField
+              label="Zip"
+              optional
+              value={form.zip}
+              onChange={(e) => setForm({ ...form, zip: e.target.value })}
+            />
+          </div>
+          <PitchPicker />
+          <RoomField
+            label="Card #"
+            optional
+            explainer="Umpire card # (optional)"
+            value={form.cardNumber}
+            onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+          />
+          <StatusPicker />
+        </>
       )}
 
-      <div className="p-4 space-y-3">
-        {error && (
-          <p
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
+      {!isEditing && page === 1 && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <RoomField
+              label="Legal last name"
+              explainer="Legal last — as on license / ID"
+              required
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+            <RoomField
+              label="Legal first name"
+              explainer="Legal first — as on license / ID"
+              required
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            />
+          </div>
+          <RoomField
+            label="Preferred name"
+            optional
+            value={form.preferredName}
+            onChange={(e) =>
+              setForm({ ...form, preferredName: e.target.value })
+            }
+          />
+          <RoomField
+            label="Phone"
+            required
+            type="tel"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <RoomField
+            label="Email"
+            required
+            type="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </>
+      )}
 
-        {/* —— Edit: one scrollable page with everything —— */}
-        {isEditing && (
-          <>
-            <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Legal name</strong>
-              {" and "}
-              <strong className="text-afa-navy">address</strong>
-              {
-                " must match a driver’s license or other official ID."
-              }
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Field
-                label="Legal last name"
-                explainer="Legal last — as on license / ID"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) =>
-                  setForm({ ...form, lastName: e.target.value })
-                }
-              />
-              <Field
-                label="Legal first name"
-                explainer="Legal first — as on license / ID"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) =>
-                  setForm({ ...form, firstName: e.target.value })
-                }
-              />
-            </div>
-            <Field
-              label="Preferred name"
-              explainer="Preferred name (optional)"
-              value={form.preferredName}
-              onChange={(e) =>
-                setForm({ ...form, preferredName: e.target.value })
-              }
+      {!isEditing && page === 2 && (
+        <>
+          <RoomField
+            label="Street (as on license / ID)"
+            optional
+            explainer="Street as on license / official document"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <RoomField
+              label="City"
+              optional
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
-            <Field
-              label="Phone"
-              explainer="Phone"
-              type="tel"
-              autoComplete="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            <RoomField
+              label="State"
+              optional
+              explainer="ST"
+              value={form.state}
+              onChange={(e) => setForm({ ...form, state: e.target.value })}
             />
-            <Field
-              label="Email"
-              explainer="Email"
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            <RoomField
+              label="Zip"
+              optional
+              value={form.zip}
+              onChange={(e) => setForm({ ...form, zip: e.target.value })}
             />
-            <Field
-              label="Street (as on license / ID)"
-              explainer="Street as on license / official document"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
-            <div className="grid grid-cols-3 gap-2">
-              <Field
-                label="City"
-                explainer="City"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-              />
-              <Field
-                label="State"
-                explainer="ST"
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-              />
-              <Field
-                label="Zip"
-                explainer="Zip"
-                value={form.zip}
-                onChange={(e) => setForm({ ...form, zip: e.target.value })}
-              />
-            </div>
-            <PitchPicker />
-            <Field
-              label="Card #"
-              explainer="Umpire card # (optional)"
-              value={form.cardNumber}
-              onChange={(e) =>
-                setForm({ ...form, cardNumber: e.target.value })
-              }
-            />
-            <StatusPicker />
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {/* —— Add wizard page 1 —— */}
-        {!isEditing && page === 1 && (
-          <>
-            <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Legal name</strong>
-              {" and "}
-              <strong className="text-afa-navy">address</strong>
-              {
-                " must match a driver’s license or other official ID. Preferred name is for the roster if different."
-              }
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Field
-                label="Legal last name"
-                explainer="Legal last — as on license / ID"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) =>
-                  setForm({ ...form, lastName: e.target.value })
-                }
-              />
-              <Field
-                label="Legal first name"
-                explainer="Legal first — as on license / ID"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) =>
-                  setForm({ ...form, firstName: e.target.value })
-                }
-              />
-            </div>
-            <Field
-              label="Preferred name"
-              explainer="Preferred name (optional)"
-              value={form.preferredName}
-              onChange={(e) =>
-                setForm({ ...form, preferredName: e.target.value })
-              }
-            />
-            <Field
-              label="Phone"
-              explainer="Phone"
-              type="tel"
-              autoComplete="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-            <Field
-              label="Email"
-              explainer="Email"
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </>
-        )}
-
-        {/* —— Add wizard page 2 —— */}
-        {!isEditing && page === 2 && (
-          <>
-            <div className="rounded-lg bg-afa-soft-gray/80 border border-afa-navy/10 px-3 py-2.5 space-y-1">
-              <FixedLine label="Name" value={displayName} />
-              <FixedLine label="Phone" value={form.phone} />
-              <FixedLine label="Email" value={form.email} />
-              <button
-                type="button"
-                className="t-label underline text-afa-navy mt-1"
-                onClick={() => setPage(1)}
-              >
-                Edit contact
-              </button>
-            </div>
-            <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Address</strong>
-              {" must match a license or other official document."}
-            </p>
-            <Field
-              label="Street (as on license / ID)"
-              explainer="Street as on license / official document"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
-            <div className="grid grid-cols-3 gap-2">
-              <Field
-                label="City"
-                explainer="City"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-              />
-              <Field
-                label="State"
-                explainer="ST"
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-              />
-              <Field
-                label="Zip"
-                explainer="Zip"
-                value={form.zip}
-                onChange={(e) => setForm({ ...form, zip: e.target.value })}
-              />
-            </div>
-            <p className="t-meta text-xs">
-              Optional — skip if you don&rsquo;t have it yet.
-            </p>
-          </>
-        )}
-
-        {/* —— Add wizard page 3 —— */}
-        {!isEditing && page === 3 && (
-          <>
-            <div className="rounded-lg bg-afa-soft-gray/80 border border-afa-navy/10 px-3 py-2.5 space-y-1">
-              <FixedLine label="Name" value={displayName} />
-              <FixedLine label="Phone" value={form.phone} />
-              <FixedLine label="Email" value={form.email} />
-            </div>
-            <PitchPicker />
-            <Field
-              label="Card #"
-              explainer="Umpire card # (optional)"
-              value={form.cardNumber}
-              onChange={(e) =>
-                setForm({ ...form, cardNumber: e.target.value })
-              }
-            />
-            <StatusPicker />
-          </>
-        )}
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          {!isEditing && page > 1 && (
-            <button type="button" className="btn-transient" onClick={goBack}>
-              Back
-            </button>
-          )}
-          <button type="submit" disabled={busy} className="btn-action">
-            {isEditing
-              ? busy
-                ? "Saving…"
-                : "Save changes"
-              : page < 3
-                ? "Continue"
-                : busy
-                  ? "Saving…"
-                  : "Save to roster"}
-          </button>
-        </div>
-      </div>
-    </form>
+      {!isEditing && page === 3 && (
+        <>
+          <PitchPicker />
+          <RoomField
+            label="Card #"
+            optional
+            explainer="Umpire card # (optional)"
+            value={form.cardNumber}
+            onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+          />
+          <StatusPicker />
+        </>
+      )}
+    </RoomShell>
   );
 
   return (

@@ -19,9 +19,18 @@ import {
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
 import CompactPlayerAdd from "@/components/CompactPlayerAdd";
+import { PageDots } from "@/components/forms/SoftField";
 
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
+// Room flow: door (tournament) → rooms → exit (confirmation).
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Sign & Submit"];
+const ROOM_WELCOME = [
+  "Pick the event. That’s the door in — everything after hangs on this choice.",
+  "Name the team and which division they play.",
+  "Who runs the team? We’ll use this for the roster and manage link.",
+  "Add who plays. Search the directory or type a new name.",
+  "Agree to the release. Sign now or later — submitting gets the team on the list.",
+];
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
@@ -408,23 +417,23 @@ export default function RegistrationForm({
 
   return (
     <div className="space-y-4">
-      <ol className="flex flex-wrap gap-2">
-        {STEPS.map((label, i) => (
-          <li
-            key={label}
-            className={
-              "step-chip " +
-              (i === step
-                ? "step-chip--current"
-                : i < step
-                ? "step-chip--done"
-                : "step-chip--todo")
-            }
-          >
-            {i + 1}. {label}
-          </li>
-        ))}
-      </ol>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="t-strong">
+            {STEPS[step]}
+            <span className="t-meta font-normal">
+              {" "}
+              · {step + 1} of {STEPS.length}
+            </span>
+          </p>
+        </div>
+        <PageDots page={step + 1} total={STEPS.length} />
+        {ROOM_WELCOME[step] && (
+          <p className="text-sm text-afa-ink/75 leading-relaxed">
+            {ROOM_WELCOME[step]}
+          </p>
+        )}
+      </div>
 
       <div className="form-surface p-4 space-y-4">
         {step === 0 && (
@@ -738,7 +747,7 @@ export default function RegistrationForm({
               disabled={!canProceed()}
               className="btn-action disabled:opacity-30"
             >
-              Next
+              Continue
             </button>
           )}
         </div>
