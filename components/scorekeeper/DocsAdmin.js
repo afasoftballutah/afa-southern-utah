@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { DOC_KINDS, kindLabel } from "@/lib/site-docs-kinds";
+import RulesBookEditor from "@/components/scorekeeper/RulesBookEditor";
 
 const emptyForm = () => ({
   title: "",
-  kind: "rules",
+  kind: "other",
   body: "",
   sourceUrl: "",
   version: "",
@@ -13,11 +14,23 @@ const emptyForm = () => ({
   published: true,
 });
 
+const RULEBOOK_SLUG = "afa-slow-pitch-rule-book";
+
+function isMainRuleBook(d) {
+  if (!d) return false;
+  if (d.slug === RULEBOOK_SLUG) return true;
+  const body = String(d.body || "").trim();
+  return body.startsWith('{"format":"rules-sections-v1"');
+}
+
 /**
- * Director documents desk: rules, umpire agreements, waivers, other.
- * List + expand one editor at a time (compact by default).
+ * Documents desk. Filter chips pick the kind.
+ * Choosing Rules opens the rule-book editor (not a plain text form).
  */
-export default function DocsAdmin({ initialDocs = [] }) {
+export default function DocsAdmin({
+  initialDocs = [],
+  ruleBook = null, // { source, sections, docId, title, sourceUrl, published }
+}) {
   const [docs, setDocs] = useState(initialDocs);
   const [filter, setFilter] = useState("all");
   const [form, setForm] = useState(emptyForm);
@@ -25,11 +38,18 @@ export default function DocsAdmin({ initialDocs = [] }) {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [rulesOpen, setRulesOpen] = useState(false);
+
+  // Main book is opened via Rules chip — keep it out of the plain list.
+  const listDocs = useMemo(
+    () => docs.filter((d) => !isMainRuleBook(d)),
+    [docs]
+  );
 
   const filtered = useMemo(() => {
-    if (filter === "all") return docs;
-    return docs.filter((d) => d.kind === filter);
-  }, [docs, filter]);
+    if (filter === "all") return listDocs;
+    return listDocs.filter((d) => d.kind === filter);
+  }, [listDocs, filter]);
 
   function resetForm() {
     setForm(emptyForm());
@@ -38,14 +58,32 @@ export default function DocsAdmin({ initialDocs = [] }) {
     setError("");
   }
 
+  function chooseFilter(value) {
+    if (value === "rules" && ruleBook) {
+      setRulesOpen(true);
+      setShowForm(false);
+      setFilter("rules");
+      return;
+    }
+    setRulesOpen(false);
+    setFilter(value);
+  }
+
   function startNew() {
-    setForm(emptyForm());
+    setRulesOpen(false);
+    setForm({ ...emptyForm(), kind: filter === "all" ? "other" : filter });
     setEditingId(null);
     setShowForm(true);
     setError("");
   }
 
   function startEdit(d) {
+    if (isMainRuleBook(d) && ruleBook) {
+      setRulesOpen(true);
+      setShowForm(false);
+      return;
+    }
+    setRulesOpen(false);
     setEditingId(d.id);
     setForm({
       title: d.title || "",
@@ -102,6 +140,7 @@ export default function DocsAdmin({ initialDocs = [] }) {
   }
 
   async function setPublished(d, published) {
+    if (isMainRuleBook(d)) return;
     setBusy(true);
     setError("");
     try {
@@ -121,6 +160,10 @@ export default function DocsAdmin({ initialDocs = [] }) {
   }
 
   async function remove(d) {
+    if (isMainRuleBook(d)) {
+      setError("The main rule book cannot be deleted from here.");
+      return;
+    }
     if (
       !window.confirm(
         `Delete “${d.title}”? This removes it from the public site.`
@@ -145,6 +188,44 @@ export default function DocsAdmin({ initialDocs = [] }) {
     }
   }
 
+  if (rulesOpen && ruleBook) {
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { value: "all", label: "All" },
+            ...DOC_KINDS,
+          ].map((k) => {
+            const on = k.value === "rules";
+            return (
+              <button
+                key={k.value}
+                type="button"
+                className={on ? "btn-info" : "btn-transient"}
+                aria-pressed={on}
+                onClick={() => chooseFilter(k.value)}
+              >
+                {k.label}
+              </button>
+            );
+          })}
+        </div>
+        <RulesBookEditor
+          initialSource={ruleBook.source}
+          initialSections={ruleBook.sections}
+          docId={ruleBook.docId}
+          initialTitle={ruleBook.title}
+          initialSourceUrl={ruleBook.sourceUrl}
+          initialPublished={ruleBook.published}
+          onClose={() => {
+            setRulesOpen(false);
+            setFilter("all");
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {error && (
@@ -163,20 +244,22 @@ export default function DocsAdmin({ initialDocs = [] }) {
               type="button"
               className={on ? "btn-info" : "btn-transient"}
               aria-pressed={on}
-              onClick={() => setFilter(k.value)}
+              onClick={() => chooseFilter(k.value)}
             >
               {k.label}
             </button>
           );
         })}
-        <button
-          type="button"
-          className="btn-action ml-auto"
-          onClick={startNew}
-          disabled={busy}
-        >
-          + Add document
-        </button>
+        {filter !== "rules" && (
+          <button
+            type="button"
+            className="btn-action ml-auto"
+            onClick={startNew}
+            disabled={busy}
+          >
+            + Add document
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -204,11 +287,12 @@ export default function DocsAdmin({ initialDocs = [] }) {
                   setForm((f) => ({ ...f, kind: e.target.value }))
                 }
               >
-                {DOC_KINDS.map((k) => (
+                {DOC_KINDS.filter((k) => k.value !== "rules").map((k) => (
                   <option key={k.value} value={k.value}>
                     {k.label}
                   </option>
                 ))}
+                <option value="rules">House rules (extra)</option>
               </select>
             </label>
             <label className="block space-y-1">
@@ -298,8 +382,9 @@ export default function DocsAdmin({ initialDocs = [] }) {
       <ul className="card divide-y divide-black/5">
         {filtered.length === 0 && (
           <li className="p-6 text-center t-meta">
-            No documents{filter !== "all" ? ` in ${kindLabel(filter)}` : ""}{" "}
-            yet.
+            {filter === "rules"
+              ? "Use the Rules chip above to open the rule book."
+              : `No documents${filter !== "all" ? ` in ${kindLabel(filter)}` : ""} yet.`}
           </li>
         )}
         {filtered.map((d) => (

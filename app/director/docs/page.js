@@ -3,7 +3,7 @@ import { listAllSiteDocuments } from "@/lib/site-docs";
 import { loadRulesBookForDirector, RULEBOOK_SLUG } from "@/lib/rules-book";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
-import DocsDesk from "@/components/scorekeeper/DocsDesk";
+import DocsAdmin from "@/components/scorekeeper/DocsAdmin";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Documents — Director" };
@@ -23,8 +23,7 @@ export default async function DirectorDocsPage() {
     listAllSiteDocuments(),
     loadRulesBookForDirector(),
   ]);
-  const otherDocs = docs.filter((d) => d.slug !== RULEBOOK_SLUG);
-  const published = otherDocs.filter((d) => d.published).length;
+  const published = docs.filter((d) => d.published).length;
 
   return (
     <DirectorShell
@@ -32,13 +31,13 @@ export default async function DirectorDocsPage() {
       count={
         needsMigration
           ? "Rules · umpires · waivers"
-          : `${published + 1} on file`
+          : `${published} live · ${docs.length} total`
       }
       back="/director"
     >
       <p className="t-meta">
-        Open <strong>Rules</strong> to view or edit the public rule book.
-        Other rows are waivers, umpire agreements, and house rules.
+        Pick a type above the list. <strong>Rules</strong> opens the public
+        rule book to view or edit. Waivers and umpire agreements edit in place.
       </p>
       {needsMigration && (
         <div className="card p-4">
@@ -53,14 +52,16 @@ export default async function DirectorDocsPage() {
         </div>
       )}
       {!needsMigration && (
-        <DocsDesk
-          otherDocs={otherDocs}
-          bookSource={book.source}
-          bookSections={book.sections}
-          bookDocId={book.doc?.id ?? null}
-          bookTitle={book.doc?.title || book.source.title}
-          bookSourceUrl={book.doc?.source_url || book.source.url}
-          bookPublished={book.doc?.published !== false}
+        <DocsAdmin
+          initialDocs={docs}
+          ruleBook={{
+            source: book.source,
+            sections: book.sections,
+            docId: book.doc?.id ?? null,
+            title: book.doc?.title || book.source.title,
+            sourceUrl: book.doc?.source_url || book.source.url,
+            published: book.doc?.published !== false,
+          }}
         />
       )}
     </DirectorShell>
