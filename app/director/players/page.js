@@ -1,7 +1,11 @@
 import { requireDirectorPage } from "@/lib/staff-gate";
-import { listPeople, listTeams, resultsByTeamAndTournament, formatResult } from "@/lib/director";
+import { listPeople, listTeams } from "@/lib/director";
 import { RATINGS } from "@/lib/class";
-import { lastNameFirst, lastNameKey, bornWithAge } from "@/lib/names";
+import {
+  directoryNameLabel,
+  lastNameKey,
+  bornWithAge,
+} from "@/lib/names";
 import { leagueToday } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
@@ -10,28 +14,25 @@ import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
 import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
 import EditPlayer from "@/components/scorekeeper/EditPlayer";
-import ContactButton from "@/components/scorekeeper/ContactButton";
 import Link from "next/link";
-import { Fragment } from "react";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 export const metadata = { title: "Players — Director" };
 
-// One line per player, sorted by last name, sorted by clicking a heading.
-// JD, 2026-07-27: "We dont want player cards, we want a list... alphabetized
-// by last name, sortable and filterable... Waiting to Sign is way verbose.
-// Waiver with a checkbox is more realistic... Class is important - Fallen D
-// is different than Fallen E."
+// One row per person. Expand shows their tournament appearances.
+// JD: player database is people, not a repeating tournament list.
 const COLUMNS = [
   { key: "name", label: "Name" },
-  { key: "gender", label: "M/F", align: "center", width: "4rem" },
-  { key: "dob", label: "Born", width: "9rem" },
-  { key: "rating", label: "Rating", align: "center", width: "5rem" },
-  { key: "team", label: "Team" },
-  { key: "tournament", label: "Tournament" },
+  { key: "gender", label: "M/F", align: "center", width: "3.5rem" },
+  { key: "dob", label: "DOB", width: "9rem" },
+  { key: "address", label: "Address" },
+  { key: "email", label: "Email" },
   { key: "class", label: "Class", align: "center", width: "4.5rem" },
-  { key: "events", label: "#", align: "right", width: "3.5rem" },
-  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "5rem" },
+  { key: "events", label: "#", align: "right", width: "3rem" },
+  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "4.5rem" },
+  { key: "edit", label: "Edit", align: "center", width: "4rem" },
+  { key: "merge", label: "Merge", align: "center", width: "5.5rem" },
+  { key: "delete", label: "Delete", align: "center", width: "4.5rem" },
 ];
 
 const FILTERS = [
@@ -42,12 +43,18 @@ const FILTERS = [
   { key: "nodob", label: "No birth date", tag: "nodob" },
 ];
 
-// Sort by strength, not alphabetically. A is strongest, and unranked sorts to
-// one end rather than scattering under "—".
 const ratingRank = (r) => {
   const i = RATINGS.indexOf(r);
   return i === -1 ? -1 : RATINGS.length - i;
 };
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  const s = String(iso).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const [y, m, d] = s.split("-");
+  return `${m}/${d}/${y}`;
+}
 
 export default async function PlayersPage() {
   const gate = await requireDirectorPage();
@@ -60,15 +67,12 @@ export default async function PlayersPage() {
     );
   }
 
-  const [{ players, unmatched }, teams, results] = await Promise.all([
+  const [{ players, unmatched }, teams] = await Promise.all([
     listPeople(),
     listTeams(),
-    resultsByTeamAndTournament(),
   ]);
 
-  // Switch Team options: same tournament only (filtered per appearance below).
-  // Grouped by division so the director sees scope once as a header, then
-  // team · manager · paid on each line — enough key without repeating Coed D.
+  // Switch Team options: same tournament only, grouped by division.
   const openRegistrations = teams.flatMap((t) =>
     t.registrations
       .filter((r) => r.status !== "withdrawn")
@@ -89,25 +93,20 @@ export default async function PlayersPage() {
         sortKey: `${r.switchGroup || ""}|${(t.name || "").toLowerCase()}`,
       }))
   );
-  // One clock for the whole table, so two rows can never disagree about today.
+
   const today = leagueToday();
+
+  const mergeOptionsFor = (keepId) =>
+    players
+      .filter((o) => o.id !== keepId)
+      .map((o) => ({
+        id: o.id,
+        label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
+      }));
 
   const rows = players.map((p) => {
     const active = p.appearances.filter((a) => !a.removed);
     const unsigned = active.filter((a) => !a.signed).length;
-    const lastAppearance = active[active.length - 1] ?? null;
-    const own = active.find((a) => a.email || a.phone);
-    const viaManager = active.find((a) => a.managerEmail || a.managerPhone);
-    const contact = own
-      ? { phone: own.phone, email: own.email, via: null }
-      : viaManager
-        ? {
-            phone: viaManager.managerPhone,
-            email: viaManager.managerEmail,
-            via: viaManager.managerName,
-          }
-        : null;
-    const teams = [...new Set(active.map((a) => a.teamName))];
 
     const tags = [];
     if (unsigned > 0) tags.push("unsigned");
@@ -116,118 +115,135 @@ export default async function PlayersPage() {
     if (!p.rating) tags.push("norating");
     if (!p.gender) tags.push("nogender");
 
+    const nameLabel = directoryNameLabel({
+      legalFirstName: p.legal_first_name,
+      legalLastName: p.legal_last_name,
+      preferredName: p.preferred_name,
+      fullName: p.full_name,
+    });
+
+    const appearanceTable =
+      active.length === 0 ? (
+        <p className="t-meta">No tournament appearances on file.</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="t-label">Tournament appearances</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px] leading-snug">
+              <thead>
+                <tr className="border-b border-afa-navy/15">
+                  <th className="px-2 py-1 text-left t-label font-normal">Date</th>
+                  <th className="px-2 py-1 text-left t-label font-normal">Tournament</th>
+                  <th className="px-2 py-1 text-center t-label font-normal">W/M/Coed</th>
+                  <th className="px-2 py-1 text-left t-label font-normal">Division</th>
+                  <th className="px-2 py-1 text-left t-label font-normal">Team</th>
+                  <th className="px-2 py-1 text-center t-label font-normal">Waiver</th>
+                  <th className="px-2 py-1 text-left t-label font-normal" />
+                </tr>
+              </thead>
+              <tbody>
+                {active.map((a) => (
+                  <tr key={a.memberId} className="border-b border-black/5">
+                    <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">
+                      {formatDate(a.startDate)}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {a.tournamentName ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      {a.genderShort ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {a.divisionLabel ?? a.className ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {a.registrationId ? (
+                        <Link
+                          href={`/director/registrations/${a.registrationId}`}
+                          className="text-afa-navy font-semibold hover:underline"
+                        >
+                          {a.teamName}
+                        </Link>
+                      ) : (
+                        a.teamName ?? "—"
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <span
+                        className={
+                          "tick " + (a.signed ? "text-afa-go" : "text-afa-muted/50")
+                        }
+                      >
+                        {a.signed ? "☑" : "☐"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {a.registrationId ? (
+                        <RowAction
+                          label="Switch Team"
+                          title={`Switch ${p.full_name}`}
+                          note={
+                            a.tournamentName
+                              ? `Same tournament only: ${a.tournamentName}. Both waivers are rebuilt.`
+                              : "No tournament on this roster row — cannot switch."
+                          }
+                          optionKey="Team · manager · paid  (grouped by division)"
+                          emptyMessage="No other teams in this tournament to switch to."
+                          countSingular="team in this tournament"
+                          countPlural="teams in this tournament"
+                          listSize={12}
+                          placeholder="Pick a team in this tournament…"
+                          action="movePlayer"
+                          valueKey="toRegistrationId"
+                          payload={{ memberId: a.memberId }}
+                          options={
+                            a.tournamentId
+                              ? openRegistrations
+                                  .filter(
+                                    (o) =>
+                                      o.id !== a.registrationId &&
+                                      o.tournamentId === a.tournamentId
+                                  )
+                                  .sort((x, y) =>
+                                    (x.sortKey || x.label).localeCompare(
+                                      y.sortKey || y.label,
+                                      undefined,
+                                      { sensitivity: "base" }
+                                    )
+                                  )
+                              : []
+                          }
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+
     return {
       key: p.id,
-      // First the actions, each sitting in the column it belongs to — merge
-      // under the name because it is about who this person is, move under the
-      // team because it is about which team they are on. Then every event, in
-      // these same columns. Always one action row so Delete works even with
-      // zero roster appearances.
-      detailRows: (active.length
-        ? active
-        : [{ memberId: `solo-${p.id}`, registrationId: null, teamName: null, tournamentName: null, className: null, signed: false }]
-      ).map((a, idx) => ({
-        key: a.memberId,
-        cells: {
-          // The person's own columns are blank on an event row, so the actions
-          // live there — on the first one only. Merge under the name because it
-          // is about who this person is.
-          name:
-            idx === 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <EditPlayer player={p} />
-                <RowAction
-                  label="Merge duplicate"
-                  title={`Merge into ${p.full_name}`}
-                  note="Everything on the duplicate moves here. Nothing is deleted."
-                  placeholder="Pick the duplicate…"
-                  emptyMessage="No other people to merge."
-                  countSingular="person"
-                  countPlural="people"
-                  action="mergePlayers"
-                  valueKey="dropId"
-                  payload={{ keepId: p.id }}
-                  confirmText={`Merge {name} into ${p.full_name}? Nothing is deleted.`}
-                  options={players
-                    .filter((o) => o.id !== p.id)
-                    .map((o) => ({
-                      id: o.id,
-                      label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
-                    }))}
-                />
-                <DeletePlayer playerId={p.id} name={p.full_name} />
-              </div>
-            ) : null,
-          dob:
-            idx === 0 ? (
-              <ContactButton
-                name={p.full_name}
-                phone={contact?.phone}
-                email={contact?.email}
-                via={contact?.via}
-              />
-            ) : null,
-          rating:
-            a.registrationId ? (
-              <RowAction
-                label="Switch Team"
-                title={`Switch ${p.full_name}`}
-                note={
-                  a.tournamentName
-                    ? `Same tournament only: ${a.tournamentName}. Both waivers are rebuilt.`
-                    : "No tournament on this roster row — cannot switch."
-                }
-                optionKey="Team · manager · paid  (grouped by division)"
-                emptyMessage="No other teams in this tournament to switch to."
-                countSingular="team in this tournament"
-                countPlural="teams in this tournament"
-                listSize={12}
-                placeholder="Pick a team in this tournament…"
-                action="movePlayer"
-                valueKey="toRegistrationId"
-                payload={{ memberId: a.memberId }}
-                confirmText={`Switch ${p.full_name} to {name}? Both waivers are rebuilt.`}
-                options={
-                  // Fail closed: without a tournament id we never list other events.
-                  a.tournamentId
-                    ? openRegistrations
-                        .filter(
-                          (o) =>
-                            o.id !== a.registrationId &&
-                            o.tournamentId === a.tournamentId
-                        )
-                        .sort((x, y) =>
-                          (x.sortKey || x.label).localeCompare(
-                            y.sortKey || y.label,
-                            undefined,
-                            { sensitivity: "base" }
-                          )
-                        )
-                    : []
-                }
-              />
-            ) : null,
-          team: a.registrationId ? (
-            <Link
-              href={`/director/registrations/${a.registrationId}`}
-              className="text-afa-navy hover:underline"
-            >
-              {a.teamName}
-            </Link>
-          ) : (
-            "—"
-          ),
-          tournament: a.tournamentName ?? "—",
-          class: a.className ?? "—",
-          // How the team finished, where the row above counts events.
-          events: a.tournamentId ? formatResult(results.get(a.tournamentId, a.teamName)) : "—",
-          waiver: a.signed,
-        },
-      })),
+      // Expand = tournament history, not more of the same person columns.
+      detail: appearanceTable,
       tags,
-      search: `${p.full_name} ${teams.join(" ")} ${active.map((a) => a.tournamentName).join(" ")} ${p.rating ?? ""}`,
+      search: [
+        p.full_name,
+        p.legal_first_name,
+        p.legal_last_name,
+        p.preferred_name,
+        p.email,
+        p.address,
+        p.rating,
+        ...active.map((a) => a.teamName),
+        ...active.map((a) => a.tournamentName),
+      ]
+        .filter(Boolean)
+        .join(" "),
       cells: {
-        name: lastNameFirst(p.full_name),
+        name: nameLabel,
         gender: (
           <InlineSelect
             label="M/F"
@@ -240,9 +256,11 @@ export default async function PlayersPage() {
           />
         ),
         dob: bornWithAge(p.birth_date, today),
-        rating: (
+        address: p.address || "—",
+        email: p.email || "—",
+        class: (
           <InlineSelect
-            label="Rating"
+            label="Class"
             action="setPlayerRating"
             valueKey="rating"
             payload={{ playerId: p.id }}
@@ -251,30 +269,38 @@ export default async function PlayersPage() {
             subject={p.full_name}
           />
         ),
-        team: lastAppearance ? (
-          <Link
-            href={`/director/registrations/${lastAppearance.registrationId}`}
-            className="text-afa-navy hover:underline"
-          >
-            {lastAppearance.teamName}
-          </Link>
-        ) : (
-          "—"
-        ),
-        tournament: lastAppearance?.tournamentName ?? "—",
-        class: lastAppearance?.className ?? "—",
         events: active.length,
-        // Ticked when every roster they are on is signed.
         waiver: active.length > 0 && unsigned === 0,
+        edit: <EditPlayer player={p} />,
+        merge: (
+          <RowAction
+            label="Merge"
+            title={`Merge into ${p.full_name}`}
+            note="Everything on the duplicate moves here. Nothing is deleted."
+            placeholder="Pick the duplicate…"
+            emptyMessage="No other people to merge."
+            countSingular="person"
+            countPlural="people"
+            action="mergePlayers"
+            valueKey="dropId"
+            payload={{ keepId: p.id }}
+            options={mergeOptionsFor(p.id)}
+          />
+        ),
+        delete: <DeletePlayer playerId={p.id} name={p.full_name} />,
       },
       sortValues: {
-        name: lastNameKey(p.full_name),
+        name: lastNameKey(
+          [p.legal_first_name, p.legal_last_name].filter(Boolean).join(" ") ||
+            p.full_name
+        ),
         dob: p.birth_date ?? "",
-        team: lastAppearance?.teamName ?? "",
-        tournament: lastAppearance?.tournamentName ?? "",
+        address: p.address ?? "",
+        email: p.email ?? "",
         events: active.length,
-        rating: ratingRank(p.rating),
+        class: ratingRank(p.rating),
         gender: p.gender ?? "",
+        waiver: active.length > 0 && unsigned === 0,
       },
     };
   });
@@ -284,8 +310,9 @@ export default async function PlayersPage() {
       {unmatched.length > 0 && (
         <div className="card p-4">
           <p className="t-strong">
-            {unmatched.length} roster {unmatched.length === 1 ? "entry has" : "entries have"} no
-            player record
+            {unmatched.length} roster{" "}
+            {unmatched.length === 1 ? "entry has" : "entries have"} no player
+            record
           </p>
           <p className="t-meta">
             No birth date, so there is nothing safe to match them on:{" "}
@@ -300,9 +327,8 @@ export default async function PlayersPage() {
         filters={FILTERS}
         defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody matches that."
-        searchPlaceholder="Name, team or class…"
+        searchPlaceholder="Name, email, team…"
       />
-
     </DirectorShell>
   );
 }

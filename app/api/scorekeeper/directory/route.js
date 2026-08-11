@@ -917,6 +917,11 @@ export async function POST(request) {
       const normalized = normalizeName(legalName);
       if (!normalized) return bad("A legal name is required");
 
+      const address =
+        body.address !== undefined
+          ? String(body.address ?? "").trim() || null
+          : undefined;
+
       const patch = {
         legal_first_name: fields.legalFirstName,
         legal_last_name: fields.legalLastName,
@@ -928,6 +933,7 @@ export async function POST(request) {
         gender: gender || null,
         rating: rating || null,
       };
+      if (address !== undefined) patch.address = address;
 
       const { error } = await supabase
         .from("players")

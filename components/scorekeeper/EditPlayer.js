@@ -25,6 +25,7 @@ function initialForm(player) {
     preferredName: String(player.preferred_name ?? "").trim(),
     birthDate: player.birth_date ?? "",
     email: String(player.email ?? "").trim(),
+    address: String(player.address ?? "").trim(),
     gender: player.gender ?? "",
     rating: player.rating ?? "",
   };
@@ -76,6 +77,7 @@ export default function EditPlayer({ player }) {
           preferredName: form.preferredName.trim() || null,
           birthDate: form.birthDate,
           email: form.email.trim() || null,
+          address: form.address.trim() || null,
           gender: form.gender || null,
           rating: form.rating || null,
         }),
@@ -145,6 +147,13 @@ export default function EditPlayer({ player }) {
             onChange={set("preferredName")}
             autoComplete="nickname"
           />
+          <SoftField
+            label="Address"
+            explainer="As on license / official ID"
+            value={form.address}
+            onChange={set("address")}
+            autoComplete="street-address"
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <SoftField
               label="Birth date"
@@ -177,7 +186,7 @@ export default function EditPlayer({ player }) {
               </select>
             </label>
             <label className="block">
-              <span className="t-label block mb-1">Rating</span>
+              <span className="t-label block mb-1">Class</span>
               <select
                 value={form.rating}
                 onChange={set("rating")}
