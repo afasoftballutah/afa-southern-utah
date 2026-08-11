@@ -91,11 +91,7 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
       }
       back="/scorekeeper"
     >
-      <p className="t-meta">
-        Red filter = games that still need numbers. Green = already in.
-      </p>
-
-      <div className="space-y-8">
+      <div className="space-y-5">
         {divisions.map((d) => {
           const bracketGames = d.games ?? [];
           const poolGames = d.pool_games ?? [];
@@ -103,20 +99,19 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
           const label = d.display_name ?? d.name;
 
           return (
-            <section key={d.id} className="space-y-3">
-              <h2 className="t-heading">{label}</h2>
+            <section key={d.id} className="space-y-2">
               {poolGames.length > 0 && (
                 <ScoreTable
                   games={poolGames}
                   kind="pool"
-                  title={`${label} — pool`}
+                  title={`${label} · pool`}
                 />
               )}
               {bracketGames.length > 0 && (
                 <ScoreTable
                   games={bracketGames}
                   kind="bracket"
-                  title={`${label} — bracket`}
+                  title={`${label} · bracket`}
                 />
               )}
             </section>
@@ -124,8 +119,8 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
         })}
 
         {divisions.every((d) => !(d.games?.length || d.pool_games?.length)) && (
-          <div className="card p-6 text-center">
-            <p className="t-meta">No games scheduled for this tournament yet.</p>
+          <div className="card p-4 text-center">
+            <p className="t-meta">No games scheduled yet.</p>
           </div>
         )}
       </div>

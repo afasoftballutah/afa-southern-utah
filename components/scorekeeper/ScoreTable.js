@@ -72,21 +72,11 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
     { key: "done", label: "In", align: "center", width: "3.5rem" },
   ];
 
+  // Compact chips — not the huge segmented scorekeeper filters.
+  // Default is unscored games (99% of field work).
   const filters = [
-    {
-      key: "left",
-      label: "Need a score",
-      tag: "unplayed",
-      hint: "Type the numbers here",
-      tone: "action",
-    },
-    {
-      key: "done",
-      label: "Already scored",
-      tag: "played",
-      hint: "Open to fix a mistake",
-      tone: "quiet",
-    },
+    { key: "left", label: "Need score", tag: "unplayed" },
+    { key: "done", label: "Scored", tag: "played" },
   ];
 
   // The if-game the champion made unnecessary. It is on the printed sheet
@@ -177,11 +167,11 @@ export default function ScoreTable({ games, kind = "bracket", readOnly = false, 
       rows={rows}
       filters={filters}
       defaultFilter="left"
-      filterStyle="segmented"
+      filterStyle="default"
       defaultSort={{ key: kind === "pool" ? "when" : "num", dir: "asc" }}
-      searchPlaceholder="Find a team name…"
-      empty="Nothing in this view. Tap a filter above — “Need a score” is where you enter numbers."
-      before={<p className="t-strong">{title}</p>}
+      searchPlaceholder="Team…"
+      empty="No games need a score here. Tap Scored to fix one already in."
+      before={<p className="t-strong text-sm">{title}</p>}
     />
   );
 }

@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 /**
- * Idiot-proof tournament picker for scorekeeper.
- * Default: only tournaments that still need scores.
+ * Compact tournament picker. Default: only events that still need scores.
+ * Huge filter cards were drowning the actual work (pick tournament → type scores).
  */
 export default function TournamentPickList({ tournaments = [] }) {
   const needScores = useMemo(
@@ -17,7 +17,6 @@ export default function TournamentPickList({ tournaments = [] }) {
     [tournaments]
   );
 
-  // Default to the useful list; fall back if nothing needs scoring
   const [view, setView] = useState(() =>
     needScores.length > 0 ? "need" : "all"
   );
@@ -26,51 +25,20 @@ export default function TournamentPickList({ tournaments = [] }) {
     view === "need" ? needScores : view === "done" ? done : tournaments;
 
   const tabs = [
-    {
-      key: "need",
-      label: "Need scores",
-      count: needScores.length,
-      hint: "Games left to enter",
-      tone: "action",
-    },
-    {
-      key: "all",
-      label: "All tournaments",
-      count: tournaments.length,
-      hint: "Everything on file",
-      tone: "neutral",
-    },
-    {
-      key: "done",
-      label: "Already scored",
-      count: done.length,
-      hint: "Nothing left open",
-      tone: "quiet",
-    },
+    { key: "need", label: "Need scores", count: needScores.length },
+    { key: "all", label: "All", count: tournaments.length },
+    { key: "done", label: "Done", count: done.length },
   ];
 
   return (
     <div className="space-y-3">
       <div
-        className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+        className="flex flex-wrap items-center gap-1.5"
         role="tablist"
         aria-label="Which tournaments to show"
       >
         {tabs.map((tab) => {
           const on = view === tab.key;
-          const base =
-            "rounded-xl border-2 px-3 py-3 text-left transition-colors min-h-[4.5rem] ";
-          const styles = on
-            ? tab.tone === "action"
-              ? "border-afa-red bg-afa-red text-white shadow-sm"
-              : tab.tone === "quiet"
-                ? "border-emerald-700 bg-emerald-700 text-white shadow-sm"
-                : "border-afa-navy bg-afa-navy text-white shadow-sm"
-            : tab.tone === "action"
-              ? "border-red-200 bg-red-50 text-red-950 hover:border-afa-red"
-              : tab.tone === "quiet"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-500"
-                : "border-afa-navy/15 bg-white text-afa-navy hover:border-afa-navy/40";
           return (
             <button
               key={tab.key}
@@ -78,27 +46,17 @@ export default function TournamentPickList({ tournaments = [] }) {
               role="tab"
               aria-selected={on}
               onClick={() => setView(tab.key)}
-              className={base + styles}
+              className={
+                "rounded-full border px-2.5 py-1 text-[12px] font-semibold tabular-nums " +
+                (on
+                  ? tab.key === "need"
+                    ? "border-afa-red bg-afa-red text-white"
+                    : "border-afa-navy bg-afa-navy text-white"
+                  : "border-afa-navy/20 bg-white text-afa-navy/70 hover:border-afa-navy/40")
+              }
             >
-              <span className="flex items-baseline justify-between gap-2">
-                <span className="font-bold text-base leading-tight">{tab.label}</span>
-                <span
-                  className={
-                    "tabular-nums text-xl font-black leading-none " +
-                    (on ? "opacity-95" : "opacity-70")
-                  }
-                >
-                  {tab.count}
-                </span>
-              </span>
-              <span
-                className={
-                  "block text-xs mt-1 font-medium " +
-                  (on ? "opacity-85" : "opacity-65")
-                }
-              >
-                {tab.hint}
-              </span>
+              {tab.label}
+              <span className="ml-1 opacity-80">{tab.count}</span>
             </button>
           );
         })}
@@ -106,19 +64,19 @@ export default function TournamentPickList({ tournaments = [] }) {
 
       <div className="card divide-y divide-afa-navy/10 overflow-hidden">
         {list.length === 0 ? (
-          <div className="p-6 text-center space-y-2">
-            <p className="t-strong">
+          <div className="p-5 text-center space-y-1">
+            <p className="t-strong text-sm">
               {view === "need"
                 ? "Nothing left to score"
                 : view === "done"
                   ? "No fully scored tournaments yet"
                   : "No tournaments on file"}
             </p>
-            <p className="t-meta">
-              {view === "need" && tournaments.length > 0
-                ? "Tap “All tournaments” if you need to fix a score that is already in."
-                : null}
-            </p>
+            {view === "need" && tournaments.length > 0 ? (
+              <p className="t-meta text-[12px]">
+                Switch to All if you need to fix a score already in.
+              </p>
+            ) : null}
           </div>
         ) : (
           list.map((t) => (
@@ -126,29 +84,27 @@ export default function TournamentPickList({ tournaments = [] }) {
               key={t.id}
               href={`/scorekeeper/games?tournament=${t.id}`}
               className={
-                "flex items-center justify-between gap-3 px-4 py-3.5 min-h-[56px] " +
+                "flex items-center justify-between gap-3 px-3.5 py-2.5 min-h-0 " +
                 (t.left > 0
-                  ? "bg-white hover:bg-red-50/40"
-                  : "bg-afa-soft-gray/40 hover:bg-afa-soft-gray/80")
+                  ? "bg-white hover:bg-red-50/50"
+                  : "bg-afa-soft-gray/30 hover:bg-afa-soft-gray/60")
               }
             >
               <span className="min-w-0">
-                <span className="t-body font-semibold block truncate">
+                <span className="t-body font-semibold text-[14px] block truncate">
                   {t.name}
                 </span>
-                <span className="t-meta block">
+                <span className="t-meta text-[12px] block">
                   {t.start_date}
                   {t.left > 0
-                    ? ` · ${t.left} game${t.left === 1 ? "" : "s"} still need a score`
-                    : " · all scored (or no games)"}
+                    ? ` · ${t.left} open`
+                    : " · all scored"}
                 </span>
               </span>
               <span
                 className={
-                  "shrink-0 rounded-full px-2.5 py-1 text-xs font-bold " +
-                  (t.left > 0
-                    ? "bg-afa-red text-white"
-                    : "bg-emerald-100 text-emerald-900")
+                  "shrink-0 text-[12px] font-bold " +
+                  (t.left > 0 ? "text-afa-red" : "text-afa-muted")
                 }
               >
                 {t.left > 0 ? "Score →" : "Open"}

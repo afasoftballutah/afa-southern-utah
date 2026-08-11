@@ -186,26 +186,51 @@ export default function DirectorTable({
             })}
           </div>
         ) : (
-          filters.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilterKey((cur) => (cur === f.key ? "all" : f.key))}
-              className={
-                "px-3 py-2 rounded-lg whitespace-nowrap t-label border " +
-                (filterKey === f.key
-                  ? "bg-afa-navy text-white border-afa-navy"
-                  : "border-afa-navy/20 text-afa-muted")
-              }
-            >
-              {f.label}
-            </button>
-          ))
+          filters.map((f) => {
+            const count = rows.filter((r) =>
+              (r.tags ?? []).includes(f.tag)
+            ).length;
+            const on = filterKey === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() =>
+                  setFilterKey((cur) => (cur === f.key ? "all" : f.key))
+                }
+                className={
+                  "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
+                  (on
+                    ? "bg-afa-navy text-white border-afa-navy"
+                    : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
+                }
+              >
+                {f.label}
+                <span className="ml-1 opacity-80">{count}</span>
+              </button>
+            );
+          })
         )}
 
         {filterStyle !== "segmented" && (
-          <span className="t-meta ml-auto whitespace-nowrap">
-            {visible.length} of {rows.length}
+          <button
+            type="button"
+            onClick={() => setFilterKey("all")}
+            className={
+              "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
+              (filterKey === "all"
+                ? "bg-afa-navy text-white border-afa-navy"
+                : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
+            }
+          >
+            All
+            <span className="ml-1 opacity-80">{rows.length}</span>
+          </button>
+        )}
+
+        {filterStyle !== "segmented" && (
+          <span className="t-meta ml-auto whitespace-nowrap text-[12px]">
+            {visible.length} shown
           </span>
         )}
       </div>

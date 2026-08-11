@@ -47,13 +47,23 @@ export default async function ScorekeeperPage() {
   }
 
   const tournaments = await listTournaments();
+  const needScores = tournaments.filter((t) => t.left > 0);
+
+  // One open tournament is the normal field day — skip the pick screen.
+  if (needScores.length === 1) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/scorekeeper/games?tournament=${needScores[0].id}`);
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <p className="t-label text-afa-navy/60">Scorekeeper</p>
-        <h1 className="t-title">Enter scores</h1>
-        <p className="t-meta">Pick a tournament. Put in the numbers. Done.</p>
+        <h1 className="t-title text-xl">Scores</h1>
+        <p className="t-meta text-[13px]">
+          {needScores.length > 0
+            ? `${needScores.length} tournament${needScores.length === 1 ? "" : "s"} still need scores.`
+            : "Nothing open — pick a tournament only if you need to fix one."}
+        </p>
       </div>
 
       <TournamentPickList tournaments={tournaments} />
