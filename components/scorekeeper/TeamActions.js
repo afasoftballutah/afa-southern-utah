@@ -31,13 +31,15 @@ function moneyLabel(cents) {
   return `$${Math.round(cents / 100)}`;
 }
 
+// Shared left rail so Pay / Team / Links line up on every row.
+const LABEL =
+  "t-label w-14 shrink-0 self-center text-afa-muted/80 tabular-nums";
+
 function ActionRow({ label, children }) {
   return (
-    <div className="flex flex-wrap items-start gap-x-2 gap-y-1.5">
-      <span className="t-label w-[4.5rem] shrink-0 pt-1 text-afa-muted/80">
-        {label}
-      </span>
-      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+    <div className="grid grid-cols-[3.5rem_1fr] gap-x-3 items-center">
+      <span className={LABEL}>{label}</span>
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
         {children}
       </div>
     </div>
@@ -46,24 +48,23 @@ function ActionRow({ label, children }) {
 
 function LinkLine({ label, href, copied, onCopy }) {
   return (
-    <div className="min-w-0 w-full space-y-0.5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="t-meta font-semibold text-afa-ink/70">{label}</span>
-        <button type="button" className="pill" onClick={onCopy}>
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <a
-          className="pill"
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open
-        </a>
+    <div className="grid grid-cols-[3.5rem_1fr] gap-x-3 items-start min-w-0">
+      <span className="t-meta self-center font-semibold text-afa-ink/70 text-[12px] leading-tight">
+        {label}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button type="button" className="pill" onClick={onCopy}>
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <a className="pill" href={href} target="_blank" rel="noreferrer">
+            Open
+          </a>
+        </div>
+        <p className="t-meta text-[11px] break-all font-mono text-afa-ink/55 leading-snug select-all">
+          {href}
+        </p>
       </div>
-      <p className="t-meta text-[11px] break-all font-mono text-afa-ink/60 leading-snug">
-        {href}
-      </p>
     </div>
   );
 }
@@ -154,7 +155,7 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
 
   return (
     <div className="space-y-2.5">
-      <div className="rounded-lg border border-afa-navy/10 bg-afa-navy/[0.02] px-3 py-2.5 space-y-2.5">
+      <div className="rounded-lg border border-afa-navy/10 bg-afa-navy/[0.02] px-3 py-3 space-y-2.5">
         <ActionRow label="Pay">
           {reg.paid_at ? (
             <>
@@ -245,11 +246,10 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
           )}
         </ActionRow>
 
-        <div className="space-y-2 pt-0.5 border-t border-afa-navy/10">
-          <span className="t-label text-afa-muted/80">Links</span>
+        <div className="border-t border-afa-navy/10 pt-2.5 space-y-2.5">
           {teamHref ? (
             <LinkLine
-              label="Team roster"
+              label="Roster"
               href={teamHref}
               copied={copied === "roster"}
               onCopy={() => copyLink("roster")}
