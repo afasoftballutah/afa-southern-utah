@@ -23,7 +23,11 @@ function initialForm(player) {
   return {
     legalFirstName: fromLegalFirst || split.first,
     legalLastName: fromLegalLast || split.last,
-    preferredName: String(player.preferred_name ?? "").trim(),
+    preferredName:
+      String(player.preferred_name ?? "").trim() ||
+      fromLegalFirst ||
+      split.first ||
+      "",
     birthDate: player.birth_date ?? "",
     email: String(player.email ?? "").trim(),
     address: String(player.address ?? "").trim(),

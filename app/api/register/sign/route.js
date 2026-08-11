@@ -73,7 +73,8 @@ export async function POST(request) {
   const addressTrim = typeof address === "string" ? address.trim() : "";
   const first = String(legalFirstName ?? "").trim();
   const last = String(legalLastName ?? "").trim();
-  const preferred = String(preferredName ?? "").trim() || null;
+  // Prefer explicit preferred; default to first name only (not full legal).
+  let preferred = String(preferredName ?? "").trim() || null;
   const emailTrim = typeof email === "string" ? email.trim() || null : null;
   const genderTrim =
     gender === "M" || gender === "F" ? gender : null;
@@ -95,6 +96,7 @@ export async function POST(request) {
         "You must certify that your information matches official identification"
       );
     }
+    if (!preferred) preferred = first;
   }
 
   const legalName = composeLegalName({

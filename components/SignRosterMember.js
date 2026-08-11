@@ -42,7 +42,13 @@ export default function SignRosterMember({ token, member }) {
   const [legalLastName, setLegalLastName] = useState(
     member.legalLastName || fromManager.last || ""
   );
-  const [preferredName, setPreferredName] = useState(member.preferredName ?? "");
+  // Default preferred to first name only (what shows on the roster).
+  const [preferredName, setPreferredName] = useState(
+    member.preferredName ||
+      member.legalFirstName ||
+      fromManager.first ||
+      ""
+  );
   const [gender, setGender] = useState(member.gender ?? "");
   const [birthDate, setBirthDate] = useState(member.birthDate ?? "");
   const [email, setEmail] = useState(member.email ?? "");

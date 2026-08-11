@@ -21,10 +21,8 @@ import AddressInput from "@/components/AddressInput";
 function displayName(p) {
   const preferred = (p.preferredName || "").trim();
   if (preferred) return preferred;
-  return [p.legalFirstName, p.legalLastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  // Default: first name only.
+  return String(p.legalFirstName || "").trim();
 }
 
 export default function PersonWizard({
