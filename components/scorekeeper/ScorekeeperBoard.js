@@ -53,15 +53,6 @@ function fieldKey(field) {
   return n ? `F${n[1]}` : raw;
 }
 
-function gameOpen(g, kind) {
-  if (g.status === "final") return false;
-  if (g.is_bye) return false;
-  if (kind === "bracket") {
-    // stillToPlayIn handles byes / if-games; use for open count consistency
-  }
-  return g.status !== "final" && !g.is_bye;
-}
-
 export default function ScorekeeperBoard({
   tournamentName,
   divisions = [],
