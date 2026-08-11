@@ -66,6 +66,7 @@ const COMPACT_SUSP =
 
 const FILTERS = [
   { key: "unsigned", label: "Waiver missing", tag: "unsigned" },
+  { key: "unconfirmed", label: "Unconfirmed", tag: "unconfirmed" },
   { key: "managers", label: "Managers", tag: "manager" },
   { key: "norating", label: "Unranked", tag: "norating" },
   { key: "nogender", label: "No M/F", tag: "nogender" },
@@ -98,7 +99,8 @@ export default async function PlayersPage() {
   }
 
   const supabase = getServiceClient();
-  // unmatched roster stubs (no birth date) — flags/alerts later; not shown now
+  // listPeople includes directory people + unconfirmed roster names
+  // (manager-entered, not yet linked to a players row).
   const [{ players }, teams, openSuspensions, { data: tourRows }] =
     await Promise.all([
       listPeople(),
@@ -157,23 +159,28 @@ export default async function PlayersPage() {
 
   const mergeOptionsFor = (keepId) =>
     players
-      .filter((o) => o.id !== keepId)
+      .filter((o) => !o.provisional && o.id !== keepId)
       .map((o) => ({
         id: o.id,
         label: `${o.full_name}${o.birth_date ? ` (${o.birth_date})` : ""}`,
       }));
 
   const rows = players.map((p) => {
-    const active = p.appearances.filter((a) => !a.removed);
+    const provisional = Boolean(p.provisional);
+    const active = (p.appearances ?? []).filter((a) => !a.removed);
     const unsigned = active.filter((a) => !a.signed).length;
+    const firstReg = active.find((a) => a.registrationId)?.registrationId;
 
-    const playerSuspensions = suspensionsByPlayer.get(p.id) ?? [];
+    const playerSuspensions = provisional
+      ? []
+      : suspensionsByPlayer.get(p.id) ?? [];
     // Active in any open scope (date-only, any tour, or open-ended).
     const currentlySuspended = playerSuspensions.some((s) =>
       isSuspensionActive(s, { asOf: today, tournamentId: s.tournament_id })
     );
 
     const tags = [];
+    if (provisional) tags.push("unconfirmed");
     if (unsigned > 0) tags.push("unsigned");
     if (active.some((a) => a.role === "manager")) tags.push("manager");
     if (!p.birth_date) tags.push("nodob");
@@ -191,6 +198,11 @@ export default async function PlayersPage() {
             fullName: p.full_name,
           })}
         </span>
+        {provisional ? (
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-afa-muted border border-afa-navy/25 rounded px-1 py-0.5">
+            Roster
+          </span>
+        ) : null}
         {currentlySuspended ? (
           <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-afa-red border border-afa-red/40 rounded px-1 py-0.5">
             Susp.
@@ -199,7 +211,18 @@ export default async function PlayersPage() {
       </span>
     );
 
-    const actionsCell = (
+    // Unconfirmed: only open the team registration — no directory edit yet.
+    const actionsCell = provisional ? (
+      <span className="inline-flex flex-nowrap items-center justify-end gap-0.5">
+        {firstReg ? (
+          <Link href={`/director/registrations/${firstReg}`} className={COMPACT}>
+            Team
+          </Link>
+        ) : (
+          <span className="t-meta text-[11px]">On roster</span>
+        )}
+      </span>
+    ) : (
       <span className="inline-flex flex-nowrap items-center justify-end gap-0.5">
         <EditPlayer player={p} buttonClass={COMPACT} />
         <SuspendPlayer
@@ -229,7 +252,9 @@ export default async function PlayersPage() {
         />
       </span>
     );
-    const classSelect = (
+    const classSelect = provisional ? (
+      <span className="t-meta">—</span>
+    ) : (
       <InlineSelect
         label="Class"
         action="setPlayerRating"
@@ -237,6 +262,19 @@ export default async function PlayersPage() {
         payload={{ playerId: p.id }}
         value={p.rating ?? ""}
         options={RATINGS}
+        subject={p.full_name}
+      />
+    );
+    const genderCell = provisional ? (
+      <span className="t-meta tabular-nums">{p.gender || "—"}</span>
+    ) : (
+      <InlineSelect
+        label="M/F"
+        action="setPlayerGender"
+        valueKey="gender"
+        payload={{ playerId: p.id }}
+        value={p.gender ?? ""}
+        options={["M", "F"]}
         subject={p.full_name}
       />
     );
@@ -424,6 +462,7 @@ export default async function PlayersPage() {
         p.address,
         p.rating,
         currentlySuspended ? "suspended" : "",
+        provisional ? "unconfirmed roster" : "",
         ...active.map((a) => a.teamName),
         ...active.map((a) => a.tournamentName),
       ]
@@ -431,17 +470,7 @@ export default async function PlayersPage() {
         .join(" "),
       cells: {
         name: nameLabel,
-        gender: (
-          <InlineSelect
-            label="M/F"
-            action="setPlayerGender"
-            valueKey="gender"
-            payload={{ playerId: p.id }}
-            value={p.gender ?? ""}
-            options={["M", "F"]}
-            subject={p.full_name}
-          />
-        ),
+        gender: genderCell,
         dob: bornWithAge(p.birth_date, today),
         address: p.address || "—",
         email: p.email || "—",
