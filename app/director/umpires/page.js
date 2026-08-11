@@ -165,7 +165,6 @@ export default async function UmpiresPage() {
             ? `${active} active · ${suspendedNow} suspended · ${umpires.length} on file`
             : `${active} active · ${umpires.length} on file`
       }
-      back="/director"
     >
       {needsMigration && (
         <div className="card p-4 border border-amber-300 bg-amber-50">

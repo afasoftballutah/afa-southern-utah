@@ -33,7 +33,6 @@ export default async function DirectorDocsPage() {
           ? "Rules · umpires · waivers"
           : `${published} live · ${docs.length} total`
       }
-      back="/director"
     >
       <p className="t-meta">
         Rules, waivers, and umpire agreements. Edit from the list.

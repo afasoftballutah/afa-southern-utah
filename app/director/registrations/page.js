@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import PinPad from "@/components/scorekeeper/PinPad";
+import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import TeamTable from "@/components/scorekeeper/TeamTable";
 
 export const dynamic = "force-dynamic"; // live tool, and it reads PII — never cached
@@ -49,17 +50,16 @@ async function getRegistrations() {
     members: membersBy.get(r.id) ?? [],
   }));
 
-  // One flat list. It was grouped under a heading per tournament, which meant
-  // the tournament could not be sorted or searched on — the table does both
-  // now, and Tournament is just another column (JD, 2026-07-28: "major UI
-  // cleanup to one line").
   return {
     registrations: enriched,
     classes: classes ?? [],
-    // Move division only ever offers the tournament the team is already in.
     divisions: (divisions ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((d) => ({ id: d.id, label: d.display_name ?? d.name, tournamentId: d.tournament_id })),
+      .map((d) => ({
+        id: d.id,
+        label: d.display_name ?? d.name,
+        tournamentId: d.tournament_id,
+      })),
   };
 }
 
@@ -81,45 +81,32 @@ export default async function RegistrationsPage() {
     0
   );
 
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 min-w-0">
-          <h1 className="t-title">Registrations</h1>
-          {total > 0 && (
-            <span className="t-meta">
-              {total} {total === 1 ? "registration" : "registrations"}
-              {unlinked > 0 && (
-                <>
-                  {" · "}
-                  <span className="text-afa-red font-semibold">
-                    {unlinked} roster{" "}
-                    {unlinked === 1 ? "entry" : "entries"} not matched
-                  </span>
-                </>
-              )}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link href="/director/registrations/new" className="btn-add shrink-0">
-            + Add team
-          </Link>
-          <Link href="/director" className="btn-transient shrink-0">
-            Director Home
-          </Link>
-        </div>
-      </div>
+  const count =
+    total === 0
+      ? "0 on file"
+      : unlinked > 0
+        ? `${total} on file · ${unlinked} roster not matched`
+        : `${total} on file`;
 
+  return (
+    <DirectorShell
+      title="Registrations"
+      count={count}
+      add={
+        <Link href="/director/registrations/new" className="btn-add shrink-0">
+          + Add team
+        </Link>
+      }
+    >
       {total === 0 ? (
         <div className="card p-6 text-center space-y-1">
           <p className="t-strong">No teams have registered yet.</p>
           <p className="t-meta">
-            They arrive here the moment someone submits{" "}
+            They arrive when someone submits{" "}
             <Link href="/register" className="underline">
               the form
             </Link>
-            , or you can add one above.
+            , or use + Add team.
           </p>
         </div>
       ) : (
@@ -130,6 +117,6 @@ export default async function RegistrationsPage() {
           wide
         />
       )}
-    </div>
+    </DirectorShell>
   );
 }

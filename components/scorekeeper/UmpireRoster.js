@@ -108,7 +108,8 @@ export default function UmpireRoster({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
-  const [formOpen, setFormOpen] = useState(initial.length === 0 && canEdit);
+  // Start on the list (blank is fine) — add only when they tap + Add umpire.
+  const [formOpen, setFormOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const counts = useMemo(() => {
@@ -778,7 +779,7 @@ export default function UmpireRoster({
       {formCard}
 
       {!formOpen && list.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0 print:hidden">
           {filterTabs.map((tab) => {
             const on = filter === tab.key;
             return (

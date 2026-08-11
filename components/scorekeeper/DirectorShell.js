@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DIRECTOR_ADD_SLOT_ID } from "@/components/scorekeeper/DirectorAddSlot";
+import PrintListButton from "@/components/scorekeeper/PrintListButton";
 
 // One frame for every director page, so nothing is ever in a new place.
 //
@@ -8,57 +9,49 @@ import { DIRECTOR_ADD_SLOT_ID } from "@/components/scorekeeper/DirectorAddSlot";
 // printouts. We need to keep it like a 7th grader could use it, very obvious,
 // very consistent fonts and UI/UX."
 //
-// The rules this enforces, and they are the whole point:
-//   - Every page has the same header, in the same place, with a way back.
-//   - The title says what you are looking at, in plain words.
-//   - A count is always visible, so "is this everything?" never needs asking.
-//   - Nothing here invents a font size or a colour. t-title, t-heading,
-//     t-body, t-meta, t-label and .card only.
+// Header right: green + Add (portaled) · Print PDF · optional section Back.
+// Director Home lives on the red staff bar, not here.
 export default function DirectorShell({
   title,
   count,
   inline,
-  back = "/director",
-  /** Override link text. Default: "Director Home" (or "Scorekeeper" from field room). */
-  backLabel,
-  /**
-   * Optional create control next to Director Home (green .btn-add).
-   * Prefer DirectorAddPortal from create flows so open forms stay in the body.
-   */
+  /** Section back (e.g. Teams). Omit or "/director" — Home is on the red bar. */
+  back = null,
+  backLabel = "Back",
   add = null,
+  /** Print current filtered list (browser Save as PDF). Default on. */
+  print = true,
   children,
   action,
 }) {
-  const label =
-    backLabel ??
-    (back === "/scorekeeper" ? "Scorekeeper" : "Director Home");
+  const showSectionBack = Boolean(back) && back !== "/director";
 
   return (
-    <div className="space-y-3">
-      {/* One line: who this is, the facts about them, and the way back. A
-          stacked header pushed the first real row of data below the fold on
-          a laptop for no gain (JD, 2026-07-27: "not sure why all of this
-          isnt on the same line?"). It wraps only when the screen is too
-          narrow to hold it. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
+    <div className="space-y-3 director-desk">
+      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 print:block">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 min-w-0">
           <h1 className="t-title">{title}</h1>
-          {count != null && <span className="t-meta whitespace-nowrap">{count}</span>}
+          {count != null && (
+            <span className="t-meta whitespace-nowrap">{count}</span>
+          )}
           {inline}
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {/* Create flows portal “+ Add …” here so placement matches every page */}
-          <span id={DIRECTOR_ADD_SLOT_ID} className="inline-flex items-center" />
+        <div className="flex flex-wrap items-center gap-2 shrink-0 print:hidden">
+          <span
+            id={DIRECTOR_ADD_SLOT_ID}
+            className="inline-flex items-center"
+          />
           {add}
-          {back && (
+          {print && <PrintListButton />}
+          {showSectionBack && (
             <Link href={back} className="btn-transient shrink-0">
-              {label}
+              {backLabel}
             </Link>
           )}
         </div>
       </div>
       {action}
-      {children}
+      <div className="director-print-body">{children}</div>
     </div>
   );
 }

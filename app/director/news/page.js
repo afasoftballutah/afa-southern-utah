@@ -28,7 +28,6 @@ export default async function DirectorNewsPage() {
           ? "Homepage updates"
           : `${posts.filter((p) => p.published).length} live · ${posts.length} total`
       }
-      back="/director"
     >
       {needsMigration && (
         <div className="card p-4">

@@ -421,6 +421,20 @@ body:has(.scorekeeper-scope) {
 .staff-view-bar__label {
   min-width: 0;
 }
+.staff-view-bar__home {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 0.75rem;
+  opacity: 0.95;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  color: inherit;
+}
+.staff-view-bar__home:hover {
+  opacity: 1;
+}
 .staff-view-bar__switch {
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -3045,23 +3059,51 @@ button:not(.pill) {
   }
 }
 
-/* Print: the bracket, in black, with nothing else. */
+/* Print: director lists + brackets — hide chrome, keep the filtered view. */
 @media print {
+  .site-header,
+  .site-footer,
+  .staff-view-bar,
+  .print\:hidden,
+  .btn-add,
+  .btn-action,
+  .btn-transient,
+  .btn-info,
+  .pill,
+  #director-add-slot {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .site-main,
+  .scorekeeper-scope {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Expand filtered tables fully */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
   .bracket-connectors path {
     stroke: #000 !important;
     opacity: 1 !important;
   }
-  .overflow-x-auto {
-    overflow: visible !important;
-  }
-  /* Clean black-and-white: box rules, round headers, and the winners/losers
-     chalk divider all print as black hairlines. The AFA mark watermark is
-     already print:hidden in the component. */
   .bracket-box {
     border-color: #000 !important;
   }
   .bracket-header {
     color: #000 !important;
   }
-  }
+}
 
