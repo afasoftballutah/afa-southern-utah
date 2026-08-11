@@ -134,7 +134,8 @@ export default function SignRosterMember({ token, member }) {
           <p className="t-strong text-sm">Your information</p>
           <p className="t-meta">
             Complete this yourself. Legal name and address should match a
-            driver&rsquo;s license or other official ID you can show on game day.
+            driver&rsquo;s license or other official ID you can present on game
+            day.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <SoftField

@@ -702,9 +702,12 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         {!isEditing && page === 1 && (
           <>
             <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Legal name</strong> must match a
-              driver&rsquo;s license or other official ID. Preferred name is for
-              the roster if different.
+              <strong className="text-afa-navy">Legal name</strong>
+              {" and "}
+              <strong className="text-afa-navy">address</strong>
+              {
+                " should match a driver’s license or other official ID. Preferred name is for the roster if different."
+              }
             </p>
             <div className="grid grid-cols-2 gap-2">
               <Field

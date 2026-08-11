@@ -31,6 +31,10 @@ export default function ManagerPlayerFields({
 
   return (
     <div className="space-y-3">
+      <p className="text-sm text-afa-ink/75">
+        Legal name and address should match a driver&rsquo;s license or other
+        official ID. The player confirms that when they sign their waiver.
+      </p>
       {knownPlayers.length > 0 && (
         <label className="block">
           <span className="form-label">Pick someone already on file (optional)</span>
