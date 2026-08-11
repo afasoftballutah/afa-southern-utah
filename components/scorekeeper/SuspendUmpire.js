@@ -161,9 +161,9 @@ export default function SuspendUmpire({
               <p className="t-strong text-sm">
                 {openRows.length > 0 ? "Add another" : "Scope"}
               </p>
-              <p className="t-meta text-[12px]">
-                Tournament and/or dates. Leave both empty for open-ended until
-                you lift it (note recommended).
+              <p className="t-meta text-[12px] min-w-0 max-w-full break-words whitespace-normal leading-snug">
+                Optional tournament and dates. Leave both empty for open-ended
+                until you lift it — a note is recommended.
               </p>
               <label className="block">
                 <span className="form-label">Tournament (optional)</span>

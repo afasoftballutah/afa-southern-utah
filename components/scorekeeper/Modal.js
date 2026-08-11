@@ -57,7 +57,9 @@ export default function Modal({ title, subtitle, onClose, children, footer, widt
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-3">{children}</div>
+        <div className="px-5 py-4 space-y-3 min-w-0 max-w-full overflow-x-hidden">
+          {children}
+        </div>
 
         {footer && (
           <div className="flex justify-end gap-2 px-5 py-3 bg-afa-navy/[0.03] border-t border-afa-navy/10">
