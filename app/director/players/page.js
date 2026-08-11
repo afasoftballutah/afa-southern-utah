@@ -19,20 +19,28 @@ import Link from "next/link";
 export const dynamic = "force-dynamic"; // reads PII — never cached
 export const metadata = { title: "Players — Director" };
 
-// One row per person. Expand shows their tournament appearances.
+// One row per person. Desktop: full columns. Phone: name · M/F · DOB only;
+// everything else (and tournaments) is in the expand panel.
 // JD: player database is people, not a repeating tournament list.
 const COLUMNS = [
   { key: "name", label: "Name" },
   { key: "gender", label: "M/F", align: "center", width: "3.5rem" },
   { key: "dob", label: "DOB", width: "9rem" },
-  { key: "address", label: "Address" },
-  { key: "email", label: "Email" },
-  { key: "class", label: "Class", align: "center", width: "4.5rem" },
-  { key: "events", label: "#", align: "right", width: "3rem" },
-  { key: "waiver", label: "Waiver", type: "check", align: "center", width: "4.5rem" },
-  { key: "edit", label: "Edit", align: "center", width: "4rem" },
-  { key: "merge", label: "Merge", align: "center", width: "5.5rem" },
-  { key: "delete", label: "Delete", align: "center", width: "4.5rem" },
+  { key: "address", label: "Address", hideBelow: "sm" },
+  { key: "email", label: "Email", hideBelow: "sm" },
+  { key: "class", label: "Class", align: "center", width: "4.5rem", hideBelow: "sm" },
+  { key: "events", label: "#", align: "right", width: "3rem", hideBelow: "sm" },
+  {
+    key: "waiver",
+    label: "Waiver",
+    type: "check",
+    align: "center",
+    width: "4.5rem",
+    hideBelow: "sm",
+  },
+  { key: "edit", label: "Edit", align: "center", width: "4rem", hideBelow: "sm" },
+  { key: "merge", label: "Merge", align: "center", width: "5.5rem", hideBelow: "sm" },
+  { key: "delete", label: "Delete", align: "center", width: "4.5rem", hideBelow: "sm" },
 ];
 
 const FILTERS = [
@@ -121,6 +129,36 @@ export default async function PlayersPage() {
       preferredName: p.preferred_name,
       fullName: p.full_name,
     });
+
+    const editBtn = <EditPlayer player={p} />;
+    const mergeBtn = (
+      <RowAction
+        label="Merge"
+        title={`Merge into ${p.full_name}`}
+        note="Everything on the duplicate moves here. Nothing is deleted."
+        placeholder="Pick the duplicate…"
+        emptyMessage="No other people to merge."
+        countSingular="person"
+        countPlural="people"
+        action="mergePlayers"
+        valueKey="dropId"
+        payload={{ keepId: p.id }}
+        options={mergeOptionsFor(p.id)}
+      />
+    );
+    const deleteBtn = <DeletePlayer playerId={p.id} name={p.full_name} />;
+    const classSelect = (
+      <InlineSelect
+        label="Class"
+        action="setPlayerRating"
+        valueKey="rating"
+        payload={{ playerId: p.id }}
+        value={p.rating ?? ""}
+        options={RATINGS}
+        subject={p.full_name}
+      />
+    );
+    const allWaiversOk = active.length > 0 && unsigned === 0;
 
     const appearanceTable =
       active.length === 0 ? (
@@ -224,10 +262,51 @@ export default async function PlayersPage() {
         </div>
       );
 
+    // Phone list is name/M-F/DOB only; the rest of the person lives here on expand.
+    const mobilePersonDetail = (
+      <div className="sm:hidden space-y-3 pb-3 mb-3 border-b border-afa-navy/10">
+        <dl className="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1.5 text-[13px]">
+          <dt className="t-meta">Address</dt>
+          <dd className="text-afa-ink break-words">{p.address || "—"}</dd>
+          <dt className="t-meta">Email</dt>
+          <dd className="text-afa-ink break-all">{p.email || "—"}</dd>
+          <dt className="t-meta">Class</dt>
+          <dd className="max-w-[6rem]">{classSelect}</dd>
+          <dt className="t-meta">Events</dt>
+          <dd className="tabular-nums">{active.length}</dd>
+          <dt className="t-meta">Waiver</dt>
+          <dd>
+            <span
+              className={
+                "tick " + (allWaiversOk ? "text-afa-go" : "text-afa-muted/50")
+              }
+            >
+              {allWaiversOk ? "☑" : "☐"}
+            </span>
+            {unsigned > 0 ? (
+              <span className="t-meta ml-1">
+                {unsigned} missing
+              </span>
+            ) : null}
+          </dd>
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          {editBtn}
+          {mergeBtn}
+          {deleteBtn}
+        </div>
+      </div>
+    );
+
     return {
       key: p.id,
-      // Expand = tournament history, not more of the same person columns.
-      detail: appearanceTable,
+      // Expand: phone gets person fields first; both get tournament list.
+      detail: (
+        <div>
+          {mobilePersonDetail}
+          {appearanceTable}
+        </div>
+      ),
       tags,
       search: [
         p.full_name,
@@ -258,36 +337,12 @@ export default async function PlayersPage() {
         dob: bornWithAge(p.birth_date, today),
         address: p.address || "—",
         email: p.email || "—",
-        class: (
-          <InlineSelect
-            label="Class"
-            action="setPlayerRating"
-            valueKey="rating"
-            payload={{ playerId: p.id }}
-            value={p.rating ?? ""}
-            options={RATINGS}
-            subject={p.full_name}
-          />
-        ),
+        class: classSelect,
         events: active.length,
-        waiver: active.length > 0 && unsigned === 0,
-        edit: <EditPlayer player={p} />,
-        merge: (
-          <RowAction
-            label="Merge"
-            title={`Merge into ${p.full_name}`}
-            note="Everything on the duplicate moves here. Nothing is deleted."
-            placeholder="Pick the duplicate…"
-            emptyMessage="No other people to merge."
-            countSingular="person"
-            countPlural="people"
-            action="mergePlayers"
-            valueKey="dropId"
-            payload={{ keepId: p.id }}
-            options={mergeOptionsFor(p.id)}
-          />
-        ),
-        delete: <DeletePlayer playerId={p.id} name={p.full_name} />,
+        waiver: allWaiversOk,
+        edit: editBtn,
+        merge: mergeBtn,
+        delete: deleteBtn,
       },
       sortValues: {
         name: lastNameKey(
@@ -300,7 +355,7 @@ export default async function PlayersPage() {
         events: active.length,
         class: ratingRank(p.rating),
         gender: p.gender ?? "",
-        waiver: active.length > 0 && unsigned === 0,
+        waiver: allWaiversOk,
       },
     };
   });
