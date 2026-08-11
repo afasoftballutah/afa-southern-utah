@@ -13,7 +13,20 @@ import Link from "next/link";
 //   - A count is always visible, so "is this everything?" never needs asking.
 //   - Nothing here invents a font size or a colour. t-title, t-heading,
 //     t-body, t-meta, t-label and .card only.
-export default function DirectorShell({ title, count, inline, back = "/director", children, action }) {
+export default function DirectorShell({
+  title,
+  count,
+  inline,
+  back = "/director",
+  /** Override link text. Default: "Director Home" (or "Scorekeeper" from field room). */
+  backLabel,
+  children,
+  action,
+}) {
+  const label =
+    backLabel ??
+    (back === "/scorekeeper" ? "Scorekeeper" : "Director Home");
+
   return (
     <div className="space-y-3">
       {/* One line: who this is, the facts about them, and the way back. A
@@ -29,7 +42,7 @@ export default function DirectorShell({ title, count, inline, back = "/director"
         </div>
         {back && (
           <Link href={back} className="btn-transient shrink-0">
-            Back
+            {label}
           </Link>
         )}
       </div>

@@ -85,8 +85,8 @@ export default async function RegistrationsPage() {
     <div className="space-y-5">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="t-title">Registrations</h1>
-        <Link href="/director" className="t-meta underline">
-          Back
+        <Link href="/director" className="btn-transient shrink-0">
+          Director Home
         </Link>
       </div>
 

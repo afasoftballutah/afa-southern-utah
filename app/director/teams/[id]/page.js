@@ -146,7 +146,7 @@ export default async function TeamPage({ params }) {
     <DirectorShell
       title={team.name}
       count={countBits.join(" · ")}
-      back="/director/teams"
+      back="/director"
       inline={
         <RowAction
           label="Merge duplicate"
