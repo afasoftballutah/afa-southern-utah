@@ -153,6 +153,9 @@ export default async function TeamPage({ params }) {
           title={`Merge into ${team.name}`}
           note="Every registration on the duplicate moves here. Nothing is deleted."
           placeholder="Pick the duplicate…"
+          emptyMessage="No other teams to merge."
+          countSingular="team"
+          countPlural="teams"
           action="mergeTeams"
           valueKey="dropId"
           payload={{ keepId: team.id }}

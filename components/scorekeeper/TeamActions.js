@@ -165,6 +165,9 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
           title={`Move ${reg.team_name}`}
           note="Same tournament only."
           placeholder="Pick a division…"
+          emptyMessage="No other divisions in this tournament."
+          countSingular="division"
+          countPlural="divisions"
           action="moveRegistration"
           valueKey="divisionId"
           payload={{ registrationId: reg.id }}

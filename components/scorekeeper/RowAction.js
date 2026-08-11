@@ -15,8 +15,14 @@ export default function RowAction({
   note,
   options,
   placeholder,
-  // Legend above the list — what each option line means
+  // Legend above the list — what each option line means (omit when obvious)
   optionKey,
+  // Empty-list copy (merge vs switch need different words)
+  emptyMessage = "Nothing to pick.",
+  // Count line under the list — full phrase after the number.
+  // e.g. singular "person" / plural "people", or "team in this tournament"
+  countSingular = "option",
+  countPlural,
   confirmText,
   payload,
   action,
@@ -100,15 +106,13 @@ export default function RowAction({
           }
         >
           {options.length === 0 ? (
-            <p className="t-meta">
-              No other teams in this tournament to switch to.
-            </p>
+            <p className="t-meta">{emptyMessage}</p>
           ) : (
             <>
               <label className="block space-y-1">
-                <span className="t-label">
-                  {optionKey || "Pick one"}
-                </span>
+                {optionKey ? (
+                  <span className="t-label">{optionKey}</span>
+                ) : null}
                 <select
                   value={choice}
                   onChange={(e) => setChoice(e.target.value)}
@@ -137,8 +141,10 @@ export default function RowAction({
                 </select>
               </label>
               <p className="t-meta text-xs mt-2">
-                {options.length} team{options.length === 1 ? "" : "s"} in this
-                tournament
+                {options.length}{" "}
+                {options.length === 1
+                  ? countSingular
+                  : countPlural || `${countSingular}s`}
                 {chosen ? ` · selected: ${chosen.label}` : ""}
               </p>
             </>

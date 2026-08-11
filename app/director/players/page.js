@@ -139,6 +139,9 @@ export default async function PlayersPage() {
                   title={`Merge into ${p.full_name}`}
                   note="Everything on the duplicate moves here. Nothing is deleted."
                   placeholder="Pick the duplicate…"
+                  emptyMessage="No other people to merge."
+                  countSingular="person"
+                  countPlural="people"
                   action="mergePlayers"
                   valueKey="dropId"
                   payload={{ keepId: p.id }}
@@ -173,6 +176,9 @@ export default async function PlayersPage() {
                     : "No tournament on this roster row — cannot switch."
                 }
                 optionKey="Team · manager · paid  (grouped by division)"
+                emptyMessage="No other teams in this tournament to switch to."
+                countSingular="team in this tournament"
+                countPlural="teams in this tournament"
                 placeholder="Pick a team in this tournament…"
                 action="movePlayer"
                 valueKey="toRegistrationId"
