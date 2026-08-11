@@ -107,8 +107,8 @@ export default function EligibilityPill({
               <p className="t-strong">
                 <span className="tick">☐</span>{" "}
                 {dualConflicts.length} player
-                {dualConflicts.length === 1 ? "" : "s"} also on another team
-                this tournament
+                {dualConflicts.length === 1 ? "" : "s"} also on another
+                same-gender team this tournament (Coed + Men/Women is OK)
               </p>
             )}
           </div>

@@ -144,6 +144,7 @@ async function load(id) {
   const dualRoster = await dualRosterCheckForRoster(supabase, {
     tournamentId: registration.tournament_id,
     registrationId: registration.id,
+    divisionGender: registration.divisions?.gender ?? null,
     members: roster,
   });
   // Annotate roster rows for the pill list
