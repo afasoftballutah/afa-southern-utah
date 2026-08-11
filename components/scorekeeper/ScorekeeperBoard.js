@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Children, useMemo, useState } from "react";
 import ScoreTable from "./ScoreTable";
 import { isPlayableGame, isStillToPlay } from "@/lib/tournament-state";
 import { mootIfRounds } from "@/lib/bracket/if-game";
@@ -13,12 +13,26 @@ import { mootIfRounds } from "@/lib/bracket/if-game";
  */
 
 function ChipGroup({ label, children }) {
+  const n = Children.count(children);
+  // Equal-width chips in the row (same size within SHOW / DIVISION / etc.).
+  const cols =
+    n <= 0
+      ? "1fr"
+      : n <= 8
+        ? `repeat(${n}, minmax(0, 1fr))`
+        : `repeat(auto-fit, minmax(3.25rem, 1fr))`;
+
   return (
-    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-      <span className="t-label text-[10px] w-14 shrink-0 text-afa-muted/70">
+    <div className="grid grid-cols-[3.25rem_1fr] gap-x-2 items-center min-w-0">
+      <span className="t-label text-[10px] text-afa-muted/70 leading-tight">
         {label}
       </span>
-      <div className="flex flex-wrap items-center gap-1 min-w-0">{children}</div>
+      <div
+        className="grid gap-1.5 min-w-0"
+        style={{ gridTemplateColumns: cols }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -37,13 +51,13 @@ function Chip({ on, children, count, onClick, tone = "neutral" }) {
       type="button"
       onClick={onClick}
       className={
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap " +
+        "inline-flex w-full min-w-0 items-center justify-center gap-1 rounded-full border px-2 py-1.5 text-[12px] font-semibold leading-none " +
         (on ? onCls : offCls)
       }
     >
-      <span>{children}</span>
+      <span className="truncate">{children}</span>
       {count != null && count !== "" && (
-        <span className="tabular-nums opacity-80">{count}</span>
+        <span className="tabular-nums opacity-80 shrink-0">{count}</span>
       )}
     </button>
   );
