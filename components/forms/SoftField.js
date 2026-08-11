@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 /**
  * Always-visible label + optional placeholder tip.
  * Date/time and short fields need a permanent label — hiding it until
