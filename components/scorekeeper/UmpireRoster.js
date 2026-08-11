@@ -188,6 +188,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
   const [filter, setFilter] = useState("all");
   // Empty roster → form open so the first job is obvious
   const [formOpen, setFormOpen] = useState(initial.length === 0 && canEdit);
+  const [showMore, setShowMore] = useState(false);
 
   const counts = useMemo(() => {
     let all = list.length;
@@ -227,6 +228,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     setEditingId(null);
     setForm(empty());
     setError("");
+    setShowMore(false);
     setFormOpen(true);
     setTimeout(() => {
       document.getElementById("umpire-form")?.scrollIntoView({
@@ -255,6 +257,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       notes: u.notes || "",
     });
     setError("");
+    setShowMore(true); // edit: show contact/details too
     setFormOpen(true);
     setTimeout(() => {
       document.getElementById("umpire-form")?.scrollIntoView({
@@ -268,6 +271,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     setEditingId(null);
     setForm(empty());
     setError("");
+    setShowMore(false);
     setFormOpen(false);
   }
 
@@ -333,12 +337,18 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           : null;
   const pitchPicked = pitchMode != null;
 
-  // Strict order — only the first incomplete step is the "action" target
+  // Core path only — not every field on the form
   const steps = [
-    { key: "lastName", done: Boolean(String(form.lastName).trim()), label: "Legal last name" },
-    { key: "firstName", done: Boolean(String(form.firstName).trim()), label: "Legal first name" },
-    { key: "phone", done: Boolean(String(form.phone).trim()), label: "Phone" },
-    { key: "email", done: Boolean(String(form.email).trim()), label: "Email" },
+    {
+      key: "lastName",
+      done: Boolean(String(form.lastName).trim()),
+      label: "Legal last name",
+    },
+    {
+      key: "firstName",
+      done: Boolean(String(form.firstName).trim()),
+      label: "Legal first name",
+    },
     { key: "pitch", done: pitchPicked, label: "Pitch type" },
   ];
   const nextStep = steps.find((s) => !s.done)?.key ?? "save";
@@ -348,8 +358,6 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
 
   const refLast = useRef(null);
   const refFirst = useRef(null);
-  const refPhone = useRef(null);
-  const refEmail = useRef(null);
   const refPitch = useRef(null);
 
   useEffect(() => {
@@ -417,7 +425,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         </button>
       </div>
 
-      <div className="p-4 space-y-3 max-w-lg">
+      <div className="p-4 space-y-4 max-w-md">
         {error && (
           <p
             className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-bold text-red-800"
@@ -427,203 +435,249 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </p>
         )}
 
-        {/* Required path — one column, one next-step highlight */}
-        <PromptField
-          label="Legal last name"
-          explainer="Legal last name (as on AFA card)"
-          required
-          isNext={nextStep === "lastName"}
-          inputRef={refLast}
-          autoComplete="family-name"
-          value={form.lastName}
-          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-        />
-        <PromptField
-          label="Legal first name"
-          explainer="Legal first name (as on AFA card)"
-          required
-          isNext={nextStep === "firstName"}
-          inputRef={refFirst}
-          autoComplete="given-name"
-          value={form.firstName}
-          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-        />
-        <PromptField
-          label="Phone"
-          explainer="Phone — call them on game day"
-          required
-          isNext={nextStep === "phone"}
-          inputRef={refPhone}
-          type="tel"
-          autoComplete="tel"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
-        <PromptField
-          label="Email"
-          explainer="Email — for schedules and cards"
-          required
-          isNext={nextStep === "email"}
-          inputRef={refEmail}
-          type="email"
-          autoComplete="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
+        {/* Done so far — compact, not full fields */}
+        {steps.some((s) => s.done) && (
+          <ul className="space-y-1">
+            {steps
+              .filter((s) => s.done)
+              .map((s) => {
+                let value = "";
+                if (s.key === "lastName") value = form.lastName;
+                if (s.key === "firstName") value = form.firstName;
+                if (s.key === "pitch")
+                  value =
+                    pitchMode === "both"
+                      ? "Both"
+                      : pitchMode === "fast"
+                        ? "Fast"
+                        : "Slow";
+                return (
+                  <li
+                    key={s.key}
+                    className="flex items-center gap-2 text-sm text-emerald-900"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+                      ✓
+                    </span>
+                    <span className="t-meta">{s.label}:</span>
+                    <span className="font-semibold">{value}</span>
+                  </li>
+                );
+              })}
+          </ul>
+        )}
 
-        {/* Pitch — only the next action when prior fields done */}
-        <div
-          ref={refPitch}
-          className={
-            "rounded-xl border-2 p-3 transition-all " +
-            (nextStep === "pitch"
-              ? "border-amber-400 bg-amber-50 shadow-[0_0_0_4px_rgba(251,191,36,0.35)]"
-              : pitchPicked
-                ? "border-emerald-300 bg-white"
-                : "border-afa-navy/12 bg-afa-soft-gray/40 opacity-55")
-          }
-        >
-          {nextStep === "pitch" && (
+        {/* ONLY the current action field — not the whole form */}
+        {nextStep === "lastName" && (
+          <PromptField
+            label="Legal last name"
+            explainer="Legal last name (as on AFA card)"
+            required
+            isNext
+            inputRef={refLast}
+            autoComplete="family-name"
+            value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+          />
+        )}
+        {nextStep === "firstName" && (
+          <PromptField
+            label="Legal first name"
+            explainer="Legal first name (as on AFA card)"
+            required
+            isNext
+            inputRef={refFirst}
+            autoComplete="given-name"
+            value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+          />
+        )}
+        {nextStep === "pitch" && (
+          <div
+            ref={refPitch}
+            className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 shadow-[0_0_0_4px_rgba(251,191,36,0.35)]"
+          >
             <span className="inline-flex items-center gap-1.5 mb-2 text-xs font-bold uppercase tracking-wide text-amber-800">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 text-[10px]">
                 →
               </span>
               Do this next
             </span>
-          )}
-          <p
-            className={
-              "text-sm font-semibold mb-2 " +
-              (nextStep === "pitch"
-                ? "text-amber-950"
-                : pitchPicked
-                  ? "text-afa-navy"
-                  : "text-afa-muted")
-            }
-          >
-            {nextStep === "pitch"
-              ? "Tap pitch type — Slow, Fast, or Both"
-              : pitchPicked
-                ? `Pitch: ${pitchMode === "both" ? "Both" : pitchMode === "fast" ? "Fast" : "Slow"}`
-                : "Pitch type (after name & contact)"}
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                mode: "slow",
-                label: "Slow",
-                letter: "S",
-                on: "border-sky-700 bg-sky-700 text-white",
-                off: "border-sky-300 bg-white text-sky-950",
-              },
-              {
-                mode: "fast",
-                label: "Fast",
-                letter: "F",
-                on: "border-afa-red bg-afa-red text-white",
-                off: "border-red-300 bg-white text-red-900",
-              },
-              {
-                mode: "both",
-                label: "Both",
-                letter: "B",
-                on: "border-emerald-700 bg-emerald-700 text-white",
-                off: "border-emerald-300 bg-white text-emerald-900",
-              },
-            ].map((opt) => (
-              <button
-                key={opt.mode}
-                type="button"
-                onClick={() => setPitch(opt.mode)}
-                className={
-                  "rounded-xl border-2 px-2 py-3 text-center " +
-                  (pitchMode === opt.mode ? opt.on : opt.off)
-                }
-              >
-                <span className="block text-xl font-black leading-none">
-                  {opt.letter}
-                </span>
-                <span className="block text-sm font-bold mt-1">{opt.label}</span>
-              </button>
-            ))}
+            <p className="text-sm font-semibold text-amber-950 mb-2">
+              Tap pitch type — Slow, Fast, or Both
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                {
+                  mode: "slow",
+                  label: "Slow",
+                  letter: "S",
+                  on: "border-sky-700 bg-sky-700 text-white",
+                  off: "border-sky-300 bg-white text-sky-950",
+                },
+                {
+                  mode: "fast",
+                  label: "Fast",
+                  letter: "F",
+                  on: "border-afa-red bg-afa-red text-white",
+                  off: "border-red-300 bg-white text-red-900",
+                },
+                {
+                  mode: "both",
+                  label: "Both",
+                  letter: "B",
+                  on: "border-emerald-700 bg-emerald-700 text-white",
+                  off: "border-emerald-300 bg-white text-emerald-900",
+                },
+              ].map((opt) => (
+                <button
+                  key={opt.mode}
+                  type="button"
+                  onClick={() => setPitch(opt.mode)}
+                  className={
+                    "rounded-xl border-2 px-2 py-3 text-center " +
+                    (pitchMode === opt.mode ? opt.on : opt.off)
+                  }
+                >
+                  <span className="block text-xl font-black leading-none">
+                    {opt.letter}
+                  </span>
+                  <span className="block text-sm font-bold mt-1">
+                    {opt.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Optional extras — quiet until required path is done */}
-        <div
-          className={
-            "space-y-3 pt-2 border-t border-afa-navy/10 " +
-            (nextStep === "save" ? "" : "opacity-50")
-          }
-        >
-          <p className="t-label">Optional</p>
-          <PromptField
-            label="Preferred name"
-            explainer="Preferred name — only if different"
-            value={form.preferredName}
-            onChange={(e) => setForm({ ...form, preferredName: e.target.value })}
-          />
-          <PromptField
-            label="Card #"
-            explainer="Umpire card # (optional)"
-            value={form.cardNumber}
-            onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
-          />
-          <PromptField
-            label="Address"
-            explainer="Street address (optional)"
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-          />
-          <div className="grid grid-cols-3 gap-2">
-            <PromptField
-              label="City"
-              explainer="City"
-              value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-            />
-            <PromptField
-              label="State"
-              explainer="ST"
-              value={form.state}
-              onChange={(e) => setForm({ ...form, state: e.target.value })}
-            />
-            <PromptField
-              label="Zip"
-              explainer="Zip"
-              value={form.zip}
-              onChange={(e) => setForm({ ...form, zip: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              {
-                value: "active",
-                label: "Active",
-                on: "border-afa-navy bg-afa-navy text-white",
-                off: "border-afa-navy/20 bg-white text-afa-navy",
-              },
-              {
-                value: "inactive",
-                label: "Inactive",
-                on: "border-afa-muted bg-afa-muted text-white",
-                off: "border-afa-navy/15 bg-white text-afa-muted",
-              },
-            ].map((opt) => (
+        {/* Phone / email / address — optional, only when they ask or when done */}
+        {(nextStep === "save" || showMore) && (
+          <div className="space-y-3 border-t border-afa-navy/10 pt-3">
+            {!showMore ? (
               <button
-                key={opt.value}
                 type="button"
-                onClick={() => setForm({ ...form, status: opt.value })}
-                className={
-                  "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
-                  (form.status === opt.value ? opt.on : opt.off)
-                }
+                className="btn-transient text-sm w-full"
+                onClick={() => setShowMore(true)}
               >
-                {opt.label}
+                + Phone, email, address (optional)
               </button>
-            ))}
+            ) : (
+              <>
+                <p className="t-label">Optional details</p>
+                <PromptField
+                  label="Phone"
+                  explainer="Phone — call on game day"
+                  type="tel"
+                  autoComplete="tel"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm({ ...form, phone: e.target.value })
+                  }
+                />
+                <PromptField
+                  label="Email"
+                  explainer="Email"
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                  }
+                />
+                <PromptField
+                  label="Preferred name"
+                  explainer="Preferred name if different"
+                  value={form.preferredName}
+                  onChange={(e) =>
+                    setForm({ ...form, preferredName: e.target.value })
+                  }
+                />
+                <PromptField
+                  label="Card #"
+                  explainer="Umpire card # (optional)"
+                  value={form.cardNumber}
+                  onChange={(e) =>
+                    setForm({ ...form, cardNumber: e.target.value })
+                  }
+                />
+                <PromptField
+                  label="Address"
+                  explainer="Street address (optional)"
+                  value={form.address}
+                  onChange={(e) =>
+                    setForm({ ...form, address: e.target.value })
+                  }
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <PromptField
+                    label="City"
+                    explainer="City"
+                    value={form.city}
+                    onChange={(e) =>
+                      setForm({ ...form, city: e.target.value })
+                    }
+                  />
+                  <PromptField
+                    label="State"
+                    explainer="ST"
+                    value={form.state}
+                    onChange={(e) =>
+                      setForm({ ...form, state: e.target.value })
+                    }
+                  />
+                  <PromptField
+                    label="Zip"
+                    explainer="Zip"
+                    value={form.zip}
+                    onChange={(e) =>
+                      setForm({ ...form, zip: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      value: "active",
+                      label: "Active",
+                      on: "border-afa-navy bg-afa-navy text-white",
+                      off: "border-afa-navy/20 bg-white text-afa-navy",
+                    },
+                    {
+                      value: "inactive",
+                      label: "Inactive",
+                      on: "border-afa-muted bg-afa-muted text-white",
+                      off: "border-afa-navy/15 bg-white text-afa-muted",
+                    },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setForm({ ...form, status: opt.value })
+                      }
+                      className={
+                        "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
+                        (form.status === opt.value ? opt.on : opt.off)
+                      }
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {nextStep !== "save" && (
+                  <button
+                    type="button"
+                    className="t-label underline text-afa-muted"
+                    onClick={() => setShowMore(false)}
+                  >
+                    Hide optional
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        </div>
+        )}
 
         <div
           className={
