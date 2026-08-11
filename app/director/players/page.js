@@ -246,9 +246,6 @@ export default async function PlayersPage() {
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
                     Tournament
                   </th>
-                  <th className="px-2.5 py-1 text-center t-label font-normal text-[10px]">
-                    W/M/Coed
-                  </th>
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
                     Division
                   </th>
@@ -272,9 +269,6 @@ export default async function PlayersPage() {
                     </td>
                     <td className="px-2.5 py-1 whitespace-nowrap text-afa-ink/85">
                       {a.tournamentName ?? "—"}
-                    </td>
-                    <td className="px-2.5 py-1 text-center whitespace-nowrap text-afa-ink/85">
-                      {a.genderShort ?? "—"}
                     </td>
                     <td className="px-2.5 py-1 whitespace-nowrap text-afa-ink/85">
                       {a.divisionLabel ?? a.className ?? "—"}
