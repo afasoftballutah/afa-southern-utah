@@ -6,6 +6,7 @@ import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
 import { registrationScope } from "@/lib/director";
+import { directorPersonLabel } from "@/lib/person-name";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
@@ -36,7 +37,9 @@ async function load(id) {
   ] = await Promise.all([
     supabase
       .from("roster_members")
-      .select("id, name, role, gender, signed_at, removed_at, player_id, email, phone")
+      .select(
+        "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name"
+      )
       .eq("registration_id", id)
       .order("created_at"),
     supabase.from("classes").select("id, name, sort_order").order("sort_order"),
@@ -53,7 +56,12 @@ async function load(id) {
 
   const playerIds = (members ?? []).map((m) => m.player_id).filter(Boolean);
   const { data: players } = playerIds.length
-    ? await supabase.from("players").select("id, full_name, birth_date, rating, gender").in("id", playerIds)
+    ? await supabase
+        .from("players")
+        .select(
+          "id, full_name, birth_date, rating, gender, legal_first_name, legal_last_name, preferred_name"
+        )
+        .in("id", playerIds)
     : { data: [] };
   const playerBy = new Map((players ?? []).map((p) => [p.id, p]));
 
@@ -69,10 +77,17 @@ async function load(id) {
   const active = (members ?? []).filter((m) => !m.removed_at);
   const roster = active.map((m) => {
     const person = m.player_id ? playerBy.get(m.player_id) : null;
+    // Director pages show full legal name (preferred only if a real nickname).
+    const name = directorPersonLabel({
+      legalFirstName: m.legal_first_name || person?.legal_first_name,
+      legalLastName: m.legal_last_name || person?.legal_last_name,
+      preferredName: m.preferred_name || person?.preferred_name,
+      name: m.name,
+    });
     return {
       id: m.id,
       playerId: m.player_id ?? null,
-      name: m.name,
+      name,
       role: m.id === registration.manager_member_id ? "manager" : m.role,
       rating: person?.rating ?? null,
       gender: m.gender ?? person?.gender ?? null,
@@ -166,7 +181,8 @@ export default async function RegistrationPage({ params }) {
   // "Do It for the T-Shirts · Coed D" — never "· Coed · Coed D · D"
   const scope = registrationScope(r.divisions, enteredClassName);
 
-  // Same shape ManageRoster expects (includes soft-removed for restore list)
+  // Same shape ManageRoster expects (includes soft-removed for restore list).
+  // Director view: full legal names, not preferred-only first names.
   const manageMembers = [
     ...roster.map((m) => ({
       id: m.id,
@@ -181,10 +197,15 @@ export default async function RegistrationPage({ params }) {
     })),
     ...removed.map((m) => ({
       id: m.id,
-      name: m.name,
+      name: directorPersonLabel({
+        legalFirstName: m.legal_first_name,
+        legalLastName: m.legal_last_name,
+        preferredName: m.preferred_name,
+        name: m.name,
+      }),
       role: m.role,
       birthDate: m.birth_date ?? null,
-      gender: null,
+      gender: m.gender ?? null,
       rating: null,
       signed: Boolean(m.signed_at),
       removed: true,
