@@ -86,7 +86,8 @@ export default async function PlayersPage() {
   }
 
   const supabase = getServiceClient();
-  const [{ players, unmatched }, teams, openSuspensions, { data: tourRows }] =
+  // unmatched roster stubs (no birth date) — flags/alerts later; not shown now
+  const [{ players }, teams, openSuspensions, { data: tourRows }] =
     await Promise.all([
       listPeople(),
       listTeams(),
@@ -462,20 +463,6 @@ export default async function PlayersPage() {
 
   return (
     <DirectorShell title="Players" count={`${rows.length} on file`}>
-      {unmatched.length > 0 && (
-        <div className="card p-4">
-          <p className="t-strong">
-            {unmatched.length} roster{" "}
-            {unmatched.length === 1 ? "entry has" : "entries have"} no player
-            record
-          </p>
-          <p className="t-meta">
-            No birth date, so there is nothing safe to match them on:{" "}
-            {unmatched.map((m) => `${m.name} (${m.teamName})`).join(", ")}
-          </p>
-        </div>
-      )}
-
       <NewPlayer />
       <DirectorTable
         columns={COLUMNS}
