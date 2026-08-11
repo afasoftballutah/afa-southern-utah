@@ -3,8 +3,9 @@
 import { useState } from "react";
 
 /**
- * Placeholder as explainer. Label row is fixed height so focus never bounces.
- * One quiet label face (.t-label) — no competing weights per field.
+ * Always-visible label + optional placeholder tip.
+ * Date/time and short fields need a permanent label — hiding it until
+ * focus made empty rows look unlabeled (JD).
  */
 export default function SoftField({
   label,
@@ -18,21 +19,9 @@ export default function SoftField({
   className = "",
   inputClassName = "form-field",
 }) {
-  const [focused, setFocused] = useState(false);
-  const filled = String(value ?? "").trim().length > 0;
-  const showLabel = filled || focused;
-
   return (
     <label className={"block " + className}>
-      <span
-        className={
-          "t-label block mb-1 min-h-[1rem] leading-4 " +
-          (showLabel ? "opacity-100" : "opacity-0")
-        }
-        aria-hidden={!showLabel}
-      >
-        {label}
-      </span>
+      <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
       <input
         type={type}
         autoComplete={autoComplete}
@@ -40,8 +29,6 @@ export default function SoftField({
         list={list}
         value={value ?? ""}
         onChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         placeholder={explainer}
         className={inputClassName + " w-full"}
       />

@@ -13,11 +13,10 @@ import WorkFocus from "@/components/forms/WorkFocus";
  */
 
 /**
- * Soft field for room forms. One quiet label system:
- * - floating label when filled/focused
- * - placeholder is the only explainer
- * - optional → "(optional)" in the placeholder, no foot noise
- * - required is enforced by Continue disabled, not a stamp under every field
+ * Soft field for room forms. Label always on; placeholder is optional tip only
+ * (examples like "300" or "e.g. Coed Heat Stroker") — not a second copy of the label.
+ * optional → "optional" in the label line, quiet.
+ * required is enforced by Continue disabled, not a stamp under every field.
  */
 export function RoomField({
   label,
@@ -31,13 +30,21 @@ export function RoomField({
   inputMode,
   ...rest
 }) {
-  const baseExplainer =
-    explainer || (optional ? `${label} (optional)` : label);
+  const shownLabel = optional ? `${label} · optional` : label;
+  // Don't repeat the label as placeholder when the label is already visible.
+  const tip =
+    explainer && explainer !== label && explainer !== `${label} (optional)`
+      ? explainer
+      : optional
+        ? undefined
+        : explainer && explainer !== label
+          ? explainer
+          : undefined;
   return (
     <div className={"min-w-0 " + className}>
       <SoftField
-        label={label}
-        explainer={baseExplainer}
+        label={shownLabel}
+        explainer={tip}
         inputClassName={inputClassName}
         list={list}
         inputMode={inputMode}
@@ -60,14 +67,17 @@ export function RoomSelect({
   className = "",
   selectClassName = "form-field",
 }) {
+  const shownLabel = optional ? `${label} · optional` : label;
   return (
     <label className={"block min-w-0 " + className}>
-      <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
+      <span className="t-label block mb-1 min-h-[1rem] leading-4">
+        {shownLabel}
+      </span>
       <select
         className={selectClassName + " w-full"}
         value={value ?? ""}
         onChange={onChange}
-        aria-label={optional ? `${label} (optional)` : label}
+        aria-label={shownLabel}
       >
         {children}
       </select>
