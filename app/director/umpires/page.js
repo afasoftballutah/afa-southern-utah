@@ -160,7 +160,7 @@ export default async function UmpiresPage() {
       title="Umpires"
       count={
         umpires.length === 0
-          ? "Add people to the roster"
+          ? "0 on file"
           : suspendedNow > 0
             ? `${active} active · ${suspendedNow} suspended · ${umpires.length} on file`
             : `${active} active · ${umpires.length} on file`

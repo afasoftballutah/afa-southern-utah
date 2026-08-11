@@ -769,61 +769,70 @@ export default function UmpireRoster({
       {/* Form first so Edit is never below the fold / easy to miss */}
       {formCard}
 
-      {!formOpen && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {list.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5 min-w-0">
-              {filterTabs.map((tab) => {
-                const on = filter === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setFilter(tab.key)}
-                    className={
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold " +
-                      chipClass(tab, on)
-                    }
-                  >
-                    {tab.label}
-                    <span className="tabular-nums opacity-80">{tab.count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="t-meta text-sm">Roster</p>
-          )}
-          {canEdit && (
-            <button type="button" className="pill pill-solid" onClick={openAdd}>
-              + Add umpire
-            </button>
-          )}
+      {!formOpen && list.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          {filterTabs.map((tab) => {
+            const on = filter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFilter(tab.key)}
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold " +
+                  chipClass(tab, on)
+                }
+              >
+                {tab.label}
+                <span className="tabular-nums opacity-80">{tab.count}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {!formOpen && (
         <div className="rounded-xl border border-afa-navy/10 overflow-hidden bg-white">
-          <div className="px-4 py-2.5 border-b border-afa-navy/10 bg-afa-soft-gray/60 flex items-baseline justify-between gap-2">
+          <div className="px-4 py-2.5 border-b border-afa-navy/10 bg-afa-soft-gray/60 flex items-center justify-between gap-2">
             <p className="t-strong text-sm">
               {list.length === 0
-                ? "No umpires yet"
+                ? "Umpires"
                 : filter === "all"
                   ? `${list.length} umpire${list.length === 1 ? "" : "s"}`
                   : `${filtered.length} shown · ${list.length} total`}
             </p>
-            {list.length > 0 && (
-              <p className="t-meta text-xs">S = Slow · F = Fast · B = Both</p>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {list.length > 0 && (
+                <p className="t-meta text-xs hidden sm:block">
+                  S = Slow · F = Fast · B = Both
+                </p>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  className="pill pill-solid"
+                  onClick={openAdd}
+                >
+                  + Add
+                </button>
+              )}
+            </div>
           </div>
 
           {list.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <p className="t-meta">
-                Use <strong>+ Add umpire</strong> above to put the first person
-                on file.
-              </p>
-            </div>
+            canEdit ? (
+              <button
+                type="button"
+                onClick={openAdd}
+                className="w-full px-4 py-6 text-left flex items-center justify-center gap-2 hover:bg-afa-soft-gray/50 transition-colors"
+              >
+                <span className="pill pill-solid">+ Add umpire</span>
+              </button>
+            ) : (
+              <div className="p-6 text-center">
+                <p className="t-meta">No umpires on file.</p>
+              </div>
+            )
           ) : filtered.length === 0 ? (
             <div className="p-6 text-center space-y-2">
               <p className="t-strong">Nobody in this filter</p>
