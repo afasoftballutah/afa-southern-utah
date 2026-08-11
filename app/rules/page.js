@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RULES_SOURCE, RULES_SECTIONS } from "@/lib/content/rules";
+import { loadRulesBook, RULEBOOK_SLUG } from "@/lib/rules-book";
 import { listPublishedSiteDocuments } from "@/lib/site-docs";
 import RulesBrowser from "@/components/RulesBrowser";
 import SiteDocList from "@/components/SiteDocList";
@@ -7,25 +7,32 @@ import SiteDocList from "@/components/SiteDocList";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Rules — AFA Southern Utah" };
 
-// Director-managed rules docs first; full transcribed book still searchable below.
+// Full searchable rule book is the page. Extra house-rule docs sit below.
 export default async function RulesPage() {
-  const directorRules = await listPublishedSiteDocuments("rules");
+  const book = await loadRulesBook();
+  const allRulesDocs = await listPublishedSiteDocuments("rules");
+  const houseRules = allRulesDocs.filter(
+    (d) => d.slug !== RULEBOOK_SLUG && !String(d.body || "").trim().startsWith('{"format":"rules-sections-v1"')
+  );
 
   return (
     <div className="space-y-4">
       <h1 className="t-title">Rules</h1>
       <p className="t-meta">
-        {RULES_SOURCE.title} ({RULES_SOURCE.year})
+        {book.source.title}
+        {book.source.year ? ` (${book.source.year})` : ""}
       </p>
       <div className="flex flex-wrap gap-2">
-        <a
-          href={RULES_SOURCE.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-info"
-        >
-          View the original PDF
-        </a>
+        {book.source.url && (
+          <a
+            href={book.source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-info"
+          >
+            View the original PDF
+          </a>
+        )}
         <Link href="/umpire-agreement" className="btn-transient">
           Umpire agreement
         </Link>
@@ -34,17 +41,14 @@ export default async function RulesPage() {
         Tournament-specific rules are listed on each tournament page.
       </p>
 
-      {directorRules.length > 0 && (
-        <section className="space-y-2">
+      <RulesBrowser sections={book.sections} />
+
+      {houseRules.length > 0 && (
+        <section className="space-y-2 pt-2">
           <h2 className="t-heading">Southern Utah &amp; house rules</h2>
-          <SiteDocList docs={directorRules} />
+          <SiteDocList docs={houseRules} />
         </section>
       )}
-
-      <section className="space-y-2">
-        <h2 className="t-heading">Rule book (searchable)</h2>
-        <RulesBrowser sections={RULES_SECTIONS} />
-      </section>
     </div>
   );
 }

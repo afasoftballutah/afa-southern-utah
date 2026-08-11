@@ -64,6 +64,7 @@ export async function POST(request) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   if (!slug) slug = `doc-${Date.now().toString(36)}`;
+  // Rule book body is large structured JSON — allow empty source_url alone.
 
   const published = body.published !== false;
   const sortOrder = Number.isFinite(Number(body.sortOrder))
