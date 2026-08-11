@@ -5,6 +5,8 @@ import Link from "next/link";
 import DirectorTable from "./DirectorTable";
 import TeamTable from "./TeamTable";
 import InlineNumber from "./InlineNumber";
+import DivisionPlayDay from "./DivisionPlayDay";
+import TournamentPlayDays from "./TournamentPlayDays";
 import DirectorForm, { Field, directorPost } from "./DirectorForm";
 
 // The divisions of one tournament, and whatever you are doing with one.
@@ -35,6 +37,11 @@ import DirectorForm, { Field, directorPost } from "./DirectorForm";
 // stands.
 const COLUMNS = [
   { key: "division", label: "Division" },
+  {
+    key: "playDay",
+    label: "Play day",
+    width: "10.5rem",
+  },
   // How many men and women a roster needs here. Men's is 10/0, Women's 0/10,
   // Coed whatever its split is — the numbers the eligibility pill checks a
   // roster against, where a director can see them.
@@ -71,7 +78,15 @@ function Step({ state, children }) {
   );
 }
 
-export default function DivisionWorkbench({ divisions, registrations, classes, setup }) {
+export default function DivisionWorkbench({
+  divisions,
+  registrations,
+  classes,
+  setup,
+  tournamentId = null,
+  tournamentStart = null,
+  tournamentEnd = null,
+}) {
   const divisionOptions = divisions.map((d) => ({ id: d.id, label: d.label }));
   // Keyed on division AND class, because a tournament that runs Coed D and
   // Coed E has two brackets and one division row would hide one of them.
@@ -82,11 +97,19 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
 
   const isOn = (d, action) => panel?.key === d.key && panel?.action === action;
 
+  const minDate = tournamentStart
+    ? String(tournamentStart).slice(0, 10)
+    : null;
+  const maxDate = tournamentEnd
+    ? String(tournamentEnd).slice(0, 10)
+    : minDate;
+
   const rows = divisions.map((d) => ({
     key: d.key,
-    search: `${d.label} ${d.genderLabel ?? ""} ${d.className ?? ""}`,
+    search: `${d.label} ${d.genderLabel ?? ""} ${d.className ?? ""} ${d.dayDate ?? ""}`,
     sortValues: {
       division: d.sortKey,
+      playDay: d.dayDate ?? "",
       minMen: d.minMen ?? -1,
       minWomen: d.minWomen ?? -1,
       teams: d.teams,
@@ -105,6 +128,19 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
     ) : null,
     cells: {
       division: d.label,
+      playDay: d.parentDivisionId ? (
+        <span className="t-meta text-[12px]">
+          {d.dayLabel || d.dayDate || "—"}
+        </span>
+      ) : (
+        <DivisionPlayDay
+          divisionId={d.id}
+          label={d.label}
+          dayDate={d.dayDate}
+          minDate={minDate}
+          maxDate={maxDate}
+        />
+      ),
       minMen: (
         <InlineNumber
           key={`minMen-${d.key}`}
@@ -183,9 +219,30 @@ export default function DivisionWorkbench({ divisions, registrations, classes, s
       (chosen.classId == null || r.class_id === chosen.classId)
   );
 
+  const playDaysBar =
+    tournamentId && divisions.length > 0 ? (
+      <TournamentPlayDays
+        tournamentId={tournamentId}
+        startDate={tournamentStart}
+        endDate={tournamentEnd}
+        divisions={divisions.map((d) => ({
+          id: d.id,
+          gender: d.gender ?? null,
+          dayDate: d.dayDate ?? null,
+          label: d.label,
+          parentDivisionId: d.parentDivisionId ?? null,
+        }))}
+      />
+    ) : null;
+
   return (
     <DirectorTable
-      before={setup}
+      before={
+        <>
+          {setup}
+          {playDaysBar}
+        </>
+      }
       columns={COLUMNS}
       rows={rows}
       defaultSort={{ key: "division", dir: "asc" }}

@@ -983,6 +983,194 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    // ---- Which calendar day a division plays (scheduler input) ------
+    case "setDivisionPlayDay": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const { divisionId, dayDate } = body;
+      if (!divisionId) return bad("Which division?");
+
+      let day = dayDate != null ? String(dayDate).trim().slice(0, 10) : null;
+      if (day === "") day = null;
+      if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return bad("Play day must be YYYY-MM-DD");
+      }
+
+      const { data: div } = await supabase
+        .from("divisions")
+        .select("id, tournament_id, parent_division_id")
+        .eq("id", divisionId)
+        .maybeSingle();
+      if (!div) return bad("That division does not exist", 404);
+
+      if (day) {
+        const { data: tour } = await supabase
+          .from("tournaments")
+          .select("start_date, end_date")
+          .eq("id", div.tournament_id)
+          .maybeSingle();
+        if (tour) {
+          const start = String(tour.start_date ?? "").slice(0, 10);
+          const end = String(tour.end_date ?? tour.start_date ?? "").slice(0, 10);
+          if (start && day < start) {
+            return bad(`Play day is before the tournament starts (${start})`);
+          }
+          if (end && day > end) {
+            return bad(`Play day is after the tournament ends (${end})`);
+          }
+        }
+      }
+
+      const { formatPlayDayLabel } = await import("@/lib/league-time");
+      const dayLabel = day ? formatPlayDayLabel(day) : null;
+      const patch = { day_date: day, day_label: dayLabel };
+
+      // Update this row and Gold/Silver/Bronze (or pool) children so the
+      // whole bracket family shares one play day.
+      const { data: children } = await supabase
+        .from("divisions")
+        .select("id")
+        .eq("parent_division_id", divisionId);
+      const ids = [divisionId, ...(children ?? []).map((c) => c.id)];
+
+      const { error } = await supabase
+        .from("divisions")
+        .update(patch)
+        .in("id", ids);
+      if (error) {
+        console.error("setDivisionPlayDay failed", error);
+        return bad("Could not save play day — please try again", 500);
+      }
+      return Response.json({
+        ok: true,
+        dayDate: day,
+        dayLabel,
+        updatedIds: ids,
+      });
+    }
+
+    // ---- Bulk: assign play days by gender (Men's/Women's Sat, Coed Sun)
+    case "setTournamentPlayDays": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const { tournamentId } = body;
+      if (!tournamentId) return bad("Which tournament?");
+
+      const { data: tour } = await supabase
+        .from("tournaments")
+        .select("id, start_date, end_date")
+        .eq("id", tournamentId)
+        .maybeSingle();
+      if (!tour) return bad("Tournament not found", 404);
+
+      const start = String(tour.start_date ?? "").slice(0, 10);
+      const end = String(tour.end_date ?? tour.start_date ?? "").slice(0, 10);
+
+      /** @type {Map<string, string|null>} gender → dayDate */
+      const byGender = new Map();
+      if (body.allDayDate != null || body.useTournamentStart) {
+        const day = body.useTournamentStart
+          ? start || null
+          : String(body.allDayDate ?? "").trim().slice(0, 10) || null;
+        if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+          return bad("Play day must be YYYY-MM-DD");
+        }
+        for (const g of ["mens", "womens", "coed"]) byGender.set(g, day);
+      }
+      if (Array.isArray(body.assignments)) {
+        for (const a of body.assignments) {
+          const g = a?.gender;
+          if (!["mens", "womens", "coed"].includes(g)) continue;
+          let day =
+            a.dayDate != null ? String(a.dayDate).trim().slice(0, 10) : null;
+          if (day === "") day = null;
+          if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+            return bad(`Play day for ${g} must be YYYY-MM-DD`);
+          }
+          byGender.set(g, day);
+        }
+      }
+      // Convenience: mensWomensDay + coedDay
+      if (body.mensWomensDay !== undefined) {
+        let day =
+          body.mensWomensDay != null
+            ? String(body.mensWomensDay).trim().slice(0, 10)
+            : null;
+        if (day === "") day = null;
+        if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+          return bad("Men's/Women's day must be YYYY-MM-DD");
+        }
+        byGender.set("mens", day);
+        byGender.set("womens", day);
+      }
+      if (body.coedDay !== undefined) {
+        let day =
+          body.coedDay != null
+            ? String(body.coedDay).trim().slice(0, 10)
+            : null;
+        if (day === "") day = null;
+        if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+          return bad("Coed day must be YYYY-MM-DD");
+        }
+        byGender.set("coed", day);
+      }
+
+      if (byGender.size === 0) return bad("Nothing to assign");
+
+      for (const day of byGender.values()) {
+        if (!day) continue;
+        if (start && day < start) {
+          return bad(`Play day ${day} is before the tournament starts (${start})`);
+        }
+        if (end && day > end) {
+          return bad(`Play day ${day} is after the tournament ends (${end})`);
+        }
+      }
+
+      const { data: divisions } = await supabase
+        .from("divisions")
+        .select("id, gender, parent_division_id")
+        .eq("tournament_id", tournamentId);
+      if (!divisions?.length) {
+        return Response.json({ ok: true, updated: 0 });
+      }
+
+      const { formatPlayDayLabel } = await import("@/lib/league-time");
+      let updated = 0;
+      for (const [gender, day] of byGender) {
+        const targets = divisions.filter(
+          (d) => d.gender === gender && !d.parent_division_id
+        );
+        // Also update children of those parents (and orphan children of that gender)
+        const parentIds = new Set(targets.map((d) => d.id));
+        const childIds = divisions
+          .filter(
+            (d) =>
+              d.parent_division_id &&
+              (parentIds.has(d.parent_division_id) || d.gender === gender)
+          )
+          .map((d) => d.id);
+        const ids = [...new Set([...parentIds, ...childIds])];
+        if (ids.length === 0) continue;
+        const patch = {
+          day_date: day,
+          day_label: day ? formatPlayDayLabel(day) : null,
+        };
+        const { error } = await supabase
+          .from("divisions")
+          .update(patch)
+          .in("id", ids);
+        if (error) {
+          console.error("setTournamentPlayDays failed", error);
+          return bad("Could not save play days — please try again", 500);
+        }
+        updated += ids.length;
+      }
+      return Response.json({ ok: true, updated });
+    }
+
     // ---- Change a division's coed split ------------------------------
     case "setDivisionMinimums": {
       const { divisionId, minMen, minWomen } = body;

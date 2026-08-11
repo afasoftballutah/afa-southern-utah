@@ -69,6 +69,7 @@ async function load() {
         .from("divisions")
         .select(
           "id, tournament_id, name, display_name, sort_order, parent_division_id, gender, class_id, " +
+            "day_date, day_label, " +
             "min_men, min_women, min_teams, max_teams, " +
             `games(${GAME_STATE_FIELDS}), pool_games(id, status)`
         ),
@@ -279,6 +280,9 @@ export default async function TournamentsPage() {
             initial={plain(crewByTournament.get(t.id) ?? [])}
           />
           <DivisionWorkbench
+            tournamentId={t.id}
+            tournamentStart={t.start_date}
+            tournamentEnd={t.end_date ?? t.start_date}
             divisions={mine.map((d) => {
               const games = [...(d.games ?? []), ...(d.pool_games ?? [])];
               // A pool-play parent holds no teams of its own — every team in
@@ -291,11 +295,25 @@ export default async function TournamentsPage() {
               // sheet but were never going to be played. Counting them left a
               // finished bracket reading "Scores 16/17".
               const playable = playableIn(games);
+              // Child brackets inherit display of play day from parent when
+              // unset; server still writes day_date onto children when parent
+              // is set via the play-day control.
+              const parent = d.parent_division_id
+                ? mine.find((p) => p.id === d.parent_division_id)
+                : null;
+              const dayDate =
+                d.day_date ?? parent?.day_date ?? null;
+              const dayLabel =
+                d.day_label ?? parent?.day_label ?? null;
               return {
                 key: d.id,
                 id: d.id,
                 tournamentId: t.id,
                 classId: d.class_id ?? null,
+                gender: d.gender ?? null,
+                parentDivisionId: d.parent_division_id ?? null,
+                dayDate: dayDate ? String(dayDate).slice(0, 10) : null,
+                dayLabel,
                 // JD, 2026-07-28: "top one should be All - Pool Play." Every
                 // team is in it, which is what makes it different from the
                 // brackets under it. Named by gender when two run pool play,
