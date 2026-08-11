@@ -9,6 +9,7 @@ import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import NewTournament from "@/components/scorekeeper/NewTournament";
 import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
 import TournamentSetup from "@/components/scorekeeper/TournamentSetup";
+import TournamentUmpires from "@/components/scorekeeper/TournamentUmpires";
 import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,19 @@ const FILTERS = [
   { key: "nodeadline", label: "No deadline set", tag: "nodeadline" },
 ];
 
+function mapUmpire(r) {
+  return {
+    id: r.id,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    preferredName: r.preferred_name || "",
+    phone: r.phone,
+    pitchFast: r.pitch_fast,
+    pitchSlow: r.pitch_slow,
+    status: r.status,
+  };
+}
+
 async function load() {
   const supabase = getServiceClient();
   const [
@@ -46,6 +60,8 @@ async function load() {
     { data: registrations },
     { data: classes },
     { data: progress },
+    umpResult,
+    crewResult,
   ] =
     await Promise.all([
       supabase.from("tournaments").select("*").order("start_date"),
@@ -63,6 +79,18 @@ async function load() {
         ),
       supabase.from("classes").select("id, name, sort_order").order("sort_order"),
       supabase.from("registration_signing_progress").select("*"),
+      supabase
+        .from("umpires")
+        .select(
+          "id, first_name, last_name, preferred_name, phone, pitch_fast, pitch_slow, status"
+        )
+        .order("last_name")
+        .order("first_name"),
+      supabase
+        .from("tournament_umpires")
+        .select(
+          "id, tournament_id, umpire_id, status, availability, notes, umpires(id, first_name, last_name, preferred_name, phone, pitch_fast, pitch_slow, status)"
+        ),
     ]);
 
   const real = (tournaments ?? []).filter((t) => !t.is_placeholder);
@@ -78,12 +106,52 @@ async function load() {
     progress: progressBy.get(r.id) ?? { active_members: 0, signed_members: 0, is_official: false },
   }));
 
+  const umpireRoster = (umpResult.error ? [] : umpResult.data ?? []).map(mapUmpire);
+
+  const crewByTournament = new Map();
+  if (!crewResult.error) {
+    for (const row of crewResult.data ?? []) {
+      const u = row.umpires;
+      const entry = {
+        id: row.id,
+        umpireId: row.umpire_id,
+        status: row.status,
+        availability: row.availability,
+        notes: row.notes,
+        umpire: u
+          ? mapUmpire(u)
+          : {
+              id: row.umpire_id,
+              firstName: "?",
+              lastName: "?",
+              preferredName: "",
+              pitchFast: false,
+              pitchSlow: false,
+              status: "active",
+            },
+      };
+      if (!crewByTournament.has(row.tournament_id)) {
+        crewByTournament.set(row.tournament_id, []);
+      }
+      crewByTournament.get(row.tournament_id).push(entry);
+    }
+    for (const list of crewByTournament.values()) {
+      list.sort((a, b) => {
+        const an = `${a.umpire.lastName} ${a.umpire.firstName}`;
+        const bn = `${b.umpire.lastName} ${b.umpire.firstName}`;
+        return an.localeCompare(bn, undefined, { sensitivity: "base" });
+      });
+    }
+  }
+
   return {
     tournaments: real,
     divisions: divisions ?? [],
     registrations: withProgress,
     classes: classes ?? [],
     venues,
+    umpireRoster,
+    crewByTournament,
   };
 }
 
@@ -125,8 +193,17 @@ export default async function TournamentsPage() {
     );
   }
 
-  const { tournaments, divisions, registrations, classes, venues } = await load();
+  const {
+    tournaments,
+    divisions,
+    registrations,
+    classes,
+    venues,
+    umpireRoster,
+    crewByTournament,
+  } = await load();
   const plain = (v) => JSON.parse(JSON.stringify(v));
+  const plainRoster = plain(umpireRoster);
 
   const rows = tournaments.map((t) => {
     const mine = divisions
@@ -192,6 +269,12 @@ export default async function TournamentsPage() {
       detail: (
         <div className="space-y-4">
           <TournamentEditor tournament={plain(t)} venues={venues} />
+          <TournamentUmpires
+            tournamentId={t.id}
+            tournamentName={t.name}
+            roster={plainRoster}
+            initial={plain(crewByTournament.get(t.id) ?? [])}
+          />
           <DivisionWorkbench
             divisions={mine.map((d) => {
               const games = [...(d.games ?? []), ...(d.pool_games ?? [])];

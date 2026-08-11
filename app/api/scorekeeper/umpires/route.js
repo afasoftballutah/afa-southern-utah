@@ -71,6 +71,151 @@ export async function POST(request) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // ---- Tournament crew + availability --------------------------------
+  if (body.action === "addTournamentUmpire") {
+    const tournamentId = body.tournamentId;
+    const umpireId = body.umpireId;
+    if (!tournamentId || !umpireId) {
+      return Response.json(
+        { error: "Which tournament and which umpire?" },
+        { status: 400 }
+      );
+    }
+    const status = ["available", "limited", "unavailable"].includes(body.status)
+      ? body.status
+      : "available";
+    const availability =
+      body.availability != null
+        ? String(body.availability).trim() || null
+        : null;
+    const notes =
+      body.notes != null ? String(body.notes).trim() || null : null;
+
+    const supabase = getServiceClient();
+    const { data: tour } = await supabase
+      .from("tournaments")
+      .select("id")
+      .eq("id", tournamentId)
+      .maybeSingle();
+    if (!tour) {
+      return Response.json({ error: "Tournament not found" }, { status: 404 });
+    }
+    const { data: ump } = await supabase
+      .from("umpires")
+      .select("id")
+      .eq("id", umpireId)
+      .maybeSingle();
+    if (!ump) {
+      return Response.json({ error: "Umpire not found" }, { status: 404 });
+    }
+
+    const now = new Date().toISOString();
+    const { data: row, error } = await supabase
+      .from("tournament_umpires")
+      .upsert(
+        {
+          tournament_id: tournamentId,
+          umpire_id: umpireId,
+          status,
+          availability,
+          notes,
+          updated_at: now,
+        },
+        { onConflict: "tournament_id,umpire_id" }
+      )
+      .select(
+        "id, tournament_id, umpire_id, status, availability, notes, created_at, updated_at"
+      )
+      .single();
+
+    if (error) {
+      console.error("add tournament umpire", error);
+      if (
+        error.code === "42P01" ||
+        error.message?.includes("tournament_umpires")
+      ) {
+        return Response.json(
+          {
+            error:
+              "Run migration-2026-08-11-tournament-umpires.sql first",
+          },
+          { status: 500 }
+        );
+      }
+      return Response.json(
+        { error: error.message || "Could not add umpire to tournament" },
+        { status: 500 }
+      );
+    }
+    return Response.json({ ok: true, entry: row });
+  }
+
+  if (body.action === "updateTournamentUmpire") {
+    const id = body.id || body.entryId;
+    if (!id) {
+      return Response.json({ error: "Which entry?" }, { status: 400 });
+    }
+    const patch = { updated_at: new Date().toISOString() };
+    if (body.status != null) {
+      if (!["available", "limited", "unavailable"].includes(body.status)) {
+        return Response.json({ error: "Invalid status" }, { status: 400 });
+      }
+      patch.status = body.status;
+    }
+    if (body.availability !== undefined) {
+      patch.availability =
+        body.availability != null
+          ? String(body.availability).trim() || null
+          : null;
+    }
+    if (body.notes !== undefined) {
+      patch.notes =
+        body.notes != null ? String(body.notes).trim() || null : null;
+    }
+
+    const supabase = getServiceClient();
+    const { data: row, error } = await supabase
+      .from("tournament_umpires")
+      .update(patch)
+      .eq("id", id)
+      .select(
+        "id, tournament_id, umpire_id, status, availability, notes, created_at, updated_at"
+      )
+      .maybeSingle();
+
+    if (error) {
+      console.error("update tournament umpire", error);
+      return Response.json(
+        { error: error.message || "Could not update" },
+        { status: 500 }
+      );
+    }
+    if (!row) {
+      return Response.json({ error: "Entry not found" }, { status: 404 });
+    }
+    return Response.json({ ok: true, entry: row });
+  }
+
+  if (body.action === "removeTournamentUmpire") {
+    const id = body.id || body.entryId;
+    if (!id) {
+      return Response.json({ error: "Which entry?" }, { status: 400 });
+    }
+    const supabase = getServiceClient();
+    const { error } = await supabase
+      .from("tournament_umpires")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      console.error("remove tournament umpire", error);
+      return Response.json(
+        { error: error.message || "Could not remove" },
+        { status: 500 }
+      );
+    }
+    return Response.json({ ok: true });
+  }
+
   // ---- Suspensions (mid-tournament OK) ------------------------------
   if (body.action === "createSuspension") {
     const umpireId = body.umpireId;
@@ -263,6 +408,33 @@ export async function POST(request) {
       !suspMoveErr.message?.includes("umpire_suspensions")
     ) {
       console.error("merge reassign umpire suspensions", suspMoveErr);
+    }
+
+    // Tournament crew rows: re-point to keeper; drop duplicates if both listed
+    const { data: dropCrew } = await supabase
+      .from("tournament_umpires")
+      .select("id, tournament_id")
+      .eq("umpire_id", dropId);
+    if (dropCrew?.length) {
+      for (const row of dropCrew) {
+        const { data: already } = await supabase
+          .from("tournament_umpires")
+          .select("id")
+          .eq("tournament_id", row.tournament_id)
+          .eq("umpire_id", keepId)
+          .maybeSingle();
+        if (already) {
+          await supabase.from("tournament_umpires").delete().eq("id", row.id);
+        } else {
+          await supabase
+            .from("tournament_umpires")
+            .update({
+              umpire_id: keepId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", row.id);
+        }
+      }
     }
 
     // Fill blank contact / card fields on the keeper from the duplicate
