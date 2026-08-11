@@ -23,7 +23,7 @@ function ChipGroup({ label, children }) {
   );
 }
 
-function Chip({ on, children, onClick, tone = "neutral" }) {
+function Chip({ on, children, count, onClick, tone = "neutral" }) {
   const onCls =
     tone === "action"
       ? "border-afa-red bg-afa-red text-white"
@@ -37,11 +37,14 @@ function Chip({ on, children, onClick, tone = "neutral" }) {
       type="button"
       onClick={onClick}
       className={
-        "rounded-full border px-2.5 py-1 text-[12px] font-semibold tabular-nums whitespace-nowrap " +
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap " +
         (on ? onCls : offCls)
       }
     >
-      {children}
+      <span>{children}</span>
+      {count != null && count !== "" && (
+        <span className="tabular-nums opacity-80">{count}</span>
+      )}
     </button>
   );
 }
@@ -204,19 +207,25 @@ export default function ScorekeeperBoard({
           <Chip
             on={status === "need"}
             tone="action"
+            count={counts.need}
             onClick={() => setStatus("need")}
           >
-            Need score {counts.need}
+            Need score
           </Chip>
           <Chip
             on={status === "scored"}
             tone="quiet"
+            count={counts.scored}
             onClick={() => setStatus("scored")}
           >
-            Scored {counts.scored}
+            Scored
           </Chip>
-          <Chip on={status === "all"} onClick={() => setStatus("all")}>
-            All {counts.all}
+          <Chip
+            on={status === "all"}
+            count={counts.all}
+            onClick={() => setStatus("all")}
+          >
+            All
           </Chip>
         </ChipGroup>
 
@@ -232,12 +241,10 @@ export default function ScorekeeperBoard({
               <Chip
                 key={d.id}
                 on={divisionId === d.id}
+                count={d.open > 0 ? d.open : null}
                 onClick={() => setDivisionId(d.id)}
               >
                 {d.label}
-                {d.open > 0 ? (
-                  <span className="ml-1 opacity-80">{d.open}</span>
-                ) : null}
               </Chip>
             ))}
           </ChipGroup>
@@ -248,13 +255,21 @@ export default function ScorekeeperBoard({
             All
           </Chip>
           {counts.pool > 0 && (
-            <Chip on={stage === "pool"} onClick={() => setStage("pool")}>
-              Pool {counts.pool}
+            <Chip
+              on={stage === "pool"}
+              count={counts.pool}
+              onClick={() => setStage("pool")}
+            >
+              Pool
             </Chip>
           )}
           {counts.bracket > 0 && (
-            <Chip on={stage === "bracket"} onClick={() => setStage("bracket")}>
-              Bracket {counts.bracket}
+            <Chip
+              on={stage === "bracket"}
+              count={counts.bracket}
+              onClick={() => setStage("bracket")}
+            >
+              Bracket
             </Chip>
           )}
         </ChipGroup>
@@ -268,12 +283,10 @@ export default function ScorekeeperBoard({
               <Chip
                 key={f.key}
                 on={field === f.key}
+                count={f.open > 0 ? f.open : null}
                 onClick={() => setField(f.key)}
               >
                 {f.key}
-                {f.open > 0 ? (
-                  <span className="ml-1 opacity-80">{f.open}</span>
-                ) : null}
               </Chip>
             ))}
           </ChipGroup>
