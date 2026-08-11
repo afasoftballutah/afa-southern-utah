@@ -23,6 +23,7 @@ export default function NewsAdmin({ initialPosts = [] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [composeOpen, setComposeOpen] = useState(false);
   const fileInput = useRef(null);
 
   const totalImages = existingUrls.length + pendingDataUrls.length;
@@ -36,10 +37,12 @@ export default function NewsAdmin({ initialPosts = [] }) {
     setExistingUrls([]);
     setPendingDataUrls([]);
     setEditingId(null);
+    setComposeOpen(false);
   }
 
   function startEdit(p) {
     setEditingId(p.id);
+    setComposeOpen(true);
     setTitle(p.title || "");
     setBody(p.body || "");
     setLinkUrl(p.link_url || "");
@@ -176,20 +179,35 @@ export default function NewsAdmin({ initialPosts = [] }) {
 
   return (
     <div className="space-y-5 max-w-2xl">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!composeOpen && (
+          <button
+            type="button"
+            className="btn-action shrink-0"
+            onClick={() => {
+              setComposeOpen(true);
+              setEditingId(null);
+              setError("");
+            }}
+          >
+            + Add post
+          </button>
+        )}
+      </div>
+
+      {composeOpen && (
       <form onSubmit={save} className="card p-4 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
           <p className="t-strong">
             {editingId ? "Edit post" : "New post"}
           </p>
-          {editingId && (
-            <button
-              type="button"
-              className="t-label underline text-afa-muted"
-              onClick={resetForm}
-            >
-              Cancel edit
-            </button>
-          )}
+          <button
+            type="button"
+            className="t-label underline text-afa-muted"
+            onClick={resetForm}
+          >
+            Cancel
+          </button>
         </div>
         <p className="t-meta text-[12px]">
           Published posts appear on the homepage under News. Keep titles short.
@@ -315,6 +333,7 @@ export default function NewsAdmin({ initialPosts = [] }) {
               : "Publish post"}
         </button>
       </form>
+      )}
 
       <div className="card overflow-hidden">
         <div className="px-4 py-2.5 border-b border-afa-navy/10 bg-afa-soft-gray/50">
@@ -326,8 +345,7 @@ export default function NewsAdmin({ initialPosts = [] }) {
         </div>
         {posts.length === 0 ? (
           <p className="p-6 t-meta text-center">
-            Publish your first update above — it will show on the home News
-            section.
+            Use + Add post to publish an update for the home News section.
           </p>
         ) : (
           <ul className="divide-y divide-afa-navy/10">

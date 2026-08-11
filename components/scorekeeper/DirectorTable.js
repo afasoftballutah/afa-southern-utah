@@ -68,6 +68,11 @@ export default function DirectorTable({
   // Rendered inside the same card, above the table. For a control that makes
   // the rows below it — a separate card left them looking unrelated.
   before = null,
+  /**
+   * Right side of the search/filter row — typically “+ Add …”.
+   * Sits next to search so add is always where you scan the list.
+   */
+  toolbarEnd = null,
   /** Bigger, labeled filter chips with counts — for scorekeeper game lists. */
   filterStyle = "default", // default | segmented
 }) {
@@ -109,11 +114,13 @@ export default function DirectorTable({
     setSort((cur) => (cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
   }
 
+  const showToolbar = search || filters.length > 0 || toolbarEnd;
+
   // mx-auto, because a narrowed table pinned to the left leaves the page
   // looking broken rather than deliberate.
   return (
     <div className={"space-y-2 " + (width ? width + " mx-auto" : "")}>
-      {(search || filters.length > 0) && (
+      {showToolbar && (
       <div className="flex flex-wrap items-center gap-2">
         {search && (
         <>
@@ -228,11 +235,14 @@ export default function DirectorTable({
           </button>
         )}
 
-        {filterStyle !== "segmented" && (
-          <span className="t-meta ml-auto whitespace-nowrap text-[12px]">
-            {visible.length} shown
-          </span>
-        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+          {filterStyle !== "segmented" && filters.length > 0 && (
+            <span className="t-meta whitespace-nowrap text-[12px]">
+              {visible.length} shown
+            </span>
+          )}
+          {toolbarEnd}
+        </div>
       </div>
       )}
 

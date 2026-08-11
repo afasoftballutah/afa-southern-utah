@@ -239,6 +239,19 @@ export default function DocsAdmin({
         <p className="text-sm font-bold text-afa-ink underline">{error}</p>
       )}
 
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!showForm && (
+          <button
+            type="button"
+            className="btn-action shrink-0"
+            onClick={startNew}
+            disabled={busy}
+          >
+            + Add document
+          </button>
+        )}
+      </div>
+
       {showForm && (
         <form onSubmit={save} className="card p-4 space-y-3">
           <p className="t-strong">
@@ -414,16 +427,6 @@ export default function DocsAdmin({
         })}
       </ul>
 
-      {!showForm && (
-        <button
-          type="button"
-          className="btn-action w-full sm:w-auto"
-          onClick={startNew}
-          disabled={busy}
-        >
-          + Add document
-        </button>
-      )}
     </div>
   );
 }

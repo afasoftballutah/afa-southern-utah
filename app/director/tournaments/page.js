@@ -363,7 +363,6 @@ export default async function TournamentsPage() {
 
   return (
     <DirectorShell title="Tournaments" count={`${rows.length} on file`}>
-      <NewTournament venues={venues} />
       {(missingFee > 0 || missingDeadline > 0) && (
         <p className="t-meta">
           {missingFee} without an entry fee, {missingDeadline} without a registration deadline.
@@ -376,6 +375,7 @@ export default async function TournamentsPage() {
         defaultSort={{ key: "date", dir: "asc" }}
         empty="No tournament matches that."
         searchPlaceholder="Tournament or venue…"
+        toolbarEnd={<NewTournament venues={venues} />}
       />
     </DirectorShell>
   );

@@ -21,9 +21,10 @@ export default function NewTournament({ venues = [] }) {
 
   return (
     <DirectorForm
-      heading="Add a tournament"
+      heading="+ Add tournament"
       submitLabel="Create"
       row
+      triggerClass="btn-action shrink-0"
       confirmMessage="Create this tournament? It appears on the public site right away."
       onSubmit={async () => {
         const res = await directorPost({

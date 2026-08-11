@@ -83,16 +83,36 @@ export default async function RegistrationsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h1 className="t-title">Registrations</h1>
-        <Link href="/director" className="btn-transient shrink-0">
-          Director Home
-        </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 min-w-0">
+          <h1 className="t-title">Registrations</h1>
+          {total > 0 && (
+            <span className="t-meta">
+              {total} {total === 1 ? "registration" : "registrations"}
+              {unlinked > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-afa-red font-semibold">
+                    {unlinked} roster{" "}
+                    {unlinked === 1 ? "entry" : "entries"} not matched
+                  </span>
+                </>
+              )}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link
+            href="/director/registrations/new"
+            className="btn-action shrink-0"
+          >
+            + Add team
+          </Link>
+          <Link href="/director" className="btn-transient shrink-0">
+            Director Home
+          </Link>
+        </div>
       </div>
-
-      <Link href="/director/registrations/new" className="pill">
-        Add a team yourself
-      </Link>
 
       {total === 0 ? (
         <div className="card p-6 text-center space-y-1">
@@ -102,25 +122,16 @@ export default async function RegistrationsPage() {
             <Link href="/register" className="underline">
               the form
             </Link>
-            .
+            , or you can add one above.
           </p>
         </div>
       ) : (
-        <>
-          <p className="t-meta">
-            {total} {total === 1 ? "registration" : "registrations"}
-            {unlinked > 0 && (
-              <>
-                {" · "}
-                <span className="text-afa-red font-semibold">
-                  {unlinked} roster {unlinked === 1 ? "entry" : "entries"} not matched to a person
-                </span>
-              </>
-            )}
-          </p>
-
-          <TeamTable registrations={registrations} classes={classes} divisions={divisions} wide />
-        </>
+        <TeamTable
+          registrations={registrations}
+          classes={classes}
+          divisions={divisions}
+          wide
+        />
       )}
     </div>
   );

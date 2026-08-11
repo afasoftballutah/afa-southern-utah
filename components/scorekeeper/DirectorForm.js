@@ -102,9 +102,9 @@ export default function DirectorForm({
   // Rendered as the last item INSIDE the row, so the buttons never wrap away
   // from the fields they belong to.
   actions = null,
-  // How the collapsed form looks. A full-width bar is right when the form IS
-  // the section; a pill is right when it sits in a line of other pills.
-  triggerClass = "btn-transient w-full",
+  // How the collapsed form looks. Default is a solid + Add button for toolbars
+  // (next to search). Pass w-full only when the form is the whole section.
+  triggerClass = "btn-action shrink-0",
 }) {
   const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);
@@ -133,8 +133,9 @@ export default function DirectorForm({
     );
   }
 
+  // basis-full so when this sits in a flex toolbar it drops to its own row.
   return (
-    <div className="card p-4 space-y-3">
+    <div className="card p-4 space-y-3 w-full basis-full min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <p className="t-strong">{heading}</p>
         {!alwaysOpen && (

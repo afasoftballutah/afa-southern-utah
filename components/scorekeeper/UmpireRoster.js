@@ -810,10 +810,10 @@ export default function UmpireRoster({
               {canEdit && (
                 <button
                   type="button"
-                  className="pill pill-solid"
+                  className="btn-action shrink-0 text-sm py-1.5"
                   onClick={openAdd}
                 >
-                  + Add
+                  + Add umpire
                 </button>
               )}
             </div>
