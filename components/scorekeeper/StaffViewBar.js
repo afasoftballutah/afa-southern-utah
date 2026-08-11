@@ -1,12 +1,19 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getSessionRole } from "@/lib/scorekeeper-auth";
 
 /**
  * Thin mode strip: Director (red) or Scorekeeper (green).
- * Always clear which desk you're on.
+ * Field-only scorekeepers do not get “Switch to Director” — they can’t enter.
+ * Directors on the field room can switch back to Control Center.
  */
-export default function StaffViewBar({ mode }) {
+export default async function StaffViewBar({ mode }) {
   const isDirector = mode === "director";
   const label = isDirector ? "Director view" : "Scorekeeper view";
+  const role = getSessionRole(await cookies());
+  // Field PIN sessions: label only. Directors can hop either way.
+  const showSwitch = role === "director";
+
   const otherHref = isDirector ? "/scorekeeper" : "/director";
   const otherLabel = isDirector ? "Scorekeeper" : "Director";
 
@@ -20,9 +27,11 @@ export default function StaffViewBar({ mode }) {
       aria-label={label}
     >
       <span className="staff-view-bar__label">{label}</span>
-      <Link href={otherHref} className="staff-view-bar__switch">
-        Switch to {otherLabel}
-      </Link>
+      {showSwitch && (
+        <Link href={otherHref} className="staff-view-bar__switch">
+          Switch to {otherLabel}
+        </Link>
+      )}
     </div>
   );
 }
