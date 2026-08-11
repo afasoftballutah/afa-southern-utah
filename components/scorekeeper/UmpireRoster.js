@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import Modal from "./Modal";
+import SuspendUmpire from "./SuspendUmpire";
 
 const empty = () => ({
   firstName: "",
@@ -151,7 +152,11 @@ const PAGES = [
  * Page 2: address (page 1 fixed above)
  * Page 3: pitch / card / status
  */
-export default function UmpireRoster({ initial = [], canEdit = true }) {
+export default function UmpireRoster({
+  initial = [],
+  canEdit = true,
+  tournaments = [],
+}) {
   const [list, setList] = useState(initial);
   const [form, setForm] = useState(empty());
   const [editingId, setEditingId] = useState(null);
@@ -168,7 +173,9 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     let fast = 0;
     let both = 0;
     let inactive = 0;
+    let suspended = 0;
     for (const u of list) {
+      if (u.suspended) suspended += 1;
       if (u.status === "inactive") {
         inactive += 1;
         continue;
@@ -178,12 +185,13 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       else if (u.pitchFast) fast += 1;
       else if (u.pitchSlow) slow += 1;
     }
-    return { all, active, slow, fast, both, inactive };
+    return { all, active, slow, fast, both, inactive, suspended };
   }, [list]);
 
   const filtered = useMemo(() => {
     return list.filter((u) => {
       if (filter === "inactive") return u.status === "inactive";
+      if (filter === "suspended") return Boolean(u.suspended);
       if (filter === "slow")
         return u.pitchSlow && !u.pitchFast && u.status !== "inactive";
       if (filter === "fast")
@@ -505,6 +513,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     { key: "slow", label: "Slow", count: counts.slow, color: "sky" },
     { key: "fast", label: "Fast", count: counts.fast, color: "red" },
     { key: "both", label: "Both", count: counts.both, color: "green" },
+    ...(counts.suspended > 0
+      ? [
+          {
+            key: "suspended",
+            label: "Suspended",
+            count: counts.suspended,
+            color: "red",
+          },
+        ]
+      : []),
     ...(counts.inactive > 0
       ? [
           {
@@ -926,21 +944,27 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               {filtered.map((u) => {
                 const p = pitchKind(u);
                 const inactive = u.status === "inactive";
+                const suspended = Boolean(u.suspended);
                 return (
                   <li
                     key={u.id}
                     className={
-                      "flex flex-wrap items-center gap-3 px-3 sm:px-4 py-3 border-l-4 bg-white " +
+                      "flex flex-wrap items-center gap-3 px-3 sm:px-4 py-3 border-l-4 " +
                       p.bar +
-                      (inactive ? " opacity-60" : "")
+                      (suspended
+                        ? " bg-afa-red/[0.06]"
+                        : " bg-white") +
+                      (inactive && !suspended ? " opacity-60" : "")
                     }
                   >
                     <span
                       className={
                         "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold " +
-                        (inactive
+                        (inactive && !suspended
                           ? "bg-afa-navy/15 text-afa-muted"
-                          : p.avatar)
+                          : suspended
+                            ? "bg-afa-red text-white"
+                            : p.avatar)
                       }
                       aria-hidden
                     >
@@ -949,12 +973,23 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                     <div className="min-w-0 flex-1">
                       <p className="t-body font-semibold leading-tight">
                         {umpDisplay(u)}
+                        {suspended ? (
+                          <span className="t-meta font-semibold text-afa-red">
+                            {" "}
+                            · Suspended
+                          </span>
+                        ) : null}
                       </p>
                       <p className="t-meta text-sm mt-0.5">
                         {u.phone ? u.phone : ""}
                         {u.phone && u.email ? " · " : ""}
                         {u.email || ""}
                       </p>
+                      {suspended && u.suspensionLabels?.length ? (
+                        <p className="t-meta text-[12px] text-afa-red mt-0.5">
+                          {u.suspensionLabels.join("; ")}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                       <span
@@ -974,6 +1009,16 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                           >
                             Edit
                           </button>
+                          <SuspendUmpire
+                            umpire={u}
+                            tournaments={tournaments}
+                            suspensions={u.suspensions ?? []}
+                            buttonClass={
+                              suspended
+                                ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red"
+                                : "pill"
+                            }
+                          />
                           <button
                             type="button"
                             className="pill"

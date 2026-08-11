@@ -81,14 +81,36 @@ async function loadDivisionData(divisionId) {
       .eq("status", "active")
       .order("last_name")
       .order("first_name");
-    umpires = (umpRows ?? []).map((r) => ({
-      id: r.id,
-      firstName: r.first_name,
-      lastName: r.last_name,
-      pitchFast: r.pitch_fast,
-      pitchSlow: r.pitch_slow,
-      status: r.status,
-    }));
+    const tournamentId = division.tournament_id ?? null;
+    let suspMap = new Map();
+    if ((umpRows ?? []).length) {
+      const {
+        loadSuspensionsForUmpires,
+        activeUmpireSuspensionMap,
+      } = await import("@/lib/suspensions");
+      const { leagueToday } = await import("@/lib/tournament-state");
+      const rows = await loadSuspensionsForUmpires(
+        service,
+        umpRows.map((r) => r.id)
+      );
+      suspMap = activeUmpireSuspensionMap(rows, {
+        tournamentId,
+        asOf: leagueToday(),
+      });
+    }
+    umpires = (umpRows ?? []).map((r) => {
+      const susp = suspMap.get(r.id) ?? null;
+      return {
+        id: r.id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        pitchFast: r.pitch_fast,
+        pitchSlow: r.pitch_slow,
+        status: r.status,
+        suspended: Boolean(susp),
+        suspensionNote: susp?.note ?? null,
+      };
+    });
   } catch {
     umpires = [];
   }
