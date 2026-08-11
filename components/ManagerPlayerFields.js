@@ -10,7 +10,6 @@ export default function ManagerPlayerFields({
   onChange,
   knownPlayers = [],
   fieldClass = "form-field",
-  idPrefix = "player",
 }) {
   const v = value || {};
   const set = (patch) => onChange({ ...v, ...patch });
