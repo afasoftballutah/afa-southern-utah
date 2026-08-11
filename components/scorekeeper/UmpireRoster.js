@@ -517,7 +517,7 @@ export default function UmpireRoster({
   const roomWelcome = isEditing
     ? "Legal name and address must match a driver’s license or other official ID."
     : page === 1
-      ? "Legal name must match a driver’s license or other official ID. Preferred name is what we call them on the field if different."
+      ? null
       : page === 2
         ? "Address as on license / ID. Entire room is optional — Skip if you don’t have it yet."
         : "How they umpire, and card number if you have it.";
@@ -586,32 +586,33 @@ export default function UmpireRoster({
       {/* —— Edit: one scrollable page with everything —— */}
       {isEditing && (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <RoomField
-              label="Legal last name"
-              explainer="Legal last — as on license / ID"
+              label="Legal last"
+              explainer="Legal last"
               required
               autoComplete="family-name"
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             />
             <RoomField
-              label="Legal first name"
-              explainer="Legal first — as on license / ID"
+              label="Legal first"
+              explainer="Legal first"
               required
               autoComplete="given-name"
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
+            <RoomField
+              label="Preferred"
+              optional
+              explainer="Preferred"
+              value={form.preferredName}
+              onChange={(e) =>
+                setForm({ ...form, preferredName: e.target.value })
+              }
+            />
           </div>
-          <RoomField
-            label="Preferred name"
-            optional
-            value={form.preferredName}
-            onChange={(e) =>
-              setForm({ ...form, preferredName: e.target.value })
-            }
-          />
           <RoomField
             label="Phone"
             type="tel"
@@ -668,32 +669,33 @@ export default function UmpireRoster({
 
       {!isEditing && page === 1 && (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <RoomField
-              label="Legal last name"
-              explainer="Legal last — as on license / ID"
+              label="Legal last"
+              explainer="Legal last"
               required
               autoComplete="family-name"
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             />
             <RoomField
-              label="Legal first name"
-              explainer="Legal first — as on license / ID"
+              label="Legal first"
+              explainer="Legal first"
               required
               autoComplete="given-name"
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
+            <RoomField
+              label="Preferred"
+              optional
+              explainer="Preferred"
+              value={form.preferredName}
+              onChange={(e) =>
+                setForm({ ...form, preferredName: e.target.value })
+              }
+            />
           </div>
-          <RoomField
-            label="Preferred name"
-            optional
-            value={form.preferredName}
-            onChange={(e) =>
-              setForm({ ...form, preferredName: e.target.value })
-            }
-          />
           <RoomField
             label="Phone"
             required

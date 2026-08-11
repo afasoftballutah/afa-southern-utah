@@ -14,6 +14,8 @@ export default function SoftField({
   autoComplete,
   className = "",
   inputClassName = "form-field",
+  /** Extra classes on the floating label (e.g. bold required vs light optional). */
+  labelClassName = "",
 }) {
   const [focused, setFocused] = useState(false);
   const filled = String(value ?? "").trim().length > 0;
@@ -24,7 +26,8 @@ export default function SoftField({
       <span
         className={
           "t-label block mb-1 min-h-[1rem] leading-4 " +
-          (showLabel ? "opacity-100" : "opacity-0")
+          (showLabel ? "opacity-100" : "opacity-0") +
+          (labelClassName ? " " + labelClassName : "")
         }
         aria-hidden={!showLabel}
       >

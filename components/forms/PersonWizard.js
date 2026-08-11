@@ -122,33 +122,34 @@ export default function PersonWizard({
   // Blocks first — body references them (TDZ crash if order is reversed).
   const contactBlock = (
     <>
-      <LegalIdBox detail="Preferred name (below) is what shows on the roster if different.">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <SoftField
-            label="Legal last name"
-            explainer="Legal last — as on license / ID"
-            autoComplete="family-name"
-            value={p.legalLastName}
-            onChange={(e) => set({ legalLastName: e.target.value })}
-            inputClassName={fieldClass}
-          />
-          <SoftField
-            label="Legal first name"
-            explainer="Legal first — as on license / ID"
-            autoComplete="given-name"
-            value={p.legalFirstName}
-            onChange={(e) => set({ legalFirstName: e.target.value })}
-            inputClassName={fieldClass}
-          />
-        </div>
-      </LegalIdBox>
-      <RoomField
-        label="Preferred name"
-        optional
-        value={p.preferredName}
-        onChange={(e) => set({ preferredName: e.target.value })}
-        inputClassName={fieldClass}
-      />
+      <div className="grid grid-cols-3 gap-2">
+        <RoomField
+          label="Legal last"
+          explainer="Legal last"
+          required
+          autoComplete="family-name"
+          value={p.legalLastName}
+          onChange={(e) => set({ legalLastName: e.target.value })}
+          inputClassName={fieldClass}
+        />
+        <RoomField
+          label="Legal first"
+          explainer="Legal first"
+          required
+          autoComplete="given-name"
+          value={p.legalFirstName}
+          onChange={(e) => set({ legalFirstName: e.target.value })}
+          inputClassName={fieldClass}
+        />
+        <RoomField
+          label="Preferred"
+          explainer="Preferred"
+          optional
+          value={p.preferredName}
+          onChange={(e) => set({ preferredName: e.target.value })}
+          inputClassName={fieldClass}
+        />
+      </div>
       {hasPhone && (
         <RoomField
           label="Phone"

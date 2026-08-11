@@ -18,6 +18,7 @@ export function RoomField({
   optional = false,
   required = false,
   hint,
+  className = "",
   ...rest
 }) {
   const baseExplainer =
@@ -26,19 +27,24 @@ export function RoomField({
   const foot =
     hint ||
     (optional ? "Optional" : required ? "Required" : null);
+  // Required = bold navy; optional = light muted (easy to scan which matters).
+  const labelClass = optional
+    ? "font-normal text-afa-muted"
+    : required
+      ? "font-bold text-afa-navy"
+      : "font-semibold text-afa-navy";
+  const footClass = optional
+    ? "text-[11px] font-normal tracking-wide uppercase text-afa-muted/80"
+    : "text-[11px] font-bold tracking-wide uppercase text-afa-navy";
   return (
-    <div className="space-y-0.5">
-      <SoftField label={label} explainer={baseExplainer} {...rest} />
-      {foot && (
-        <p
-          className={
-            "text-[11px] font-semibold tracking-wide uppercase " +
-            (optional ? "text-afa-muted" : "text-afa-navy/50")
-          }
-        >
-          {foot}
-        </p>
-      )}
+    <div className={"space-y-0.5 min-w-0 " + className}>
+      <SoftField
+        label={label}
+        explainer={baseExplainer}
+        labelClassName={labelClass}
+        {...rest}
+      />
+      {foot && <p className={footClass}>{foot}</p>}
     </div>
   );
 }
