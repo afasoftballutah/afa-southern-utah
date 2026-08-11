@@ -99,11 +99,19 @@ export default function AddressInput({
       }
 
       if (!full) full = [street, city, state, zip].filter(Boolean).join(", ");
-      // No trailing commas (e.g. "…84770," from some formatters)
-      full = full.replace(/[,\s]+$/g, "").replace(/\s+,/g, ",").trim();
-      street = String(street || full)
-        .replace(/[,\s]+$/g, "")
-        .trim();
+      // Drop country + trailing commas (Google often ends with ", USA")
+      const tidy = (s) =>
+        String(s ?? "")
+          .replace(
+            /,?\s*(United States of America|United States|USA|US)\s*$/i,
+            ""
+          )
+          .replace(/\s+,/g, ",")
+          .replace(/,+/g, ",")
+          .replace(/[,\s]+$/g, "")
+          .trim();
+      full = tidy(full);
+      street = tidy(street || full);
       onChange(full);
       onPlace?.({
         street: street || full,

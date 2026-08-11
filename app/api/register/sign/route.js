@@ -74,8 +74,10 @@ export async function POST(request) {
     typeof address === "string"
       ? address
           .trim()
-          .replace(/[,\s]+$/g, "")
+          .replace(/,?\s*(United States of America|United States|USA|US)\s*$/i, "")
           .replace(/\s+,/g, ",")
+          .replace(/,+/g, ",")
+          .replace(/[,\s]+$/g, "")
           .trim()
       : "";
   const first = String(legalFirstName ?? "").trim();

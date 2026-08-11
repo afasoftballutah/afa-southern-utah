@@ -66,9 +66,21 @@ export async function GET(request) {
       component(comps, "administrative_area_level_2");
     const state = shortComponent(comps, "administrative_area_level_1");
     const zip = component(comps, "postal_code");
-    const formatted =
+    let formatted =
       data.result.formatted_address ||
       [street, city, state, zip].filter(Boolean).join(", ");
+    // Prefer street,city,state,zip without country; strip ", USA" etc.
+    const compact = [street, city, state, zip].filter(Boolean).join(", ");
+    if (compact) formatted = compact;
+    else {
+      formatted = String(formatted)
+        .replace(
+          /,?\s*(United States of America|United States|USA|US)\s*$/i,
+          ""
+        )
+        .replace(/[,\s]+$/g, "")
+        .trim();
+    }
 
     return Response.json({
       label: formatted,
