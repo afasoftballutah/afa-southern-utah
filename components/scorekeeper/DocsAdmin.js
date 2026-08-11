@@ -168,25 +168,38 @@ export default function DocsAdmin({
     }
   }
 
-  async function setPublished(d, published) {
-    if (isMainRuleBook(d) && (!d.id || d.id === "__rulebook__")) {
-      setError("Save the rule book once before publish/unpublish.");
-      return;
+  function realDocId(d) {
+    if (!d?.id || d.id === "__rulebook__") {
+      return ruleBook?.docId || null;
     }
-    if (isMainRuleBook(d)) {
-      // Allow publish toggle on the main book via plain API
+    return d.id;
+  }
+
+  async function setPublished(d, published) {
+    const id = realDocId(d);
+    if (!id) {
+      setError("Rule book is not saved in the database yet.");
+      return;
     }
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/scorekeeper/docs/${d.id}`, {
+      const res = await fetch(`/api/scorekeeper/docs/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not update");
-      setDocs((cur) => cur.map((x) => (x.id === d.id ? json.doc : x)));
+      setDocs((cur) => {
+        const has = cur.some((x) => x.id === id || isMainRuleBook(x));
+        if (has) {
+          return cur.map((x) =>
+            x.id === id || isMainRuleBook(x) ? json.doc : x
+          );
+        }
+        return [json.doc, ...cur];
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -195,27 +208,29 @@ export default function DocsAdmin({
   }
 
   async function remove(d) {
-    if (isMainRuleBook(d)) {
-      setError("The main rule book cannot be deleted.");
-      return;
-    }
-    if (
-      !window.confirm(
-        `Delete “${d.title}”? This removes it from the public site.`
-      )
-    ) {
+    const id = realDocId(d);
+    const label = d.title || "this document";
+    const msg = isMainRuleBook(d)
+      ? `Delete “${label}”? The public /rules page will fall back to the built-in book until you add it again.`
+      : `Delete “${label}”? This removes it from the public site.`;
+    if (!window.confirm(msg)) return;
+    if (!id) {
+      setError("Nothing to delete in the database.");
       return;
     }
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/scorekeeper/docs/${d.id}`, {
+      const res = await fetch(`/api/scorekeeper/docs/${id}`, {
         method: "DELETE",
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Could not delete");
-      setDocs((cur) => cur.filter((x) => x.id !== d.id));
-      if (editingId === d.id) resetForm();
+      setDocs((cur) =>
+        cur.filter((x) => x.id !== id && !(isMainRuleBook(d) && isMainRuleBook(x)))
+      );
+      if (editingId === id) resetForm();
+      if (isMainRuleBook(d)) setRulesOpen(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -422,6 +437,7 @@ export default function DocsAdmin({
         {filtered.map((d) => {
           const mainBook = isMainRuleBook(d);
           const sectionN = ruleBook?.sections?.length;
+          const published = d.published !== false;
           return (
             <li
               key={d.id}
@@ -431,13 +447,11 @@ export default function DocsAdmin({
                 <p className="t-body font-semibold truncate">{d.title}</p>
                 <p className="t-meta">
                   {kindLabel(d.kind)}
-                  {mainBook && sectionN
-                    ? ` · ${sectionN} sections · live on /rules`
-                    : ""}
-                  {!mainBook && (d.published ? "" : " · draft")}
+                  {mainBook && sectionN ? ` · ${sectionN} sections` : ""}
+                  {mainBook ? (published ? " · live on /rules" : " · draft") : ""}
+                  {!mainBook && (published ? "" : " · draft")}
                   {!mainBook && d.version ? ` · ${d.version}` : ""}
-                  {!mainBook && d.source_url ? " · has link" : ""}
-                  {mainBook && d.published === false ? " · draft" : ""}
+                  {d.source_url ? " · has link" : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 shrink-0">
@@ -447,28 +461,24 @@ export default function DocsAdmin({
                   onClick={() => startEdit(d)}
                   disabled={busy}
                 >
-                  {mainBook ? "Open" : "Edit"}
+                  Edit
                 </button>
-                {!mainBook && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn-transient text-sm"
-                      onClick={() => setPublished(d, !d.published)}
-                      disabled={busy}
-                    >
-                      {d.published ? "Unpublish" : "Publish"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-transient text-sm text-red-700"
-                      onClick={() => remove(d)}
-                      disabled={busy}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className="btn-transient text-sm"
+                  onClick={() => setPublished(d, !published)}
+                  disabled={busy}
+                >
+                  {published ? "Unpublish" : "Publish"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-transient text-sm text-red-700"
+                  onClick={() => remove(d)}
+                  disabled={busy}
+                >
+                  Delete
+                </button>
               </div>
             </li>
           );
