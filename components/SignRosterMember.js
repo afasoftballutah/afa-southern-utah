@@ -132,7 +132,7 @@ export default function SignRosterMember({ token, member }) {
       {needsPlayerFields && (
         <div className="space-y-3 form-surface p-3">
           <p className="t-strong text-sm">Your information</p>
-          <p className="t-meta">
+          <p className="t-meta break-words whitespace-normal leading-snug">
             Complete this yourself. Legal name and address must match a
             driver&rsquo;s license or other official ID you can present on game
             day.

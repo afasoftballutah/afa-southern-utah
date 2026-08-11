@@ -104,7 +104,6 @@ export default function EditPlayer({ player }) {
       {open && (
         <Modal
           title={`Edit ${player.full_name}`}
-          subtitle="Legal name and address must match a driver’s license or other official ID. Preferred is what shows on rosters."
           onClose={() => !busy && setOpen(false)}
           width="max-w-lg"
           footer={
@@ -128,6 +127,10 @@ export default function EditPlayer({ player }) {
             </>
           }
         >
+          <p className="t-meta break-words whitespace-normal">
+            Legal name and address must match a driver&rsquo;s license or other
+            official ID. Preferred is what shows on rosters.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <SoftField
               label="Legal first name"

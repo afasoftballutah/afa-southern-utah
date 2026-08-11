@@ -39,9 +39,13 @@ export default function Modal({ title, subtitle, onClose, children, footer, widt
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-afa-navy/10">
-          <div className="min-w-0">
-            <p className="t-heading">{title}</p>
-            {subtitle && <p className="t-meta mt-0.5">{subtitle}</p>}
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="t-heading break-words">{title}</p>
+            {subtitle && (
+              <p className="t-meta mt-0.5 break-words whitespace-normal">
+                {subtitle}
+              </p>
+            )}
           </div>
           <button
             type="button"
