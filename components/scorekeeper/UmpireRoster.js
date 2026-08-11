@@ -13,8 +13,9 @@ const empty = () => ({
   zip: "",
   phone: "",
   email: "",
+  // Neither selected until they tap — keeps pitch block highlighted
   pitchFast: false,
-  pitchSlow: true,
+  pitchSlow: false,
   status: "active",
   notes: "",
 });
@@ -82,17 +83,59 @@ function initials(u) {
   return (a + b).toUpperCase() || "?";
 }
 
-function Field({ label, children, className = "" }) {
+/**
+ * Empty: explainer lives inside the field (placeholder).
+ * Filled/focused: short label above; highlight drops when required is met.
+ */
+function PromptField({
+  label,
+  explainer,
+  value,
+  onChange,
+  required = false,
+  type = "text",
+  autoComplete,
+  className = "",
+}) {
+  const [focused, setFocused] = useState(false);
+  const filled = String(value ?? "").trim().length > 0;
+  const needs = required && !filled;
+  const showLabel = filled || focused;
+
   return (
     <label className={"block " + className}>
-      <span className="t-label">{label}</span>
-      <div className="mt-1">{children}</div>
+      <span
+        className={
+          "t-label block transition-all " +
+          (showLabel
+            ? "mb-1 opacity-100 h-auto"
+            : "mb-0 opacity-0 h-0 overflow-hidden")
+        }
+      >
+        {label}
+        {required ? "" : " · optional"}
+      </span>
+      <input
+        type={type}
+        autoComplete={autoComplete}
+        required={required}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={showLabel ? "" : explainer}
+        className={
+          "w-full rounded-xl border-2 px-3 py-3 text-[15px] transition-colors focus:outline-none " +
+          (needs
+            ? "border-amber-400 bg-amber-50/80 placeholder:text-amber-900/55 focus:border-amber-500 focus:ring-2 focus:ring-amber-300/50"
+            : filled
+              ? "border-emerald-300 bg-white focus:border-afa-navy/40 focus:ring-2 focus:ring-afa-navy/15"
+              : "border-afa-navy/15 bg-white placeholder:text-afa-muted focus:border-afa-navy/35 focus:ring-2 focus:ring-afa-navy/15")
+        }
+      />
     </label>
   );
 }
-
-const inputClass =
-  "w-full rounded-lg border border-afa-navy/20 bg-white px-3 py-2.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-afa-navy/25 focus:border-afa-navy/40";
 
 /**
  * Clear zones only:
@@ -250,7 +293,19 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       ? "both"
       : form.pitchFast
         ? "fast"
-        : "slow";
+        : form.pitchSlow
+          ? "slow"
+          : null;
+  const pitchPicked = pitchMode != null;
+
+  const needLast = !String(form.lastName).trim();
+  const needFirst = !String(form.firstName).trim();
+  const needPhone = !String(form.phone).trim();
+  const needEmail = !String(form.email).trim();
+  const needPitch = !pitchPicked;
+  const requiredLeft =
+    [needLast, needFirst, needPhone, needEmail, needPitch].filter(Boolean)
+      .length;
 
   const filterTabs = [
     { key: "all", label: "All", count: counts.all },
@@ -288,7 +343,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
     <form
       id="umpire-form"
       onSubmit={save}
-      className="rounded-xl border-2 border-afa-navy/20 bg-white shadow-sm overflow-hidden"
+      className="rounded-xl border-2 border-afa-navy/20 bg-white shadow-sm overflow-hidden max-w-2xl"
     >
       <div className="flex items-center justify-between gap-2 px-4 py-3 bg-afa-navy text-white">
         <div>
@@ -296,7 +351,9 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             {editingId ? "Edit umpire" : "Add umpire"}
           </p>
           <p className="text-xs text-white/75 mt-0.5">
-            Fill this out, then Save. Everything above is the roster list.
+            {requiredLeft > 0
+              ? `${requiredLeft} still needed — yellow boxes are required`
+              : "Looks complete — tap Save"}
           </p>
         </div>
         <button
@@ -308,7 +365,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         </button>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3 sm:space-y-3">
         {error && (
           <p
             className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-bold text-red-800"
@@ -318,104 +375,106 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </p>
         )}
 
-        <div className="space-y-3">
-          <p className="t-label text-afa-navy">1 · Legal name</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Legal last">
-              <input
-                required
-                autoComplete="family-name"
-                className={inputClass}
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
-            </Field>
-            <Field label="Legal first">
-              <input
-                required
-                autoComplete="given-name"
-                className={inputClass}
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
-            </Field>
-          </div>
-          <Field label="Preferred name (optional)">
-            <input
-              className={inputClass}
-              value={form.preferredName}
-              onChange={(e) =>
-                setForm({ ...form, preferredName: e.target.value })
-              }
-              placeholder="What they go by if different"
-            />
-          </Field>
-          <Field label="Card # (optional)">
-            <input
-              className={inputClass}
-              value={form.cardNumber}
-              onChange={(e) =>
-                setForm({ ...form, cardNumber: e.target.value })
-              }
-            />
-          </Field>
+        {/* Desktop: two columns for name; mobile: stack */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <PromptField
+            label="Legal last name"
+            explainer="Legal last name (as on AFA card)"
+            required
+            autoComplete="family-name"
+            value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+          />
+          <PromptField
+            label="Legal first name"
+            explainer="Legal first name (as on AFA card)"
+            required
+            autoComplete="given-name"
+            value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+          />
         </div>
 
-        <div className="border-t border-afa-navy/10 pt-4 space-y-3">
-          <p className="t-label text-afa-navy">2 · Contact</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Phone">
-              <input
-                type="tel"
-                className={inputClass}
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                type="email"
-                className={inputClass}
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </Field>
-          </div>
-          <Field label="Address (optional)">
-            <input
-              className={inputClass}
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
-          </Field>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="City">
-              <input
-                className={inputClass}
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-              />
-            </Field>
-            <Field label="ST">
-              <input
-                className={inputClass}
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-              />
-            </Field>
-            <Field label="Zip">
-              <input
-                className={inputClass}
-                value={form.zip}
-                onChange={(e) => setForm({ ...form, zip: e.target.value })}
-              />
-            </Field>
-          </div>
+        <PromptField
+          label="Preferred name"
+          explainer="Preferred name — only if different from legal"
+          value={form.preferredName}
+          onChange={(e) => setForm({ ...form, preferredName: e.target.value })}
+        />
+        <PromptField
+          label="Card #"
+          explainer="Umpire card # (optional)"
+          value={form.cardNumber}
+          onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <PromptField
+            label="Phone"
+            explainer="Phone — call them on game day"
+            required
+            type="tel"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <PromptField
+            label="Email"
+            explainer="Email — for schedules and cards"
+            required
+            type="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
         </div>
 
-        <div className="border-t border-afa-navy/10 pt-4 space-y-3">
-          <p className="t-label text-afa-navy">3 · Pitch type</p>
-          <p className="t-meta text-sm -mt-1">Tap one</p>
+        <PromptField
+          label="Address"
+          explainer="Street address (optional)"
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        />
+        <div className="grid grid-cols-3 gap-2">
+          <PromptField
+            label="City"
+            explainer="City"
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+          />
+          <PromptField
+            label="State"
+            explainer="ST"
+            value={form.state}
+            onChange={(e) => setForm({ ...form, state: e.target.value })}
+          />
+          <PromptField
+            label="Zip"
+            explainer="Zip"
+            value={form.zip}
+            onChange={(e) => setForm({ ...form, zip: e.target.value })}
+          />
+        </div>
+
+        {/* Pitch — highlighted until one is tapped */}
+        <div
+          className={
+            "rounded-xl border-2 p-3 transition-colors " +
+            (needPitch
+              ? "border-amber-400 bg-amber-50/80"
+              : "border-emerald-300 bg-white")
+          }
+        >
+          <p
+            className={
+              "text-sm font-semibold mb-2 " +
+              (needPitch ? "text-amber-950" : "text-afa-navy")
+            }
+          >
+            {needPitch
+              ? "Tap pitch type — Slow, Fast, or Both"
+              : `Pitch: ${pitchMode === "both" ? "Both" : pitchMode === "fast" ? "Fast" : "Slow"}`}
+          </p>
           <div className="grid grid-cols-3 gap-2">
             {[
               {
@@ -423,21 +482,21 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 label: "Slow",
                 letter: "S",
                 on: "border-sky-700 bg-sky-700 text-white",
-                off: "border-sky-200 bg-sky-50 text-sky-950",
+                off: "border-sky-300 bg-white text-sky-950",
               },
               {
                 mode: "fast",
                 label: "Fast",
                 letter: "F",
                 on: "border-afa-red bg-afa-red text-white",
-                off: "border-red-200 bg-red-50 text-red-900",
+                off: "border-red-300 bg-white text-red-900",
               },
               {
                 mode: "both",
                 label: "Both",
                 letter: "B",
                 on: "border-emerald-700 bg-emerald-700 text-white",
-                off: "border-emerald-200 bg-emerald-50 text-emerald-900",
+                off: "border-emerald-300 bg-white text-emerald-900",
               },
             ].map((opt) => (
               <button
@@ -458,45 +517,50 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </div>
         </div>
 
-        <div className="border-t border-afa-navy/10 pt-4 space-y-3">
-          <p className="t-label text-afa-navy">4 · Status</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              {
-                value: "active",
-                label: "Active",
-                on: "border-afa-navy bg-afa-navy text-white",
-                off: "border-afa-navy/20 bg-white text-afa-navy",
-              },
-              {
-                value: "inactive",
-                label: "Inactive",
-                on: "border-afa-muted bg-afa-muted text-white",
-                off: "border-afa-navy/15 bg-white text-afa-muted",
-              },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setForm({ ...form, status: opt.value })}
-                className={
-                  "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
-                  (form.status === opt.value ? opt.on : opt.off)
-                }
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            {
+              value: "active",
+              label: "Active",
+              on: "border-afa-navy bg-afa-navy text-white",
+              off: "border-afa-navy/20 bg-white text-afa-navy",
+            },
+            {
+              value: "inactive",
+              label: "Inactive",
+              on: "border-afa-muted bg-afa-muted text-white",
+              off: "border-afa-navy/15 bg-white text-afa-muted",
+            },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setForm({ ...form, status: opt.value })}
+              className={
+                "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
+                (form.status === opt.value ? opt.on : opt.off)
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button type="submit" disabled={busy} className="btn-action">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="submit"
+            disabled={busy || requiredLeft > 0}
+            className={
+              "btn-action " + (requiredLeft > 0 ? "opacity-50 cursor-not-allowed" : "")
+            }
+          >
             {busy
               ? "Saving…"
-              : editingId
-                ? "Save changes"
-                : "Save to roster"}
+              : requiredLeft > 0
+                ? `Fill ${requiredLeft} more…`
+                : editingId
+                  ? "Save changes"
+                  : "Save to roster"}
           </button>
           <button type="button" className="btn-transient" onClick={cancelForm}>
             Cancel
