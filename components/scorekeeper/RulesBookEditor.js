@@ -4,8 +4,86 @@ import { useMemo, useState } from "react";
 import RulesBrowser from "@/components/RulesBrowser";
 
 /**
- * Rule book for directors: same public browser, then edit section-by-section
- * without a wall of empty Number / # / Title / list fields.
+ * Flatten a section's rules into one editable text block.
+ * Entries separated by blank lines. First short line = title (optional number).
+ * Lines that look like list markers become items.
+ */
+function sectionToText(section) {
+  return (section.rules || [])
+    .map((rule) => {
+      const parts = [];
+      const head = [rule.number, rule.title].filter(Boolean).join(" ").trim();
+      if (head) parts.push(head);
+      if (rule.body) parts.push(String(rule.body).trim());
+      if (Array.isArray(rule.items) && rule.items.length) {
+        parts.push(rule.items.map((i) => String(i).trim()).join("\n"));
+      }
+      return parts.join("\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function looksLikeListLine(line) {
+  return (
+    /^[-•]\s/.test(line) ||
+    /^[A-Z]\.\s/.test(line) ||
+    /^\d+\.\s/.test(line) ||
+    /^\(\d+\)\s/.test(line)
+  );
+}
+
+function textToRules(text) {
+  const blocks = String(text || "")
+    .trim()
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) {
+    return [{ number: "", title: "", body: "", items: [] }];
+  }
+  return blocks.map((block) => {
+    const lines = block.split("\n");
+    let number = "";
+    let title = "";
+    let start = 0;
+
+    // First line as title when multi-line and short enough
+    if (
+      lines.length > 1 &&
+      lines[0].length <= 120 &&
+      !looksLikeListLine(lines[0])
+    ) {
+      const numbered = lines[0].match(/^(\d+[A-Za-z]?)\s+(.+)$/);
+      if (numbered) {
+        number = numbered[1];
+        title = numbered[2];
+      } else {
+        title = lines[0];
+      }
+      start = 1;
+    }
+
+    const bodyLines = [];
+    const items = [];
+    for (const line of lines.slice(start)) {
+      if (looksLikeListLine(line)) {
+        items.push(line.replace(/^[-•]\s/, "").trim());
+      } else {
+        bodyLines.push(line);
+      }
+    }
+    return {
+      number,
+      title,
+      body: bodyLines.join("\n").trim(),
+      items,
+    };
+  });
+}
+
+/**
+ * Rule book for directors: one editable box per section.
  */
 export default function RulesBookEditor({
   initialSource,
@@ -27,45 +105,55 @@ export default function RulesBookEditor({
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState("");
   const [openSection, setOpenSection] = useState(null);
+  /** Parallel text draft per section index while editing */
+  const [drafts, setDrafts] = useState({});
 
   const ruleCount = useMemo(
     () => sections.reduce((n, s) => n + (s.rules?.length || 0), 0),
     [sections]
   );
 
-  function updateSection(si, patch) {
+  function openEdit() {
+    const next = {};
+    sections.forEach((s, i) => {
+      next[i] = sectionToText(s);
+    });
+    setDrafts(next);
+    setEditing(true);
+    setOpenSection(0);
+  }
+
+  function setDraft(si, text) {
+    setDrafts((cur) => ({ ...cur, [si]: text }));
     setSections((cur) =>
-      cur.map((s, i) => (i === si ? { ...s, ...patch } : s))
+      cur.map((s, i) =>
+        i === si
+          ? {
+              ...s,
+              rules: textToRules(text),
+            }
+          : s
+      )
     );
   }
 
-  function updateRule(si, ri, patch) {
+  function updateHeading(si, heading) {
     setSections((cur) =>
-      cur.map((s, i) => {
-        if (i !== si) return s;
-        const rules = (s.rules || []).map((r, j) =>
-          j === ri ? { ...r, ...patch } : r
-        );
-        return { ...s, rules };
-      })
+      cur.map((s, i) => (i === si ? { ...s, heading } : s))
     );
-  }
-
-  function itemsToText(items) {
-    return Array.isArray(items) ? items.join("\n") : "";
-  }
-
-  function textToItems(text) {
-    return String(text || "")
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
   }
 
   async function save() {
     setBusy(true);
     setError("");
     try {
+      // Flush drafts into sections once more
+      const nextSections = sections.map((s, i) => ({
+        ...s,
+        rules: textToRules(
+          drafts[i] !== undefined ? drafts[i] : sectionToText(s)
+        ),
+      }));
       const nextSource = {
         title: title.trim() || source.title,
         year: year.trim() || source.year,
@@ -74,7 +162,7 @@ export default function RulesBookEditor({
       const body = JSON.stringify({
         format: "rules-sections-v1",
         source: nextSource,
-        sections,
+        sections: nextSections,
       });
       const payload = {
         title: nextSource.title,
@@ -98,6 +186,7 @@ export default function RulesBookEditor({
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save");
+      setSections(nextSections);
       setSource(nextSource);
       setSavedAt(new Date().toLocaleTimeString());
       setEditing(false);
@@ -142,14 +231,7 @@ export default function RulesBookEditor({
                 Close
               </button>
             )}
-            <button
-              type="button"
-              className="btn-action"
-              onClick={() => {
-                setEditing(true);
-                setOpenSection(0);
-              }}
-            >
+            <button type="button" className="btn-action" onClick={openEdit}>
               Edit rule book
             </button>
           </div>
@@ -170,7 +252,7 @@ export default function RulesBookEditor({
             Editing rule book
           </p>
           <p className="font-bold leading-tight">
-            Open a section and edit the text. Save when done.
+            One box per section. Blank lines separate entries.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -207,6 +289,8 @@ export default function RulesBookEditor({
           const label = section.number
             ? `${section.number} · ${section.heading || ""}`
             : section.heading || `Section ${si + 1}`;
+          const draft =
+            drafts[si] !== undefined ? drafts[si] : sectionToText(section);
           return (
             <div
               key={si}
@@ -224,73 +308,35 @@ export default function RulesBookEditor({
                   {label}
                 </span>
                 <span className="t-meta text-xs shrink-0">
-                  {(section.rules || []).length} rules ·{" "}
+                  {(section.rules || []).length} entries ·{" "}
                   {open ? "Done" : "Edit"}
                 </span>
               </button>
 
               {open && (
-                <div className="px-4 pb-4 space-y-4 border-t border-afa-navy/10 pt-3">
+                <div className="px-4 pb-4 space-y-3 border-t border-afa-navy/10 pt-3">
                   <label className="block space-y-1">
                     <span className="form-label">Section heading</span>
                     <input
                       className="form-field w-full"
                       value={section.heading || ""}
-                      onChange={(e) =>
-                        updateSection(si, { heading: e.target.value })
-                      }
+                      onChange={(e) => updateHeading(si, e.target.value)}
                     />
                   </label>
-
-                  {(section.rules || []).map((rule, ri) => {
-                    const hasTitle = Boolean(
-                      String(rule.title || "").trim() ||
-                        String(rule.number || "").trim()
-                    );
-                    const hasBody = Boolean(String(rule.body || "").trim());
-                    const hasItems =
-                      Array.isArray(rule.items) && rule.items.length > 0;
-                    // Show body only when it has text, or when there is no list
-                    // (list-only rules like Acts of Disbarment skip the empty box).
-                    const showBody = hasBody || !hasItems;
-                    return (
-                      <div key={ri} className="space-y-2">
-                        {hasTitle && (
-                          <p className="text-sm font-bold text-afa-navy">
-                            {[rule.number, rule.title].filter(Boolean).join(" ")}
-                          </p>
-                        )}
-                        {showBody && (
-                          <textarea
-                            className="form-field w-full min-h-[120px] text-sm leading-relaxed"
-                            value={rule.body || ""}
-                            onChange={(e) =>
-                              updateRule(si, ri, { body: e.target.value })
-                            }
-                            aria-label={
-                              hasTitle
-                                ? `Text for ${rule.title || rule.number}`
-                                : `Section text ${ri + 1}`
-                            }
-                          />
-                        )}
-                        {hasItems && (
-                          <label className="block space-y-1">
-                            <span className="form-label">List items</span>
-                            <textarea
-                              className="form-field w-full min-h-[80px] text-sm"
-                              value={itemsToText(rule.items)}
-                              onChange={(e) =>
-                                updateRule(si, ri, {
-                                  items: textToItems(e.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                        )}
-                      </div>
-                    );
-                  })}
+                  <label className="block space-y-1">
+                    <span className="form-label">Section text</span>
+                    <textarea
+                      className="form-field w-full min-h-[280px] text-sm leading-relaxed font-sans"
+                      value={draft}
+                      onChange={(e) => setDraft(si, e.target.value)}
+                      spellCheck
+                    />
+                  </label>
+                  <p className="t-meta text-xs">
+                    Separate definitions or rules with a blank line. Put the
+                    title on the first line of each block; list lines can start
+                    with A. or 1.
+                  </p>
                 </div>
               )}
             </div>
