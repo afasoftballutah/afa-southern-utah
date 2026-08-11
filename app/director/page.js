@@ -137,7 +137,8 @@ export default async function DirectorPage() {
           stats={[
             { label: "on file", value: String(counts.players) },
             {
-              label: "waiting to sign",
+              // Same people as Players → “Waiver missing” chip.
+              label: "waiver missing",
               value: String(counts.outstandingSignatures),
               alert: counts.outstandingSignatures > 0,
             },
