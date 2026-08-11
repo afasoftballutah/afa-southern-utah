@@ -32,12 +32,33 @@ async function registrationFor(supabase, token) {
   return data ?? null;
 }
 
-/** List open free agents for this tournament (same gender as this team). */
+/** List open free agents; optional dual-roster probe via query params. */
 export async function GET(request) {
-  const token = new URL(request.url).searchParams.get("token");
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token");
   const supabase = getServiceClient();
   const registration = await registrationFor(supabase, token);
   if (!registration) return bad("Management link not found", 404);
+
+  // Probe: will adding this person dual-roster them?
+  const probeName = url.searchParams.get("probeName");
+  const probePlayerId = url.searchParams.get("probePlayerId");
+  if (probeName || probePlayerId) {
+    const dual = await assertPlayerFreeForTeam(supabase, {
+      tournamentId: registration.tournament_id,
+      divisionGender: registration.divisions?.gender ?? null,
+      name: probeName || "",
+      birthDate: url.searchParams.get("probeBirth") || null,
+      playerId: probePlayerId || null,
+      exceptRegistrationId: registration.id,
+    });
+    return Response.json({
+      ok: true,
+      warnings: dual.warnings ?? [],
+      otherTeams: dual.otherTeams ?? [],
+      hasSameGender: dual.hasSameGender ?? false,
+    });
+  }
 
   const gender = registration.divisions?.gender ?? null;
   let q = supabase
@@ -94,7 +115,7 @@ export async function POST(request) {
     }
 
     const teamGender = registration.divisions?.gender ?? null;
-    const gate = await assertPlayerFreeForTeam(supabase, {
+    const dual = await assertPlayerFreeForTeam(supabase, {
       tournamentId: registration.tournament_id,
       divisionGender: teamGender,
       name: member.name,
@@ -103,7 +124,6 @@ export async function POST(request) {
       exceptRegistrationId: registration.id,
       exceptMemberId: member.id,
     });
-    if (!gate.ok) return bad(gate.error, 409);
 
     const { data: restored, error } = await supabase
       .from("roster_members")
@@ -135,12 +155,15 @@ export async function POST(request) {
 
     return Response.json({
       ok: true,
+      warnings: dual.warnings ?? [],
+      otherTeams: dual.otherTeams ?? [],
       member: {
         id: restored.id,
         name: restored.name,
         birthDate: restored.birth_date ?? member.birth_date,
         signed: Boolean(member.signed_at),
         signLink: `${origin}/register/sign/${restored.signing_token}`,
+        dualRosterTeams: (dual.otherTeams ?? []).map((t) => t.teamName),
       },
     });
   }
@@ -167,7 +190,7 @@ export async function POST(request) {
       return bad("That player is not eligible for this division gender", 409);
     }
 
-    const gate = await assertPlayerFreeForTeam(supabase, {
+    const dual = await assertPlayerFreeForTeam(supabase, {
       tournamentId: registration.tournament_id,
       divisionGender: teamGender,
       name: entry.name,
@@ -175,7 +198,6 @@ export async function POST(request) {
       playerId: entry.player_id,
       exceptRegistrationId: registration.id,
     });
-    if (!gate.ok) return bad(gate.error, 409);
 
     // Restore original member row if it was soft-removed, else insert new
     let member;
@@ -251,10 +273,13 @@ export async function POST(request) {
 
     return Response.json({
       ok: true,
+      warnings: dual.warnings ?? [],
+      otherTeams: dual.otherTeams ?? [],
       member: {
         id: member.id,
         name: member.name,
         birthDate: entry.birth_date,
+        dualRosterTeams: (dual.otherTeams ?? []).map((t) => t.teamName),
         signLink: `${origin}/register/sign/${member.signing_token}`,
       },
     });
@@ -325,7 +350,7 @@ export async function POST(request) {
     }
   }
 
-  const gate = await assertPlayerFreeForTeam(supabase, {
+  const dual = await assertPlayerFreeForTeam(supabase, {
     tournamentId: registration.tournament_id,
     divisionGender: registration.divisions?.gender ?? null,
     name: displayName,
@@ -333,7 +358,6 @@ export async function POST(request) {
     playerId,
     exceptRegistrationId: registration.id,
   });
-  if (!gate.ok) return bad(gate.error, 409);
 
   // Someone already on the roster who was removed comes BACK rather than
   // arriving twice — a manager who removes the wrong person and re-adds them
@@ -402,11 +426,15 @@ export async function POST(request) {
 
   return Response.json({
     ok: true,
+    warnings: dual.warnings ?? [],
+    otherTeams: dual.otherTeams ?? [],
     member: {
       id: member.id,
       name: member.name,
       gender: member.gender ?? gender,
       birthDate: birthDate || null,
+      playerId: playerId || null,
+      dualRosterTeams: (dual.otherTeams ?? []).map((t) => t.teamName),
       signLink: `${origin}/register/sign/${member.signing_token}`,
     },
   });

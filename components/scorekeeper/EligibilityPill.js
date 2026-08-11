@@ -19,29 +19,35 @@ export default function EligibilityPill({
   suggestedClass,
   check,
   composition,
+  dualRoster,
   roster,
 }) {
   const [open, setOpen] = useState(false);
 
-  // Class legal, enough men/women, and no suspended players on the sheet.
+  // Class legal, enough men/women, no suspended, no dual-roster flags.
   const classOk = check?.ok !== false;
   const compOk = composition?.ok !== false;
   const suspendedCount =
     composition?.suspendedCount ??
     (roster ?? []).filter((m) => m.suspended).length;
   const hasSuspended = suspendedCount > 0;
-  const ok = classOk && compOk && !hasSuspended;
-  const label = hasSuspended && classOk && compOk ? "Susp." : ok ? "OK" : "Check";
+  const dualConflicts = dualRoster?.conflicts ?? [];
+  const hasDual = dualConflicts.length > 0 || dualRoster?.ok === false;
+  const ok = classOk && compOk && !hasSuspended && !hasDual;
+  const label =
+    ok
+      ? "OK"
+      : hasDual && classOk && compOk && !hasSuspended
+        ? "Check"
+        : hasSuspended && classOk && compOk && !hasDual
+          ? "Susp."
+          : "Check";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        // .pill first, so it is the same shape and height as every other row
-        // action; the utilities after it only recolour. Its own rounded-full
-        // button was a <button> without .pill, so the global 44px thumb-target
-        // rule applied and a two-letter label came out as a circle.
         className={
           "pill " +
           (ok
@@ -97,10 +103,27 @@ export default function EligibilityPill({
                 count toward requirements
               </p>
             )}
+            {hasDual && (
+              <p className="t-strong">
+                <span className="tick">☐</span>{" "}
+                {dualConflicts.length} player
+                {dualConflicts.length === 1 ? "" : "s"} also on another team
+                this tournament
+              </p>
+            )}
           </div>
 
           <ul className="divide-y divide-black/5 max-h-[45vh] overflow-y-auto">
             {roster.map((m) => {
+              const dual =
+                dualConflicts.find((c) => c.memberId === m.id) ||
+                ((m.dualRosterTeams ?? []).length
+                  ? {
+                      memberId: m.id,
+                      name: m.name,
+                      otherTeams: m.dualRosterTeams,
+                    }
+                  : null);
               const flagged =
                 !classOk && !m.suspended && check.over.includes(m.rating);
               const susp = Boolean(m.suspended);
@@ -109,19 +132,21 @@ export default function EligibilityPill({
                   key={m.id}
                   className={
                     "flex items-center justify-between gap-3 px-2 py-1.5 " +
-                    (susp
-                      ? "bg-afa-red/10 rounded"
-                      : flagged
-                        ? "bg-afa-red/10 rounded"
-                        : "")
+                    (susp || dual || flagged ? "bg-afa-red/10 rounded" : "")
                   }
                 >
-                  <span className="t-body truncate">
+                  <span className="t-body truncate min-w-0">
                     {m.name}
                     {susp ? (
                       <span className="t-meta text-afa-red font-semibold">
                         {" "}
                         · suspended
+                      </span>
+                    ) : null}
+                    {dual ? (
+                      <span className="t-meta text-afa-red font-semibold">
+                        {" "}
+                        · also on {dual.otherTeams.join(", ")}
                       </span>
                     ) : null}
                   </span>
@@ -137,14 +162,18 @@ export default function EligibilityPill({
                     <span
                       className={
                         "t-label w-16 text-right " +
-                        (flagged || susp
+                        (flagged || susp || dual
                           ? "text-afa-red"
                           : m.rating
                             ? "text-afa-navy"
                             : "text-afa-muted")
                       }
                     >
-                      {susp ? "susp." : m.rating ?? "unranked"}
+                      {susp
+                        ? "susp."
+                        : dual
+                          ? "dual"
+                          : m.rating ?? "unranked"}
                     </span>
                   </span>
                 </li>

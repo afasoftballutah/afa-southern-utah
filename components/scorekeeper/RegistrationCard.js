@@ -107,6 +107,7 @@ export default function RegistrationCard({ registration, classes = [], divisions
               suggestedClass={sug.className}
               check={reg.check}
               composition={reg.composition}
+              dualRoster={reg.dualRoster}
               roster={reg.roster ?? []}
             />
           </span>

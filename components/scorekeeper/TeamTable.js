@@ -111,6 +111,7 @@ export default function TeamTable({
                 suggestedClass={sug.className}
                 check={reg.check}
                 composition={reg.composition}
+                dualRoster={reg.dualRoster}
                 roster={reg.roster ?? []}
               />
             )}

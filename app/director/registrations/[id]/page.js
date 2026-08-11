@@ -13,6 +13,7 @@ import {
   loadSuspensionsForPlayers,
   partitionRosterBySuspension,
 } from "@/lib/suspensions";
+import { dualRosterCheckForRoster } from "@/lib/roster-eligibility";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
@@ -140,6 +141,23 @@ async function load(id) {
     composition.hasSuspended = true;
   }
 
+  const dualRoster = await dualRosterCheckForRoster(supabase, {
+    tournamentId: registration.tournament_id,
+    registrationId: registration.id,
+    members: roster,
+  });
+  // Annotate roster rows for the pill list
+  if (dualRoster.conflicts.length) {
+    const byId = new Map(
+      dualRoster.conflicts.map((c) => [c.memberId, c.otherTeams])
+    );
+    for (const m of roster) {
+      if (byId.has(m.id)) {
+        m.dualRosterTeams = byId.get(m.id);
+      }
+    }
+  }
+
   // Load all open suspension rows per player for lift UI (not only active-for-this-event).
   const suspensionsForRoster = suspensionRows.filter((s) => !s.lifted_at);
 
@@ -159,6 +177,7 @@ async function load(id) {
     suggestion,
     check,
     composition,
+    dualRoster,
     progress: progressRows?.[0] ?? { active_members: 0, signed_members: 0, is_official: false },
     suspensionsForRoster,
     tournaments: (tourList ?? []).map((t) => ({
@@ -230,6 +249,8 @@ export default async function RegistrationPage({ params }) {
       suspended: m.suspended,
       suspension: m.suspension,
       suspensions: m.playerId ? suspById.get(m.playerId) ?? [] : [],
+      dualRosterTeams: m.dualRosterTeams ?? [],
+      playerId: m.playerId,
     })),
     ...removed.map((m) => ({
       id: m.id,
@@ -268,6 +289,7 @@ export default async function RegistrationPage({ params }) {
           suggestion: data.suggestion,
           check: data.check,
           composition: data.composition,
+          dualRoster: data.dualRoster,
           roster,
         }}
         classes={classes}

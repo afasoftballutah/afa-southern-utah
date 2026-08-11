@@ -33,11 +33,16 @@ export default function ManageRoster({
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
+  const [dualProbe, setDualProbe] = useState(null); // { warnings, otherTeams, hasSameGender }
   const [addedLink, setAddedLink] = useState(null);
   const [copied, setCopied] = useState("");
 
   const active = members.filter((m) => !m.removed);
   const removed = members.filter((m) => m.removed);
+  const dualCount = active.filter(
+    (m) => (m.dualRosterTeams ?? []).length > 0
+  ).length;
 
   const loadPool = useCallback(async () => {
     try {
@@ -55,13 +60,64 @@ export default function ManageRoster({
     loadPool();
   }, [loadPool]);
 
+  async function probeDual(nextPerson) {
+    const p = nextPerson || person;
+    const name = managerPlayerDisplay(p);
+    if (!name && !p.playerId) {
+      setDualProbe(null);
+      return null;
+    }
+    try {
+      const q = new URLSearchParams({ token });
+      if (name) q.set("probeName", name);
+      if (p.playerId) q.set("probePlayerId", p.playerId);
+      const res = await fetch(`/api/register/roster?${q}`);
+      const json = await res.json();
+      if (!res.ok) return null;
+      const probe = {
+        warnings: json.warnings ?? [],
+        otherTeams: json.otherTeams ?? [],
+        hasSameGender: Boolean(json.hasSameGender),
+      };
+      setDualProbe(probe.otherTeams.length ? probe : null);
+      return probe;
+    } catch {
+      return null;
+    }
+  }
+
+  function onPersonChange(next) {
+    setPerson(next);
+    setError("");
+    // Probe when we have a directory pick or a complete name
+    if (next.playerId || managerPlayerReady(next)) {
+      probeDual(next);
+    } else {
+      setDualProbe(null);
+    }
+  }
+
   async function submitPerson() {
     if (!managerPlayerReady(person)) {
       setError("First name, last name, and gender (M/F) are required");
       return;
     }
+    const probe = dualProbe || (await probeDual(person));
+    if (probe?.otherTeams?.length) {
+      const teams = probe.otherTeams.map((t) => t.teamName).join(", ");
+      const ok = window.confirm(
+        `${managerPlayerDisplay(person)} is already on: ${teams}.\n\n` +
+          `You can still add them. Both teams will show a Check flag for the director` +
+          (probe.hasSameGender
+            ? " (same-gender dual roster — usually not allowed)."
+            : ".") +
+          `\n\nAdd them anyway?`
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     setError("");
+    setWarning("");
     setAddedLink(null);
     try {
       const res = await fetch("/api/register/roster", {
@@ -77,6 +133,7 @@ export default function ManageRoster({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not add");
+      const dualTeams = json.member?.dualRosterTeams ?? [];
       setMembers((cur) => {
         const back = cur.find((m) => m.id === json.member.id);
         if (back) {
@@ -87,6 +144,8 @@ export default function ManageRoster({
                   removed: false,
                   name: json.member.name ?? m.name,
                   gender: json.member.gender ?? m.gender,
+                  playerId: json.member.playerId ?? m.playerId,
+                  dualRosterTeams: dualTeams,
                 }
               : m
           );
@@ -102,11 +161,17 @@ export default function ManageRoster({
             signed: false,
             removed: false,
             isManager: false,
+            playerId: json.member.playerId || person.playerId || null,
+            dualRosterTeams: dualTeams,
           },
         ];
       });
       setAddedLink(json.member);
+      if (json.warnings?.length) {
+        setWarning(json.warnings.join(" "));
+      }
       setPerson({ firstName: "", lastName: "", gender: "", playerId: null });
+      setDualProbe(null);
       setAdding(false);
       loadPool();
     } catch (err) {
@@ -134,6 +199,7 @@ export default function ManageRoster({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not claim");
+      const dualTeams = json.member?.dualRosterTeams ?? [];
       setMembers((cur) => {
         const back = cur.find((m) => m.id === json.member.id);
         if (back) {
@@ -143,6 +209,7 @@ export default function ManageRoster({
                   ...m,
                   removed: false,
                   birthDate: json.member.birthDate ?? m.birthDate,
+                  dualRosterTeams: dualTeams,
                 }
               : m
           );
@@ -158,10 +225,12 @@ export default function ManageRoster({
             signed: false,
             removed: false,
             isManager: false,
+            dualRosterTeams: dualTeams,
           },
         ];
       });
       setAddedLink(json.member);
+      if (json.warnings?.length) setWarning(json.warnings.join(" "));
       loadPool();
     } catch (err) {
       setError(err.message);
@@ -237,6 +306,21 @@ export default function ManageRoster({
           {error}
         </p>
       )}
+      {warning && (
+        <p
+          className="text-sm font-semibold text-amber-900 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2"
+          role="status"
+        >
+          {warning}
+        </p>
+      )}
+      {dualCount > 0 && (
+        <p className="text-sm font-semibold text-amber-950 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+          {dualCount} player{dualCount === 1 ? "" : "s"} also listed on another
+          team this tournament — the director will see a Check flag on this
+          roster.
+        </p>
+      )}
 
       <ul className="card divide-y divide-black/5">
         {active.map((m) => (
@@ -244,7 +328,11 @@ export default function ManageRoster({
             key={m.id}
             className={
               "flex flex-wrap items-center justify-between gap-2 px-4 py-3 " +
-              (m.suspended ? "bg-afa-red/[0.06]" : "")
+              (m.suspended
+                ? "bg-afa-red/[0.06]"
+                : (m.dualRosterTeams ?? []).length
+                  ? "bg-amber-50/80"
+                  : "")
             }
           >
             <span className="min-w-0">
@@ -260,6 +348,12 @@ export default function ManageRoster({
                   <span className="t-meta font-semibold text-afa-red">
                     {" "}
                     · Suspended
+                  </span>
+                ) : null}
+                {(m.dualRosterTeams ?? []).length > 0 ? (
+                  <span className="t-meta font-semibold text-amber-900">
+                    {" "}
+                    · Also on {m.dualRosterTeams.join(", ")}
                   </span>
                 ) : null}
               </span>
@@ -351,6 +445,8 @@ export default function ManageRoster({
               onClick={() => {
                 setAdding(true);
                 setError("");
+                setWarning("");
+                setDualProbe(null);
                 setAddedLink(null);
               }}
             >
@@ -363,7 +459,10 @@ export default function ManageRoster({
                 <button
                   type="button"
                   className="t-label underline text-afa-muted"
-                  onClick={() => setAdding(false)}
+                  onClick={() => {
+                    setAdding(false);
+                    setDualProbe(null);
+                  }}
                   disabled={busy}
                 >
                   Cancel
@@ -374,9 +473,26 @@ export default function ManageRoster({
                 name, and gender. They fill in legal name, preferred name, birth
                 date, email, and address when they sign their waiver.
               </p>
+              {dualProbe?.otherTeams?.length > 0 && (
+                <div
+                  className={
+                    "rounded-lg border px-3 py-2 text-sm " +
+                    (dualProbe.hasSameGender
+                      ? "border-afa-red/40 bg-afa-red/10 text-afa-red font-semibold"
+                      : "border-amber-300 bg-amber-50 text-amber-950 font-semibold")
+                  }
+                  role="status"
+                >
+                  {dualProbe.warnings.map((w, i) => (
+                    <p key={i} className={i > 0 ? "mt-1" : undefined}>
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
               <ManagerPlayerFields
                 value={person}
-                onChange={setPerson}
+                onChange={onPersonChange}
                 knownPlayers={knownPlayers}
                 excludePlayerIds={members
                   .filter((m) => !m.removed && m.playerId)
