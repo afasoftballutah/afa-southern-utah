@@ -195,10 +195,10 @@ export default function PersonWizard({
   const contactBlock = (
     <>
       <p className="text-sm text-afa-ink/75">
-        <strong className="text-afa-navy">Legal name</strong> must match a
-        driver&rsquo;s license or other official ID.{" "}
-        <strong className="text-afa-navy">Preferred name</strong> is what shows
-        on the roster if different.
+        <strong className="text-afa-navy">Legal name</strong>
+        {" must match a driver’s license or other official ID. "}
+        <strong className="text-afa-navy">Preferred name</strong>
+        {" is what shows on the roster if different."}
       </p>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <SoftField
@@ -265,8 +265,10 @@ export default function PersonWizard({
   const addressBlock = hasAddress && (
     <>
       <p className="text-sm text-afa-ink/75">
-        <strong className="text-afa-navy">Address</strong> should match a
-        driver&rsquo;s license or other official document (waiver).
+        <strong className="text-afa-navy">Address</strong>
+        {
+          " should match a driver’s license or other official document (waiver)."
+        }
       </p>
       <label className="block">
         <span className="t-label block mb-1 min-h-[1rem]">

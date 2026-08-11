@@ -133,7 +133,7 @@ export default function SignRosterMember({ token, member }) {
         <div className="space-y-3 form-surface p-3">
           <p className="t-strong text-sm">Your information</p>
           <p className="t-meta">
-            Complete this yourself. Legal name and address must match a
+            Complete this yourself. Legal name and address should match a
             driver&rsquo;s license or other official ID you can show on game day.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">

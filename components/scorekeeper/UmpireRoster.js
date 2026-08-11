@@ -608,9 +608,12 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         {isEditing && (
           <>
             <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Legal name</strong> and{" "}
-              <strong className="text-afa-navy">address</strong> should match a
-              driver&rsquo;s license or other official ID.
+              <strong className="text-afa-navy">Legal name</strong>
+              {" and "}
+              <strong className="text-afa-navy">address</strong>
+              {
+                " should match a driver’s license or other official ID."
+              }
             </p>
             <div className="grid grid-cols-2 gap-2">
               <Field
@@ -766,8 +769,8 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               </button>
             </div>
             <p className="text-sm text-afa-ink/75">
-              <strong className="text-afa-navy">Address</strong> should match a
-              license or other official document.
+              <strong className="text-afa-navy">Address</strong>
+              {" should match a license or other official document."}
             </p>
             <Field
               label="Street (as on license / ID)"
