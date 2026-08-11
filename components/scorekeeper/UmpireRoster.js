@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const empty = () => ({
   firstName: "",
@@ -85,7 +85,8 @@ function initials(u) {
 
 /**
  * Empty: explainer lives inside the field (placeholder).
- * Filled/focused: short label above; highlight drops when required is met.
+ * Only the *next* incomplete step is highlighted (isNext) so the eye has one target.
+ * Filled: short label above + calm green border.
  */
 function PromptField({
   label,
@@ -93,17 +94,50 @@ function PromptField({
   value,
   onChange,
   required = false,
+  isNext = false,
   type = "text",
   autoComplete,
   className = "",
+  inputRef,
 }) {
   const [focused, setFocused] = useState(false);
   const filled = String(value ?? "").trim().length > 0;
-  const needs = required && !filled;
   const showLabel = filled || focused;
 
+  useEffect(() => {
+    if (isNext && inputRef?.current) {
+      // Small delay so the form is painted
+      const t = setTimeout(() => {
+        try {
+          inputRef.current?.focus({ preventScroll: false });
+          inputRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        } catch {
+          inputRef.current?.focus();
+        }
+      }, 80);
+      return () => clearTimeout(t);
+    }
+  }, [isNext, inputRef]);
+
   return (
-    <label className={"block " + className}>
+    <label
+      className={
+        "block transition-all " +
+        (isNext ? "relative z-10 " : filled || !required ? "" : "opacity-55 ") +
+        className
+      }
+    >
+      {isNext && (
+        <span className="inline-flex items-center gap-1.5 mb-1.5 text-xs font-bold uppercase tracking-wide text-amber-800">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 text-[10px]">
+            →
+          </span>
+          Do this next
+        </span>
+      )}
       <span
         className={
           "t-label block transition-all " +
@@ -113,9 +147,10 @@ function PromptField({
         }
       >
         {label}
-        {required ? "" : " · optional"}
+        {!required ? " · optional" : ""}
       </span>
       <input
+        ref={inputRef}
         type={type}
         autoComplete={autoComplete}
         required={required}
@@ -125,12 +160,12 @@ function PromptField({
         onBlur={() => setFocused(false)}
         placeholder={showLabel ? "" : explainer}
         className={
-          "w-full rounded-xl border-2 px-3 py-3 text-[15px] transition-colors focus:outline-none " +
-          (needs
-            ? "border-amber-400 bg-amber-50/80 placeholder:text-amber-900/55 focus:border-amber-500 focus:ring-2 focus:ring-amber-300/50"
+          "w-full rounded-xl border-2 px-3 py-3 text-[15px] transition-all focus:outline-none " +
+          (isNext
+            ? "border-amber-400 bg-amber-50 shadow-[0_0_0_4px_rgba(251,191,36,0.35)] placeholder:text-amber-900/60 focus:border-amber-500"
             : filled
               ? "border-emerald-300 bg-white focus:border-afa-navy/40 focus:ring-2 focus:ring-afa-navy/15"
-              : "border-afa-navy/15 bg-white placeholder:text-afa-muted focus:border-afa-navy/35 focus:ring-2 focus:ring-afa-navy/15")
+              : "border-afa-navy/12 bg-afa-soft-gray/40 placeholder:text-afa-muted/80 focus:border-afa-navy/30 focus:ring-2 focus:ring-afa-navy/10")
         }
       />
     </label>
@@ -298,14 +333,31 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           : null;
   const pitchPicked = pitchMode != null;
 
-  const needLast = !String(form.lastName).trim();
-  const needFirst = !String(form.firstName).trim();
-  const needPhone = !String(form.phone).trim();
-  const needEmail = !String(form.email).trim();
-  const needPitch = !pitchPicked;
-  const requiredLeft =
-    [needLast, needFirst, needPhone, needEmail, needPitch].filter(Boolean)
-      .length;
+  // Strict order — only the first incomplete step is the "action" target
+  const steps = [
+    { key: "lastName", done: Boolean(String(form.lastName).trim()), label: "Legal last name" },
+    { key: "firstName", done: Boolean(String(form.firstName).trim()), label: "Legal first name" },
+    { key: "phone", done: Boolean(String(form.phone).trim()), label: "Phone" },
+    { key: "email", done: Boolean(String(form.email).trim()), label: "Email" },
+    { key: "pitch", done: pitchPicked, label: "Pitch type" },
+  ];
+  const nextStep = steps.find((s) => !s.done)?.key ?? "save";
+  const requiredLeft = steps.filter((s) => !s.done).length;
+  const stepIndex = steps.findIndex((s) => s.key === nextStep);
+  const stepN = stepIndex >= 0 ? stepIndex + 1 : steps.length;
+
+  const refLast = useRef(null);
+  const refFirst = useRef(null);
+  const refPhone = useRef(null);
+  const refEmail = useRef(null);
+  const refPitch = useRef(null);
+
+  useEffect(() => {
+    if (!formOpen) return;
+    if (nextStep === "pitch" && refPitch.current) {
+      refPitch.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [nextStep, formOpen]);
 
   const filterTabs = [
     { key: "all", label: "All", count: counts.all },
@@ -351,9 +403,9 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             {editingId ? "Edit umpire" : "Add umpire"}
           </p>
           <p className="text-xs text-white/75 mt-0.5">
-            {requiredLeft > 0
-              ? `${requiredLeft} still needed — yellow boxes are required`
-              : "Looks complete — tap Save"}
+            {nextStep === "save"
+              ? "Done — tap Save"
+              : `Step ${stepN} of ${steps.length} — ${steps.find((s) => s.key === nextStep)?.label}`}
           </p>
         </div>
         <button
@@ -365,7 +417,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         </button>
       </div>
 
-      <div className="p-4 space-y-3 sm:space-y-3">
+      <div className="p-4 space-y-3 max-w-lg">
         {error && (
           <p
             className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-bold text-red-800"
@@ -375,105 +427,85 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </p>
         )}
 
-        {/* Desktop: two columns for name; mobile: stack */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <PromptField
-            label="Legal last name"
-            explainer="Legal last name (as on AFA card)"
-            required
-            autoComplete="family-name"
-            value={form.lastName}
-            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-          />
-          <PromptField
-            label="Legal first name"
-            explainer="Legal first name (as on AFA card)"
-            required
-            autoComplete="given-name"
-            value={form.firstName}
-            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-          />
-        </div>
-
+        {/* Required path — one column, one next-step highlight */}
         <PromptField
-          label="Preferred name"
-          explainer="Preferred name — only if different from legal"
-          value={form.preferredName}
-          onChange={(e) => setForm({ ...form, preferredName: e.target.value })}
+          label="Legal last name"
+          explainer="Legal last name (as on AFA card)"
+          required
+          isNext={nextStep === "lastName"}
+          inputRef={refLast}
+          autoComplete="family-name"
+          value={form.lastName}
+          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
         />
         <PromptField
-          label="Card #"
-          explainer="Umpire card # (optional)"
-          value={form.cardNumber}
-          onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+          label="Legal first name"
+          explainer="Legal first name (as on AFA card)"
+          required
+          isNext={nextStep === "firstName"}
+          inputRef={refFirst}
+          autoComplete="given-name"
+          value={form.firstName}
+          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
         />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <PromptField
-            label="Phone"
-            explainer="Phone — call them on game day"
-            required
-            type="tel"
-            autoComplete="tel"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
-          <PromptField
-            label="Email"
-            explainer="Email — for schedules and cards"
-            required
-            type="email"
-            autoComplete="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-
         <PromptField
-          label="Address"
-          explainer="Street address (optional)"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
+          label="Phone"
+          explainer="Phone — call them on game day"
+          required
+          isNext={nextStep === "phone"}
+          inputRef={refPhone}
+          type="tel"
+          autoComplete="tel"
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
         />
-        <div className="grid grid-cols-3 gap-2">
-          <PromptField
-            label="City"
-            explainer="City"
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-          />
-          <PromptField
-            label="State"
-            explainer="ST"
-            value={form.state}
-            onChange={(e) => setForm({ ...form, state: e.target.value })}
-          />
-          <PromptField
-            label="Zip"
-            explainer="Zip"
-            value={form.zip}
-            onChange={(e) => setForm({ ...form, zip: e.target.value })}
-          />
-        </div>
+        <PromptField
+          label="Email"
+          explainer="Email — for schedules and cards"
+          required
+          isNext={nextStep === "email"}
+          inputRef={refEmail}
+          type="email"
+          autoComplete="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
 
-        {/* Pitch — highlighted until one is tapped */}
+        {/* Pitch — only the next action when prior fields done */}
         <div
+          ref={refPitch}
           className={
-            "rounded-xl border-2 p-3 transition-colors " +
-            (needPitch
-              ? "border-amber-400 bg-amber-50/80"
-              : "border-emerald-300 bg-white")
+            "rounded-xl border-2 p-3 transition-all " +
+            (nextStep === "pitch"
+              ? "border-amber-400 bg-amber-50 shadow-[0_0_0_4px_rgba(251,191,36,0.35)]"
+              : pitchPicked
+                ? "border-emerald-300 bg-white"
+                : "border-afa-navy/12 bg-afa-soft-gray/40 opacity-55")
           }
         >
+          {nextStep === "pitch" && (
+            <span className="inline-flex items-center gap-1.5 mb-2 text-xs font-bold uppercase tracking-wide text-amber-800">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 text-[10px]">
+                →
+              </span>
+              Do this next
+            </span>
+          )}
           <p
             className={
               "text-sm font-semibold mb-2 " +
-              (needPitch ? "text-amber-950" : "text-afa-navy")
+              (nextStep === "pitch"
+                ? "text-amber-950"
+                : pitchPicked
+                  ? "text-afa-navy"
+                  : "text-afa-muted")
             }
           >
-            {needPitch
+            {nextStep === "pitch"
               ? "Tap pitch type — Slow, Fast, or Both"
-              : `Pitch: ${pitchMode === "both" ? "Both" : pitchMode === "fast" ? "Fast" : "Slow"}`}
+              : pitchPicked
+                ? `Pitch: ${pitchMode === "both" ? "Both" : pitchMode === "fast" ? "Fast" : "Slow"}`
+                : "Pitch type (after name & contact)"}
           </p>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -517,47 +549,111 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            {
-              value: "active",
-              label: "Active",
-              on: "border-afa-navy bg-afa-navy text-white",
-              off: "border-afa-navy/20 bg-white text-afa-navy",
-            },
-            {
-              value: "inactive",
-              label: "Inactive",
-              on: "border-afa-muted bg-afa-muted text-white",
-              off: "border-afa-navy/15 bg-white text-afa-muted",
-            },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setForm({ ...form, status: opt.value })}
-              className={
-                "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
-                (form.status === opt.value ? opt.on : opt.off)
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
+        {/* Optional extras — quiet until required path is done */}
+        <div
+          className={
+            "space-y-3 pt-2 border-t border-afa-navy/10 " +
+            (nextStep === "save" ? "" : "opacity-50")
+          }
+        >
+          <p className="t-label">Optional</p>
+          <PromptField
+            label="Preferred name"
+            explainer="Preferred name — only if different"
+            value={form.preferredName}
+            onChange={(e) => setForm({ ...form, preferredName: e.target.value })}
+          />
+          <PromptField
+            label="Card #"
+            explainer="Umpire card # (optional)"
+            value={form.cardNumber}
+            onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+          />
+          <PromptField
+            label="Address"
+            explainer="Street address (optional)"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <PromptField
+              label="City"
+              explainer="City"
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+            />
+            <PromptField
+              label="State"
+              explainer="ST"
+              value={form.state}
+              onChange={(e) => setForm({ ...form, state: e.target.value })}
+            />
+            <PromptField
+              label="Zip"
+              explainer="Zip"
+              value={form.zip}
+              onChange={(e) => setForm({ ...form, zip: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              {
+                value: "active",
+                label: "Active",
+                on: "border-afa-navy bg-afa-navy text-white",
+                off: "border-afa-navy/20 bg-white text-afa-navy",
+              },
+              {
+                value: "inactive",
+                label: "Inactive",
+                on: "border-afa-muted bg-afa-muted text-white",
+                off: "border-afa-navy/15 bg-white text-afa-muted",
+              },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setForm({ ...form, status: opt.value })}
+                className={
+                  "rounded-xl border-2 px-3 py-2.5 text-sm font-bold " +
+                  (form.status === opt.value ? opt.on : opt.off)
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div
+          className={
+            "flex flex-wrap items-center gap-2 pt-1 rounded-xl p-2 -mx-1 transition-all " +
+            (nextStep === "save"
+              ? "bg-emerald-50 ring-4 ring-emerald-200/80"
+              : "")
+          }
+        >
+          {nextStep === "save" && (
+            <span className="w-full text-xs font-bold uppercase tracking-wide text-emerald-800 mb-1">
+              → Do this next
+            </span>
+          )}
           <button
             type="submit"
             disabled={busy || requiredLeft > 0}
             className={
-              "btn-action " + (requiredLeft > 0 ? "opacity-50 cursor-not-allowed" : "")
+              "btn-action " +
+              (requiredLeft > 0
+                ? "opacity-40 cursor-not-allowed"
+                : nextStep === "save"
+                  ? "ring-2 ring-emerald-400"
+                  : "")
             }
           >
             {busy
               ? "Saving…"
               : requiredLeft > 0
-                ? `Fill ${requiredLeft} more…`
+                ? `Next: ${steps.find((s) => s.key === nextStep)?.label ?? "…"}`
                 : editingId
                   ? "Save changes"
                   : "Save to roster"}
