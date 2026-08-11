@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { DOC_KINDS, kindLabel } from "@/lib/site-docs-kinds";
 import RulesBookEditor from "@/components/scorekeeper/RulesBookEditor";
 import { AddButton, DirectorAddPortal } from "@/components/scorekeeper/DirectorAddSlot";
+import WorkFocus from "@/components/forms/WorkFocus";
 
 const emptyForm = () => ({
   title: "",
@@ -249,7 +250,8 @@ export default function DocsAdmin({
       )}
 
       {showForm && (
-        <form onSubmit={save} className="card p-4 space-y-3">
+        <WorkFocus onScrimClick={resetForm}>
+        <form onSubmit={save} className="p-4 space-y-3">
           <p className="t-strong">
             {editingId ? "Edit document" : "New document"}
           </p>
@@ -362,6 +364,7 @@ export default function DocsAdmin({
             </p>
           )}
         </form>
+        </WorkFocus>
       )}
 
       <ul className="card divide-y divide-black/5">

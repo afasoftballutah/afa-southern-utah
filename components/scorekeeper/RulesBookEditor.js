@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import RulesBrowser from "@/components/RulesBrowser";
+import WorkFocus from "@/components/forms/WorkFocus";
 
 /**
  * Flatten a section's rules into one editable text block.
@@ -245,7 +246,16 @@ export default function RulesBookEditor({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border-2 border-afa-red/40 bg-red-50/30 p-3 sm:p-4">
+    <WorkFocus
+      onScrimClick={() => {
+        if (busy) return;
+        setEditing(false);
+        setOpenSection(null);
+        setError("");
+      }}
+      className="max-w-3xl"
+    >
+    <div className="space-y-3 p-3 sm:p-4 bg-red-50/40">
       <div className="rounded-lg bg-afa-red text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider opacity-90">
@@ -367,5 +377,6 @@ export default function RulesBookEditor({
         </button>
       </div>
     </div>
+    </WorkFocus>
   );
 }

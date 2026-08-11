@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SoftField, { FixedSummary, PageDots } from "@/components/forms/SoftField";
+import WorkFocus from "@/components/forms/WorkFocus";
 
 /**
  * Room flow chrome — one shared shell for create paths
@@ -239,25 +240,28 @@ export default function RoomShell({
   );
 
   const frameClass =
-    "rounded-xl border border-afa-navy/15 bg-white shadow-sm overflow-hidden max-w-md " +
-    className;
+    "rounded-xl bg-white overflow-hidden max-w-md w-full " + className;
 
-  if (asForm) {
-    return (
-      <form
-        className={frameClass}
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit?.(e);
-        }}
-        noValidate
-      >
-        {body}
-      </form>
-    );
-  }
+  const panel = asForm ? (
+    <form
+      className={frameClass}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit?.(e);
+      }}
+      noValidate
+    >
+      {body}
+    </form>
+  ) : (
+    <div className={frameClass}>{body}</div>
+  );
 
-  return <div className={frameClass}>{body}</div>;
+  return (
+    <WorkFocus onScrimClick={requestClose} className="max-w-md">
+      {panel}
+    </WorkFocus>
+  );
 }
 
 /**

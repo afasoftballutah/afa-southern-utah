@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { formatNewsDate, newsImageUrls } from "@/lib/news";
 import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
+import WorkFocus from "@/components/forms/WorkFocus";
 
 const MAX_IMAGES = 12;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -195,7 +196,8 @@ export default function NewsAdmin({ initialPosts = [] }) {
       </DirectorAddPortal>
 
       {composeOpen && (
-      <form onSubmit={save} className="card p-4 space-y-3">
+      <WorkFocus onScrimClick={resetForm}>
+      <form onSubmit={save} className="p-4 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
           <p className="t-strong">
             {editingId ? "Edit post" : "New post"}
@@ -332,6 +334,7 @@ export default function NewsAdmin({ initialPosts = [] }) {
               : "Publish post"}
         </button>
       </form>
+      </WorkFocus>
       )}
 
       <div className="card overflow-hidden">
