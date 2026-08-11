@@ -162,39 +162,56 @@ export default async function PlayersPage() {
 
     const appearanceTable =
       active.length === 0 ? (
-        <p className="t-meta">No tournament appearances on file.</p>
+        <p className="t-meta text-[12px]">No tournament appearances on file.</p>
       ) : (
-        <div className="space-y-2">
-          <p className="t-label">Tournament appearances</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px] leading-snug">
+        <div className="space-y-1.5 min-w-0">
+          <p className="t-label text-[11px] tracking-wide">
+            Tournament appearances
+          </p>
+          <div className="overflow-x-auto rounded-md border border-afa-navy/10 bg-white/70">
+            <table className="w-full min-w-[28rem] text-[12px] leading-snug">
               <thead>
-                <tr className="border-b border-afa-navy/15">
-                  <th className="px-2 py-1 text-left t-label font-normal">Date</th>
-                  <th className="px-2 py-1 text-left t-label font-normal">Tournament</th>
-                  <th className="px-2 py-1 text-center t-label font-normal">W/M/Coed</th>
-                  <th className="px-2 py-1 text-left t-label font-normal">Division</th>
-                  <th className="px-2 py-1 text-left t-label font-normal">Team</th>
-                  <th className="px-2 py-1 text-center t-label font-normal">Waiver</th>
-                  <th className="px-2 py-1 text-left t-label font-normal" />
+                <tr className="border-b border-afa-navy/10 bg-afa-navy/[0.03]">
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
+                    Date
+                  </th>
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
+                    Tournament
+                  </th>
+                  <th className="px-2.5 py-1 text-center t-label font-normal text-[10px]">
+                    W/M/Coed
+                  </th>
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
+                    Division
+                  </th>
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
+                    Team
+                  </th>
+                  <th className="px-2.5 py-1 text-center t-label font-normal text-[10px]">
+                    Waiver
+                  </th>
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]" />
                 </tr>
               </thead>
               <tbody>
                 {active.map((a) => (
-                  <tr key={a.memberId} className="border-b border-black/5">
-                    <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">
+                  <tr
+                    key={a.memberId}
+                    className="border-b border-black/5 last:border-0"
+                  >
+                    <td className="px-2.5 py-1 whitespace-nowrap tabular-nums text-afa-ink/85">
                       {formatDate(a.startDate)}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">
+                    <td className="px-2.5 py-1 whitespace-nowrap text-afa-ink/85">
                       {a.tournamentName ?? "—"}
                     </td>
-                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                    <td className="px-2.5 py-1 text-center whitespace-nowrap text-afa-ink/85">
                       {a.genderShort ?? "—"}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">
+                    <td className="px-2.5 py-1 whitespace-nowrap text-afa-ink/85">
                       {a.divisionLabel ?? a.className ?? "—"}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">
+                    <td className="px-2.5 py-1 whitespace-nowrap">
                       {a.registrationId ? (
                         <Link
                           href={`/director/registrations/${a.registrationId}`}
@@ -203,19 +220,22 @@ export default async function PlayersPage() {
                           {a.teamName}
                         </Link>
                       ) : (
-                        a.teamName ?? "—"
+                        <span className="text-afa-ink/85">
+                          {a.teamName ?? "—"}
+                        </span>
                       )}
                     </td>
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-2.5 py-1 text-center">
                       <span
                         className={
-                          "tick " + (a.signed ? "text-afa-go" : "text-afa-muted/50")
+                          "tick text-[0.95em] " +
+                          (a.signed ? "text-afa-go" : "text-afa-muted/50")
                         }
                       >
                         {a.signed ? "☑" : "☐"}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2.5 py-1">
                       {a.registrationId ? (
                         <RowAction
                           label="Switch Team"
@@ -264,8 +284,8 @@ export default async function PlayersPage() {
 
     // Phone list is name/M-F/DOB only; the rest of the person lives here on expand.
     const mobilePersonDetail = (
-      <div className="sm:hidden space-y-3 pb-3 mb-3 border-b border-afa-navy/10">
-        <dl className="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1.5 text-[13px]">
+      <div className="sm:hidden space-y-2 pb-2.5 mb-2.5 border-b border-afa-navy/10">
+        <dl className="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1 text-[12px]">
           <dt className="t-meta">Address</dt>
           <dd className="text-afa-ink break-words">{p.address || "—"}</dd>
           <dt className="t-meta">Email</dt>
@@ -278,13 +298,14 @@ export default async function PlayersPage() {
           <dd>
             <span
               className={
-                "tick " + (allWaiversOk ? "text-afa-go" : "text-afa-muted/50")
+                "tick text-[0.95em] " +
+                (allWaiversOk ? "text-afa-go" : "text-afa-muted/50")
               }
             >
               {allWaiversOk ? "☑" : "☐"}
             </span>
             {unsigned > 0 ? (
-              <span className="t-meta ml-1">
+              <span className="t-meta ml-1 text-[11px]">
                 {unsigned} missing
               </span>
             ) : null}
@@ -300,9 +321,9 @@ export default async function PlayersPage() {
 
     return {
       key: p.id,
-      // Expand: phone gets person fields first; both get tournament list.
+      // Nested under the player row: clear left rail, room from the card edge.
       detail: (
-        <div>
+        <div className="ml-5 sm:ml-8 mr-1 sm:mr-2 pl-3 sm:pl-4 border-l-2 border-afa-navy/20 min-w-0 max-w-full">
           {mobilePersonDetail}
           {appearanceTable}
         </div>

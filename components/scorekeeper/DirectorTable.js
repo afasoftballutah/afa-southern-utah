@@ -339,7 +339,10 @@ export default function DirectorTable({
                           (faded ? "opacity-30 hover:opacity-100" : "")
                         }
                       >
-                        <td colSpan={columns.length} className="px-3 py-3">
+                        <td
+                          colSpan={columns.length}
+                          className="px-3 sm:px-4 py-2.5 sm:py-3 align-top"
+                        >
                           {r.panel ?? r.detail}
                         </td>
                       </tr>
