@@ -489,7 +489,7 @@ export default function RegistrationForm({
                   disabled={!canProceed()}
                   className="btn-action register-tournament-row__next disabled:opacity-30"
                 >
-                  Next
+                  Continue
                 </button>
               )}
             </div>
@@ -655,7 +655,7 @@ export default function RegistrationForm({
               variant="manager"
               value={manager}
               onChange={setManager}
-              completeLabel="Looks good — use Next below"
+              completeLabel="Looks good — use Continue below"
             />
           </div>
         )}
