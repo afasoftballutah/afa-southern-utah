@@ -194,18 +194,24 @@ export default function PersonWizard({
 
   const contactBlock = (
     <>
+      <p className="text-sm text-afa-ink/75">
+        <strong className="text-afa-navy">Legal name</strong> must match a
+        driver&rsquo;s license or other official ID.{" "}
+        <strong className="text-afa-navy">Preferred name</strong> is what shows
+        on the roster if different.
+      </p>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <SoftField
-          label="Last name"
-          explainer="Last name"
+          label="Legal last name"
+          explainer="Legal last — as on license / ID"
           autoComplete="family-name"
           value={p.legalLastName}
           onChange={(e) => set({ legalLastName: e.target.value })}
           inputClassName={fieldClass}
         />
         <SoftField
-          label="First name"
-          explainer="First name"
+          label="Legal first name"
+          explainer="Legal first — as on license / ID"
           autoComplete="given-name"
           value={p.legalFirstName}
           onChange={(e) => set({ legalFirstName: e.target.value })}
@@ -214,7 +220,7 @@ export default function PersonWizard({
       </div>
       <SoftField
         label="Preferred name"
-        explainer="Preferred name (optional)"
+        explainer="Preferred name on the roster (optional)"
         value={p.preferredName}
         onChange={(e) => set({ preferredName: e.target.value })}
         inputClassName={fieldClass}
@@ -258,8 +264,14 @@ export default function PersonWizard({
 
   const addressBlock = hasAddress && (
     <>
+      <p className="text-sm text-afa-ink/75">
+        <strong className="text-afa-navy">Address</strong> should match a
+        driver&rsquo;s license or other official document (waiver).
+      </p>
       <label className="block">
-        <span className="t-label block mb-1 min-h-[1rem]">Street</span>
+        <span className="t-label block mb-1 min-h-[1rem]">
+          Street (as on license / ID)
+        </span>
         <AddressInput
           value={p.address || ""}
           onChange={(v) => set({ address: v })}
@@ -272,7 +284,7 @@ export default function PersonWizard({
             })
           }
           name="address-line1"
-          placeholder="Start typing street address…"
+          placeholder="Street address as on license / official ID"
           className={fieldClass}
         />
       </label>
@@ -299,7 +311,9 @@ export default function PersonWizard({
           inputClassName={fieldClass}
         />
       </div>
-      <p className="t-meta text-xs">Address is optional — skip if you don’t have it.</p>
+      <p className="t-meta text-xs">
+        Optional for now — the player can add it when they sign if needed.
+      </p>
     </>
   );
 

@@ -650,9 +650,6 @@ export default function RegistrationForm({
 
         {step === 2 && (
           <div className="space-y-3">
-            <p className="text-sm text-afa-ink/70">
-              Same flow as other signups: who you are, then address.
-            </p>
             <PersonWizard
               embedded
               variant="manager"
@@ -666,9 +663,10 @@ export default function RegistrationForm({
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-afa-ink/70">
-              Legal name for the waiver, preferred name for the roster, and
-              email to reach them. No phone for players. At least one player is
-              required; each signs later on their own link.
+              Each player needs a <strong>legal name</strong> (license / official
+              ID) and can add a <strong>preferred name</strong> for the roster.
+              No phone for players. At least one player is required; each signs
+              later on their own link.
             </p>
             {/* Managers play. If she has not listed herself, offer it rather
                 than adding it behind her back — the route adds her either

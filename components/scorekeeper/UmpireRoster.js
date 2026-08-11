@@ -607,10 +607,15 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         {/* —— Edit: one scrollable page with everything —— */}
         {isEditing && (
           <>
+            <p className="text-sm text-afa-ink/75">
+              <strong className="text-afa-navy">Legal name</strong> and{" "}
+              <strong className="text-afa-navy">address</strong> should match a
+              driver&rsquo;s license or other official ID.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Field
-                label="Last name"
-                explainer="Last name"
+                label="Legal last name"
+                explainer="Legal last — as on license / ID"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) =>
@@ -618,8 +623,8 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 }
               />
               <Field
-                label="First name"
-                explainer="First name"
+                label="Legal first name"
+                explainer="Legal first — as on license / ID"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) =>
@@ -652,8 +657,8 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
             <Field
-              label="Street"
-              explainer="Street address"
+              label="Street (as on license / ID)"
+              explainer="Street as on license / official document"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
@@ -693,10 +698,15 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
         {/* —— Add wizard page 1 —— */}
         {!isEditing && page === 1 && (
           <>
+            <p className="text-sm text-afa-ink/75">
+              <strong className="text-afa-navy">Legal name</strong> must match a
+              driver&rsquo;s license or other official ID. Preferred name is for
+              the roster if different.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Field
-                label="Last name"
-                explainer="Last name"
+                label="Legal last name"
+                explainer="Legal last — as on license / ID"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) =>
@@ -704,8 +714,8 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 }
               />
               <Field
-                label="First name"
-                explainer="First name"
+                label="Legal first name"
+                explainer="Legal first — as on license / ID"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) =>
@@ -755,9 +765,13 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
                 Edit contact
               </button>
             </div>
+            <p className="text-sm text-afa-ink/75">
+              <strong className="text-afa-navy">Address</strong> should match a
+              license or other official document.
+            </p>
             <Field
-              label="Street"
-              explainer="Street address"
+              label="Street (as on license / ID)"
+              explainer="Street as on license / official document"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
@@ -782,7 +796,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               />
             </div>
             <p className="t-meta text-xs">
-              Address is optional — skip if you don’t have it.
+              Optional — skip if you don&rsquo;t have it yet.
             </p>
           </>
         )}

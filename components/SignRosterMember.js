@@ -87,6 +87,9 @@ export default function SignRosterMember({ token, member }) {
               {[member.legalFirstName, member.legalLastName]
                 .filter(Boolean)
                 .join(" ")}
+              <span className="block t-meta font-normal">
+                As on license / official ID
+              </span>
             </dd>
           </>
         )}
@@ -123,16 +126,19 @@ export default function SignRosterMember({ token, member }) {
             />
           </label>
           <label className="block">
-            <span className="form-label">Address</span>
+            <span className="form-label">
+              Address (as on license / official ID)
+            </span>
             <AddressInput
               value={address}
               onChange={setAddress}
-              placeholder="Start typing your address…"
+              placeholder="Street address as on license or official document"
               required
             />
           </label>
           <p className="t-meta">
-            Your address goes on the AFA waiver. Only you fill this in.
+            Must match a driver&rsquo;s license or other official document —
+            goes on the AFA waiver. Only you fill this in.
           </p>
         </div>
       )}

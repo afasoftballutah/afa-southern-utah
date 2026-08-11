@@ -329,8 +329,8 @@ export default function ManageRoster({
                 </button>
               </div>
               <p className="t-meta">
-                Name &amp; email first, then birth date — same pattern as
-                registration.
+                Legal name must match a license or official ID. Preferred name
+                is optional for the roster. Then birth date.
               </p>
               {busy ? (
                 <p className="t-meta">Saving…</p>
