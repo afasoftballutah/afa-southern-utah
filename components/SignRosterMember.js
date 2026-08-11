@@ -58,6 +58,7 @@ export default function SignRosterMember({ token, member }) {
       legalLastName.trim() &&
       (gender === "M" || gender === "F") &&
       birthDate &&
+      email.trim().length > 0 &&
       address.trim().length > 0 &&
       idAttested);
 
@@ -81,7 +82,7 @@ export default function SignRosterMember({ token, member }) {
           legalLastName: legalLastName.trim(),
           preferredName: preferredName.trim() || null,
           gender: gender || null,
-          email: email.trim() || null,
+          email: email.trim(),
           address: address.trim() || null,
           birthDate: birthDate || null,
           idAttested: true,
@@ -188,7 +189,7 @@ export default function SignRosterMember({ token, member }) {
           />
           <SoftField
             label="Email"
-            explainer="Optional contact email"
+            explainer="Contact email (required)"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

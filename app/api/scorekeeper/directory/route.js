@@ -873,6 +873,7 @@ export async function POST(request) {
       if (!fields.legalFirstName || !fields.legalLastName) {
         return bad("Legal first and last name are required");
       }
+      if (!fields.email) return bad("Contact email is required");
       const birthDate = String(body.birthDate ?? body.birth_date ?? "").trim();
       if (!birthDate) return bad("Birth date is required");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {

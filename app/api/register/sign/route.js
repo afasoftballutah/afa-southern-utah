@@ -88,6 +88,7 @@ export async function POST(request) {
     }
     if (!genderTrim) return bad("Gender (M or F) is required");
     if (!birth) return bad("Birth date is required");
+    if (!emailTrim) return bad("Contact email is required");
     if (!addressTrim) return bad("Address is required on the waiver");
     if (!idAttested) {
       return bad(
@@ -120,7 +121,7 @@ export async function POST(request) {
     patch.gender = genderTrim;
     patch.birth_date = birth;
     patch.address = addressTrim;
-    if (emailTrim !== null) patch.email = emailTrim;
+    patch.email = emailTrim;
     // phone stays null for players
   } else {
     // Coaches: address optional if they send it

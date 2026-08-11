@@ -62,6 +62,10 @@ export default function EditPlayer({ player }) {
       setError("Birth date is required so we can match this person later.");
       return;
     }
+    if (!form.email.trim()) {
+      setError("Contact email is required.");
+      return;
+    }
 
     setBusy(true);
     setError("");
@@ -76,7 +80,7 @@ export default function EditPlayer({ player }) {
           legalLastName,
           preferredName: form.preferredName.trim() || null,
           birthDate: form.birthDate,
-          email: form.email.trim() || null,
+          email: form.email.trim(),
           address: form.address.trim() || null,
           gender: form.gender || null,
           rating: form.rating || null,
@@ -165,7 +169,7 @@ export default function EditPlayer({ player }) {
             />
             <SoftField
               label="Email"
-              explainer="Optional contact email"
+              explainer="Contact email (required)"
               type="email"
               value={form.email}
               onChange={set("email")}
