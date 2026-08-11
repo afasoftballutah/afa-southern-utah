@@ -5,7 +5,7 @@ import {
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer, resolveTeam, normalizeName } from "@/lib/identity";
-import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
+import { getActiveWaiver } from "@/lib/site-docs";
 import { RATINGS } from "@/lib/class";
 import {
   composeDisplayName,
@@ -661,7 +661,7 @@ export async function POST(request) {
           manager_name: managerName?.trim() || null,
           manager_email: managerEmail?.trim() || null,
           manager_phone: managerPhone?.trim() || null,
-          release_text_version: RELEASE_TEXT_VERSION,
+          release_text_version: (await getActiveWaiver()).version,
           director_notes: null,
         })
         .select("id, roster_token, manage_token")
@@ -831,6 +831,7 @@ export async function POST(request) {
         return Response.json({ ok: true, added: 0, skipped: wanted.length });
       }
 
+      const waiverVersion = (await getActiveWaiver()).version;
       const { data: made, error } = await supabase
         .from("registrations")
         .insert(
@@ -839,7 +840,7 @@ export async function POST(request) {
             division_id: divisionId,
             team_name: n,
             class_id: division.class_id ?? null,
-            release_text_version: RELEASE_TEXT_VERSION,
+            release_text_version: waiverVersion,
             director_notes: null,
           }))
         )

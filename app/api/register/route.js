@@ -1,6 +1,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
-import { RELEASE_TEXT_VERSION } from "@/lib/waiver";
+import { getActiveWaiver } from "@/lib/site-docs";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
 import { personFieldsFromInput } from "@/lib/person-name";
 
@@ -125,7 +125,7 @@ export async function POST(request) {
       manager_zip: manager.zip ?? null,
       manager_signature_png: signaturePng ?? null,
       manager_signed_at: signaturePng ? new Date().toISOString() : null,
-      release_text_version: RELEASE_TEXT_VERSION,
+      release_text_version: (await getActiveWaiver()).version,
     })
     .select("id, roster_token, manage_token")
     .single();

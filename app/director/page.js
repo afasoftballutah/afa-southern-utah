@@ -159,6 +159,14 @@ export default async function DirectorPage() {
             { label: "desk", value: "→" },
           ]}
         />
+        <DirectorCard
+          href="/director/docs"
+          title="Documents"
+          subtitle="Rules, umpire agreements, waivers — edit what the public sees"
+          stats={[
+            { label: "desk", value: "→" },
+          ]}
+        />
       </CardGrid>
     </div>
   );

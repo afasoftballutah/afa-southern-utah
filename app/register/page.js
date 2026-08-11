@@ -10,8 +10,9 @@ import { loadKnownPlayers } from "@/lib/known-players";
 import RegistrationForm from "@/components/RegistrationForm";
 import RegisterBack from "@/components/RegisterBack";
 import MyRegistrations from "@/components/MyRegistrations";
+import { getActiveWaiver } from "@/lib/site-docs";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Register a Team — AFA Southern Utah" };
 
@@ -53,6 +54,8 @@ export default async function RegisterPage({ searchParams }) {
   const initialTournamentSlug =
     typeof params?.tournament === "string" ? params.tournament : null;
 
+  const waiver = await getActiveWaiver();
+
   const backHref = initialTournamentSlug
     ? `/tournaments/${encodeURIComponent(initialTournamentSlug)}`
     : "/tournaments";
@@ -81,6 +84,7 @@ export default async function RegisterPage({ searchParams }) {
           regionLabel={REGION_LABEL}
           initialTournamentSlug={initialTournamentSlug}
           knownPlayers={knownPlayers}
+          releaseText={waiver.text}
         />
       )}
     </div>

@@ -45,6 +45,8 @@ export default function RegistrationForm({
   initialTournamentSlug = null,
   /** Directory for pick-existing-player on the Players step. */
   knownPlayers = [],
+  /** Liability release text (from Director → Documents when set). */
+  releaseText = RELEASE_TEXT,
 }) {
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
@@ -671,7 +673,7 @@ export default function RegistrationForm({
         {step === 4 && (
           <div className="space-y-4">
             <div className="max-h-48 overflow-y-auto form-surface p-3 text-sm">
-              {RELEASE_TEXT}
+              {releaseText}
             </div>
             <label className="register-agree">
               <input

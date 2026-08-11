@@ -1,24 +1,23 @@
+import Link from "next/link";
 import { RULES_SOURCE, RULES_SECTIONS } from "@/lib/content/rules";
+import { listPublishedSiteDocuments } from "@/lib/site-docs";
 import RulesBrowser from "@/components/RulesBrowser";
+import SiteDocList from "@/components/SiteDocList";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Rules — AFA Southern Utah" };
 
-// The painterly-eagle watermark came off this page 2026-07-24, for two
-// reasons both specific to it: the source is a JPEG carrying its own grey
-// background, so at 6% opacity it rendered as a rectangular tint block
-// rather than an eagle; and the page is now twenty white cards, which
-// leaves no clean field for texture — the tint only showed in the gaps
-// between cards, reading as an artifact. If the eagle belongs here it
-// needs a transparent cut-out PNG. The watermark behind the bracket's
-// Final zone is a different asset and is unaffected.
-export default function RulesPage() {
+// Director-managed rules docs first; full transcribed book still searchable below.
+export default async function RulesPage() {
+  const directorRules = await listPublishedSiteDocuments("rules");
+
   return (
     <div className="space-y-4">
       <h1 className="t-title">Rules</h1>
       <p className="t-meta">
         {RULES_SOURCE.title} ({RULES_SOURCE.year})
       </p>
-      <p>
+      <div className="flex flex-wrap gap-2">
         <a
           href={RULES_SOURCE.url}
           target="_blank"
@@ -27,11 +26,25 @@ export default function RulesPage() {
         >
           View the original PDF
         </a>
-      </p>
+        <Link href="/umpire-agreement" className="btn-transient">
+          Umpire agreement
+        </Link>
+      </div>
       <p className="text-sm text-afa-ink/70">
         Tournament-specific rules are listed on each tournament page.
       </p>
-      <RulesBrowser sections={RULES_SECTIONS} />
+
+      {directorRules.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="t-heading">Southern Utah &amp; house rules</h2>
+          <SiteDocList docs={directorRules} />
+        </section>
+      )}
+
+      <section className="space-y-2">
+        <h2 className="t-heading">Rule book (searchable)</h2>
+        <RulesBrowser sections={RULES_SECTIONS} />
+      </section>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
+import { getActiveWaiver } from "@/lib/site-docs";
 import SignRosterMember from "@/components/SignRosterMember";
 import RegisterBack from "@/components/RegisterBack";
 
@@ -75,6 +76,8 @@ export default async function SignPage({ params }) {
     ? "Team roster"
     : signer.tournamentName || "Tournaments";
 
+  const waiver = await getActiveWaiver();
+
   return (
     <div className="max-w-lg mx-auto space-y-4">
       <RegisterBack href={backHref} label={backLabel} />
@@ -86,7 +89,11 @@ export default async function SignPage({ params }) {
         Confirm your legal name and details yourself. They must match official
         ID you can present on game day.
       </p>
-      <SignRosterMember token={token} member={signer} />
+      <SignRosterMember
+        token={token}
+        member={signer}
+        releaseText={waiver.text}
+      />
     </div>
   );
 }

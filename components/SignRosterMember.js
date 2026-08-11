@@ -26,7 +26,11 @@ function splitName(full) {
 
 // Players (and managers who play) complete their own identity here. Managers
 // only put first/last + gender on the roster; the rest is the player's job.
-export default function SignRosterMember({ token, member }) {
+export default function SignRosterMember({
+  token,
+  member,
+  releaseText = RELEASE_TEXT,
+}) {
   useEffect(() => {
     if (member.alreadySigned && member.teamName) {
       writeMe({ name: member.name, teamName: member.teamName, source: "signed" });
@@ -238,7 +242,7 @@ export default function SignRosterMember({ token, member }) {
       )}
 
       <div className="max-h-48 overflow-y-auto rounded-xl bg-white p-3 text-sm card">
-        {RELEASE_TEXT}
+        {releaseText}
       </div>
 
       {needsPlayerFields && (
