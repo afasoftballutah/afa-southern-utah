@@ -855,38 +855,36 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
       {/* Form first so Edit is never below the fold / easy to miss */}
       {formCard}
 
-      {canEdit && !formOpen && (
-        <button
-          type="button"
-          className="btn-action w-full sm:w-auto"
-          onClick={openAdd}
-        >
-          + Add umpire
-        </button>
-      )}
-
-      {list.length > 0 && !formOpen && (
-        <div>
-          <p className="t-label mb-2">Show</p>
-          <div className="flex flex-wrap gap-2">
-            {filterTabs.map((tab) => {
-              const on = filter === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setFilter(tab.key)}
-                  className={
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold " +
-                    chipClass(tab, on)
-                  }
-                >
-                  {tab.label}
-                  <span className="tabular-nums opacity-80">{tab.count}</span>
-                </button>
-              );
-            })}
-          </div>
+      {!formOpen && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {list.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 min-w-0">
+              {filterTabs.map((tab) => {
+                const on = filter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setFilter(tab.key)}
+                    className={
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold " +
+                      chipClass(tab, on)
+                    }
+                  >
+                    {tab.label}
+                    <span className="tabular-nums opacity-80">{tab.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="t-meta text-sm">Roster</p>
+          )}
+          {canEdit && (
+            <button type="button" className="pill pill-solid" onClick={openAdd}>
+              + Add umpire
+            </button>
+          )}
         </div>
       )}
 
@@ -895,7 +893,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           <div className="px-4 py-2.5 border-b border-afa-navy/10 bg-afa-soft-gray/60 flex items-baseline justify-between gap-2">
             <p className="t-strong text-sm">
               {list.length === 0
-                ? "Roster"
+                ? "No umpires yet"
                 : filter === "all"
                   ? `${list.length} umpire${list.length === 1 ? "" : "s"}`
                   : `${filtered.length} shown · ${list.length} total`}
@@ -906,16 +904,11 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
           </div>
 
           {list.length === 0 ? (
-            <div className="p-8 text-center space-y-3">
-              <p className="t-strong">No umpires yet</p>
+            <div className="p-8 text-center space-y-2">
               <p className="t-meta">
-                Tap <strong>Add umpire</strong> to put the first person on file.
+                Use <strong>+ Add umpire</strong> above to put the first person
+                on file.
               </p>
-              {canEdit && (
-                <button type="button" className="btn-action" onClick={openAdd}>
-                  + Add umpire
-                </button>
-              )}
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-6 text-center space-y-2">
