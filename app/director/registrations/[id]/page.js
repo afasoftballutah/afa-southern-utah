@@ -48,7 +48,8 @@ async function load(id) {
         "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name"
       )
       .eq("registration_id", id)
-      .order("created_at"),
+      .order("legal_last_name", { ascending: true, nullsFirst: false })
+      .order("legal_first_name", { ascending: true, nullsFirst: false }),
     supabase.from("classes").select("id, name, sort_order").order("sort_order"),
     supabase.from("registration_signing_progress").select("*").eq("registration_id", id),
     supabase

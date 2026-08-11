@@ -38,7 +38,8 @@ async function getRoster(token) {
     )
     .eq("registration_id", registration.id)
     .is("removed_at", null)
-    .order("created_at", { ascending: true });
+    .order("legal_last_name", { ascending: true, nullsFirst: false })
+    .order("legal_first_name", { ascending: true, nullsFirst: false });
 
   // One row per person. The manager is on the roster and signs once, so she
   // is a LABEL on an existing row, not an extra entry.

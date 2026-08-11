@@ -35,7 +35,8 @@ async function getManageable(token) {
         "id, name, role, gender, birth_date, signed_at, removed_at, player_id, legal_first_name, legal_last_name, preferred_name"
       )
       .eq("registration_id", registration.id)
-      .order("created_at", { ascending: true }),
+      .order("legal_last_name", { ascending: true, nullsFirst: false })
+      .order("legal_first_name", { ascending: true, nullsFirst: false }),
     // Manage-token page only — directory for the add-player search.
     loadKnownPlayers(supabase),
   ]);
