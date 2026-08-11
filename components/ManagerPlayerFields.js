@@ -32,7 +32,7 @@ export default function ManagerPlayerFields({
   return (
     <div className="space-y-3">
       <p className="text-sm text-afa-ink/75">
-        Legal name and address should match a driver&rsquo;s license or other
+        Legal name and address must match a driver&rsquo;s license or other
         official ID. The player confirms that when they sign their waiver.
       </p>
       {knownPlayers.length > 0 && (

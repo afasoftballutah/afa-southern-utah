@@ -267,7 +267,7 @@ export default function PersonWizard({
       <p className="text-sm text-afa-ink/75">
         <strong className="text-afa-navy">Address</strong>
         {
-          " should match a driver’s license or other official document (waiver)."
+          " must match a driver’s license or other official document (waiver)."
         }
       </p>
       <label className="block">

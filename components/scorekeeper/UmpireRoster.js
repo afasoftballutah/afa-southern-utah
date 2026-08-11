@@ -612,7 +612,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               {" and "}
               <strong className="text-afa-navy">address</strong>
               {
-                " should match a driver’s license or other official ID."
+                " must match a driver’s license or other official ID."
               }
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -706,7 +706,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
               {" and "}
               <strong className="text-afa-navy">address</strong>
               {
-                " should match a driver’s license or other official ID. Preferred name is for the roster if different."
+                " must match a driver’s license or other official ID. Preferred name is for the roster if different."
               }
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -773,7 +773,7 @@ export default function UmpireRoster({ initial = [], canEdit = true }) {
             </div>
             <p className="text-sm text-afa-ink/75">
               <strong className="text-afa-navy">Address</strong>
-              {" should match a license or other official document."}
+              {" must match a license or other official document."}
             </p>
             <Field
               label="Street (as on license / ID)"

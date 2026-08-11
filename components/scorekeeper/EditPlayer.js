@@ -104,7 +104,7 @@ export default function EditPlayer({ player }) {
       {open && (
         <Modal
           title={`Edit ${player.full_name}`}
-          subtitle="Legal name and address should match a driver’s license or other official ID. Preferred is what shows on rosters."
+          subtitle="Legal name and address must match a driver’s license or other official ID. Preferred is what shows on rosters."
           onClose={() => !busy && setOpen(false)}
           width="max-w-lg"
           footer={
