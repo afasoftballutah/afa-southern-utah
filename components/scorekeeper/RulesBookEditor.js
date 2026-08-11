@@ -247,8 +247,12 @@ export default function RulesBookEditor({
                       String(rule.title || "").trim() ||
                         String(rule.number || "").trim()
                     );
+                    const hasBody = Boolean(String(rule.body || "").trim());
                     const hasItems =
                       Array.isArray(rule.items) && rule.items.length > 0;
+                    // Show body only when it has text, or when there is no list
+                    // (list-only rules like Acts of Disbarment skip the empty box).
+                    const showBody = hasBody || !hasItems;
                     return (
                       <div key={ri} className="space-y-2">
                         {hasTitle && (
@@ -256,18 +260,20 @@ export default function RulesBookEditor({
                             {[rule.number, rule.title].filter(Boolean).join(" ")}
                           </p>
                         )}
-                        <textarea
-                          className="form-field w-full min-h-[120px] text-sm leading-relaxed"
-                          value={rule.body || ""}
-                          onChange={(e) =>
-                            updateRule(si, ri, { body: e.target.value })
-                          }
-                          aria-label={
-                            hasTitle
-                              ? `Text for ${rule.title || rule.number}`
-                              : `Section text ${ri + 1}`
-                          }
-                        />
+                        {showBody && (
+                          <textarea
+                            className="form-field w-full min-h-[120px] text-sm leading-relaxed"
+                            value={rule.body || ""}
+                            onChange={(e) =>
+                              updateRule(si, ri, { body: e.target.value })
+                            }
+                            aria-label={
+                              hasTitle
+                                ? `Text for ${rule.title || rule.number}`
+                                : `Section text ${ri + 1}`
+                            }
+                          />
+                        )}
                         {hasItems && (
                           <label className="block space-y-1">
                             <span className="form-label">List items</span>
