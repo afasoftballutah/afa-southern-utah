@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  timeInputValue,
+  formatTimeWindowLabel,
+  formatTimeOfDayLabel,
+} from "@/lib/league-time";
 
 const STATUS = [
   { value: "available", label: "Available", chip: "bg-afa-go/15 text-afa-go border-afa-go/40" },
@@ -32,24 +37,34 @@ function pitchTag(u) {
 
 /**
  * Director: attach umpires from the local roster to this tournament and
- * record their availability (free text + available/limited/unavailable).
+ * record their daily availability window (from / until).
+ *
+ * Scheduler note (future): these windows are tournament-wide wall-clock
+ * times shared across all divisions — multiple divisions run in parallel
+ * on the same fields, not as separate isolated schedules.
  */
 export default function TournamentUmpires({
   tournamentId,
   tournamentName,
+  /** League-local daily first-pitch time for this tournament (HH:MM[:SS]). */
+  dayStartTime = null,
   /** Full local roster (active preferred). */
   roster = [],
   /** Existing tournament_umpires rows with nested umpire fields. */
   initial = [],
 }) {
+  const defaultFrom = timeInputValue(dayStartTime);
+
   const [entries, setEntries] = useState(initial);
   const [pickId, setPickId] = useState("");
-  const [availability, setAvailability] = useState("");
+  const [fromTime, setFromTime] = useState(defaultFrom);
+  const [untilTime, setUntilTime] = useState("");
   const [status, setStatus] = useState("available");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [editAvail, setEditAvail] = useState("");
+  const [editFrom, setEditFrom] = useState("");
+  const [editUntil, setEditUntil] = useState("");
   const [editStatus, setEditStatus] = useState("available");
 
   const onCrew = useMemo(
@@ -81,6 +96,22 @@ export default function TournamentUmpires({
     return json;
   }
 
+  function entryFromApi(jsonEntry, ump) {
+    return {
+      id: jsonEntry.id,
+      umpireId: jsonEntry.umpire_id || ump?.id,
+      status: jsonEntry.status,
+      availableFrom: jsonEntry.available_from,
+      availableUntil: jsonEntry.available_until,
+      notes: jsonEntry.notes,
+      umpire: ump || {
+        id: jsonEntry.umpire_id,
+        firstName: "?",
+        lastName: "?",
+      },
+    };
+  }
+
   async function add() {
     if (!pickId) {
       setError("Pick an umpire from the roster");
@@ -94,23 +125,13 @@ export default function TournamentUmpires({
         tournamentId,
         umpireId: pickId,
         status,
-        availability: availability.trim() || null,
+        availableFrom: fromTime || null,
+        availableUntil: untilTime || null,
       });
       const ump = roster.find((u) => u.id === pickId);
       setEntries((cur) =>
         [
-          {
-            id: json.entry.id,
-            umpireId: pickId,
-            status: json.entry.status,
-            availability: json.entry.availability,
-            notes: json.entry.notes,
-            umpire: ump || {
-              id: pickId,
-              firstName: "?",
-              lastName: "?",
-            },
-          },
+          entryFromApi(json.entry, ump),
           ...cur,
         ].sort((a, b) =>
           umpLabel(a.umpire).localeCompare(umpLabel(b.umpire), undefined, {
@@ -119,7 +140,8 @@ export default function TournamentUmpires({
         )
       );
       setPickId("");
-      setAvailability("");
+      setFromTime(defaultFrom);
+      setUntilTime("");
       setStatus("available");
     } catch (err) {
       setError(err.message);
@@ -130,7 +152,8 @@ export default function TournamentUmpires({
 
   function startEdit(e) {
     setEditingId(e.id);
-    setEditAvail(e.availability || "");
+    setEditFrom(timeInputValue(e.availableFrom));
+    setEditUntil(timeInputValue(e.availableUntil));
     setEditStatus(e.status || "available");
     setError("");
   }
@@ -143,7 +166,8 @@ export default function TournamentUmpires({
         action: "updateTournamentUmpire",
         id,
         status: editStatus,
-        availability: editAvail.trim() || null,
+        availableFrom: editFrom || null,
+        availableUntil: editUntil || null,
       });
       setEntries((cur) =>
         cur.map((row) =>
@@ -151,7 +175,8 @@ export default function TournamentUmpires({
             ? {
                 ...row,
                 status: json.entry.status,
-                availability: json.entry.availability,
+                availableFrom: json.entry.available_from,
+                availableUntil: json.entry.available_until,
                 notes: json.entry.notes,
               }
             : row
@@ -188,6 +213,7 @@ export default function TournamentUmpires({
 
   const availableCount = entries.filter((e) => e.status === "available").length;
   const limitedCount = entries.filter((e) => e.status === "limited").length;
+  const dayLabel = formatTimeOfDayLabel(dayStartTime);
 
   return (
     <div className="card overflow-hidden">
@@ -195,8 +221,9 @@ export default function TournamentUmpires({
         <div>
           <p className="t-strong text-sm">Umpire crew</p>
           <p className="t-meta text-[12px]">
-            Who is on this event and when they can work. Add from the local
-            roster — no public signup.
+            Who is on this event and when they can work each day
+            {dayLabel ? ` (fields open ${dayLabel})` : ""}. Times are shared
+            across all divisions — games run in parallel on the same clock.
           </p>
         </div>
         <p className="t-meta text-[12px] tabular-nums">
@@ -215,6 +242,13 @@ export default function TournamentUmpires({
           </p>
         )}
 
+        {!dayStartTime && (
+          <p className="t-meta text-[12px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            Set <strong>Day start</strong> in tournament terms above so new
+            umpires default to first pitch. You can still enter times manually.
+          </p>
+        )}
+
         {entries.length === 0 ? (
           <p className="t-meta text-center py-2">
             No umpires on this tournament yet. Add someone below.
@@ -224,6 +258,9 @@ export default function TournamentUmpires({
             {entries.map((e) => {
               const st = statusMeta(e.status);
               const editing = editingId === e.id;
+              const window =
+                formatTimeWindowLabel(e.availableFrom, e.availableUntil) ||
+                (e.availability ? String(e.availability) : "");
               return (
                 <li
                   key={e.id}
@@ -260,16 +297,28 @@ export default function TournamentUmpires({
                             ))}
                           </select>
                         </label>
-                        <label className="block">
-                          <span className="form-label">Availability</span>
-                          <input
-                            className="form-field"
-                            value={editAvail}
-                            onChange={(ev) => setEditAvail(ev.target.value)}
-                            placeholder="e.g. Sat all day · Sun mornings only"
-                            disabled={busy}
-                          />
-                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="block">
+                            <span className="form-label">Available from</span>
+                            <input
+                              type="time"
+                              className="form-field"
+                              value={editFrom}
+                              onChange={(ev) => setEditFrom(ev.target.value)}
+                              disabled={busy}
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="form-label">Until</span>
+                            <input
+                              type="time"
+                              className="form-field"
+                              value={editUntil}
+                              onChange={(ev) => setEditUntil(ev.target.value)}
+                              disabled={busy}
+                            />
+                          </label>
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           <button
                             type="button"
@@ -299,13 +348,14 @@ export default function TournamentUmpires({
                         >
                           {st.label}
                         </span>
-                        {e.availability ? (
-                          <p className="t-meta text-[13px] mt-1">
-                            {e.availability}
+                        {window ? (
+                          <p className="t-meta text-[13px] mt-1 tabular-nums">
+                            {window}
+                            <span className="text-afa-muted"> each day</span>
                           </p>
                         ) : (
                           <p className="t-meta text-[12px] mt-1 italic">
-                            No availability noted
+                            No hours set
                           </p>
                         )}
                       </>
@@ -388,13 +438,32 @@ export default function TournamentUmpires({
                     ))}
                   </select>
                 </label>
+                <span className="hidden sm:block" />
                 <label className="block">
-                  <span className="form-label">Availability</span>
+                  <span className="form-label">
+                    Available from
+                    {defaultFrom ? (
+                      <span className="t-meta font-normal">
+                        {" "}
+                        (default day start)
+                      </span>
+                    ) : null}
+                  </span>
                   <input
+                    type="time"
                     className="form-field"
-                    value={availability}
-                    onChange={(e) => setAvailability(e.target.value)}
-                    placeholder="Sat 8–2 · plate only"
+                    value={fromTime}
+                    onChange={(e) => setFromTime(e.target.value)}
+                    disabled={busy}
+                  />
+                </label>
+                <label className="block">
+                  <span className="form-label">Until</span>
+                  <input
+                    type="time"
+                    className="form-field"
+                    value={untilTime}
+                    onChange={(e) => setUntilTime(e.target.value)}
                     disabled={busy}
                   />
                 </label>

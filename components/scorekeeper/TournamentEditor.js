@@ -5,6 +5,7 @@ import DirectorForm, { Field, Input, Combo, directorPost, toCents, fromCents } f
 import PosterUpload from "./PosterUpload";
 import DeleteTournament from "./DeleteTournament";
 import { venueLabel, resolveVenue } from "@/lib/director";
+import { timeInputValue } from "@/lib/league-time";
 
 /** "3GG" is the column; "3" is what a director types. The unit is the label. */
 const gamesShown = (stored) => String(stored ?? "").replace(/\s*GG$/i, "").trim();
@@ -34,6 +35,7 @@ export default function TournamentEditor({ tournament, venues = [] }) {
   const [venue, setVenue] = useState(venueLabel(t.venue_name, t.venue_address));
   const [start, setStart] = useState((t.start_date ?? "").slice(0, 10));
   const [end, setEnd] = useState((t.end_date ?? "").slice(0, 10));
+  const [dayStart, setDayStart] = useState(timeInputValue(t.day_start_time));
   const [name, setName] = useState(t.name ?? "");
   const venueOptions = venues.map((v) => venueLabel(v, null));
 
@@ -62,6 +64,7 @@ export default function TournamentEditor({ tournament, venues = [] }) {
               name: name.trim() || t.name,
               start_date: start || null,
               end_date: end || start || null,
+              day_start_time: dayStart || null,
               venue_name: resolveVenue(venue, venues),
               entry_fee_cents: toCents(fee),
               deposit_cents: toCents(deposit),
@@ -82,6 +85,13 @@ export default function TournamentEditor({ tournament, venues = [] }) {
         </Field>
         <Field label="Start" width="w-28 shrink-0"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="End" width="w-28 shrink-0"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="Day start" width="w-28 shrink-0" title="First pitch / fields open each day — all divisions share this clock">
+          <Input
+            type="time"
+            value={dayStart}
+            onChange={(e) => setDayStart(e.target.value)}
+          />
+        </Field>
         <Field label="Where" width="w-52 shrink-0">
           <Combo
             id={`venues-${t.id}`}

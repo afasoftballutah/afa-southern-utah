@@ -300,6 +300,7 @@ export async function POST(request) {
         "name",
         "start_date",
         "end_date",
+        "day_start_time",
         "venue_name",
         "venue_address",
         "entry_fee_cents",
@@ -315,6 +316,13 @@ export async function POST(request) {
         if (key in fields) patch[key] = fields[key] === "" ? null : fields[key];
       }
       if (Object.keys(patch).length === 0) return bad("Nothing to change");
+
+      if ("day_start_time" in patch && patch.day_start_time != null) {
+        const { normalizeTimeOfDay } = await import("@/lib/league-time");
+        const t = normalizeTimeOfDay(patch.day_start_time);
+        if (!t) return bad("Day start time must be HH:MM");
+        patch.day_start_time = t;
+      }
 
       for (const key of ["entry_fee_cents", "deposit_cents", "ump_fee_cents"]) {
         const v = patch[key];

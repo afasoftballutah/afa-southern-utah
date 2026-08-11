@@ -89,7 +89,7 @@ async function load() {
       supabase
         .from("tournament_umpires")
         .select(
-          "id, tournament_id, umpire_id, status, availability, notes, umpires(id, first_name, last_name, preferred_name, phone, pitch_fast, pitch_slow, status)"
+          "id, tournament_id, umpire_id, status, available_from, available_until, availability, notes, umpires(id, first_name, last_name, preferred_name, phone, pitch_fast, pitch_slow, status)"
         ),
     ]);
 
@@ -116,6 +116,8 @@ async function load() {
         id: row.id,
         umpireId: row.umpire_id,
         status: row.status,
+        availableFrom: row.available_from,
+        availableUntil: row.available_until,
         availability: row.availability,
         notes: row.notes,
         umpire: u
@@ -272,6 +274,7 @@ export default async function TournamentsPage() {
           <TournamentUmpires
             tournamentId={t.id}
             tournamentName={t.name}
+            dayStartTime={t.day_start_time ?? null}
             roster={plainRoster}
             initial={plain(crewByTournament.get(t.id) ?? [])}
           />

@@ -3,8 +3,38 @@ import {
   requireDirectorSession,
   requireScorekeeperSession,
 } from "@/lib/scorekeeper-auth";
+import { normalizeTimeOfDay } from "@/lib/league-time";
 
 export const runtime = "nodejs";
+
+function parseAvailTimes(body) {
+  const from =
+    body.availableFrom !== undefined
+      ? normalizeTimeOfDay(body.availableFrom)
+      : body.available_from !== undefined
+        ? normalizeTimeOfDay(body.available_from)
+        : undefined;
+  const until =
+    body.availableUntil !== undefined
+      ? normalizeTimeOfDay(body.availableUntil)
+      : body.available_until !== undefined
+        ? normalizeTimeOfDay(body.available_until)
+        : undefined;
+  if (
+    (body.availableFrom != null &&
+      String(body.availableFrom).trim() &&
+      from === null) ||
+    (body.availableUntil != null &&
+      String(body.availableUntil).trim() &&
+      until === null)
+  ) {
+    return { error: "Times must be HH:MM" };
+  }
+  if (from && until && from > until) {
+    return { error: "Available-from must be before available-until" };
+  }
+  return { from, until };
+}
 
 function mapRow(r) {
   const preferred = r.preferred_name?.trim() || "";
@@ -84,17 +114,17 @@ export async function POST(request) {
     const status = ["available", "limited", "unavailable"].includes(body.status)
       ? body.status
       : "available";
-    const availability =
-      body.availability != null
-        ? String(body.availability).trim() || null
-        : null;
     const notes =
       body.notes != null ? String(body.notes).trim() || null : null;
+    const times = parseAvailTimes(body);
+    if (times.error) {
+      return Response.json({ error: times.error }, { status: 400 });
+    }
 
     const supabase = getServiceClient();
     const { data: tour } = await supabase
       .from("tournaments")
-      .select("id")
+      .select("id, day_start_time")
       .eq("id", tournamentId)
       .maybeSingle();
     if (!tour) {
@@ -109,6 +139,15 @@ export async function POST(request) {
       return Response.json({ error: "Umpire not found" }, { status: 404 });
     }
 
+    // Default start of availability to the tournament's daily start time
+    // when the director did not send a from-time.
+    let availableFrom =
+      times.from === undefined
+        ? normalizeTimeOfDay(tour.day_start_time)
+        : times.from;
+    let availableUntil =
+      times.until === undefined ? null : times.until;
+
     const now = new Date().toISOString();
     const { data: row, error } = await supabase
       .from("tournament_umpires")
@@ -117,14 +156,15 @@ export async function POST(request) {
           tournament_id: tournamentId,
           umpire_id: umpireId,
           status,
-          availability,
+          available_from: availableFrom,
+          available_until: availableUntil,
           notes,
           updated_at: now,
         },
         { onConflict: "tournament_id,umpire_id" }
       )
       .select(
-        "id, tournament_id, umpire_id, status, availability, notes, created_at, updated_at"
+        "id, tournament_id, umpire_id, status, available_from, available_until, availability, notes, created_at, updated_at"
       )
       .single();
 
@@ -162,11 +202,18 @@ export async function POST(request) {
       }
       patch.status = body.status;
     }
-    if (body.availability !== undefined) {
-      patch.availability =
-        body.availability != null
-          ? String(body.availability).trim() || null
-          : null;
+    if (
+      body.availableFrom !== undefined ||
+      body.availableUntil !== undefined ||
+      body.available_from !== undefined ||
+      body.available_until !== undefined
+    ) {
+      const times = parseAvailTimes(body);
+      if (times.error) {
+        return Response.json({ error: times.error }, { status: 400 });
+      }
+      if (times.from !== undefined) patch.available_from = times.from;
+      if (times.until !== undefined) patch.available_until = times.until;
     }
     if (body.notes !== undefined) {
       patch.notes =
@@ -179,7 +226,7 @@ export async function POST(request) {
       .update(patch)
       .eq("id", id)
       .select(
-        "id, tournament_id, umpire_id, status, availability, notes, created_at, updated_at"
+        "id, tournament_id, umpire_id, status, available_from, available_until, availability, notes, created_at, updated_at"
       )
       .maybeSingle();
 
