@@ -107,7 +107,8 @@ export default function ManageRoster({
       const teams = probe.otherTeams.map((t) => t.teamName).join(", ");
       const ok = window.confirm(
         `${managerPlayerDisplay(person)} is already on another same-gender team: ${teams}.\n\n` +
-          `Coed + Men's/Women's is fine — this is two teams of the same gender.\n` +
+          `Not allowed without review: two Men's, two Women's, or two Coed teams.\n` +
+          `(Coed + Men's or Coed + Women's is fine.)\n` +
           `You can still add them; both teams will show a Check flag for the director.\n\n` +
           `Add them anyway?`
       );
@@ -315,8 +316,8 @@ export default function ManageRoster({
       {dualCount > 0 && (
         <p className="text-sm font-semibold text-amber-950 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
           {dualCount} player{dualCount === 1 ? "" : "s"} also listed on another
-          team of the same gender this tournament — the director will see a
-          Check flag on this roster. (Coed + Men&apos;s/Women&apos;s is fine.)
+          Men&apos;s, Women&apos;s, or Coed team this tournament — the director
+          will see a Check flag. (Coed + Men&apos;s/Women&apos;s is fine.)
         </p>
       )}
 
