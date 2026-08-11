@@ -13,19 +13,34 @@ function pageTitle() {
   return c ? `${t} — ${c}` : t;
 }
 
-/** Plain text from a cell; drop control chrome. */
+/**
+ * Plain text from a body cell. Keep select values; drop control chrome.
+ * (Sort headers are buttons — use headerText for those, not this.)
+ */
 function cellText(node) {
   if (!node) return "";
   const clone = node.cloneNode(true);
+  // Class / M/F live in <select> — take the selected option before strip.
+  clone.querySelectorAll("select").forEach((sel) => {
+    const opt = sel.options?.[sel.selectedIndex];
+    const text = (opt?.textContent || sel.value || "").trim();
+    sel.replaceWith(document.createTextNode(text));
+  });
   clone
-    .querySelectorAll(
-      "button, select, input, .pill, .tick, [aria-hidden], svg"
-    )
+    .querySelectorAll("button, input, .pill, [aria-hidden], svg")
     .forEach((el) => el.remove());
-  // Prefer visible link text, not full URL
   return (clone.textContent || "")
     .replace(/\s+/g, " ")
-    .replace(/[▾▸]/g, "")
+    .replace(/[▾▸▼▲]/g, "")
+    .trim();
+}
+
+/** Header labels sit inside sort <button>s — never strip those. */
+function headerText(th) {
+  if (!th) return "";
+  return (th.textContent || "")
+    .replace(/\s+/g, " ")
+    .replace(/[▾▸▼▲]/g, "")
     .trim();
 }
 
@@ -38,12 +53,25 @@ function escapeHtml(s) {
 }
 
 /**
- * Build print HTML from the first real data table in the desk body.
- * Skips empty / decorative headers; uses last header row as column labels.
+ * Build print HTML from the main data table in the desk body
+ * (largest table by body rows — not a nested appearance table).
  */
 function tableFromDirectorTable(root) {
-  const table = root.querySelector("table");
-  if (!table) return null;
+  const tables = [...root.querySelectorAll("table")];
+  if (!tables.length) return null;
+
+  // Prefer the table with the most data rows (main list, not a nested expand).
+  let best = null;
+  let bestCount = -1;
+  for (const table of tables) {
+    const n = table.querySelectorAll("tbody tr").length;
+    if (n > bestCount) {
+      bestCount = n;
+      best = table;
+    }
+  }
+  const table = best;
+  if (!table || bestCount === 0) return null;
 
   const headerRows = [...table.querySelectorAll("thead tr")];
   if (!headerRows.length) return null;
@@ -51,7 +79,7 @@ function tableFromDirectorTable(root) {
   // Last header row has the real column labels (group row may be above).
   const labelRow = headerRows[headerRows.length - 1];
   const headers = [...labelRow.querySelectorAll("th")].map((th) =>
-    cellText(th)
+    headerText(th)
   );
   // Drop empty action columns at end
   while (headers.length && !headers[headers.length - 1]) {
@@ -60,10 +88,11 @@ function tableFromDirectorTable(root) {
   if (!headers.length) return null;
 
   const bodyRows = [...table.querySelectorAll("tbody tr")].filter((tr) => {
-    // Skip expanded detail chrome rows if any
+    // Skip expanded detail chrome (colspan panel or nested table)
     if (tr.querySelector("table")) return false;
-    const cells = tr.querySelectorAll("td");
-    return cells.length > 0;
+    const tds = tr.querySelectorAll("td");
+    if (tds.length === 1 && tds[0].hasAttribute("colspan")) return false;
+    return tds.length > 0;
   });
 
   if (!bodyRows.length) return null;
@@ -94,7 +123,6 @@ function tableFromList(root) {
       "ul.card > li, ul.divide-y > li, .card ul > li"
     ),
   ].filter((li) => {
-    // Skip empty states
     if (li.querySelector("button.btn-action, button.btn-add")) return false;
     const text = cellText(li);
     return text.length > 2 && !/^no (documents|posts|umpires)/i.test(text);
@@ -107,7 +135,6 @@ function tableFromList(root) {
       li.querySelector(".t-body, .t-strong, .font-semibold")?.textContent?.trim() ||
       cellText(li).split("·")[0].trim();
     const meta = li.querySelector(".t-meta")?.textContent?.trim() || "";
-    // Strip action labels that leaked into meta
     const metaClean = meta
       .replace(/\b(Edit|Open|Delete|Unpublish|Publish|Suspend)\b/gi, "")
       .replace(/\s+/g, " ")
@@ -229,7 +256,6 @@ function printTable() {
     }, 500);
   };
 
-  // Wait for layout, then print
   setTimeout(() => {
     try {
       win?.focus();

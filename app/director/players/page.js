@@ -473,6 +473,7 @@ export default async function PlayersPage() {
         columns={COLUMNS}
         rows={rows}
         filters={FILTERS}
+        defaultFilter="all"
         defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody matches that."
         searchPlaceholder="Name, email, team…"

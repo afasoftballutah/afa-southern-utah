@@ -143,8 +143,8 @@ export default function DirectorTable({
         {filterStyle === "segmented" ? (
           <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
-              ...filters,
               { key: "all", label: "All games", tag: null, tone: "neutral" },
+              ...filters,
             ].map((f) => {
               const count =
                 f.key === "all"
@@ -193,46 +193,46 @@ export default function DirectorTable({
             })}
           </div>
         ) : (
-          filters.map((f) => {
-            const count = rows.filter((r) =>
-              (r.tags ?? []).includes(f.tag)
-            ).length;
-            const on = filterKey === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() =>
-                  setFilterKey((cur) => (cur === f.key ? "all" : f.key))
-                }
-                className={
-                  "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
-                  (on
-                    ? "bg-afa-navy text-white border-afa-navy"
-                    : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
-                }
-              >
-                {f.label}
-                <span className="ml-1 opacity-80">{count}</span>
-              </button>
-            );
-          })
-        )}
-
-        {filterStyle !== "segmented" && (
-          <button
-            type="button"
-            onClick={() => setFilterKey("all")}
-            className={
-              "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
-              (filterKey === "all"
-                ? "bg-afa-navy text-white border-afa-navy"
-                : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
-            }
-          >
-            All
-            <span className="ml-1 opacity-80">{rows.length}</span>
-          </button>
+          <>
+            {/* All first — full list is always the largest count; open here. */}
+            <button
+              type="button"
+              onClick={() => setFilterKey("all")}
+              className={
+                "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
+                (filterKey === "all"
+                  ? "bg-afa-navy text-white border-afa-navy"
+                  : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
+              }
+            >
+              All
+              <span className="ml-1 opacity-80">{rows.length}</span>
+            </button>
+            {filters.map((f) => {
+              const count = rows.filter((r) =>
+                (r.tags ?? []).includes(f.tag)
+              ).length;
+              const on = filterKey === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() =>
+                    setFilterKey((cur) => (cur === f.key ? "all" : f.key))
+                  }
+                  className={
+                    "rounded-full border px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap tabular-nums " +
+                    (on
+                      ? "bg-afa-navy text-white border-afa-navy"
+                      : "border-afa-navy/20 bg-white text-afa-muted hover:border-afa-navy/40")
+                  }
+                >
+                  {f.label}
+                  <span className="ml-1 opacity-80">{count}</span>
+                </button>
+              );
+            })}
+          </>
         )}
 
         <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
