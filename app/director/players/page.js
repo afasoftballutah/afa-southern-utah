@@ -65,13 +65,28 @@ export default async function PlayersPage() {
     resultsByTeamAndTournament(),
   ]);
 
-  // Built once for every row rather than per open — the whole league is a few
-  // hundred people, and a fetch on expand would make the accordion feel slow
-  // for no saving.
+  // Live registrations for Switch Team. Label carries team · division · class
+  // · manager; options are filtered per appearance to the same tournament.
   const openRegistrations = teams.flatMap((t) =>
     t.registrations
       .filter((r) => r.status !== "withdrawn")
-      .map((r) => ({ id: r.registrationId, label: `${t.name} — ${r.tournamentName}` }))
+      .map((r) => ({
+        id: r.registrationId,
+        tournamentId: r.tournamentId,
+        // Prefer explicit switchLabel; fall back for older listTeams shapes
+        label:
+          r.switchLabel ||
+          [
+            t.name,
+            r.divisionLabel,
+            r.className,
+            r.managerName ? `mgr ${r.managerName}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        // Group key for the dropdown note
+        tournamentName: r.tournamentName,
+      }))
   );
   // One clock for the whole table, so two rows can never disagree about today.
   const today = leagueToday();
@@ -148,17 +163,27 @@ export default async function PlayersPage() {
               />
             ) : null,
           rating:
-            idx === 0 && a.registrationId ? (
+            a.registrationId ? (
               <RowAction
                 label="Switch Team"
                 title={`Switch ${p.full_name}`}
-                note="Both waivers are rebuilt."
-                placeholder="Pick a team…"
+                note={
+                  a.tournamentName
+                    ? `Only teams in ${a.tournamentName}. Both waivers are rebuilt.`
+                    : "Both waivers are rebuilt."
+                }
+                placeholder="Pick a team in this tournament…"
                 action="movePlayer"
                 valueKey="toRegistrationId"
                 payload={{ memberId: a.memberId }}
                 confirmText={`Switch ${p.full_name} to {name}? Both waivers are rebuilt.`}
-                options={openRegistrations}
+                options={openRegistrations.filter(
+                  (o) =>
+                    o.id !== a.registrationId &&
+                    (a.tournamentId
+                      ? o.tournamentId === a.tournamentId
+                      : true)
+                )}
               />
             ) : null,
           team: a.registrationId ? (

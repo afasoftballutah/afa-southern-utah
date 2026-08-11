@@ -25,7 +25,8 @@ export default function RowAction({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  if (options.length === 0) return null;
+  // Empty list still shows the pill so the director knows Switch exists but
+  // there is nowhere to send them (e.g. only one team in the tournament).
   const chosen = options.find((o) => o.id === choice);
 
   async function go() {
@@ -68,25 +69,48 @@ export default function RowAction({
               <button type="button" className="btn-transient" onClick={() => setOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="btn-action" disabled={busy || !choice} onClick={go}>
+              <button
+                type="button"
+                className="btn-action"
+                disabled={busy || !choice || options.length === 0}
+                onClick={go}
+              >
                 {busy ? "Working…" : label}
               </button>
             </>
           }
         >
-          <select
-            value={choice}
-            onChange={(e) => setChoice(e.target.value)}
-            className="block w-full border border-afa-navy/30 rounded-lg px-3 py-2 text-[15px]"
-          >
-            <option value="">{placeholder}</option>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
+          {options.length === 0 ? (
+            <p className="t-meta">
+              No other teams in this tournament to switch to.
+            </p>
+          ) : (
+            <>
+              <label className="block space-y-1">
+                <span className="t-label">Team · division · class · manager</span>
+                <select
+                  value={choice}
+                  onChange={(e) => setChoice(e.target.value)}
+                  className="block w-full border border-afa-navy/30 rounded-lg px-3 py-2 text-[15px]"
+                  size={Math.min(12, options.length + 1)}
+                >
+                  <option value="">{placeholder}</option>
+                  {options.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="t-meta text-xs mt-2">
+                {options.length} team{options.length === 1 ? "" : "s"} listed
+                {chosen ? ` · selected: ${chosen.label}` : ""}
+              </p>
+            </>
+          )}
+          {error && (
+            <p className="t-meta text-afa-red font-semibold mt-2">{error}</p>
+          )}
         </Modal>
       )}
     </>
