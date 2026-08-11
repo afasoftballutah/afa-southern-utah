@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DOC_KINDS, kindLabel } from "@/lib/site-docs-kinds";
 import RulesBookEditor from "@/components/scorekeeper/RulesBookEditor";
+import { AddButton, DirectorAddPortal } from "@/components/scorekeeper/DirectorAddSlot";
 
 const emptyForm = () => ({
   title: "",
@@ -235,22 +236,17 @@ export default function DocsAdmin({
 
   return (
     <div className="space-y-4">
+      <DirectorAddPortal>
+        {!showForm ? (
+          <AddButton onClick={startNew} disabled={busy}>
+            + Add document
+          </AddButton>
+        ) : null}
+      </DirectorAddPortal>
+
       {error && (
         <p className="text-sm font-bold text-afa-ink underline">{error}</p>
       )}
-
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {!showForm && (
-          <button
-            type="button"
-            className="btn-action shrink-0"
-            onClick={startNew}
-            disabled={busy}
-          >
-            + Add document
-          </button>
-        )}
-      </div>
 
       {showForm && (
         <form onSubmit={save} className="card p-4 space-y-3">

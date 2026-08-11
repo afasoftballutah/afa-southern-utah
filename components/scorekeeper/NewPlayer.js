@@ -3,6 +3,7 @@
 import { useState } from "react";
 import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
 import { RATINGS } from "@/lib/class";
+import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
 import { directorPost } from "./DirectorForm";
 
 const ROOM = { 1: "Name", 2: "Details" };
@@ -96,20 +97,15 @@ export default function NewPlayer() {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="btn-action shrink-0"
-        onClick={() => setOpen(true)}
-      >
-        + Add player
-      </button>
-    );
-  }
-
   return (
-    <div className="w-full basis-full min-w-0">
+    <>
+      <DirectorAddPortal>
+        {!open ? (
+          <AddButton onClick={() => setOpen(true)}>+ Add player</AddButton>
+        ) : null}
+      </DirectorAddPortal>
+      {open && (
+    <div className="w-full min-w-0">
       <RoomShell
         title="Add player"
         roomTitle={ROOM[page]}
@@ -233,5 +229,7 @@ export default function NewPlayer() {
         )}
       </RoomShell>
     </div>
+      )}
+    </>
   );
 }

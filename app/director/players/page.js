@@ -482,6 +482,7 @@ export default async function PlayersPage() {
         </div>
       )}
 
+      <NewPlayer />
       <DirectorTable
         columns={COLUMNS}
         rows={rows}
@@ -489,7 +490,6 @@ export default async function PlayersPage() {
         defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody matches that."
         searchPlaceholder="Name, email, team…"
-        toolbarEnd={<NewPlayer />}
       />
     </DirectorShell>
   );

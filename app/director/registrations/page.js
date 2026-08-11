@@ -102,10 +102,7 @@ export default async function RegistrationsPage() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link
-            href="/director/registrations/new"
-            className="btn-action shrink-0"
-          >
+          <Link href="/director/registrations/new" className="btn-add shrink-0">
             + Add team
           </Link>
           <Link href="/director" className="btn-transient shrink-0">

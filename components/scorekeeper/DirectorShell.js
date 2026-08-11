@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DIRECTOR_ADD_SLOT_ID } from "@/components/scorekeeper/DirectorAddSlot";
 
 // One frame for every director page, so nothing is ever in a new place.
 //
@@ -20,6 +21,11 @@ export default function DirectorShell({
   back = "/director",
   /** Override link text. Default: "Director Home" (or "Scorekeeper" from field room). */
   backLabel,
+  /**
+   * Optional create control next to Director Home (green .btn-add).
+   * Prefer DirectorAddPortal from create flows so open forms stay in the body.
+   */
+  add = null,
   children,
   action,
 }) {
@@ -40,11 +46,16 @@ export default function DirectorShell({
           {count != null && <span className="t-meta whitespace-nowrap">{count}</span>}
           {inline}
         </div>
-        {back && (
-          <Link href={back} className="btn-transient shrink-0">
-            {label}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Create flows portal “+ Add …” here so placement matches every page */}
+          <span id={DIRECTOR_ADD_SLOT_ID} className="inline-flex items-center" />
+          {add}
+          {back && (
+            <Link href={back} className="btn-transient shrink-0">
+              {label}
+            </Link>
+          )}
+        </div>
       </div>
       {action}
       {children}

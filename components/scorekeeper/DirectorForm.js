@@ -104,7 +104,7 @@ export default function DirectorForm({
   actions = null,
   // How the collapsed form looks. Default is a solid + Add button for toolbars
   // (next to search). Pass w-full only when the form is the whole section.
-  triggerClass = "btn-action shrink-0",
+  triggerClass = "btn-add shrink-0",
 }) {
   const [open, setOpen] = useState(initiallyOpen || alwaysOpen);
   const [busy, setBusy] = useState(false);

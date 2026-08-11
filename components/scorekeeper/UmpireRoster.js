@@ -5,6 +5,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import Modal from "./Modal";
 import SuspendUmpire from "./SuspendUmpire";
 import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
+import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
 
 const empty = () => ({
   firstName: "",
@@ -766,6 +767,13 @@ export default function UmpireRoster({
 
   return (
     <div className="space-y-5">
+      {canEdit && (
+        <DirectorAddPortal>
+          {!formOpen ? (
+            <AddButton onClick={openAdd}>+ Add umpire</AddButton>
+          ) : null}
+        </DirectorAddPortal>
+      )}
       {/* Form first so Edit is never below the fold / easy to miss */}
       {formCard}
 
@@ -806,15 +814,6 @@ export default function UmpireRoster({
                 <p className="t-meta text-xs hidden sm:block">
                   S = Slow · F = Fast · B = Both
                 </p>
-              )}
-              {canEdit && (
-                <button
-                  type="button"
-                  className="btn-action shrink-0 text-sm py-1.5"
-                  onClick={openAdd}
-                >
-                  + Add umpire
-                </button>
               )}
             </div>
           </div>

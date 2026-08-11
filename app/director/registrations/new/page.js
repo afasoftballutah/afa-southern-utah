@@ -43,7 +43,12 @@ export default async function NewRegistrationPage() {
     .filter((t) => t.divisions.length > 0);
 
   return (
-    <DirectorShell title="Add a team" count="Entered by you, not by a manager" back="/director">
+    <DirectorShell
+      title="Add a team"
+      count="Entered by you, not by a manager"
+      back="/director/registrations"
+      backLabel="Registrations"
+    >
       <NewRegistration tournaments={tournaments} />
     </DirectorShell>
   );

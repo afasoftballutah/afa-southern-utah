@@ -368,6 +368,7 @@ export default async function TournamentsPage() {
           {missingFee} without an entry fee, {missingDeadline} without a registration deadline.
         </p>
       )}
+      <NewTournament venues={venues} />
       <DirectorTable
         columns={COLUMNS}
         rows={rows}
@@ -375,7 +376,6 @@ export default async function TournamentsPage() {
         defaultSort={{ key: "date", dir: "asc" }}
         empty="No tournament matches that."
         searchPlaceholder="Tournament or venue…"
-        toolbarEnd={<NewTournament venues={venues} />}
       />
     </DirectorShell>
   );

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { formatNewsDate, newsImageUrls } from "@/lib/news";
+import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
 
 const MAX_IMAGES = 12;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -179,11 +180,9 @@ export default function NewsAdmin({ initialPosts = [] }) {
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {!composeOpen && (
-          <button
-            type="button"
-            className="btn-action shrink-0"
+      <DirectorAddPortal>
+        {!composeOpen ? (
+          <AddButton
             onClick={() => {
               setComposeOpen(true);
               setEditingId(null);
@@ -191,9 +190,9 @@ export default function NewsAdmin({ initialPosts = [] }) {
             }}
           >
             + Add post
-          </button>
-        )}
-      </div>
+          </AddButton>
+        ) : null}
+      </DirectorAddPortal>
 
       {composeOpen && (
       <form onSubmit={save} className="card p-4 space-y-3">

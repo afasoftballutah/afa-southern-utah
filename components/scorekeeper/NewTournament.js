@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
+import { AddButton, DirectorAddPortal } from "./DirectorAddSlot";
 import { directorPost } from "./DirectorForm";
 import { venueLabel, resolveVenue } from "@/lib/director";
 
@@ -92,20 +93,15 @@ export default function NewTournament({ venues = [] }) {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="btn-action shrink-0"
-        onClick={() => setOpen(true)}
-      >
-        + Add tournament
-      </button>
-    );
-  }
-
   return (
-    <div className="w-full basis-full min-w-0">
+    <>
+      <DirectorAddPortal>
+        {!open ? (
+          <AddButton onClick={() => setOpen(true)}>+ Add tournament</AddButton>
+        ) : null}
+      </DirectorAddPortal>
+      {open && (
+    <div className="w-full min-w-0">
       <RoomShell
         title="Add tournament"
         roomTitle={ROOM[page]}
@@ -222,5 +218,7 @@ export default function NewTournament({ venues = [] }) {
         )}
       </RoomShell>
     </div>
+      )}
+    </>
   );
 }
