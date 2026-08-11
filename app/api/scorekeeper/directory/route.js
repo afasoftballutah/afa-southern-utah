@@ -876,6 +876,114 @@ export async function POST(request) {
       });
     }
 
+    // ---- New player on the directory ---------------------------------
+    case "createPlayer": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const fields = personFieldsFromInput(body, { allowPhone: false });
+      if (!fields.legalFirstName || !fields.legalLastName) {
+        return bad("Legal first and last name are required");
+      }
+      const birthDate = String(body.birthDate ?? body.birth_date ?? "").trim();
+      if (!birthDate) return bad("Birth date is required");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+        return bad("Birth date must be YYYY-MM-DD");
+      }
+      const email = fields.email || String(body.email ?? "").trim() || null;
+      if (!email) return bad("Contact email is required");
+
+      const gender = body.gender ? String(body.gender).trim() : null;
+      if (gender && !["M", "F"].includes(gender)) {
+        return bad("Gender must be M or F, or blank");
+      }
+      const rating = body.rating ? String(body.rating).trim() : null;
+      if (rating && !RATINGS.includes(rating)) {
+        return bad(`Rating must be one of ${RATINGS.join(", ")}, or blank`);
+      }
+
+      const legalName =
+        fields.legalName ||
+        composeLegalName({
+          legalFirstName: fields.legalFirstName,
+          legalLastName: fields.legalLastName,
+        });
+      const displayName =
+        fields.displayName ||
+        composeDisplayName({
+          preferredName: fields.preferredName,
+          legalFirstName: fields.legalFirstName,
+          legalLastName: fields.legalLastName,
+        });
+      const normalized = normalizeName(legalName);
+      if (!normalized) return bad("A legal name is required");
+
+      const address = String(body.address ?? "").trim() || null;
+
+      // Prefer resolve when birth is known so we don't invent duplicates.
+      try {
+        const existingId = await resolvePlayer(supabase, {
+          name: legalName,
+          birthDate,
+          legalFirstName: fields.legalFirstName,
+          legalLastName: fields.legalLastName,
+          preferredName: fields.preferredName,
+          email,
+        });
+        if (existingId) {
+          await supabase
+            .from("players")
+            .update({
+              legal_first_name: fields.legalFirstName,
+              legal_last_name: fields.legalLastName,
+              preferred_name: fields.preferredName,
+              email,
+              full_name: displayName,
+              gender: gender || null,
+              rating: rating || null,
+              address,
+            })
+            .eq("id", existingId);
+          return Response.json({ ok: true, playerId: existingId, fullName: displayName, existed: true });
+        }
+      } catch (err) {
+        console.error("createPlayer resolve", err);
+      }
+
+      const { data: created, error } = await supabase
+        .from("players")
+        .insert({
+          full_name: displayName,
+          normalized_name: normalized,
+          birth_date: birthDate,
+          legal_first_name: fields.legalFirstName,
+          legal_last_name: fields.legalLastName,
+          preferred_name: fields.preferredName,
+          email,
+          gender: gender || null,
+          rating: rating || null,
+          address,
+        })
+        .select("id")
+        .single();
+      if (error) {
+        console.error("create player failed", error);
+        if (error.code === "23505") {
+          return bad(
+            "A player with that legal name and birth date is already on file.",
+            409
+          );
+        }
+        return bad(error.message || "Could not create that player", 500);
+      }
+      return Response.json({
+        ok: true,
+        playerId: created.id,
+        fullName: displayName,
+        existed: false,
+      });
+    }
+
     // ---- Full edit of a player directory row -------------------------
     case "updatePlayer": {
       const { playerId } = body;

@@ -20,6 +20,7 @@ import InlineSelect from "@/components/scorekeeper/InlineSelect";
 import RowAction from "@/components/scorekeeper/RowAction";
 import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
 import EditPlayer from "@/components/scorekeeper/EditPlayer";
+import NewPlayer from "@/components/scorekeeper/NewPlayer";
 import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
 import Link from "next/link";
 
@@ -488,6 +489,7 @@ export default async function PlayersPage() {
         defaultSort={{ key: "name", dir: "asc" }}
         empty="Nobody matches that."
         searchPlaceholder="Name, email, team…"
+        toolbarEnd={<NewPlayer />}
       />
     </DirectorShell>
   );

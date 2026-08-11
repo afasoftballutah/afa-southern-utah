@@ -1,16 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Field, Input, Select, directorPost } from "./DirectorForm";
+import RoomShell, { RoomField, RoomHall } from "@/components/forms/RoomShell";
+import { directorPost } from "./DirectorForm";
 
-// A director taking a team the way they always have: on paper, at a table,
-// with a phone number and a list of names.
-//
-// JD, 2026-07-27: "most tournaments we will just have to put them in
-// ourselves." So this asks for less than the public form. A manager's email
-// is optional here — the director may genuinely not have one — and nobody
-// signs anything at this table. The team link comes back at the end to share.
+const ROOM = {
+  1: "Tournament",
+  2: "Team",
+  3: "Manager",
+  4: "Players",
+};
+
+/**
+ * Director add-team — Room flow (same chrome as umpires).
+ * Collects less than public register: manager email optional, no signatures.
+ */
 export default function NewRegistration({ tournaments }) {
+  const [page, setPage] = useState(1);
   const [tournamentId, setTournamentId] = useState(tournaments[0]?.id ?? "");
   const [divisionId, setDivisionId] = useState("");
   const [teamName, setTeamName] = useState("");
@@ -28,11 +34,9 @@ export default function NewRegistration({ tournaments }) {
     [tournaments, tournamentId]
   );
   const divisions = tournament?.divisions ?? [];
-  const effectiveDivision = divisions.length === 1 ? divisions[0].id : divisionId;
+  const effectiveDivision =
+    divisions.length === 1 ? divisions[0].id : divisionId;
 
-  // One name per line, "Name, YYYY-MM-DD" if the birth date is to hand.
-  // Typing twelve names is faster than tapping twelve Add buttons, and it is
-  // what a paper roster already looks like.
   const players = useMemo(
     () =>
       names
@@ -41,13 +45,31 @@ export default function NewRegistration({ tournaments }) {
         .filter(Boolean)
         .map((line) => {
           const [name, dob] = line.split(",").map((x) => x?.trim());
-          return { name, birthDate: /^\d{4}-\d{2}-\d{2}$/.test(dob ?? "") ? dob : null };
+          return {
+            name,
+            birthDate: /^\d{4}-\d{2}-\d{2}$/.test(dob ?? "") ? dob : null,
+          };
         }),
     [names]
   );
-  const withoutDob = players.filter((p) => !p.birthDate).length;
 
-  async function submit() {
+  const dirty =
+    Boolean(teamName.trim()) ||
+    Boolean(managerName.trim()) ||
+    Boolean(names.trim()) ||
+    page > 1;
+
+  function canPage1() {
+    return Boolean(tournamentId) && Boolean(effectiveDivision);
+  }
+  function canPage2() {
+    return teamName.trim().length > 0;
+  }
+  function canPage3() {
+    return managerName.trim().length > 0;
+  }
+
+  async function save() {
     setBusy(true);
     setError("");
     const res = await directorPost({
@@ -61,8 +83,45 @@ export default function NewRegistration({ tournaments }) {
       players,
     });
     setBusy(false);
-    if (res.error) return setError(res.error);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
     setDone(res);
+  }
+
+  function onSubmit(e) {
+    e?.preventDefault?.();
+    setError("");
+    if (page === 1) {
+      if (!canPage1()) {
+        setError(
+          divisions.length > 1
+            ? "Pick a tournament and division."
+            : "Pick a tournament."
+        );
+        return;
+      }
+      setPage(2);
+      return;
+    }
+    if (page === 2) {
+      if (!canPage2()) {
+        setError("Team name is required.");
+        return;
+      }
+      setPage(3);
+      return;
+    }
+    if (page === 3) {
+      if (!canPage3()) {
+        setError("Manager name is required.");
+        return;
+      }
+      setPage(4);
+      return;
+    }
+    save();
   }
 
   function copy(text, key) {
@@ -73,100 +132,209 @@ export default function NewRegistration({ tournaments }) {
 
   if (done) {
     return (
-      <div className="card p-4 space-y-3">
+      <div className="card p-4 space-y-3 max-w-md">
         <p className="t-strong">{teamName} is in.</p>
         <p className="t-meta">
           Nobody has signed yet. Send the team link so each person signs their
           own waiver, and keep the manager link for yourself.
         </p>
-        <button type="button" className="btn-action w-full" onClick={() => copy(done.rosterLink, "roster")}>
+        <button
+          type="button"
+          className="btn-action w-full"
+          onClick={() => copy(done.rosterLink, "roster")}
+        >
           {copied === "roster" ? "Copied" : "Copy team link"}
         </button>
-        <button type="button" className="btn-transient w-full" onClick={() => copy(done.manageLink, "manage")}>
+        <button
+          type="button"
+          className="btn-transient w-full"
+          onClick={() => copy(done.manageLink, "manage")}
+        >
           {copied === "manage" ? "Copied" : "Copy manager link"}
         </button>
-        <a className="btn-transient w-full block text-center" href="/director/registrations">
+        <a
+          className="btn-transient w-full block text-center"
+          href="/director/registrations"
+        >
           See all registrations
         </a>
       </div>
     );
   }
 
-  return (
-    <div className="card p-4 space-y-3">
-      <Field label="Tournament">
-        <Select
-          value={tournamentId}
-          onChange={(e) => {
-            setTournamentId(e.target.value);
-            setDivisionId("");
-          }}
-        >
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} — {t.startDate}
-              {t.open ? "" : " (closed to the public)"}
-            </option>
-          ))}
-        </Select>
-      </Field>
+  if (!tournaments.length) {
+    return (
+      <div className="card p-4">
+        <p className="t-meta">
+          No tournaments with divisions yet. Create a tournament and add
+          divisions first.
+        </p>
+      </div>
+    );
+  }
 
-      {divisions.length > 1 && (
-        <Field label="Division">
-          <Select value={divisionId} onChange={(e) => setDivisionId(e.target.value)}>
-            <option value="">Pick one…</option>
-            {divisions.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </Select>
-        </Field>
+  const primaryDisabled =
+    busy ||
+    (page === 1 && !canPage1()) ||
+    (page === 2 && !canPage2()) ||
+    (page === 3 && !canPage3());
+
+  return (
+    <RoomShell
+      title="Add team"
+      roomTitle={ROOM[page]}
+      page={page}
+      totalPages={4}
+      dirty={dirty}
+      onClose={() => {
+        if (dirty && !window.confirm("Discard what you entered?")) return;
+        window.location.href = "/director/registrations";
+      }}
+      error={error}
+      welcome={
+        page === 1
+          ? "Which event is this team entering?"
+          : page === 2
+            ? "Name the team."
+            : page === 3
+              ? "Who runs the team? Email is optional if you only have a name."
+              : "Optional — paste names now, or add players later from the roster."
+      }
+      hall={
+        page > 1 ? (
+          <RoomHall
+            lines={[
+              {
+                label: "Event",
+                value: tournament
+                  ? `${tournament.name}${
+                      divisions.find((d) => d.id === effectiveDivision)?.name
+                        ? ` · ${divisions.find((d) => d.id === effectiveDivision).name}`
+                        : ""
+                    }`
+                  : "",
+              },
+              page > 2 ? { label: "Team", value: teamName } : null,
+              page > 3 ? { label: "Manager", value: managerName } : null,
+            ].filter(Boolean)}
+            onEdit={() => setPage(1)}
+            editLabel="Edit place"
+          />
+        ) : null
+      }
+      onBack={page > 1 ? () => setPage((p) => p - 1) : null}
+      showSkip={page === 4}
+      onSkip={page === 4 ? () => save() : null}
+      skipLabel="Skip players"
+      primaryLabel={
+        page < 4 ? "Continue" : busy ? "Saving…" : "Add team"
+      }
+      primaryDisabled={primaryDisabled}
+      busy={busy}
+      onSubmit={onSubmit}
+      className="max-w-lg"
+    >
+      {page === 1 && (
+        <>
+          <label className="block space-y-1">
+            <span className="form-label font-bold text-afa-navy">
+              Tournament
+            </span>
+            <select
+              className="form-field w-full"
+              value={tournamentId}
+              onChange={(e) => {
+                setTournamentId(e.target.value);
+                setDivisionId("");
+              }}
+            >
+              {tournaments.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} — {t.startDate}
+                  {t.open ? "" : " (closed to the public)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          {divisions.length > 1 && (
+            <label className="block space-y-1">
+              <span className="form-label font-bold text-afa-navy">
+                Division
+              </span>
+              <select
+                className="form-field w-full"
+                value={divisionId}
+                onChange={(e) => setDivisionId(e.target.value)}
+              >
+                <option value="">Pick one…</option>
+                {divisions.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </>
       )}
 
-      <Field label="Team name"><Input value={teamName} onChange={(e) => setTeamName(e.target.value)} /></Field>
-      <Field
-        label="Manager name"
-        hint="Legal name if you have it. They go on the roster too."
-      >
-        <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} />
-      </Field>
-      <Field label="Manager phone">
-        <Input
-          value={managerPhone}
-          onChange={(e) => setManagerPhone(e.target.value)}
-          placeholder="702-555-0100"
+      {page === 2 && (
+        <RoomField
+          label="Team name"
+          required
+          value={teamName}
+          onChange={(e) => setTeamName(e.target.value)}
+          explainer="e.g. Backwards K"
         />
-      </Field>
-      <Field label="Manager email" hint="Optional. Leave blank if you do not have one.">
-        <Input value={managerEmail} onChange={(e) => setManagerEmail(e.target.value)} />
-      </Field>
+      )}
 
-      <Field
-        label="Players"
-        hint="One per line: Name, YYYY-MM-DD. Prefer legal name. Full public form collects legal first/last, preferred, and email."
-      >
-        <textarea
-          rows={8}
-          value={names}
-          onChange={(e) => setNames(e.target.value)}
-          placeholder={"Kaydee Anderson, 2002-10-14\nJarrod Grannum, 1979-01-21\nLyndsey Healey"}
-          className="w-full border border-afa-navy/30 rounded-lg px-3 py-3 text-base font-mono"
-        />
-      </Field>
+      {page === 3 && (
+        <>
+          <RoomField
+            label="Manager name"
+            required
+            value={managerName}
+            onChange={(e) => setManagerName(e.target.value)}
+            explainer="Legal name if you have it"
+          />
+          <RoomField
+            label="Phone"
+            optional
+            type="tel"
+            value={managerPhone}
+            onChange={(e) => setManagerPhone(e.target.value)}
+            explainer="702-555-0100"
+          />
+          <RoomField
+            label="Email"
+            optional
+            type="email"
+            value={managerEmail}
+            onChange={(e) => setManagerEmail(e.target.value)}
+          />
+        </>
+      )}
 
-      <p className="t-meta">
-        {players.length} {players.length === 1 ? "player" : "players"}
-        {withoutDob > 0 && ` · ${withoutDob} without a birth date`}
-      </p>
-
-      <button
-        type="button"
-        className="btn-action w-full"
-        disabled={busy || !teamName.trim() || !managerName.trim() || !effectiveDivision}
-        onClick={submit}
-      >
-        {busy ? "Saving…" : "Add this team"}
-      </button>
-      {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
-    </div>
+      {page === 4 && (
+        <label className="block space-y-1">
+          <span className="form-label font-normal text-afa-muted">
+            Players
+          </span>
+          <textarea
+            className="form-field w-full min-h-[160px] text-sm"
+            rows={8}
+            value={names}
+            onChange={(e) => setNames(e.target.value)}
+            placeholder={"One per line:\nJared Willcox, 1980-02-17\nAustyn Davies"}
+          />
+          <p className="text-[11px] font-normal uppercase tracking-wide text-afa-muted/80">
+            Optional · {players.length} listed
+            {players.some((p) => !p.birthDate)
+              ? " · some without birth date"
+              : ""}
+          </p>
+        </label>
+      )}
+    </RoomShell>
   );
 }
