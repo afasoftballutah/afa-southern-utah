@@ -64,16 +64,16 @@ export default function PersonWizard({
           : 3;
 
   function page1Ok() {
-    if (!String(p.legalFirstName || "").trim() || !String(p.legalLastName || "").trim())
+    if (
+      !String(p.legalFirstName || "").trim() ||
+      !String(p.legalLastName || "").trim()
+    )
       return false;
     if (variant === "manager" || variant === "coach") {
       if (!String(p.email || "").trim()) return false;
       if (!String(p.phone || "").trim()) return false;
     }
-    // players / addPlayer: email optional but recommended — require for consistency with registration
-    if (variant === "player" || variant === "addPlayer") {
-      // email optional for manage-roster speed; name is enough
-    }
+    // players / addPlayer: email optional — name is enough for roster add
     return true;
   }
 
@@ -117,80 +117,8 @@ export default function PersonWizard({
   }
 
   const onLast = singlePage || page >= totalPages;
-  // Embedded parent forms (registration) use their own Next — last page is
-  // just "Done" (no onComplete). Standalone wizards call onComplete.
-  const nav = (
-    <div className="flex flex-wrap gap-2 pt-1">
-      {page > 1 && !singlePage && (
-        <button type="button" className="btn-transient" onClick={goBack}>
-          Back
-        </button>
-      )}
-      {(!onLast || onComplete || singlePage) && (
-        <button
-          type={embedded || singlePage ? "button" : "submit"}
-          className="btn-action"
-          onClick={embedded || singlePage ? handleSubmit : undefined}
-        >
-          {onLast ? completeLabel : "Continue"}
-        </button>
-      )}
-      {onLast && embedded && !onComplete && !singlePage && (
-        <p className="t-meta text-sm self-center">Use Next below when ready</p>
-      )}
-    </div>
-  );
 
-  const body = (
-    <>
-      {!singlePage && <PageDots page={page} total={totalPages} />}
-
-      {error && (
-        <p
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
-
-      {(singlePage || page === 1) && contactBlock}
-
-      {singlePage && addressBlock}
-      {singlePage && birthBlock}
-
-      {!singlePage && page === 2 && variant === "addPlayer" && birthBlock}
-
-      {!singlePage && page === 2 && variant !== "addPlayer" && (
-        <>
-          {summary}
-          {addressBlock}
-        </>
-      )}
-
-      {!singlePage && page === 3 && variant === "player" && (
-        <>
-          {summary}
-          {(p.address || p.city) && (
-            <FixedSummary
-              lines={[
-                {
-                  label: "Address",
-                  value: [p.address, p.city, p.state, p.zip]
-                    .filter(Boolean)
-                    .join(", "),
-                },
-              ]}
-            />
-          )}
-          {birthBlock}
-        </>
-      )}
-
-      {nav}
-    </>
-  );
-
+  // Blocks first — body references them (TDZ crash if order is reversed).
   const contactBlock = (
     <>
       <LegalIdBox detail="Preferred name (below) is what shows on the roster if different.">
@@ -329,6 +257,80 @@ export default function PersonWizard({
       onEdit={() => setPage(1)}
       editLabel="Edit contact"
     />
+  );
+
+  // Embedded parent forms (registration) use their own Next — last page is
+  // just "Done" (no onComplete). Standalone wizards call onComplete.
+  const nav = (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {page > 1 && !singlePage && (
+        <button type="button" className="btn-transient" onClick={goBack}>
+          Back
+        </button>
+      )}
+      {(!onLast || onComplete || singlePage) && (
+        <button
+          type={embedded || singlePage ? "button" : "submit"}
+          className="btn-action"
+          onClick={embedded || singlePage ? handleSubmit : undefined}
+        >
+          {onLast ? completeLabel : "Continue"}
+        </button>
+      )}
+      {onLast && embedded && !onComplete && !singlePage && (
+        <p className="t-meta text-sm self-center">Use Next below when ready</p>
+      )}
+    </div>
+  );
+
+  const body = (
+    <>
+      {!singlePage && <PageDots page={page} total={totalPages} />}
+
+      {error && (
+        <p
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      {(singlePage || page === 1) && contactBlock}
+
+      {singlePage && addressBlock}
+      {singlePage && birthBlock}
+
+      {!singlePage && page === 2 && variant === "addPlayer" && birthBlock}
+
+      {!singlePage && page === 2 && variant !== "addPlayer" && (
+        <>
+          {summary}
+          {addressBlock}
+        </>
+      )}
+
+      {!singlePage && page === 3 && variant === "player" && (
+        <>
+          {summary}
+          {(p.address || p.city) && (
+            <FixedSummary
+              lines={[
+                {
+                  label: "Address",
+                  value: [p.address, p.city, p.state, p.zip]
+                    .filter(Boolean)
+                    .join(", "),
+                },
+              ]}
+            />
+          )}
+          {birthBlock}
+        </>
+      )}
+
+      {nav}
+    </>
   );
 
   if (embedded || singlePage) {

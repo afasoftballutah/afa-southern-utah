@@ -154,7 +154,7 @@ export default function RegistrationForm({
     return (tournament?.divisions ?? [])
       .filter((d) => d.parent_division_id == null)
       .slice()
-      .sort((a, b) => a.sort_order - b.sort_order);
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [tournament]);
   const effectiveDivisionId = useMemo(() => {
     if (registerableDivisions.length === 1) return registerableDivisions[0].id;
@@ -218,10 +218,15 @@ export default function RegistrationForm({
       );
     }
     if (step === 2) {
+      // Match PersonWizard manager page 1: legal name, phone, email.
       const legalOk =
         manager.legalFirstName.trim().length > 0 &&
         manager.legalLastName.trim().length > 0;
-      return legalOk && manager.email.trim().length > 0;
+      return (
+        legalOk &&
+        manager.email.trim().length > 0 &&
+        manager.phone.trim().length > 0
+      );
     }
     if (step === 3) {
       return players.some((p) => managerPlayerReady(p));
@@ -596,6 +601,8 @@ export default function RegistrationForm({
                 className="form-field"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
+                placeholder="e.g. Fallen"
+                autoComplete="organization"
               />
             </Field>
             {registerableDivisions.length > 0 && (
@@ -611,8 +618,7 @@ export default function RegistrationForm({
                     const label = d.display_name ?? d.name;
                     const selected =
                       registerableDivisions.length === 1 ||
-                      divisionId === id ||
-                      effectiveDivisionId === id;
+                      divisionId === id;
                     return (
                       <button
                         key={id}
@@ -628,9 +634,14 @@ export default function RegistrationForm({
                     );
                   })}
                 </div>
+                {registerableDivisions.length > 1 && !divisionId && (
+                  <p className="t-meta text-[12px] mt-1.5">
+                    Pick the division this team is entering.
+                  </p>
+                )}
               </div>
             )}
-            <Field label="AFA Membership #">
+            <Field label="AFA Membership # (optional)">
               <input
                 className="form-field"
                 value={afaMembershipNumber}
