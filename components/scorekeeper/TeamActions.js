@@ -10,7 +10,8 @@ import RowAction from "./RowAction";
 // page — two sets of buttons for one object is how this got messy before.
 //
 // Payment records amount (cents) as well as paid_at — deposits are common, so
-// "Mark paid" always asks how much.
+// "Mark paid" always asks how much. Confirm is not a separate action: payment
+// is the real gate.
 
 function dollarsFromCents(cents) {
   if (cents == null || Number.isNaN(Number(cents))) return "";
@@ -30,6 +31,43 @@ function moneyLabel(cents) {
   return `$${Math.round(cents / 100)}`;
 }
 
+function ActionRow({ label, children }) {
+  return (
+    <div className="flex flex-wrap items-start gap-x-2 gap-y-1.5">
+      <span className="t-label w-[4.5rem] shrink-0 pt-1 text-afa-muted/80">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function LinkLine({ label, href, copied, onCopy }) {
+  return (
+    <div className="min-w-0 w-full space-y-0.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="t-meta font-semibold text-afa-ink/70">{label}</span>
+        <button type="button" className="pill" onClick={onCopy}>
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <a
+          className="pill"
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open
+        </a>
+      </div>
+      <p className="t-meta text-[11px] break-all font-mono text-afa-ink/60 leading-snug">
+        {href}
+      </p>
+    </div>
+  );
+}
+
 export default function TeamActions({ registration: reg, divisions = [], fees = null, onDone }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -40,15 +78,22 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
   const entryFeeCents = fees?.entryFeeCents ?? reg.tournaments?.entry_fee_cents ?? null;
   const depositCents = fees?.depositCents ?? reg.tournaments?.deposit_cents ?? null;
 
+  const currentDivisionLabel =
+    reg.divisions?.display_name ??
+    reg.divisions?.name ??
+    divisions.find((d) => d.id === reg.division_id)?.label ??
+    divisions.find((d) => d.id === reg.division_id)?.name ??
+    "—";
+
   const defaultPayDollars = useMemo(() => {
-    // Default $0; full entry is a chip, not a pre-fill (deposits are common).
     if (reg.amount_paid_cents != null) return dollarsFromCents(reg.amount_paid_cents);
     return "0";
   }, [reg.amount_paid_cents]);
 
   const [payDollars, setPayDollars] = useState(defaultPayDollars);
 
-  const confirmThen = (message, body, confirmLabel) => setAsk({ message, body, confirmLabel });
+  const confirmThen = (message, body, confirmLabel) =>
+    setAsk({ message, body, confirmLabel });
 
   async function patch(body) {
     setAsk(null);
@@ -90,31 +135,31 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
     await patch({ paid: true, amountPaidCents: cents });
   }
 
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const teamHref = reg.roster_token
+    ? `${origin}/register/roster/${reg.roster_token}`
+    : "";
+  const manageHref = reg.manage_token
+    ? `${origin}/register/manage/${reg.manage_token}`
+    : "";
+
   function copyLink(kind) {
-    const path = kind === "manage" ? "manage" : "roster";
-    const tok = kind === "manage" ? reg.manage_token : reg.roster_token;
-    navigator.clipboard?.writeText(`${window.location.origin}/register/${path}/${tok}`);
+    const href = kind === "manage" ? manageHref : teamHref;
+    if (!href) return;
+    navigator.clipboard?.writeText(href);
     setCopied(kind);
     setTimeout(() => setCopied(""), 1500);
   }
 
-  function ActionRow({ label, children }) {
-    return (
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <span className="t-label w-16 shrink-0 text-afa-muted/80">{label}</span>
-        <div className="flex flex-wrap items-center gap-1.5 min-w-0">{children}</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2.5">
-      <div className="rounded-lg border border-afa-navy/10 bg-afa-navy/[0.02] px-3 py-2.5 space-y-2">
-        <ActionRow label="Money">
+      <div className="rounded-lg border border-afa-navy/10 bg-afa-navy/[0.02] px-3 py-2.5 space-y-2.5">
+        <ActionRow label="Pay">
           {reg.paid_at ? (
             <>
               <button className="pill" disabled={busy} onClick={openPayDialog}>
-                Edit amount
+                Edit payment
                 {reg.amount_paid_cents != null
                   ? ` (${moneyLabel(reg.amount_paid_cents)})`
                   : ""}
@@ -138,24 +183,21 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
               Record payment
             </button>
           )}
+          {reg.pdf_storage_path ? (
+            <a
+              className="pill"
+              href={`/api/scorekeeper/registrations/${reg.id}/waiver`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View waiver
+            </a>
+          ) : (
+            <span className="t-meta text-[12px]">No waiver PDF yet</span>
+          )}
         </ActionRow>
 
-        <ActionRow label="Status">
-          {reg.status !== "confirmed" && reg.status !== "withdrawn" && (
-            <button
-              className="pill"
-              disabled={busy}
-              onClick={() =>
-                confirmThen(
-                  `Confirm ${reg.team_name} for this tournament?`,
-                  { status: "confirmed" },
-                  "Confirm"
-                )
-              }
-            >
-              Confirm
-            </button>
-          )}
+        <ActionRow label="Team">
           {reg.status !== "withdrawn" ? (
             <button
               className="pill"
@@ -186,41 +228,47 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
             </button>
           )}
           {reg.status !== "withdrawn" && (
-            <RowAction
-              label="Move division"
-              title={`Move ${reg.team_name}`}
-              note="Same tournament only."
-              placeholder="Pick a division…"
-              emptyMessage="No other divisions in this tournament."
-              countSingular="division"
-              countPlural="divisions"
-              action="moveRegistration"
-              valueKey="divisionId"
-              payload={{ registrationId: reg.id }}
-              confirmText={`Move ${reg.team_name} into {name}?`}
-              options={divisions.filter((d) => d.id !== reg.division_id)}
-            />
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <span className="t-meta text-[12px] whitespace-nowrap">
+                Now in <span className="font-semibold text-afa-ink">{currentDivisionLabel}</span>
+              </span>
+              <RowAction
+                label="Change division"
+                title={`Move ${reg.team_name}`}
+                note={`Currently in ${currentDivisionLabel}. Same tournament only.`}
+                placeholder="Pick a new division…"
+                emptyMessage="No other divisions in this tournament."
+                countSingular="division"
+                countPlural="divisions"
+                action="moveRegistration"
+                valueKey="divisionId"
+                payload={{ registrationId: reg.id }}
+                confirmText={`Move ${reg.team_name} into {name}?`}
+                options={divisions.filter((d) => d.id !== reg.division_id)}
+              />
+            </div>
           )}
         </ActionRow>
 
-        <ActionRow label="Links">
-          <button className="pill" onClick={() => copyLink("roster")}>
-            {copied === "roster" ? "Copied" : "Team link"}
-          </button>
-          <button className="pill" onClick={() => copyLink("manage")}>
-            {copied === "manage" ? "Copied" : "Manager link"}
-          </button>
-          {reg.pdf_storage_path && (
-            <a
-              className="pill"
-              href={`/api/scorekeeper/registrations/${reg.id}/waiver`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Waiver
-            </a>
-          )}
-        </ActionRow>
+        <div className="space-y-2 pt-0.5 border-t border-afa-navy/10">
+          <span className="t-label text-afa-muted/80">Links</span>
+          {teamHref ? (
+            <LinkLine
+              label="Team roster"
+              href={teamHref}
+              copied={copied === "roster"}
+              onCopy={() => copyLink("roster")}
+            />
+          ) : null}
+          {manageHref ? (
+            <LinkLine
+              label="Manager"
+              href={manageHref}
+              copied={copied === "manage"}
+              onCopy={() => copyLink("manage")}
+            />
+          ) : null}
+        </div>
       </div>
 
       {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
@@ -228,16 +276,34 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
 
       {payOpen && (
         <Modal
-          title={reg.paid_at ? `Edit payment · ${reg.team_name}` : `Record payment · ${reg.team_name}`}
+          title={
+            reg.paid_at
+              ? `Edit payment · ${reg.team_name}`
+              : `Record payment · ${reg.team_name}`
+          }
           onClose={() => !busy && setPayOpen(false)}
           width="max-w-sm"
           footer={
             <>
-              <button type="button" className="btn-transient" onClick={() => setPayOpen(false)} disabled={busy}>
+              <button
+                type="button"
+                className="btn-transient"
+                onClick={() => setPayOpen(false)}
+                disabled={busy}
+              >
                 Cancel
               </button>
-              <button type="button" className="btn-action" onClick={savePayment} disabled={busy}>
-                {busy ? "Saving…" : reg.paid_at ? "Save amount" : "Record payment"}
+              <button
+                type="button"
+                className="btn-action"
+                onClick={savePayment}
+                disabled={busy}
+              >
+                {busy
+                  ? "Saving…"
+                  : reg.paid_at
+                    ? "Save amount"
+                    : "Record payment"}
               </button>
             </>
           }
@@ -245,11 +311,16 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
           <div className="space-y-3">
             <p className="t-meta">
               {[
-                entryFeeCents != null ? `Entry ${moneyLabel(entryFeeCents)}` : null,
-                depositCents != null ? `Deposit ${moneyLabel(depositCents)}` : null,
+                entryFeeCents != null
+                  ? `Entry ${moneyLabel(entryFeeCents)}`
+                  : null,
+                depositCents != null
+                  ? `Deposit ${moneyLabel(depositCents)}`
+                  : null,
               ]
                 .filter(Boolean)
-                .join(" · ") || "No fee on file for this tournament — type what they paid."}
+                .join(" · ") ||
+                "No fee on file for this tournament — type what they paid."}
             </p>
             <label className="block">
               <span className="form-label">Amount paid ($)</span>
@@ -268,7 +339,9 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
                 <button
                   type="button"
                   className="pill"
-                  onClick={() => setPayDollars(dollarsFromCents(entryFeeCents))}
+                  onClick={() =>
+                    setPayDollars(dollarsFromCents(entryFeeCents))
+                  }
                 >
                   Full amount {moneyLabel(entryFeeCents)}
                 </button>
@@ -277,14 +350,17 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
                 <button
                   type="button"
                   className="pill"
-                  onClick={() => setPayDollars(dollarsFromCents(depositCents))}
+                  onClick={() =>
+                    setPayDollars(dollarsFromCents(depositCents))
+                  }
                 >
                   Deposit {moneyLabel(depositCents)}
                 </button>
               )}
             </div>
             <p className="t-meta">
-              Starts at $0. Use Full amount for the entry fee, or type a deposit — balance on Teams tracks what is still owed.
+              Starts at $0. Use Full amount for the entry fee, or type a
+              deposit — balance on Teams tracks what is still owed.
             </p>
           </div>
         </Modal>

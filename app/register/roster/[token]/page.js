@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
+import { directorPersonLabel } from "@/lib/person-name";
 import RegisterBack from "@/components/RegisterBack";
 
 export const metadata = { title: "Sign Your Waiver — AFA Southern Utah" };
@@ -32,15 +33,24 @@ async function getRoster(token) {
 
   const { data: members } = await supabase
     .from("roster_members")
-    .select("id, name, role, signing_token, signed_at")
+    .select(
+      "id, name, role, signing_token, signed_at, legal_first_name, legal_last_name, preferred_name"
+    )
     .eq("registration_id", registration.id)
     .is("removed_at", null)
     .order("created_at", { ascending: true });
 
   // One row per person. The manager is on the roster and signs once, so she
   // is a LABEL on an existing row, not an extra entry.
+  // Show full legal name so teammates can find themselves; preferred only
+  // as a nickname parenthetical when it differs.
   const signers = (members ?? []).map((m) => ({
-    name: m.name,
+    name: directorPersonLabel({
+      legalFirstName: m.legal_first_name,
+      legalLastName: m.legal_last_name,
+      preferredName: m.preferred_name,
+      name: m.name,
+    }),
     role: m.id === registration.manager_member_id ? "manager" : m.role,
     token: m.signing_token,
     signed: Boolean(m.signed_at),
