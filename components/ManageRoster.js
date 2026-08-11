@@ -407,7 +407,7 @@ export default function ManageRoster({
                 </span>
               ) : null}
             </span>
-            <span className="flex flex-wrap gap-2 items-center">
+            <span className="flex flex-wrap gap-1.5 items-center shrink-0">
               {directorMode && m.playerId ? (
                 <SuspendPlayer
                   player={{ id: m.playerId, name: m.name }}
@@ -417,8 +417,8 @@ export default function ManageRoster({
                   buttonLabel="Suspend"
                   buttonClass={
                     m.suspended
-                      ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red text-[12px]"
-                      : "pill text-[12px]"
+                      ? "pill bg-afa-red/10 border-afa-red/40 text-afa-red"
+                      : "pill"
                   }
                 />
               ) : null}
@@ -426,7 +426,7 @@ export default function ManageRoster({
                 <>
                   <button
                     type="button"
-                    className="t-label underline"
+                    className="pill"
                     disabled={busy}
                     onClick={() => remove(m, true)}
                   >
@@ -434,7 +434,7 @@ export default function ManageRoster({
                   </button>
                   <button
                     type="button"
-                    className="t-label text-afa-red underline"
+                    className="pill text-afa-red border-afa-red/30"
                     disabled={busy}
                     onClick={() => remove(m, false)}
                   >
