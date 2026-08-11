@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import SignaturePad from "./SignaturePad";
-import AddressInput from "./AddressInput";
 import RegisterBack from "./RegisterBack";
 import { RELEASE_TEXT, MAX_PLAYERS, MAX_COACHES, MIN_PLAYERS } from "@/lib/waiver";
 import { formatLeagueDateOnly } from "@/lib/league-time";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/region-pref";
 import { rememberRegistration, tokensFromLinks } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
+import PersonWizard from "@/components/forms/PersonWizard";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -191,22 +191,6 @@ export default function RegistrationForm({
 
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
-
-  function updatePlayer(index, field, value) {
-    setPlayers((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  }
-
-  function updateCoach(index, field, value) {
-    setCoaches((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  }
 
   // External host for off-site registration (Halloween → St George Rec, etc.)
   const externalRegisterUrl = tournament?.registration_url
@@ -665,112 +649,17 @@ export default function RegistrationForm({
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p className="text-sm text-afa-ink/70">
-              Legal name is for the waiver. Preferred name is optional — what you
-              go by on the roster.
+              Same flow as other signups: who you are, then address.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Legal first name">
-                <input
-                  className="form-field"
-                  autoComplete="given-name"
-                  value={manager.legalFirstName}
-                  onChange={(e) =>
-                    setManager({ ...manager, legalFirstName: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Legal last name">
-                <input
-                  className="form-field"
-                  autoComplete="family-name"
-                  value={manager.legalLastName}
-                  onChange={(e) =>
-                    setManager({ ...manager, legalLastName: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-            <Field label="Preferred name (optional)">
-              <input
-                className="form-field"
-                value={manager.preferredName}
-                onChange={(e) =>
-                  setManager({ ...manager, preferredName: e.target.value })
-                }
-                placeholder="What you go by if different"
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                type="email"
-                className="form-field"
-                autoComplete="email"
-                value={manager.email}
-                onChange={(e) => setManager({ ...manager, email: e.target.value })}
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Phone #">
-                <input
-                  className="form-field"
-                  value={manager.phone}
-                  onChange={(e) => setManager({ ...manager, phone: e.target.value })}
-                />
-              </Field>
-              <Field label="Cell #">
-                <input
-                  className="form-field"
-                  value={manager.cell}
-                  onChange={(e) => setManager({ ...manager, cell: e.target.value })}
-                />
-              </Field>
-            </div>
-            <Field label="Address">
-              <AddressInput
-                value={manager.address}
-                onChange={(v) => setManager({ ...manager, address: v })}
-                onPlace={(p) =>
-                  setManager((m) => ({
-                    ...m,
-                    // Keep full line in street field; also split city/state/zip
-                    address: p.formatted || p.street || m.address,
-                    city: p.city || m.city,
-                    state: p.state || m.state,
-                    zip: p.zip || m.zip,
-                  }))
-                }
-                name="address-line1"
-                placeholder="Start typing street address…"
-              />
-            </Field>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="City">
-                <input
-                  className="form-field"
-                  value={manager.city}
-                  onChange={(e) => setManager({ ...manager, city: e.target.value })}
-                  autoComplete="address-level2"
-                />
-              </Field>
-              <Field label="State">
-                <input
-                  className="form-field"
-                  value={manager.state}
-                  onChange={(e) => setManager({ ...manager, state: e.target.value })}
-                  autoComplete="address-level1"
-                />
-              </Field>
-              <Field label="Zip">
-                <input
-                  className="form-field"
-                  autoComplete="postal-code"
-                  value={manager.zip}
-                  onChange={(e) => setManager({ ...manager, zip: e.target.value })}
-                />
-              </Field>
-            </div>
+            <PersonWizard
+              embedded
+              variant="manager"
+              value={manager}
+              onChange={setManager}
+              completeLabel="Looks good — use Next below"
+            />
           </div>
         )}
 
@@ -835,59 +724,19 @@ export default function RegistrationForm({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Legal first">
-                    <input
-                      className="form-field"
-                      value={p.legalFirstName}
-                      onChange={(e) =>
-                        updatePlayer(i, "legalFirstName", e.target.value)
-                      }
-                    />
-                  </Field>
-                  <Field label="Legal last">
-                    <input
-                      className="form-field"
-                      value={p.legalLastName}
-                      onChange={(e) =>
-                        updatePlayer(i, "legalLastName", e.target.value)
-                      }
-                    />
-                  </Field>
-                </div>
-                <Field label="Preferred name (optional)">
-                  <input
-                    className="form-field"
-                    value={p.preferredName}
-                    onChange={(e) =>
-                      updatePlayer(i, "preferredName", e.target.value)
-                    }
-                    placeholder="Roster name if different"
-                  />
-                </Field>
-                <Field label="Email">
-                  <input
-                    type="email"
-                    className="form-field"
-                    value={p.email}
-                    onChange={(e) => updatePlayer(i, "email", e.target.value)}
-                  />
-                </Field>
-                <Field label="Birth Date">
-                  <input
-                    type="date"
-                    className="form-field"
-                    value={p.birthDate}
-                    onChange={(e) => updatePlayer(i, "birthDate", e.target.value)}
-                  />
-                </Field>
-                <Field label="Address (optional — player can add when they sign)">
-                  <AddressInput
-                    value={p.address}
-                    onChange={(v) => updatePlayer(i, "address", v)}
-                    placeholder="Start typing address…"
-                  />
-                </Field>
+                <PersonWizard
+                  embedded
+                  variant="player"
+                  value={p}
+                  onChange={(next) => {
+                    setPlayers((prev) => {
+                      const copy = [...prev];
+                      copy[i] = next;
+                      return copy;
+                    });
+                  }}
+                  completeLabel="Player ready"
+                />
               </div>
             ))}
             {players.length < MAX_PLAYERS && (
@@ -912,56 +761,26 @@ export default function RegistrationForm({
                   <button
                     type="button"
                     className="btn-transient"
-                    onClick={() => setCoaches((prev) => prev.filter((_, idx) => idx !== i))}
+                    onClick={() =>
+                      setCoaches((prev) => prev.filter((_, idx) => idx !== i))
+                    }
                   >
                     Remove
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Legal first">
-                    <input
-                      className="form-field"
-                      value={c.legalFirstName}
-                      onChange={(e) =>
-                        updateCoach(i, "legalFirstName", e.target.value)
-                      }
-                    />
-                  </Field>
-                  <Field label="Legal last">
-                    <input
-                      className="form-field"
-                      value={c.legalLastName}
-                      onChange={(e) =>
-                        updateCoach(i, "legalLastName", e.target.value)
-                      }
-                    />
-                  </Field>
-                </div>
-                <Field label="Preferred name (optional)">
-                  <input
-                    className="form-field"
-                    value={c.preferredName}
-                    onChange={(e) =>
-                      updateCoach(i, "preferredName", e.target.value)
-                    }
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Email">
-                    <input
-                      className="form-field"
-                      value={c.email}
-                      onChange={(e) => updateCoach(i, "email", e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Phone">
-                    <input
-                      className="form-field"
-                      value={c.phone}
-                      onChange={(e) => updateCoach(i, "phone", e.target.value)}
-                    />
-                  </Field>
-                </div>
+                <PersonWizard
+                  embedded
+                  variant="coach"
+                  value={c}
+                  onChange={(next) => {
+                    setCoaches((prev) => {
+                      const copy = [...prev];
+                      copy[i] = next;
+                      return copy;
+                    });
+                  }}
+                  completeLabel="Coach ready"
+                />
               </div>
             ))}
             {coaches.length < MAX_COACHES && (

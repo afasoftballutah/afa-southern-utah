@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PersonWizard from "@/components/forms/PersonWizard";
 
 export default function ManageRoster({
   token,
@@ -12,11 +13,14 @@ export default function ManageRoster({
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [pool, setPool] = useState([]);
-  const [legalFirstName, setLegalFirstName] = useState("");
-  const [legalLastName, setLegalLastName] = useState("");
-  const [preferredName, setPreferredName] = useState("");
-  const [email, setEmail] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [person, setPerson] = useState({
+    legalFirstName: "",
+    legalLastName: "",
+    preferredName: "",
+    email: "",
+    birthDate: "",
+  });
+  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [addedLink, setAddedLink] = useState(null);
@@ -27,7 +31,9 @@ export default function ManageRoster({
 
   const loadPool = useCallback(async () => {
     try {
-      const res = await fetch(`/api/register/roster?token=${encodeURIComponent(token)}`);
+      const res = await fetch(
+        `/api/register/roster?token=${encodeURIComponent(token)}`
+      );
       const json = await res.json();
       if (res.ok) setPool(json.pool ?? []);
     } catch {
@@ -39,8 +45,8 @@ export default function ManageRoster({
     loadPool();
   }, [loadPool]);
 
-  async function add() {
-    if (!legalFirstName.trim() || !legalLastName.trim()) {
+  async function submitPerson(p) {
+    if (!p.legalFirstName?.trim() || !p.legalLastName?.trim()) {
       setError("Legal first and last name are required");
       return;
     }
@@ -53,11 +59,11 @@ export default function ManageRoster({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          legalFirstName: legalFirstName.trim(),
-          legalLastName: legalLastName.trim(),
-          preferredName: preferredName.trim() || null,
-          email: email.trim() || null,
-          birthDate: birthDate || null,
+          legalFirstName: p.legalFirstName.trim(),
+          legalLastName: p.legalLastName.trim(),
+          preferredName: p.preferredName?.trim() || null,
+          email: p.email?.trim() || null,
+          birthDate: p.birthDate || null,
         }),
       });
       const json = await res.json();
@@ -67,7 +73,11 @@ export default function ManageRoster({
         if (back) {
           return cur.map((m) =>
             m.id === back.id
-              ? { ...m, removed: false, birthDate: json.member.birthDate ?? m.birthDate }
+              ? {
+                  ...m,
+                  removed: false,
+                  birthDate: json.member.birthDate ?? m.birthDate,
+                }
               : m
           );
         }
@@ -77,7 +87,7 @@ export default function ManageRoster({
             id: json.member.id,
             name: json.member.name,
             role: "player",
-            birthDate: json.member.birthDate || birthDate || null,
+            birthDate: json.member.birthDate || p.birthDate || null,
             signed: false,
             removed: false,
             isManager: false,
@@ -85,11 +95,14 @@ export default function ManageRoster({
         ];
       });
       setAddedLink(json.member);
-      setLegalFirstName("");
-      setLegalLastName("");
-      setPreferredName("");
-      setEmail("");
-      setBirthDate("");
+      setPerson({
+        legalFirstName: "",
+        legalLastName: "",
+        preferredName: "",
+        email: "",
+        birthDate: "",
+      });
+      setAdding(false);
       loadPool();
     } catch (err) {
       setError(err.message);
@@ -100,7 +113,12 @@ export default function ManageRoster({
 
   async function claim(entry) {
     const whose = managerLabel === "Manager" ? "this roster" : "your roster";
-    if (!window.confirm(`Add ${entry.name} from the free-agent pool to ${whose}?`)) return;
+    if (
+      !window.confirm(
+        `Add ${entry.name} from the free-agent pool to ${whose}?`
+      )
+    )
+      return;
     setBusy(true);
     setError("");
     try {
@@ -116,7 +134,11 @@ export default function ManageRoster({
         if (back) {
           return cur.map((m) =>
             m.id === back.id
-              ? { ...m, removed: false, birthDate: json.member.birthDate ?? m.birthDate }
+              ? {
+                  ...m,
+                  removed: false,
+                  birthDate: json.member.birthDate ?? m.birthDate,
+                }
               : m
           );
         }
@@ -142,31 +164,26 @@ export default function ManageRoster({
     }
   }
 
-  async function restore(member) {
-    if (!window.confirm(`Put ${member.name} back on the roster?`)) return;
+  async function remove(m, toPool) {
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/register/roster", {
-        method: "POST",
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, restoreMemberId: member.id }),
+        body: JSON.stringify({
+          token,
+          memberId: m.id,
+          toPool: Boolean(toPool),
+        }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not restore");
+      if (!res.ok) throw new Error(json.error || "Could not remove");
       setMembers((cur) =>
-        cur.map((m) =>
-          m.id === member.id
-            ? {
-                ...m,
-                removed: false,
-                birthDate: json.member?.birthDate ?? m.birthDate,
-                signed: json.member?.signed ?? m.signed,
-              }
-            : m
+        cur.map((row) =>
+          row.id === m.id ? { ...row, removed: true, signed: row.signed } : row
         )
       );
-      setAddedLink(json.member);
       loadPool();
     } catch (err) {
       setError(err.message);
@@ -175,23 +192,22 @@ export default function ManageRoster({
     }
   }
 
-  async function remove(member, toPool) {
-    const msg = toPool
-      ? `Release ${member.name} to the free-agent pool? Other teams in this tournament can claim them.`
-      : `Take ${member.name} off the roster? They will not go into the free-agent pool.`;
-    if (!window.confirm(msg)) return;
+  async function restore(m) {
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/register/roster", {
-        method: "DELETE",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, memberId: member.id, toPool: Boolean(toPool) }),
+        body: JSON.stringify({ token, restoreMemberId: m.id }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not remove");
-      setMembers((cur) => cur.map((m) => (m.id === member.id ? { ...m, removed: true } : m)));
-      if (toPool) loadPool();
+      if (!res.ok) throw new Error(json.error || "Could not restore");
+      setMembers((cur) =>
+        cur.map((row) =>
+          row.id === m.id ? { ...row, removed: false } : row
+        )
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -205,33 +221,42 @@ export default function ManageRoster({
     setTimeout(() => setCopied(""), 1500);
   }
 
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+
   return (
     <div className="space-y-4">
+      {error && (
+        <p className="text-sm font-semibold text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+
       <ul className="card divide-y divide-black/5">
         {active.map((m) => (
-          <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="t-body min-w-0">
-              {m.name}
-              {m.role !== "player" && <span className="t-meta"> &middot; {m.role}</span>}
-              {m.gender ? <span className="t-meta"> &middot; {m.gender}</span> : null}
-              {m.rating ? <span className="t-meta"> &middot; {m.rating}</span> : null}
-              {m.signed ? (
-                <span className="t-meta"> &middot; signed</span>
-              ) : (
-                <span className="t-meta"> &middot; unsigned</span>
-              )}
-              {!m.birthDate && <span className="t-meta"> &middot; no birth date</span>}
+          <li
+            key={m.id}
+            className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+          >
+            <span className="min-w-0">
+              <span className="t-body font-semibold">
+                {m.name}
+                {m.isManager ? (
+                  <span className="t-meta font-normal"> · {managerLabel}</span>
+                ) : null}
+              </span>
+              <span className="t-meta block">
+                {m.signed ? "Signed" : "Waiting to sign"}
+                {m.birthDate ? ` · born ${m.birthDate}` : ""}
+              </span>
             </span>
-            {m.isManager ? (
-              <span className="t-label shrink-0">{managerLabel}</span>
-            ) : canEdit ? (
-              <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+            {canEdit && !m.isManager ? (
+              <span className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="t-label text-afa-flag-blue underline"
+                  className="t-label underline"
                   disabled={busy}
                   onClick={() => remove(m, true)}
-                  title="Other teams can claim them"
                 >
                   To pool
                 </button>
@@ -252,78 +277,82 @@ export default function ManageRoster({
         )}
       </ul>
 
+      {canEdit && removed.length > 0 && (
+        <div className="card p-4 space-y-2">
+          <p className="t-strong">Removed</p>
+          <ul className="divide-y divide-black/5">
+            {removed.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-2 py-2"
+              >
+                <span className="t-meta">{m.name}</span>
+                <button
+                  type="button"
+                  className="btn-transient text-sm"
+                  disabled={busy}
+                  onClick={() => restore(m)}
+                >
+                  Put back
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {canEdit && (
         <div className="card p-4 space-y-3">
-          <p className="t-strong">Add a player</p>
-          <p className="t-meta">
-            Legal name for the waiver. Preferred name and email for the roster.
-            No phone for players.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="block text-sm font-semibold mb-1">Legal first</span>
-              <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
-                value={legalFirstName}
-                onChange={(e) => setLegalFirstName(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="block text-sm font-semibold mb-1">Legal last</span>
-              <input
-                className="w-full border border-afa-navy/30 rounded px-3 py-2"
-                value={legalLastName}
-                onChange={(e) => setLegalLastName(e.target.value)}
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="block text-sm font-semibold mb-1">
-              Preferred name <span className="font-normal text-afa-ink/60">optional</span>
-            </span>
-            <input
-              className="w-full border border-afa-navy/30 rounded px-3 py-2"
-              value={preferredName}
-              onChange={(e) => setPreferredName(e.target.value)}
-              placeholder="What they go by"
-            />
-          </label>
-          <label className="block">
-            <span className="block text-sm font-semibold mb-1">Email</span>
-            <input
-              type="email"
-              className="w-full border border-afa-navy/30 rounded px-3 py-2"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="block text-sm font-semibold mb-1">
-              Birth date <span className="font-normal text-afa-ink/60">— needed for the waiver</span>
-            </span>
-            <input
-              type="date"
-              className="w-full border border-afa-navy/30 rounded px-3 py-2"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className="btn-action w-full"
-            disabled={
-              busy || !legalFirstName.trim() || !legalLastName.trim()
-            }
-            onClick={add}
-          >
-            {busy ? "Working…" : "Add to roster"}
-          </button>
+          {!adding ? (
+            <button
+              type="button"
+              className="btn-action w-full"
+              onClick={() => {
+                setAdding(true);
+                setError("");
+                setAddedLink(null);
+              }}
+            >
+              + Add a player
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <p className="t-strong">Add a player</p>
+                <button
+                  type="button"
+                  className="t-label underline text-afa-muted"
+                  onClick={() => setAdding(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="t-meta">
+                Name &amp; email first, then birth date — same pattern as
+                registration.
+              </p>
+              {busy ? (
+                <p className="t-meta">Saving…</p>
+              ) : (
+                <PersonWizard
+                  key="add-player"
+                  variant="addPlayer"
+                  value={person}
+                  onChange={setPerson}
+                  onComplete={submitPerson}
+                  completeLabel="Add to roster"
+                  fieldClass="w-full border border-afa-navy/30 rounded px-3 py-2"
+                />
+              )}
+            </>
+          )}
 
           {addedLink && (
             <div className="rounded-xl bg-afa-navy/5 p-3 space-y-2">
               <p className="t-meta">
-                {addedLink.name} is on the roster. They can find their name on the
-                team link, or use this one directly.
+                {addedLink.name} is on the roster. They can find their name on
+                the team link, or use this one directly.
               </p>
               <button
                 type="button"
@@ -346,16 +375,14 @@ export default function ManageRoster({
           </p>
           <ul className="divide-y divide-black/5 border border-black/5 rounded-lg">
             {pool.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="t-body">
-                  {p.name}
-                  {p.birth_date && (
-                    <span className="t-meta"> · born {String(p.birth_date).slice(0, 10)}</span>
-                  )}
-                </span>
+              <li
+                key={p.id}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <span className="t-body font-semibold">{p.name}</span>
                 <button
                   type="button"
-                  className="pill shrink-0"
+                  className="btn-transient text-sm"
                   disabled={busy}
                   onClick={() => claim(p)}
                 >
@@ -367,50 +394,16 @@ export default function ManageRoster({
         </div>
       )}
 
-      {error && <p className="t-meta text-afa-red font-semibold">{error}</p>}
-
       {rosterToken && (
-        <button
-          type="button"
-          className="btn-transient w-full"
-          onClick={() =>
-            copy(`${window.location.origin}/register/roster/${rosterToken}`, "roster")
-          }
-        >
-          {copied === "roster" ? "Copied" : "Copy the team link"}
-        </button>
-      )}
-
-      {removed.length > 0 && (
-        <details open={removed.length <= 5}>
-          <summary className="t-meta cursor-pointer">
-            {removed.length} removed
-            {canEdit ? " — restore to put them back" : ""}
-          </summary>
-          <ul className="mt-2 card divide-y divide-black/5">
-            {removed.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between gap-3 px-4 py-2"
-              >
-                <span className="t-meta">
-                  {m.name}
-                  {m.signed ? " · had signed" : ""}
-                </span>
-                {canEdit ? (
-                  <button
-                    type="button"
-                    className="t-label text-afa-flag-blue underline shrink-0"
-                    disabled={busy}
-                    onClick={() => restore(m)}
-                  >
-                    Restore
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <p className="t-meta">
+          Team sign link:{" "}
+          <a
+            className="underline"
+            href={`${origin}/register/roster/${rosterToken}`}
+          >
+            open roster
+          </a>
+        </p>
       )}
     </div>
   );
