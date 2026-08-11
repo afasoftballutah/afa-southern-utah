@@ -25,7 +25,7 @@ function isMainRuleBook(d) {
 
 /**
  * Documents desk. Filter chips pick the kind.
- * Choosing Rules opens the rule-book editor (not a plain text form).
+ * Main rule book appears in the list; Edit opens the structured editor.
  */
 export default function DocsAdmin({
   initialDocs = [],
@@ -40,15 +40,39 @@ export default function DocsAdmin({
   const [error, setError] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
 
-  // Main book is opened via Rules chip — keep it out of the plain list.
-  const listDocs = useMemo(
-    () => docs.filter((d) => !isMainRuleBook(d)),
-    [docs]
-  );
+  // Ensure the main rule book is always a list row (from DB or synthetic).
+  const listDocs = useMemo(() => {
+    const hasBook = docs.some(isMainRuleBook);
+    if (hasBook || !ruleBook) return docs;
+    return [
+      {
+        id: ruleBook.docId || "__rulebook__",
+        slug: RULEBOOK_SLUG,
+        kind: "rules",
+        title: ruleBook.title || ruleBook.source?.title || "Rule book",
+        body: "",
+        source_url: ruleBook.sourceUrl || ruleBook.source?.url || null,
+        published: ruleBook.published !== false,
+        version: null,
+        sort_order: -1,
+        _ruleBook: true,
+      },
+      ...docs,
+    ];
+  }, [docs, ruleBook]);
 
   const filtered = useMemo(() => {
-    if (filter === "all") return listDocs;
-    return listDocs.filter((d) => d.kind === filter);
+    let rows = listDocs;
+    if (filter !== "all") {
+      rows = rows.filter((d) => d.kind === filter);
+    }
+    // Rule book first when present
+    return [...rows].sort((a, b) => {
+      const ar = isMainRuleBook(a) ? 0 : 1;
+      const br = isMainRuleBook(b) ? 0 : 1;
+      if (ar !== br) return ar - br;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
   }, [listDocs, filter]);
 
   function resetForm() {
@@ -61,13 +85,14 @@ export default function DocsAdmin({
   function chooseFilter(value) {
     // Never leave an edit form open under a different filter chip.
     resetForm();
-    if (value === "rules" && ruleBook) {
-      setRulesOpen(true);
-      setFilter("rules");
-      return;
-    }
     setRulesOpen(false);
     setFilter(value);
+  }
+
+  function openRuleBook() {
+    resetForm();
+    setFilter("rules");
+    setRulesOpen(true);
   }
 
   function startNew() {
@@ -81,9 +106,7 @@ export default function DocsAdmin({
 
   function startEdit(d) {
     if (isMainRuleBook(d) && ruleBook) {
-      resetForm();
-      setRulesOpen(true);
-      setFilter("rules");
+      openRuleBook();
       return;
     }
     setRulesOpen(false);
@@ -146,7 +169,13 @@ export default function DocsAdmin({
   }
 
   async function setPublished(d, published) {
-    if (isMainRuleBook(d)) return;
+    if (isMainRuleBook(d) && (!d.id || d.id === "__rulebook__")) {
+      setError("Save the rule book once before publish/unpublish.");
+      return;
+    }
+    if (isMainRuleBook(d)) {
+      // Allow publish toggle on the main book via plain API
+    }
     setBusy(true);
     setError("");
     try {
@@ -167,7 +196,7 @@ export default function DocsAdmin({
 
   async function remove(d) {
     if (isMainRuleBook(d)) {
-      setError("The main rule book cannot be deleted from here.");
+      setError("The main rule book cannot be deleted.");
       return;
     }
     if (
@@ -256,16 +285,14 @@ export default function DocsAdmin({
             </button>
           );
         })}
-        {filter !== "rules" && (
-          <button
-            type="button"
-            className="btn-action ml-auto"
-            onClick={startNew}
-            disabled={busy}
-          >
-            + Add document
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn-action ml-auto"
+          onClick={startNew}
+          disabled={busy}
+        >
+          + Add document
+        </button>
       </div>
 
       {showForm && (
@@ -388,53 +415,64 @@ export default function DocsAdmin({
       <ul className="card divide-y divide-black/5">
         {filtered.length === 0 && (
           <li className="p-6 text-center t-meta">
-            {filter === "rules"
-              ? "Use the Rules chip above to open the rule book."
-              : `No documents${filter !== "all" ? ` in ${kindLabel(filter)}` : ""} yet.`}
+            No documents{filter !== "all" ? ` in ${kindLabel(filter)}` : ""}{" "}
+            yet.
           </li>
         )}
-        {filtered.map((d) => (
-          <li
-            key={d.id}
-            className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
-          >
-            <div className="min-w-0">
-              <p className="t-body font-semibold truncate">{d.title}</p>
-              <p className="t-meta">
-                {kindLabel(d.kind)}
-                {d.published ? "" : " · draft"}
-                {d.version ? ` · ${d.version}` : ""}
-                {d.source_url ? " · has link" : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
-              <button
-                type="button"
-                className="btn-transient text-sm"
-                onClick={() => startEdit(d)}
-                disabled={busy}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                className="btn-transient text-sm"
-                onClick={() => setPublished(d, !d.published)}
-                disabled={busy}
-              >
-                {d.published ? "Unpublish" : "Publish"}
-              </button>
-              <button
-                type="button"
-                className="btn-transient text-sm text-red-700"
-                onClick={() => remove(d)}
-                disabled={busy}
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
+        {filtered.map((d) => {
+          const mainBook = isMainRuleBook(d);
+          const sectionN = ruleBook?.sections?.length;
+          return (
+            <li
+              key={d.id}
+              className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="t-body font-semibold truncate">{d.title}</p>
+                <p className="t-meta">
+                  {kindLabel(d.kind)}
+                  {mainBook && sectionN
+                    ? ` · ${sectionN} sections · live on /rules`
+                    : ""}
+                  {!mainBook && (d.published ? "" : " · draft")}
+                  {!mainBook && d.version ? ` · ${d.version}` : ""}
+                  {!mainBook && d.source_url ? " · has link" : ""}
+                  {mainBook && d.published === false ? " · draft" : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button
+                  type="button"
+                  className="btn-transient text-sm"
+                  onClick={() => startEdit(d)}
+                  disabled={busy}
+                >
+                  {mainBook ? "Open" : "Edit"}
+                </button>
+                {!mainBook && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-transient text-sm"
+                      onClick={() => setPublished(d, !d.published)}
+                      disabled={busy}
+                    >
+                      {d.published ? "Unpublish" : "Publish"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-transient text-sm text-red-700"
+                      onClick={() => remove(d)}
+                      disabled={busy}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
