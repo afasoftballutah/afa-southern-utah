@@ -14,10 +14,11 @@ import {
 import { rememberRegistration, tokensFromLinks } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
 import PersonWizard from "@/components/forms/PersonWizard";
-import ManagerPlayerFields, {
+import {
   managerPlayerDisplay,
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
+import CompactPlayerAdd from "@/components/CompactPlayerAdd";
 
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Coaches", "Sign & Submit"];
 
@@ -192,7 +193,8 @@ export default function RegistrationForm({
     zip: "",
   });
 
-  const [players, setPlayers] = useState([emptyPlayer(), emptyPlayer(), emptyPlayer()]);
+  // Start empty — managers add one at a time (compact list).
+  const [players, setPlayers] = useState([]);
   const [coaches, setCoaches] = useState([emptyCoach()]);
 
   const [agreed, setAgreed] = useState(false);
@@ -668,94 +670,22 @@ export default function RegistrationForm({
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <p className="text-sm text-afa-ink/70">
-              Pick someone already on file, or enter{" "}
-              <strong>first name</strong>, <strong>last name</strong>, and{" "}
-              <strong>gender</strong>. They complete legal name, preferred
-              name, birth date, email, and address when they sign their own
-              waiver. At least one player is required.
-            </p>
-            {/* Managers play. If she has not listed herself, offer it rather
-                than adding it behind her back — the route adds her either way. */}
-            {personDisplay(manager) &&
-              !players.some((p) =>
-                sameName(personDisplay(p), personDisplay(manager))
-              ) && (
-              <button
-                type="button"
-                onClick={() =>
-                  setPlayers((prev) => [
-                    {
-                      firstName: manager.legalFirstName,
-                      lastName: manager.legalLastName,
-                      gender: "",
-                    },
-                    ...prev,
-                  ])
-                }
-                className="form-field text-left"
-              >
-                <span className="font-semibold text-afa-navy">
-                  Add {personDisplay(manager)} to the roster
-                </span>
-                <span className="block text-afa-ink/70">
-                  Managers are normally on their own team. You sign one waiver
-                  either way — pick M/F for yourself after adding.
-                </span>
-              </button>
-            )}
-            {players.map((p, i) => (
-              <div key={i} className="form-surface p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold text-sm">
-                    Player {i + 1}
-                    {personDisplay(p) ? (
-                      <span className="font-normal text-afa-ink/60">
-                        {" "}
-                        · {personDisplay(p)}
-                        {p.gender ? ` · ${p.gender}` : ""}
-                      </span>
-                    ) : null}
-                  </p>
-                  {players.length > MIN_PLAYERS && (
-                    <button
-                      type="button"
-                      className="btn-transient"
-                      onClick={() =>
-                        setPlayers((prev) => prev.filter((_, idx) => idx !== i))
-                      }
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <ManagerPlayerFields
-                  value={p}
-                  onChange={(next) => {
-                    setPlayers((prev) => {
-                      const copy = [...prev];
-                      copy[i] = next;
-                      return copy;
-                    });
-                  }}
-                  knownPlayers={knownPlayers}
-                  excludePlayerIds={players
-                    .map((x, idx) => (idx !== i ? x.playerId : null))
-                    .filter(Boolean)}
-                />
-              </div>
-            ))}
-            {players.length < MAX_PLAYERS && (
-              <button
-                type="button"
-                className="btn-transient w-full"
-                onClick={() => setPlayers((prev) => [...prev, emptyPlayer()])}
-              >
-                + Add Player
-              </button>
-            )}
-          </div>
+          <CompactPlayerAdd
+            players={players}
+            onChange={setPlayers}
+            knownPlayers={knownPlayers}
+            maxPlayers={MAX_PLAYERS}
+            minPlayers={MIN_PLAYERS}
+            managerOffer={
+              personDisplay(manager)
+                ? {
+                    firstName: manager.legalFirstName,
+                    lastName: manager.legalLastName,
+                    display: personDisplay(manager),
+                  }
+                : null
+            }
+          />
         )}
 
         {step === 4 && (

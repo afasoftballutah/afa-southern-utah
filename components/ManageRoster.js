@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import ManagerPlayerFields, {
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
   managerPlayerDisplay,
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
@@ -31,12 +31,45 @@ export default function ManageRoster({
   });
   // person.playerId set when manager picks from the directory search.
   const [adding, setAdding] = useState(false);
+  const [addMode, setAddMode] = useState("search"); // search | manual
+  const [query, setQuery] = useState("");
+  const [listOpen, setListOpen] = useState(false);
+  const [needGender, setNeedGender] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [dualProbe, setDualProbe] = useState(null); // { warnings, otherTeams, hasSameGender }
   const [addedLink, setAddedLink] = useState(null);
   const [copied, setCopied] = useState("");
+
+  const excludeIds = useMemo(
+    () =>
+      new Set(
+        members.filter((m) => !m.removed && m.playerId).map((m) => m.playerId)
+      ),
+    [members]
+  );
+  const searchOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return (knownPlayers ?? [])
+      .filter((p) => !excludeIds.has(p.id))
+      .filter(
+        (p) =>
+          (p.search && p.search.includes(q)) ||
+          (p.label && p.label.toLowerCase().includes(q))
+      )
+      .slice(0, 12);
+  }, [knownPlayers, excludeIds, query]);
+
+  function resetAddForm() {
+    setPerson({ firstName: "", lastName: "", gender: "", playerId: null });
+    setQuery("");
+    setAddMode("search");
+    setNeedGender(null);
+    setListOpen(false);
+    setDualProbe(null);
+  }
 
   const active = members.filter((m) => !m.removed);
   const removed = members.filter((m) => m.removed);
@@ -86,27 +119,17 @@ export default function ManageRoster({
     }
   }
 
-  function onPersonChange(next) {
-    setPerson(next);
-    setError("");
-    // Probe when we have a directory pick or a complete name
-    if (next.playerId || managerPlayerReady(next)) {
-      probeDual(next);
-    } else {
-      setDualProbe(null);
-    }
-  }
-
-  async function submitPerson() {
-    if (!managerPlayerReady(person)) {
+  async function submitPerson(override) {
+    const p = override || person;
+    if (!managerPlayerReady(p)) {
       setError("First name, last name, and gender (M/F) are required");
       return;
     }
-    const probe = dualProbe || (await probeDual(person));
+    const probe = await probeDual(p);
     if (probe?.otherTeams?.length) {
       const teams = probe.otherTeams.map((t) => t.teamName).join(", ");
       const ok = window.confirm(
-        `${managerPlayerDisplay(person)} is already on another same-gender team: ${teams}.\n\n` +
+        `${managerPlayerDisplay(p)} is already on another same-gender team: ${teams}.\n\n` +
           `Not allowed without review: two Men's, two Women's, or two Coed teams.\n` +
           `(Coed + Men's or Coed + Women's is fine.)\n` +
           `You can still add them; both teams will show a Check flag for the director.\n\n` +
@@ -124,10 +147,10 @@ export default function ManageRoster({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          firstName: person.firstName.trim(),
-          lastName: person.lastName.trim(),
-          gender: person.gender,
-          playerId: person.playerId || null,
+          firstName: p.firstName.trim(),
+          lastName: p.lastName.trim(),
+          gender: p.gender,
+          playerId: p.playerId || null,
         }),
       });
       const json = await res.json();
@@ -155,12 +178,12 @@ export default function ManageRoster({
             id: json.member.id,
             name: json.member.name,
             role: "player",
-            gender: json.member.gender || person.gender,
+            gender: json.member.gender || p.gender,
             birthDate: null,
             signed: false,
             removed: false,
             isManager: false,
-            playerId: json.member.playerId || person.playerId || null,
+            playerId: json.member.playerId || p.playerId || null,
             dualRosterTeams: dualTeams,
           },
         ];
@@ -169,8 +192,7 @@ export default function ManageRoster({
       if (json.warnings?.length) {
         setWarning(json.warnings.join(" "));
       }
-      setPerson({ firstName: "", lastName: "", gender: "", playerId: null });
-      setDualProbe(null);
+      resetAddForm();
       setAdding(false);
       loadPool();
     } catch (err) {
@@ -178,6 +200,23 @@ export default function ManageRoster({
     } finally {
       setBusy(false);
     }
+  }
+
+  function pickKnown(hit) {
+    if (!hit) return;
+    const base = {
+      firstName: hit.firstName || "",
+      lastName: hit.lastName || "",
+      gender: hit.gender || "",
+      playerId: hit.id,
+    };
+    if (base.gender === "M" || base.gender === "F") {
+      submitPerson(base);
+      return;
+    }
+    setNeedGender(base);
+    setQuery("");
+    setListOpen(false);
   }
 
   async function claim(entry) {
@@ -436,93 +475,232 @@ export default function ManageRoster({
       )}
 
       {canEdit && (
-        <div className="card p-4 space-y-3">
-          {!adding ? (
+        <div className="card p-3 space-y-2">
+          {needGender && (
+            <div className="space-y-2">
+              <p className="t-body text-sm font-semibold">
+                {managerPlayerDisplay(needGender)} — pick gender
+              </p>
+              <div className="flex gap-2">
+                {["M", "F"].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className="flex-1 rounded-lg border-2 border-afa-navy/20 py-2 font-bold text-sm"
+                    disabled={busy}
+                    onClick={() => {
+                      const next = { ...needGender, gender: g };
+                      setNeedGender(null);
+                      submitPerson(next);
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="t-label underline text-afa-muted"
+                onClick={() => setNeedGender(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {!needGender && !adding && (
             <button
               type="button"
-              className="btn-action w-full"
+              className="pill pill-solid w-full justify-center"
               onClick={() => {
+                resetAddForm();
                 setAdding(true);
                 setError("");
                 setWarning("");
-                setDualProbe(null);
                 setAddedLink(null);
               }}
             >
-              + Add a player
+              + Add player
             </button>
-          ) : (
-            <>
+          )}
+
+          {!needGender && adding && (
+            <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="t-strong">Add a player</p>
+                <p className="t-strong text-sm">Add player</p>
                 <button
                   type="button"
                   className="t-label underline text-afa-muted"
                   onClick={() => {
+                    resetAddForm();
                     setAdding(false);
-                    setDualProbe(null);
                   }}
                   disabled={busy}
                 >
                   Cancel
                 </button>
               </div>
-              <p className="t-meta">
-                Search for someone already on file, or type first name, last
-                name, and gender. They fill in legal name, preferred name, birth
-                date, email, and address when they sign their waiver.
+              <p className="t-meta text-[12px]">
+                Search the directory — pick to add. Or type a new name.
               </p>
-              {dualProbe?.otherTeams?.length > 0 && (
-                <div
-                  className={
-                    "rounded-lg border px-3 py-2 text-sm " +
-                    (dualProbe.hasSameGender
-                      ? "border-afa-red/40 bg-afa-red/10 text-afa-red font-semibold"
-                      : "border-amber-300 bg-amber-50 text-amber-950 font-semibold")
-                  }
-                  role="status"
-                >
-                  {dualProbe.warnings.map((w, i) => (
-                    <p key={i} className={i > 0 ? "mt-1" : undefined}>
-                      {w}
-                    </p>
-                  ))}
+
+              {addMode === "search" && knownPlayers.length > 0 && (
+                <div className="relative">
+                  <input
+                    type="search"
+                    className="form-field"
+                    value={query}
+                    placeholder="Search last name, first name…"
+                    autoComplete="off"
+                    autoFocus
+                    disabled={busy}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setListOpen(true);
+                    }}
+                    onFocus={() => setListOpen(true)}
+                    onBlur={() => setTimeout(() => setListOpen(false), 150)}
+                  />
+                  {listOpen && query.trim() && (
+                    <ul className="absolute z-20 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-afa-navy/15 bg-white shadow-lg">
+                      {searchOptions.length === 0 ? (
+                        <li className="px-3 py-2 t-meta text-sm">
+                          No match —{" "}
+                          <button
+                            type="button"
+                            className="underline font-semibold"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              const parts = query.trim().split(/\s+/);
+                              setPerson({
+                                firstName: parts[0] || "",
+                                lastName: parts.slice(1).join(" ") || "",
+                                gender: "",
+                                playerId: null,
+                              });
+                              setAddMode("manual");
+                            }}
+                          >
+                            add as new
+                          </button>
+                        </li>
+                      ) : (
+                        searchOptions.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-afa-navy/5"
+                              disabled={busy}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => pickKnown(p)}
+                            >
+                              <span className="font-semibold">{p.label}</span>
+                              {p.gender ? (
+                                <span className="t-meta"> · {p.gender}</span>
+                              ) : null}
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    className="t-label underline text-afa-muted mt-1"
+                    onClick={() => setAddMode("manual")}
+                  >
+                    New player (type name)
+                  </button>
                 </div>
               )}
-              <ManagerPlayerFields
-                value={person}
-                onChange={onPersonChange}
-                knownPlayers={knownPlayers}
-                excludePlayerIds={members
-                  .filter((m) => !m.removed && m.playerId)
-                  .map((m) => m.playerId)}
-                fieldClass="w-full border border-afa-navy/30 rounded px-3 py-2"
-              />
-              <button
-                type="button"
-                className="btn-action w-full"
-                disabled={busy || !managerPlayerReady(person)}
-                onClick={submitPerson}
-              >
-                {busy
-                  ? "Saving…"
-                  : `Add ${managerPlayerDisplay(person) || "to roster"}`}
-              </button>
-            </>
+
+              {(addMode === "manual" || knownPlayers.length === 0) && (
+                <div className="space-y-2">
+                  {knownPlayers.length > 0 && (
+                    <button
+                      type="button"
+                      className="t-label underline text-afa-muted"
+                      onClick={() => setAddMode("search")}
+                    >
+                      ← Search directory
+                    </button>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="form-field"
+                      placeholder="First"
+                      value={person.firstName}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setPerson((d) => ({
+                          ...d,
+                          firstName: e.target.value,
+                          playerId: null,
+                        }))
+                      }
+                    />
+                    <input
+                      className="form-field"
+                      placeholder="Last"
+                      value={person.lastName}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setPerson((d) => ({
+                          ...d,
+                          lastName: e.target.value,
+                          playerId: null,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    {["M", "F"].map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        disabled={busy}
+                        className={
+                          "flex-1 rounded-lg border-2 py-2 font-bold text-sm " +
+                          (person.gender === g
+                            ? "border-afa-navy bg-afa-navy text-white"
+                            : "border-afa-navy/20")
+                        }
+                        onClick={() =>
+                          setPerson((d) => ({ ...d, gender: g }))
+                        }
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-action w-full"
+                    disabled={busy || !managerPlayerReady(person)}
+                    onClick={() => submitPerson()}
+                  >
+                    {busy ? "Saving…" : "Add to roster"}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {addedLink && (
-            <div className="rounded-xl bg-afa-navy/5 p-3 space-y-2">
-              <p className="t-meta">
-                {addedLink.name} is on the roster. They complete their own
-                details and sign on their link (or the team roster link).
+            <div className="rounded-lg bg-afa-navy/5 px-3 py-2 space-y-1">
+              <p className="t-meta text-[13px]">
+                {addedLink.name} added
+                {addedLink.dualRosterTeams?.length
+                  ? ` · also on ${addedLink.dualRosterTeams.join(", ")}`
+                  : ""}
+                .
               </p>
               <button
                 type="button"
-                className="btn-transient w-full"
+                className="t-label underline"
                 onClick={() => copy(addedLink.signLink, "added")}
               >
-                {copied === "added" ? "Copied" : "Copy their signing link"}
+                {copied === "added" ? "Copied" : "Copy signing link"}
               </button>
             </div>
           )}
