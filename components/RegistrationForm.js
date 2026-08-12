@@ -24,13 +24,6 @@ import { PageDots } from "@/components/forms/SoftField";
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
 // Room flow: door (tournament) → rooms → exit (confirmation).
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Sign & Submit"];
-const ROOM_WELCOME = [
-  "Pick the event. That’s the door in — everything after hangs on this choice.",
-  "Name the team and which division they play.",
-  "Who runs the team? We’ll use this for the roster and manage link.",
-  "Add who plays. Search the directory or type a new name.",
-  "Agree to the release. Sign now or later — submitting gets the team on the list.",
-];
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
@@ -428,11 +421,6 @@ export default function RegistrationForm({
           </p>
         </div>
         <PageDots page={step + 1} total={STEPS.length} />
-        {ROOM_WELCOME[step] && (
-          <p className="text-sm text-afa-ink/75 leading-relaxed">
-            {ROOM_WELCOME[step]}
-          </p>
-        )}
       </div>
 
       <div className="form-surface p-4 space-y-4">
