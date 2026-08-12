@@ -9,25 +9,45 @@ import {
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
 
+function seatList(r) {
+  if (Array.isArray(r.seats) && r.seats.length > 0) return r.seats;
+  if (r.seatLabel || r.genderKey) {
+    return [
+      {
+        genderKey: r.genderKey,
+        seatLabel: r.seatLabel,
+        genderLabel: r.genderLabel,
+        levelLabel: r.levelLabel,
+        divisionId: r.divisionId,
+      },
+    ];
+  }
+  return [];
+}
+
 function TeamRow({ r, slug, onForget }) {
+  const seats = seatList(r);
+  const mixed = new Set(seats.map((s) => s.genderKey).filter(Boolean)).size > 1;
+  const tone = !mixed && (seats[0]?.genderKey || r.genderKey);
   return (
     <li
       className={
         "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-        (r.genderKey
-          ? "reg-team-row--" + r.genderKey
-          : "border-afa-navy/10 bg-white")
+        (tone ? "reg-team-row--" + tone : "border-afa-navy/10 bg-white")
       }
     >
       <div className="min-w-0">
         <p className="team-name font-semibold truncate">{r.teamName}</p>
         <p className="t-meta flex flex-wrap items-center gap-1.5 mt-0.5">
-          <DivisionSeatMark
-            genderKey={r.genderKey}
-            seatLabel={r.seatLabel}
-            genderLabel={r.genderLabel}
-            levelLabel={r.levelLabel}
-          />
+          {seats.map((s) => (
+            <DivisionSeatMark
+              key={s.divisionId || s.seatLabel}
+              genderKey={s.genderKey}
+              seatLabel={s.seatLabel}
+              genderLabel={s.genderLabel}
+              levelLabel={s.levelLabel}
+            />
+          ))}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -124,7 +144,22 @@ export default function FindTournamentTeam({
     if (selectedTeam === name) onTeam?.("");
   }
 
-  const shown = [...local];
+  const covered = new Map();
+  for (const r of local) {
+    if (!covered.has(r.teamName)) covered.set(r.teamName, new Set());
+    if (r.seatLabel) covered.get(r.teamName).add(r.seatLabel);
+  }
+  const firstOf = new Set();
+  const shown = local.map((r) => {
+    const dir = teams.find((t) => t.name === r.teamName);
+    if (!dir?.seats?.length) return r;
+    if (firstOf.has(r.teamName)) return r;
+    firstOf.add(r.teamName);
+    const have = covered.get(r.teamName) || new Set();
+    const extra = dir.seats.filter((s) => !have.has(s.seatLabel));
+    if (extra.length === 0) return r;
+    return { ...r, seats: [...seatList(r), ...extra] };
+  });
   if (selectedTeam && !shown.some((r) => r.teamName === selectedTeam)) {
     const t = teams.find((x) => x.name === selectedTeam);
     if (t) {
@@ -135,6 +170,7 @@ export default function FindTournamentTeam({
         genderLabel: t.genderLabel,
         levelLabel: t.levelLabel,
         seatLabel: t.seatLabel,
+        seats: t.seats,
       });
     }
   }
@@ -217,9 +253,11 @@ export default function FindTournamentTeam({
                       role="option"
                       className={
                         "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-                        (t.genderKey
-                          ? "reg-team-row--" + t.genderKey
-                          : "border-afa-navy/10 bg-white")
+                        (new Set((t.seats ?? []).map((s) => s.genderKey)).size > 1
+                          ? "border-afa-navy/10 bg-white"
+                          : t.genderKey
+                            ? "reg-team-row--" + t.genderKey
+                            : "border-afa-navy/10 bg-white")
                       }
                       onClick={() => pick(t)}
                     >
@@ -233,12 +271,17 @@ export default function FindTournamentTeam({
                           </span>
                         ) : null}
                       </span>
-                      <DivisionSeatMark
-                        genderKey={t.genderKey}
-                        seatLabel={t.seatLabel}
-                        genderLabel={t.genderLabel}
-                        levelLabel={t.levelLabel}
-                      />
+                      <span className="flex flex-wrap gap-1.5 shrink-0">
+                        {(t.seats?.length ? t.seats : [t]).map((s) => (
+                          <DivisionSeatMark
+                            key={s.divisionId || s.seatLabel}
+                            genderKey={s.genderKey}
+                            seatLabel={s.seatLabel}
+                            genderLabel={s.genderLabel}
+                            levelLabel={s.levelLabel}
+                          />
+                        ))}
+                      </span>
                     </button>
                   </li>
                 );
