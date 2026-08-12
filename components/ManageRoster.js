@@ -365,7 +365,7 @@ export default function ManageRoster({
           <li
             key={m.id}
             className={
-              "flex flex-wrap items-center justify-between gap-2 px-4 py-3 " +
+              "flex items-center justify-between gap-2 px-3 py-2 " +
               (m.suspended
                 ? "bg-afa-red/[0.06]"
                 : (m.dualRosterTeams ?? []).length
@@ -373,41 +373,36 @@ export default function ManageRoster({
                   : "")
             }
           >
-            <span className="min-w-0">
-              <span className="t-body font-semibold">
-                {m.name}
-                {m.gender ? (
-                  <span className="t-meta font-normal"> · {m.gender}</span>
-                ) : null}
-                {m.isManager ? (
-                  <span className="t-meta font-normal"> · {managerLabel}</span>
-                ) : null}
-                {m.suspended ? (
-                  <span className="t-meta font-semibold text-afa-red">
-                    {" "}
-                    · Suspended
-                  </span>
-                ) : null}
-                {(m.dualRosterTeams ?? []).length > 0 ? (
-                  <span className="t-meta font-semibold text-amber-900">
-                    {" "}
-                    · Also on {m.dualRosterTeams.join(", ")}
-                  </span>
-                ) : null}
-              </span>
-              <span className="t-meta block">
-                {m.signed ? "Signed" : "Waiting to sign"}
-                {m.suspended
-                  ? " · does not count toward roster requirements"
-                  : ""}
-              </span>
-              {m.suspended && m.suspension?.note ? (
-                <span className="t-meta block text-[12px] text-afa-red/90">
-                  {m.suspension.note}
+            <span className="t-body min-w-0 truncate">
+              <span className="font-semibold">{m.name}</span>
+              {m.gender ? (
+                <span className="t-meta font-normal"> · {m.gender}</span>
+              ) : null}
+              {m.isManager ? (
+                <span className="t-meta font-normal"> · {managerLabel}</span>
+              ) : null}
+              {m.suspended ? (
+                <span className="t-meta font-semibold text-afa-red">
+                  {" "}
+                  · Suspended
                 </span>
               ) : null}
+              {(m.dualRosterTeams ?? []).length > 0 ? (
+                <span className="t-meta font-semibold text-amber-900">
+                  {" "}
+                  · Also on {m.dualRosterTeams.join(", ")}
+                </span>
+              ) : null}
+              <span
+                className={
+                  "t-meta font-normal" + (m.signed ? " text-afa-go" : "")
+                }
+              >
+                {" "}
+                · {m.signed ? "Signed" : "Waiting to sign"}
+              </span>
             </span>
-            <span className="flex flex-wrap gap-1.5 items-center shrink-0">
+            <span className="flex gap-1.5 items-center shrink-0">
               {m.signPath || m.signed ? (
                 <WaiverSignLink href={m.signPath} signed={m.signed} />
               ) : null}
