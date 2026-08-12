@@ -175,7 +175,7 @@ function buildPrintHtml() {
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   <style>
-    @page { margin: 0.6in; }
+    @page { size: landscape; margin: 0.5in; }
     body {
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       font-size: 10pt;
