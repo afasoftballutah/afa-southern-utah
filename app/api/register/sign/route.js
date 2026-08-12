@@ -211,7 +211,11 @@ export async function POST(request) {
       birthDate: patch.birth_date || birth || null,
       legalFirstName: patch.legal_first_name || first || null,
       legalLastName: patch.legal_last_name || last || null,
+      preferredName: patch.preferred_name || preferred || null,
       name: patch.name || member.name || null,
+      address: patch.address || addressTrim || null,
+      email: patch.email || emailTrim || null,
+      gender: patch.gender || genderTrim || null,
     };
     await recordWaiverSignEvent(supabase, {
       tournamentId: member.registrations?.tournament_id ?? null,

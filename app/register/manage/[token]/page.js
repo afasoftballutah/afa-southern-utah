@@ -8,6 +8,7 @@ import RegisterBack from "@/components/RegisterBack";
 import RememberManageVisit from "@/components/RememberManageVisit";
 import DivisionSeatMark from "@/components/DivisionSeatMark";
 import { seatFromDivision } from "@/lib/division-layout";
+import { healTournamentWaivers } from "@/lib/tournament-waiver";
 
 export const metadata = { title: "Manage Your Roster — AFA Southern Utah" };
 
@@ -23,12 +24,16 @@ async function getManageable(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, status, roster_token, manager_member_id, tournaments(name, slug), divisions(id, name, display_name, gender)"
+      "id, team_name, class, status, roster_token, manager_member_id, tournament_id, tournaments(name, slug), divisions(id, name, display_name, gender)"
     )
     .eq("manage_token", token)
     .maybeSingle();
 
   if (!registration) return null;
+
+  if (registration.tournament_id) {
+    await healTournamentWaivers(supabase, registration.tournament_id);
+  }
 
   const [{ data: members }, knownPlayers] = await Promise.all([
     supabase

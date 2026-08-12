@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import { directorPersonLabel } from "@/lib/person-name";
+import { healTournamentWaivers } from "@/lib/tournament-waiver";
 import RegisterBack from "@/components/RegisterBack";
 import DivisionSeatMark from "@/components/DivisionSeatMark";
 import { seatFromDivision } from "@/lib/division-layout";
@@ -26,12 +27,16 @@ async function getRoster(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, manager_member_id, tournaments(name, slug), divisions(name, display_name, gender)"
+      "id, team_name, class, manager_member_id, tournament_id, tournaments(name, slug), divisions(name, display_name, gender)"
     )
     .eq("roster_token", token)
     .maybeSingle();
 
   if (!registration) return null;
+
+  if (registration.tournament_id) {
+    await healTournamentWaivers(supabase, registration.tournament_id);
+  }
 
   const { data: members } = await supabase
     .from("roster_members")

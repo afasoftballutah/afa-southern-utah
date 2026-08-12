@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import { getActiveWaiver } from "@/lib/site-docs";
-import {
-  findTournamentWaiver,
-  tournamentPersonKey,
-} from "@/lib/tournament-waiver";
+import { healTournamentWaivers } from "@/lib/tournament-waiver";
 import SignRosterMember from "@/components/SignRosterMember";
 import RegisterBack from "@/components/RegisterBack";
 
@@ -43,18 +40,17 @@ async function getSignerByToken(token) {
   const isManager = member.registrations?.manager_member_id === member.id;
   const reg = member.registrations;
 
-  // Already signed on this seat, or another seat in the same tournament.
+  // Already signed on this seat, or another seat in the same tournament
+  // (one waiver per person per event — Men's and Coed share it).
   let alreadySigned = Boolean(member.signed_at);
   if (!alreadySigned && reg?.tournament_id) {
-    const personKey = tournamentPersonKey(member);
-    if (personKey) {
-      const existing = await findTournamentWaiver(supabase, {
-        tournamentId: reg.tournament_id,
-        personKey,
-        exceptMemberId: member.id,
-      });
-      alreadySigned = Boolean(existing);
-    }
+    await healTournamentWaivers(supabase, reg.tournament_id);
+    const { data: again } = await supabase
+      .from("roster_members")
+      .select("signed_at")
+      .eq("id", member.id)
+      .maybeSingle();
+    alreadySigned = Boolean(again?.signed_at);
   }
 
   return {

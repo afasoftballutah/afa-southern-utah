@@ -14,6 +14,7 @@ import {
   partitionRosterBySuspension,
 } from "@/lib/suspensions";
 import { dualRosterCheckForRoster } from "@/lib/roster-eligibility";
+import { healTournamentWaivers } from "@/lib/tournament-waiver";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
@@ -35,6 +36,10 @@ async function load(id) {
     .eq("id", id)
     .maybeSingle();
   if (!registration) return null;
+
+  if (registration.tournament_id) {
+    await healTournamentWaivers(supabase, registration.tournament_id);
+  }
 
   const [
     { data: members },
