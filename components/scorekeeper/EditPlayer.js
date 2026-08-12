@@ -167,16 +167,16 @@ export default function EditPlayer({ player, buttonClass = "pill" }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <SoftField
               label="Birth date"
-              explainer="YYYY-MM-DD"
               type="date"
+              required
               value={form.birthDate}
               onChange={set("birthDate")}
               autoComplete="bday"
             />
             <SoftField
               label="Email"
-              explainer="Contact email (required)"
               type="email"
+              required
               value={form.email}
               onChange={set("email")}
               autoComplete="email"

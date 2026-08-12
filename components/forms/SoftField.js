@@ -15,6 +15,7 @@ export default function SoftField({
   autoComplete,
   inputMode,
   list,
+  required = false,
   className = "",
   inputClassName = "form-field",
 }) {
@@ -32,6 +33,7 @@ export default function SoftField({
         autoComplete={autoComplete}
         inputMode={inputMode}
         list={list}
+        required={required}
         value={value ?? ""}
         onChange={onChange}
         placeholder={placeholder}

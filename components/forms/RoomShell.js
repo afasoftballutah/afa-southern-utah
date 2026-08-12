@@ -16,13 +16,13 @@ import WorkFocus from "@/components/forms/WorkFocus";
  * Soft field for room forms. Label always on.
  * optional text → placeholder "optional" inside the field.
  * optional date/time → " · optional" on the label (native date UI cannot host a placeholder).
- * required is enforced by Continue disabled, not a stamp under every field.
+ * required (e.g. birth date) → never optional; Continue + HTML required; no optional copy.
  */
 export function RoomField({
   label,
   explainer,
   optional = false,
-  required: _required = false,
+  required = false,
   hint: _hint,
   className = "",
   inputClassName = "form-field",
@@ -31,13 +31,15 @@ export function RoomField({
   type,
   ...rest
 }) {
+  // Required wins — birth date and other required fields are never "optional".
+  const isOptional = optional && !required;
   const isDateLike =
     type === "date" || type === "time" || type === "datetime-local";
-  // Text: "optional" in the box. Date: never overlay — only mark the label.
+  // Text: "optional" in the box. Date: mark the label only (no overlay).
   const shownLabel =
-    optional && isDateLike ? `${label} · optional` : label;
-  let tip = optional && !isDateLike ? "optional" : explainer;
-  if (!optional && tip === label) tip = undefined;
+    isOptional && isDateLike ? `${label} · optional` : label;
+  let tip = isOptional && !isDateLike ? "optional" : explainer;
+  if (!isOptional && tip === label) tip = undefined;
   return (
     <div className={"min-w-0 " + className}>
       <SoftField
@@ -47,6 +49,7 @@ export function RoomField({
         list={list}
         inputMode={inputMode}
         type={type}
+        required={required}
         {...rest}
       />
     </div>
