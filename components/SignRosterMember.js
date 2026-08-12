@@ -12,7 +12,7 @@ const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing"
 
 /** Identity attestation — shown next to the AFA release (which stays verbatim). */
 export const ID_ATTESTATION_TEXT =
-  "I certify that the information I provide on this form — including my legal name, preferred name (if any), date of birth, gender, email, and address — is true and correct, and is consistent with official identification that I can present on game day (for example a driver’s license or other government-issued ID).";
+  "The information I provide on this form is true and correct. My legal name and date of birth are consistent with official identification I can present on game day (for example a driver’s license or other government-issued ID).";
 
 function splitName(full) {
   const parts = String(full ?? "")
