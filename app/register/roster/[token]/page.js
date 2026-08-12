@@ -118,12 +118,12 @@ export default async function RosterSigningPage({ params }) {
         </p>
       </div>
 
-      <ul className={"card divide-y divide-black/5 " + rowTone}>
+      <ul className="card divide-y divide-black/5">
         {roster.signers.map((s) => (
           <li key={s.token}>
             {s.signed ? (
-              <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <span className="t-body text-afa-ink/50">
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="t-body text-afa-ink/50 truncate min-w-0">
                   {s.name}
                   {needsRole(s) && <span className="t-meta"> &middot; {s.role}</span>}
                 </span>
@@ -132,12 +132,9 @@ export default async function RosterSigningPage({ params }) {
             ) : (
               <Link
                 href={`/register/sign/${s.token}`}
-                className={
-                  "flex items-center justify-between gap-3 px-4 py-3 min-h-[44px] roster-sign-row" +
-                  (seat?.genderKey ? " roster-sign-row--" + seat.genderKey : "")
-                }
+                className="flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] roster-sign-row"
               >
-                <span className="t-body">
+                <span className="t-body truncate min-w-0">
                   {s.name}
                   {needsRole(s) && <span className="t-meta"> &middot; {s.role}</span>}
                 </span>
