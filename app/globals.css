@@ -869,7 +869,7 @@ textarea.form-field {
 a.register-division-col__card:active {
   transform: translateY(2px);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--div-ink, var(--afa-navy)) 35%, transparent),
+    0 0 0 1px var(--afa-go),
     0 1px 2px rgba(22, 35, 61, 0.18);
 }
 /* Gender headers: Women's navy, Men's red, Coed purple. */
@@ -883,18 +883,25 @@ a.register-division-col__card:active {
 a.register-division-col__card--header {
   cursor: pointer;
 }
-a.register-division-col__card--header:hover:not(.is-mine):not(.is-on),
-.register-division-col__card--header[type="button"]:hover:not(.is-on) {
-  border-color: var(--afa-lime);
-  box-shadow:
-    0 0 0 2px var(--afa-lime),
-    0 0 12px color-mix(in srgb, var(--afa-lime) 50%, transparent);
+/* Hover is always green — never a wash of the column color. */
+.register-division-cols
+  .register-division-col__card:is(:hover, :focus-visible):not(
+    .register-division-col__card--header
+  ):not(.is-on):not(.is-mine) {
+  background: var(--afa-go);
+  background-color: var(--afa-go);
+  border-color: var(--afa-go);
+  color: #fff;
+  opacity: 1;
 }
-.register-division-col__card:hover:not(.register-division-col__card--header):not(.is-on):not(.is-mine),
-a.register-division-col__card:hover:not(.is-mine):not(.is-on):not(.register-division-col__card--header) {
-  background: var(--afa-lime);
-  border-color: var(--afa-lime);
-  color: var(--afa-navy);
+.register-division-cols
+  a.register-division-col__card--header:is(:hover, :focus-visible):not(.is-mine):not(.is-on),
+.register-division-cols
+  .register-division-col__card--header[type="button"]:is(:hover, :focus-visible):not(.is-on) {
+  border-color: var(--afa-go);
+  box-shadow:
+    0 0 0 2px var(--afa-go),
+    0 0 12px color-mix(in srgb, var(--afa-go) 45%, transparent);
 }
 /* After a pick: other headers and unused levels recede. */
 .register-division-cols.has-pick
@@ -909,11 +916,15 @@ a.register-division-col__card:hover:not(.is-mine):not(.is-on):not(.register-divi
   background: var(--afa-soft-gray);
 }
 .register-division-cols.has-pick
-  .register-division-col__card:not(.is-on):not(.register-division-col__card--header):hover {
+  .register-division-col__card:not(.is-on):not(.register-division-col__card--header):is(
+    :hover,
+    :focus-visible
+  ) {
   opacity: 1;
-  background: var(--afa-lime);
-  border-color: var(--afa-lime);
-  color: var(--afa-navy);
+  background: var(--afa-go);
+  background-color: var(--afa-go);
+  border-color: var(--afa-go);
+  color: #fff;
 }
 /* Selected (register) or this-device team (tournament): gender color + lime. */
 .register-division-col__card.is-on,
