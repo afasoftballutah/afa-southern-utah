@@ -19,6 +19,8 @@ import {
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
 import CompactPlayerAdd from "@/components/CompactPlayerAdd";
+import MyRegistrations from "@/components/MyRegistrations";
+import DivisionSeatMark from "@/components/DivisionSeatMark";
 import { PageDots } from "@/components/forms/SoftField";
 import {
   divisionLevelLabel,
@@ -29,6 +31,15 @@ import {
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
 // Room flow: door (tournament) → rooms → exit (confirmation).
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Sign & Submit"];
+
+function doorAlreadyOpen(tournaments, slug, divisionId) {
+  if (!slug || !divisionId) return false;
+  const t = tournaments.find((x) => x.slug === slug);
+  if (!t) return false;
+  return (t.divisions ?? []).some(
+    (d) => d.id === divisionId && d.parent_division_id == null
+  );
+}
 
 const sameName = (a, b) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
@@ -56,15 +67,13 @@ export default function RegistrationForm({
   /** Liability release text (from Director → Documents when set). */
   releaseText = RELEASE_TEXT,
 }) {
-  const [step, setStep] = useState(() => {
-    if (!initialTournamentSlug || !initialDivisionId) return 0;
-    const t = tournaments.find((x) => x.slug === initialTournamentSlug);
-    if (!t) return 0;
-    const ok = (t.divisions ?? []).some(
-      (d) => d.id === initialDivisionId && d.parent_division_id == null
-    );
-    return ok ? 1 : 0;
-  });
+  const skippedDoor = doorAlreadyOpen(
+    tournaments,
+    initialTournamentSlug,
+    initialDivisionId
+  );
+  const [step, setStep] = useState(() => (skippedDoor ? 1 : 0));
+  const [changingDivision, setChangingDivision] = useState(false);
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
   const [signers, setSigners] = useState([]);
@@ -177,6 +186,14 @@ export default function RegistrationForm({
     if (registerableDivisions.length === 0) return "";
     return divisionId;
   }, [registerableDivisions, divisionId]);
+  const selectedDivision = useMemo(
+    () => registerableDivisions.find((d) => d.id === effectiveDivisionId) ?? null,
+    [registerableDivisions, effectiveDivisionId]
+  );
+  const selectedSeat = seatFromDivision(selectedDivision);
+  const showDivisionGrid =
+    registerableDivisions.length > 0 &&
+    (changingDivision || !effectiveDivisionId);
 
   function chooseFilter(next) {
     setSeriesFilter(next);
@@ -430,19 +447,27 @@ export default function RegistrationForm({
     );
   }
 
+  const stepTotal = skippedDoor ? STEPS.length - 1 : STEPS.length;
+  const stepNumber = skippedDoor ? step : step + 1;
+  const showFormBack = step > 0 && !(skippedDoor && step === 1);
+
   return (
     <div className="space-y-4">
+      {step === 0 && <MyRegistrations />}
+      {skippedDoor && step === 1 && tournament?.slug ? (
+        <MyRegistrations compactSlug={tournament.slug} />
+      ) : null}
       <div className="space-y-2">
         <div className="flex items-baseline justify-between gap-2">
           <p className="t-strong">
             {STEPS[step]}
             <span className="t-meta font-normal">
               {" "}
-              · {step + 1} of {STEPS.length}
+              · {stepNumber} of {stepTotal}
             </span>
           </p>
         </div>
-        <PageDots page={step + 1} total={STEPS.length} />
+        <PageDots page={stepNumber} total={stepTotal} />
       </div>
 
       <div className="form-surface p-4 space-y-4">
@@ -615,74 +640,34 @@ export default function RegistrationForm({
             {registerableDivisions.length > 0 && (
               <div>
                 <span className="form-label">Division</span>
-                <div
-                  className={
-                    "register-division-cols" +
-                    (divisionId || registerableDivisions.length === 1
-                      ? " has-pick"
-                      : "")
-                  }
-                  role="group"
-                  aria-label="Division"
-                >
-                  {groupDivisionsByGender(registerableDivisions).map((row) => {
-                    const inCol = row.items;
-                    const genderOnly = row.genderOnly;
-                    const colOn =
-                      registerableDivisions.length === 1 ||
-                      inCol.some((d) => d.id === divisionId);
-                    return (
-                      <div
-                        key={row.key}
-                        className={"register-division-col register-division-col--" + row.key}
+                {showDivisionGrid ? (
+                  <DivisionPicker
+                    divisions={registerableDivisions}
+                    divisionId={effectiveDivisionId}
+                    onPick={(id) => {
+                      setDivisionId(id);
+                      setChangingDivision(false);
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <DivisionSeatMark
+                      genderKey={selectedSeat?.genderKey}
+                      seatLabel={selectedSeat?.seatLabel}
+                      genderLabel={selectedSeat?.genderLabel}
+                      levelLabel={selectedSeat?.levelLabel}
+                    />
+                    {registerableDivisions.length > 1 && (
+                      <button
+                        type="button"
+                        className="t-meta underline"
+                        onClick={() => setChangingDivision(true)}
                       >
-                        {genderOnly ? (
-                          <button
-                            type="button"
-                            className={
-                              "register-division-col__card register-division-col__card--header " +
-                              (colOn ? "is-on" : "")
-                            }
-                            aria-pressed={colOn}
-                            onClick={() => setDivisionId(inCol[0].id)}
-                          >
-                            {row.label}
-                          </button>
-                        ) : (
-                          <>
-                            <span
-                              className={
-                                "register-division-col__card register-division-col__card--header " +
-                                (colOn ? "is-on" : "")
-                              }
-                            >
-                              {row.label}
-                            </span>
-                            {inCol.map((d) => {
-                              const selected =
-                                registerableDivisions.length === 1 ||
-                                divisionId === d.id;
-                              return (
-                                <button
-                                  key={d.id}
-                                  type="button"
-                                  className={
-                                    "register-division-col__card " +
-                                    (selected ? "is-on" : "")
-                                  }
-                                  aria-pressed={selected}
-                                  onClick={() => setDivisionId(d.id)}
-                                >
-                                  {divisionLevelLabel(d)}
-                                </button>
-                              );
-                            })}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        Change
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             <Field label="AFA Membership #">
@@ -780,14 +765,16 @@ export default function RegistrationForm({
 
       {/* Step 0 keeps Next beside the tournament dropdown so it stays on-screen. */}
       {step > 0 && (
-        <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="btn-transient"
-          >
-            Back
-          </button>
+        <div className={"flex " + (showFormBack ? "justify-between" : "justify-end")}>
+          {showFormBack && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              className="btn-transient"
+            >
+              Back
+            </button>
+          )}
           {step < STEPS.length - 1 && (
             <button
               type="button"
@@ -810,5 +797,71 @@ function Field({ label, children }) {
       <span className="form-label">{label}</span>
       {children}
     </label>
+  );
+}
+
+function DivisionPicker({ divisions, divisionId, onPick }) {
+  return (
+    <div
+      className={
+        "register-division-cols" + (divisionId ? " has-pick" : "")
+      }
+      role="group"
+      aria-label="Division"
+    >
+      {groupDivisionsByGender(divisions).map((row) => {
+        const inCol = row.items;
+        const genderOnly = row.genderOnly;
+        const colOn = inCol.some((d) => d.id === divisionId);
+        return (
+          <div
+            key={row.key}
+            className={"register-division-col register-division-col--" + row.key}
+          >
+            {genderOnly ? (
+              <button
+                type="button"
+                className={
+                  "register-division-col__card register-division-col__card--header " +
+                  (colOn ? "is-on" : "")
+                }
+                aria-pressed={colOn}
+                onClick={() => onPick(inCol[0].id)}
+              >
+                {row.label}
+              </button>
+            ) : (
+              <>
+                <span
+                  className={
+                    "register-division-col__card register-division-col__card--header " +
+                    (colOn ? "is-on" : "")
+                  }
+                >
+                  {row.label}
+                </span>
+                {inCol.map((d) => {
+                  const selected = divisionId === d.id;
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={
+                        "register-division-col__card " +
+                        (selected ? "is-on" : "")
+                      }
+                      aria-pressed={selected}
+                      onClick={() => onPick(d.id)}
+                    >
+                      {divisionLevelLabel(d)}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }

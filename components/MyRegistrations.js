@@ -13,8 +13,11 @@ import DivisionSeatMark from "@/components/DivisionSeatMark";
 /**
  * On /register: show teams this device already knows + email lookup
  * so a manager can get back without a password.
+ *
+ * compactSlug: one line per team already saved for that event — used when
+ * the manager just tapped a division and is naming a team, not recovering.
  */
-export default function MyRegistrations() {
+export default function MyRegistrations({ compactSlug = null }) {
   const [local, setLocal] = useState([]);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,6 +80,38 @@ export default function MyRegistrations() {
     refreshLocal();
   }
 
+  const rows = compactSlug
+    ? local.filter((r) => r.tournamentSlug === compactSlug)
+    : local;
+
+  if (compactSlug) {
+    if (rows.length === 0) return null;
+    return (
+      <ul className="space-y-1">
+        {rows.map((r) => (
+          <li
+            key={r.manageToken}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            <span className="team-name font-semibold">{r.teamName}</span>
+            <DivisionSeatMark
+              genderKey={r.genderKey}
+              seatLabel={r.seatLabel}
+              genderLabel={r.genderLabel}
+              levelLabel={r.levelLabel}
+            />
+            <Link
+              href={`/register/manage/${encodeURIComponent(r.manageToken)}`}
+              className="t-meta underline"
+            >
+              Manage
+            </Link>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   return (
     <div className="form-surface p-4 space-y-3">
       <div>
@@ -87,9 +122,9 @@ export default function MyRegistrations() {
         </p>
       </div>
 
-      {local.length > 0 && (
+      {rows.length > 0 && (
         <ul className="space-y-2">
-          {local.map((r) => (
+          {rows.map((r) => (
             <li
               key={r.manageToken}
               className={

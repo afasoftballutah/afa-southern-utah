@@ -67,19 +67,20 @@ export default async function RegisterPage({ searchParams }) {
     <div className="space-y-4">
       <RegisterBack href={backHref} label={backLabel} />
       <h1 className="t-title">Register a Team</h1>
-      {/* Managers who already registered — device memory + email lookup */}
-      <MyRegistrations />
       {registerable.length === 0 ? (
-        <div className="form-surface p-6 text-center space-y-3">
-          <p className="t-strong">Nothing open for registration yet — check back.</p>
-          <p className="t-meta">
-            Registration opens once a tournament flyer is posted. If you already
-            registered, use <strong>Already registered?</strong> above.
-          </p>
-          <Link href="/tournaments" className="btn-transient">
-            Tournaments
-          </Link>
-        </div>
+        <>
+          <MyRegistrations />
+          <div className="form-surface p-6 text-center space-y-3">
+            <p className="t-strong">Nothing open for registration yet — check back.</p>
+            <p className="t-meta">
+              Registration opens once a tournament flyer is posted. If you already
+              registered, look up your team above.
+            </p>
+            <Link href="/tournaments" className="btn-transient">
+              Tournaments
+            </Link>
+          </div>
+        </>
       ) : (
         <RegistrationForm
           tournaments={registerable}
