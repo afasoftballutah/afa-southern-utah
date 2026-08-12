@@ -173,10 +173,6 @@ export default async function TeamPage({ params }) {
         searchPlaceholder="Find a tournament…"
         width="max-w-5xl"
       />
-      <p className="t-meta">
-        Due is the tournament entry fee. Paid is what the director recorded.
-        Balance is what is still owed.
-      </p>
     </DirectorShell>
   );
 }

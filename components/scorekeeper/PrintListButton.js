@@ -56,8 +56,26 @@ function escapeHtml(s) {
  * Build print HTML from the main data table in the desk body
  * (largest table by body rows — not a nested appearance table).
  */
+function escapeAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+/** Cell HTML for print — keep signature images, text otherwise. */
+function cellHtml(td) {
+  if (!td) return "";
+  const img = td.querySelector("img");
+  const src = img?.getAttribute("src") || "";
+  if (src && (src.startsWith("data:image/") || src.startsWith("https://"))) {
+    return `<img src="${escapeAttr(src)}" alt="" />`;
+  }
+  return escapeHtml(cellText(td));
+}
+
 function tableFromDirectorTable(root) {
-  const tables = [...root.querySelectorAll("table")];
+  const dedicated = root.querySelector("table[data-print-roster]");
+  const tables = dedicated
+    ? [dedicated]
+    : [...root.querySelectorAll("table")];
   if (!tables.length) return null;
 
   // Prefer the table with the most data rows (main list, not a nested expand).
@@ -108,7 +126,7 @@ function tableFromDirectorTable(root) {
         tds.push(null);
       }
       return `<tr>${tds
-        .map((td) => `<td>${escapeHtml(cellText(td))}</td>`)
+        .map((td) => `<td>${cellHtml(td)}</td>`)
         .join("")}</tr>`;
     })
     .join("")}</tbody>`;
@@ -212,6 +230,7 @@ function buildPrintHtml() {
       letter-spacing: 0.04em;
     }
     td { font-size: 10pt; }
+    td img { max-height: 36px; max-width: 110px; display: block; }
     tr:nth-child(even) td { background: #fafafa; }
   </style>
 </head>

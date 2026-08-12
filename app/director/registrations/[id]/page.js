@@ -19,6 +19,7 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
 import ManageRoster from "@/components/ManageRoster";
+import RosterPrintSheet from "@/components/scorekeeper/RosterPrintSheet";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 
@@ -50,7 +51,7 @@ async function load(id) {
     supabase
       .from("roster_members")
       .select(
-        "id, name, role, gender, signed_at, signed_ip, signed_place, signed_via, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
+        "id, name, role, gender, birth_date, address, signed_at, signed_ip, signed_place, signed_via, signature_png, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
       )
       .eq("registration_id", id)
       .order("legal_last_name", { ascending: true, nullsFirst: false })
@@ -62,7 +63,7 @@ async function load(id) {
         return supabase
           .from("roster_members")
           .select(
-            "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
+            "id, name, role, gender, birth_date, address, signed_at, signature_png, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
           )
           .eq("registration_id", id)
           .order("legal_last_name", { ascending: true, nullsFirst: false })
@@ -129,7 +130,11 @@ async function load(id) {
       role: m.id === registration.manager_member_id ? "manager" : m.role,
       rating: person?.rating ?? null,
       gender: m.gender ?? person?.gender ?? null,
-      birthDate: person?.birth_date ?? null,
+      birthDate: m.birth_date || person?.birth_date || null,
+      address: m.address || null,
+      email: m.email || null,
+      phone: m.phone || null,
+      signaturePng: m.signature_png || null,
       signed: Boolean(m.signed_at),
       signedAt: m.signed_at ?? null,
       signedPlace: m.signed_place ?? null,
@@ -273,6 +278,10 @@ export default async function RegistrationPage({ params }) {
       signedPlace: m.signedPlace ?? null,
       signedVia: m.signedVia ?? null,
       signedIp: m.signedIp ?? null,
+      address: m.address ?? null,
+      email: m.email ?? null,
+      phone: m.phone ?? null,
+      signaturePng: m.signaturePng ?? null,
       signPath: m.signPath ?? null,
       removed: false,
       isManager: m.role === "manager" || m.id === r.manager_member_id,
@@ -337,6 +346,7 @@ export default async function RegistrationPage({ params }) {
             ? ` ${suspendedCount} suspended — they stay listed but do not count toward roster requirements.`
             : ""}
         </p>
+        <RosterPrintSheet members={manageMembers} />
         {r.manage_token ? (
           <ManageRoster
             token={r.manage_token}
