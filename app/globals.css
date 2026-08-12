@@ -826,9 +826,9 @@ textarea.form-field {
   --div-wash: color-mix(in srgb, var(--afa-red) 11%, #fff);
 }
 .register-division-col--coed {
-  --div-ink: #5b4b8a;
-  --div-fill: #5b4b8a;
-  --div-wash: color-mix(in srgb, #5b4b8a 13%, #fff);
+  --div-ink: #4c2482;
+  --div-fill: #4c2482;
+  --div-wash: color-mix(in srgb, #4c2482 14%, #fff);
 }
 .register-division-col {
   display: flex;
@@ -855,8 +855,22 @@ textarea.form-field {
   box-shadow:
     0 1px 2px rgba(22, 35, 61, 0.05),
     0 10px 26px -18px rgba(22, 35, 61, 0.5);
-  transition: opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease,
-    background 0.12s ease, color 0.12s ease;
+  transition:
+    opacity 0.14s ease,
+    box-shadow 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease,
+    transform 0.1s ease;
+  user-select: none;
+}
+.register-division-col__card:active:not(.register-division-col__card--header),
+.register-division-col__card--header[type="button"]:active,
+a.register-division-col__card:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--div-ink, var(--afa-navy)) 35%, transparent),
+    0 1px 2px rgba(22, 35, 61, 0.18);
 }
 /* Gender headers: Women's navy, Men's red, Coed purple. */
 .register-division-col__card--header {
@@ -911,6 +925,14 @@ a.register-division-col__card--header:hover:not(.is-mine) {
     0 0 16px color-mix(in srgb, var(--afa-lime) 60%, transparent),
     0 1px 2px rgba(22, 35, 61, 0.05),
     0 10px 26px -18px rgba(22, 35, 61, 0.5);
+}
+.register-division-col__card.is-on:active,
+.register-division-col__card.is-mine:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 0 2px var(--afa-lime),
+    0 0 8px color-mix(in srgb, var(--afa-lime) 45%, transparent),
+    0 1px 2px rgba(22, 35, 61, 0.2);
 }
 .register-division-cols.has-mine
   .register-division-col__card:not(.is-mine):not(.is-on) {
