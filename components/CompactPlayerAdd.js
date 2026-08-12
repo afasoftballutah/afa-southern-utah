@@ -357,7 +357,7 @@ export default function CompactPlayerAdd({
                     className={
                       "flex-1 rounded-lg border-2 py-2 font-bold text-sm " +
                       (draft.gender === g
-                        ? "border-afa-navy bg-afa-navy text-white"
+                        ? "border-[var(--afa-action)] bg-[var(--afa-action)] text-white"
                         : "border-afa-navy/20 bg-white text-afa-navy")
                     }
                     onClick={() => setDraft((d) => ({ ...d, gender: g }))}

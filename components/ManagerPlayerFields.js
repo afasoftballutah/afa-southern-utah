@@ -187,7 +187,7 @@ export default function ManagerPlayerFields({
                 className={
                   "flex-1 rounded-lg border-2 px-3 py-2 font-bold text-sm " +
                   (on
-                    ? "border-afa-navy bg-afa-navy text-white"
+                    ? "border-[var(--afa-action)] bg-[var(--afa-action)] text-white"
                     : "border-afa-navy/20 bg-white text-afa-navy")
                 }
                 onClick={() => set({ gender: opt.value })}

@@ -194,7 +194,7 @@ export default function SignRosterMember({
                     className={
                       "form-field w-11 px-0 font-bold " +
                       (gender === g
-                        ? "border-afa-navy bg-afa-navy text-white"
+                        ? "border-[var(--afa-action)] bg-[var(--afa-action)] text-white"
                         : "bg-white text-afa-navy")
                     }
                     onClick={() => setGender(g)}

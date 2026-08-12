@@ -650,7 +650,7 @@ export default function ManageRoster({
                         className={
                           "flex-1 rounded-lg border-2 py-2 font-bold text-sm " +
                           (person.gender === g
-                            ? "border-afa-navy bg-afa-navy text-white"
+                            ? "border-[var(--afa-action)] bg-[var(--afa-action)] text-white"
                             : "border-afa-navy/20")
                         }
                         onClick={() =>
