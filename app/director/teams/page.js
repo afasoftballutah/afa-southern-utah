@@ -14,7 +14,7 @@ const COLUMNS = [
   { key: "name", label: "Team" },
   { key: "class", label: "Class", width: "5rem" },
   { key: "division", label: "Division", width: "6rem" },
-  { key: "manager", label: "Manager", hideBelow: "sm" },
+  { key: "manager", label: "Manager", hideBelow: "sm", width: "18rem" },
   { key: "events", label: "Events", align: "right", width: "5rem" },
   { key: "balance", label: "Balance", align: "right", width: "6.5rem" },
 ];
@@ -77,16 +77,33 @@ export default async function TeamsPage() {
       if (money.balanceTotal != null) sortBalance = money.balanceTotal;
       else sortBalance = money.hasUnpaid ? 1e12 : 0;
     }
+    const manager =
+      t.registrations.find((r) => r.managerName || r.managerEmail || r.managerPhone) ??
+      t.registrations[0] ??
+      null;
+    const managerBits = [
+      manager?.managerEmail,
+      manager?.managerPhone,
+    ].filter(Boolean);
     return {
       key: t.id,
       href: `/director/teams/${t.id}`,
       tags,
-      search: `${t.name} ${scopeLabel(t.gender, t.className)} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
+      search: `${t.name} ${scopeLabel(t.gender, t.className)} ${manager?.managerName ?? ""} ${managerBits.join(" ")} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       cells: {
         name: t.name,
         class: t.className ?? "—",
         division: genderLabel(t.gender) ?? "—",
-        manager: t.registrations[0]?.managerName ?? "—",
+        manager: manager?.managerName || managerBits.length ? (
+          <span className="block min-w-0">
+            <span className="block truncate">{manager?.managerName || "—"}</span>
+            {managerBits.length > 0 ? (
+              <span className="t-meta block truncate">{managerBits.join(" · ")}</span>
+            ) : null}
+          </span>
+        ) : (
+          "—"
+        ),
         events: t.registrations.length,
         balance: balanceCell(money),
       },
@@ -106,7 +123,7 @@ export default async function TeamsPage() {
         filters={FILTERS}
         defaultSort={{ key: "name", dir: "asc" }}
         empty="No team matches that."
-        searchPlaceholder="Team, class or tournament…"
+        searchPlaceholder="Team, manager, email or tournament…"
       />
       <p className="t-meta">
         A team is name + manager + gender (class not in the key — clubs promote).
