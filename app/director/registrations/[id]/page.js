@@ -19,7 +19,7 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import RegistrationCard from "@/components/scorekeeper/RegistrationCard";
 import ManageRoster from "@/components/ManageRoster";
-import RosterPrintSheet from "@/components/scorekeeper/RosterPrintSheet";
+
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
 
@@ -319,6 +319,7 @@ export default async function RegistrationPage({ params }) {
       count={`${r.tournaments?.name}${scope ? ` · ${scope}` : ""}`}
       back="/director/tournaments"
       backLabel="Tournaments"
+      printHref={`/api/scorekeeper/registrations/${r.id}/waiver`}
     >
       <RegistrationCard
         registration={{
@@ -346,7 +347,6 @@ export default async function RegistrationPage({ params }) {
             ? ` ${suspendedCount} suspended — they stay listed but do not count toward roster requirements.`
             : ""}
         </p>
-        <RosterPrintSheet members={manageMembers} />
         {r.manage_token ? (
           <ManageRoster
             token={r.manage_token}

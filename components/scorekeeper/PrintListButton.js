@@ -285,12 +285,40 @@ function printTable() {
   }, 100);
 }
 
-export default function PrintListButton({ label = "Print PDF" }) {
+async function printPdf(href) {
+  try {
+    const res = await fetch(href, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("Could not open the roster form");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText =
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
+    document.body.appendChild(frame);
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          if (frame.parentNode) frame.parentNode.removeChild(frame);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+    };
+    frame.src = url;
+  } catch (err) {
+    window.alert(err.message || "Could not print the roster form.");
+  }
+}
+
+export default function PrintListButton({ label = "Print PDF", href = null }) {
   return (
     <button
       type="button"
       className="btn-transient shrink-0 print:hidden"
-      onClick={printTable}
+      onClick={() => (href ? printPdf(href) : printTable())}
     >
       {label}
     </button>

@@ -21,6 +21,8 @@ export default function DirectorShell({
   add = null,
   /** Print current filtered list (browser Save as PDF). Default on. */
   print = true,
+  /** When set, Print PDF prints this document (the official roster/waiver). */
+  printHref = null,
   children,
   action,
 }) {
@@ -42,7 +44,7 @@ export default function DirectorShell({
             className="inline-flex items-center"
           />
           {add}
-          {print && <PrintListButton />}
+          {print && <PrintListButton href={printHref} />}
           {showSectionBack && (
             <Link href={back} className="btn-transient shrink-0">
               {backLabel}
