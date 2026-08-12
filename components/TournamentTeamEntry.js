@@ -24,6 +24,7 @@ export default function TournamentTeamEntry({
     <div className="space-y-4">
       <FindTournamentTeam
         slug={slug}
+        teams={teams}
         selectedTeam={team}
         onTeam={setTeam}
         registrationOpen={registrationOpen}

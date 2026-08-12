@@ -6,7 +6,6 @@ import DivisionSeatMark from "@/components/DivisionSeatMark";
 import {
   forgetTeamOnDevice,
   readMyRegistrations,
-  rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
 
@@ -74,6 +73,7 @@ function TeamRow({ r, slug, onForget }) {
  */
 export default function FindTournamentTeam({
   slug,
+  teams = [],
   selectedTeam = "",
   onTeam,
   registrationOpen = false,
@@ -82,8 +82,6 @@ export default function FindTournamentTeam({
   onPanel,
 }) {
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [local, setLocal] = useState([]);
 
   useEffect(() => {
@@ -96,57 +94,28 @@ export default function FindTournamentTeam({
     if (mine?.teamName) onTeam?.(mine.teamName);
   }, [slug, selectedTeam, onTeam]);
 
-  async function onLookup(e) {
-    e.preventDefault();
-    const name = query.trim();
-    if (name.length < 2) {
-      setError("Type a team name or manager name.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+  const needle = query.trim().toLowerCase();
+  const hits =
+    needle.length === 0
+      ? []
+      : teams
+          .filter((t) => {
+            if (t.name.toLowerCase().includes(needle)) return true;
+            return (t.managerNames ?? []).some((m) =>
+              String(m).toLowerCase().includes(needle)
+            );
+          })
+          .slice(0, 8);
+
+  function pick(t) {
+    onTeam?.(t.name);
+    writeMe({ teamName: t.name, source: "picked" });
     try {
-      const res = await fetch("/api/register/lookup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, tournamentSlug: slug }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Lookup failed");
-      const here = json.teams || [];
-      if (here.length === 0) {
-        setError("No team matches that name.");
-        return;
-      }
-      for (const t of here) {
-        rememberRegistration({
-          teamName: t.teamName,
-          tournamentName: t.tournamentName,
-          tournamentSlug: t.tournamentSlug,
-          divisionId: t.divisionId,
-          manageToken: t.manageToken,
-          rosterToken: t.rosterToken,
-          manageLink: t.manageLink,
-          rosterLink: t.rosterLink,
-          genderKey: t.genderKey,
-          genderLabel: t.genderLabel,
-          levelLabel: t.levelLabel,
-          seatLabel: t.seatLabel,
-        });
-        if (t.teamName) writeMe({ teamName: t.teamName, source: "picked" });
-      }
-      setLocal(readMyRegistrations().filter((r) => r.tournamentSlug === slug));
-      onTeam?.(here[0].teamName);
-      try {
-        window.localStorage.setItem(`afa-team-${slug}`, here[0].teamName);
-      } catch {
-        /* private browsing */
-      }
-    } catch (err) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setBusy(false);
+      window.localStorage.setItem(`afa-team-${slug}`, t.name);
+    } catch {
+      /* private browsing */
     }
+    setQuery("");
   }
 
   function forget(name) {
@@ -155,12 +124,32 @@ export default function FindTournamentTeam({
     if (selectedTeam === name) onTeam?.("");
   }
 
+  const shown = [...local];
+  if (selectedTeam && !shown.some((r) => r.teamName === selectedTeam)) {
+    const t = teams.find((x) => x.name === selectedTeam);
+    if (t) {
+      shown.push({
+        teamName: t.name,
+        divisionId: t.divisionId,
+        genderKey: t.genderKey,
+        genderLabel: t.genderLabel,
+        levelLabel: t.levelLabel,
+        seatLabel: t.seatLabel,
+      });
+    }
+  }
+
   return (
     <div className="space-y-3">
-      {local.length > 0 ? (
+      {shown.length > 0 ? (
         <ul className="space-y-2">
-          {local.map((r) => (
-            <TeamRow key={r.manageToken} r={r} slug={slug} onForget={forget} />
+          {shown.map((r) => (
+            <TeamRow
+              key={r.manageToken || r.teamName}
+              r={r}
+              slug={slug}
+              onForget={r.manageToken ? forget : undefined}
+            />
           ))}
         </ul>
       ) : null}
@@ -200,33 +189,51 @@ export default function FindTournamentTeam({
       </div>
 
       {panel === "find" ? (
-        <form onSubmit={onLookup} className="form-surface p-4">
-          <div className="flex flex-wrap gap-2 items-stretch">
-            <input
-              type="search"
-              autoComplete="off"
-              required
-              minLength={2}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Team or manager name"
-              aria-label="Team or manager name"
-              className="form-field flex-1 min-w-[12rem]"
-            />
-            <button
-              type="submit"
-              disabled={busy}
-              className="btn-action shrink-0 px-4"
-            >
-              {busy ? "Looking…" : "Find"}
-            </button>
-          </div>
-          {error ? (
-            <p className="text-sm text-red-700 mt-1.5" role="alert">
-              {error}
-            </p>
+        <div className="form-surface p-4 space-y-2">
+          <input
+            type="search"
+            autoComplete="off"
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Team or manager name"
+            aria-label="Team or manager name"
+            aria-autocomplete="list"
+            className="form-field w-full"
+          />
+          {needle.length > 0 && hits.length === 0 ? (
+            <p className="t-meta">No team matches that name.</p>
           ) : null}
-        </form>
+          {hits.length > 0 ? (
+            <ul className="space-y-2" role="listbox">
+              {hits.map((t) => (
+                <li key={t.name}>
+                  <button
+                    type="button"
+                    role="option"
+                    className={
+                      "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
+                      (t.genderKey
+                        ? "reg-team-row--" + t.genderKey
+                        : "border-afa-navy/10 bg-white")
+                    }
+                    onClick={() => pick(t)}
+                  >
+                    <span className="team-name font-semibold truncate">
+                      {t.name}
+                    </span>
+                    <DivisionSeatMark
+                      genderKey={t.genderKey}
+                      seatLabel={t.seatLabel}
+                      genderLabel={t.genderLabel}
+                      levelLabel={t.levelLabel}
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
