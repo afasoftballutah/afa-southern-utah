@@ -44,7 +44,6 @@ export default function WaiverSignLink({
         <span className="tick text-[0.95em]" aria-hidden>
           ☑
         </span>
-        {!compact ? <span>Signed</span> : null}
         {record ? (
           <span
             className={
@@ -55,8 +54,8 @@ export default function WaiverSignLink({
           >
             {record}
           </span>
-        ) : !compact ? null : (
-          <span className="sr-only">Signed</span>
+        ) : (
+          <span>Signed</span>
         )}
       </span>
     );
