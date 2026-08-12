@@ -142,9 +142,6 @@ export default function SignRosterMember({
 
       {needsPlayerFields && (
         <div className="space-y-3 form-surface p-3">
-          <p className="t-strong text-sm">Your information</p>
-          <p className="t-meta">Complete this yourself.</p>
-
           <LegalIdBox detail="You must be able to present that ID on game day.">
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftField
