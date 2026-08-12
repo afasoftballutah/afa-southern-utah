@@ -219,8 +219,15 @@ export default function FindTournamentTeam({
                     }
                     onClick={() => pick(t)}
                   >
-                    <span className="team-name font-semibold truncate">
-                      {t.name}
+                    <span className="min-w-0">
+                      <span className="team-name font-semibold truncate block">
+                        {t.name}
+                      </span>
+                      {(t.managerNames ?? []).length > 0 ? (
+                        <span className="t-meta block truncate mt-0.5">
+                          {t.managerNames.join(", ")}
+                        </span>
+                      ) : null}
                     </span>
                     <DivisionSeatMark
                       genderKey={t.genderKey}
