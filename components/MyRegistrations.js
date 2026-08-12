@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  forgetTeamOnDevice,
+  forgetRegistration,
   readMyRegistrations,
   rememberRegistration,
 } from "@/lib/my-registrations";
@@ -77,8 +77,8 @@ export default function MyRegistrations({ compactSlug = null, onChange }) {
     }
   }
 
-  function removeLocal(teamName) {
-    forgetTeamOnDevice(teamName);
+  function removeSeat(manageToken) {
+    if (manageToken) forgetRegistration(manageToken);
     refreshLocal();
     onChange?.();
   }
@@ -109,12 +109,30 @@ export default function MyRegistrations({ compactSlug = null, onChange }) {
             >
               Manage
             </Link>
+            {r.rosterToken ? (
+              <Link
+                href={`/register/roster/${encodeURIComponent(r.rosterToken)}`}
+                className="t-meta underline"
+              >
+                Team
+              </Link>
+            ) : null}
+            {r.tournamentSlug && r.divisionId ? (
+              <Link
+                href={`/tournaments/${r.tournamentSlug}/division/${r.divisionId}`}
+                className="t-meta underline"
+              >
+                Division
+              </Link>
+            ) : null}
             <button
               type="button"
-              className="t-meta underline"
-              onClick={() => removeLocal(r.teamName)}
+              className="t-meta px-1 leading-none"
+              aria-label={`Forget ${r.teamName} on this phone`}
+              title="Forget on this phone"
+              onClick={() => removeSeat(r.manageToken)}
             >
-              Forget
+              ×
             </button>
           </li>
         ))}
@@ -158,27 +176,37 @@ export default function MyRegistrations({ compactSlug = null, onChange }) {
                   ) : null}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                 <Link
                   href={`/register/manage/${encodeURIComponent(r.manageToken)}`}
-                  className="btn-action text-sm px-3 py-1.5"
+                  className="btn-action text-sm px-3 py-1.5 min-h-0"
                 >
-                  Manage roster
+                  Manage
                 </Link>
-                {r.rosterToken && (
+                {r.rosterToken ? (
                   <Link
                     href={`/register/roster/${encodeURIComponent(r.rosterToken)}`}
-                    className="btn-transient text-sm px-3 py-1.5"
+                    className="btn-transient text-sm px-3 py-1.5 min-h-0"
                   >
-                    Team link
+                    Team
                   </Link>
-                )}
+                ) : null}
+                {r.tournamentSlug && r.divisionId ? (
+                  <Link
+                    href={`/tournaments/${r.tournamentSlug}/division/${r.divisionId}`}
+                    className="btn-transient text-sm px-3 py-1.5 min-h-0"
+                  >
+                    Division
+                  </Link>
+                ) : null}
                 <button
                   type="button"
-                  className="t-meta underline"
-                  onClick={() => removeLocal(r.teamName)}
+                  className="t-meta px-2 py-1 leading-none"
+                  aria-label={`Forget ${r.teamName} on this phone`}
+                  title="Forget on this phone"
+                  onClick={() => removeSeat(r.manageToken)}
                 >
-                  Forget
+                  ×
                 </button>
               </div>
             </li>

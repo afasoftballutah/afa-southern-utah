@@ -6,6 +6,7 @@ import DivisionSeatMark from "@/components/DivisionSeatMark";
 import {
   forgetRegistration,
   readMyRegistrations,
+  rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
 import { sameRegistrationName } from "@/lib/register-key";
@@ -13,10 +14,21 @@ import { sameRegistrationName } from "@/lib/register-key";
 function sameSeat(a, b) {
   if (a.divisionId && b.divisionId) return a.divisionId === b.divisionId;
   if (a.seatLabel && b.seatLabel) return a.seatLabel === b.seatLabel;
+  if (a.genderKey && b.genderKey && a.genderKey === b.genderKey) {
+    return String(a.levelLabel || "") === String(b.levelLabel || "");
+  }
   return false;
 }
 
+const LINK =
+  "btn-transient text-sm px-3 py-1.5 min-h-0";
+const MANAGE = "btn-action text-sm px-3 py-1.5 min-h-0";
+
 function TeamRow({ r, slug, onForget }) {
+  const divisionHref =
+    r.divisionId && slug
+      ? `/tournaments/${slug}/division/${r.divisionId}`
+      : null;
   return (
     <li
       className={
@@ -37,37 +49,37 @@ function TeamRow({ r, slug, onForget }) {
           />
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
         {r.manageToken ? (
           <Link
             href={`/register/manage/${encodeURIComponent(r.manageToken)}`}
-            className="btn-action text-sm px-3 py-1.5"
+            className={MANAGE}
           >
-            Manage roster
+            Manage
           </Link>
         ) : null}
         {r.rosterToken ? (
           <Link
             href={`/register/roster/${encodeURIComponent(r.rosterToken)}`}
-            className="btn-transient text-sm px-3 py-1.5"
+            className={LINK}
           >
-            Team link
+            Team
           </Link>
-        ) : r.divisionId ? (
-          <Link
-            href={`/tournaments/${slug}/division/${r.divisionId}`}
-            className="btn-transient text-sm px-3 py-1.5"
-          >
+        ) : null}
+        {divisionHref ? (
+          <Link href={divisionHref} className={LINK}>
             Division
           </Link>
         ) : null}
         {r.manageToken && onForget ? (
           <button
             type="button"
-            className="t-meta underline"
+            className="t-meta px-2 py-1 leading-none"
+            aria-label={`Forget ${r.teamName} on this phone`}
+            title="Forget on this phone"
             onClick={() => onForget(r)}
           >
-            Forget
+            ×
           </button>
         ) : null}
       </div>
@@ -93,6 +105,54 @@ export default function FindTournamentTeam({
 
   useEffect(() => {
     setLocal(readMyRegistrations().filter((r) => r.tournamentSlug === slug));
+  }, [slug]);
+
+  useEffect(() => {
+    const mine = readMyRegistrations().filter(
+      (r) => r.tournamentSlug === slug && r.manageToken
+    );
+    if (mine.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/register/siblings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            manageTokens: mine.map((r) => r.manageToken),
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || cancelled) return;
+        for (const t of json.teams || []) {
+          if (!t.manageToken || !t.teamName) continue;
+          rememberRegistration({
+            teamName: t.teamName,
+            tournamentName: t.tournamentName,
+            tournamentSlug: t.tournamentSlug || slug,
+            divisionId: t.divisionId,
+            manageToken: t.manageToken,
+            rosterToken: t.rosterToken,
+            manageLink: t.manageLink,
+            rosterLink: t.rosterLink,
+            genderKey: t.genderKey,
+            genderLabel: t.genderLabel,
+            levelLabel: t.levelLabel,
+            seatLabel: t.seatLabel,
+          });
+        }
+        if (!cancelled) {
+          setLocal(
+            readMyRegistrations().filter((r) => r.tournamentSlug === slug)
+          );
+        }
+      } catch {
+        /* offline — keep whatever this phone already has */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   useEffect(() => {
@@ -127,8 +187,14 @@ export default function FindTournamentTeam({
 
   function forget(row) {
     if (row.manageToken) forgetRegistration(row.manageToken);
-    setLocal(readMyRegistrations().filter((r) => r.tournamentSlug === slug));
-    if (selectedTeam === row.teamName) onTeam?.("");
+    const next = readMyRegistrations().filter((r) => r.tournamentSlug === slug);
+    setLocal(next);
+    if (
+      selectedTeam === row.teamName &&
+      !next.some((r) => sameRegistrationName(r.teamName, selectedTeam))
+    ) {
+      onTeam?.("");
+    }
   }
 
   const shown = [...local];
