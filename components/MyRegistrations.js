@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  forgetRegistration,
+  forgetTeamOnDevice,
   readMyRegistrations,
   rememberRegistration,
 } from "@/lib/my-registrations";
@@ -17,7 +17,7 @@ import DivisionSeatMark from "@/components/DivisionSeatMark";
  * compactSlug: one line per team already saved for that event — used when
  * the manager just tapped a division and is naming a team, not recovering.
  */
-export default function MyRegistrations({ compactSlug = null }) {
+export default function MyRegistrations({ compactSlug = null, onChange }) {
   const [local, setLocal] = useState([]);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,6 +53,7 @@ export default function MyRegistrations({ compactSlug = null }) {
           teamName: t.teamName,
           tournamentName: t.tournamentName,
           tournamentSlug: t.tournamentSlug,
+          divisionId: t.divisionId,
           manageToken: t.manageToken,
           rosterToken: t.rosterToken,
           manageLink: t.manageLink,
@@ -68,6 +69,7 @@ export default function MyRegistrations({ compactSlug = null }) {
         }
       }
       refreshLocal();
+      onChange?.();
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -75,9 +77,10 @@ export default function MyRegistrations({ compactSlug = null }) {
     }
   }
 
-  function removeLocal(token) {
-    forgetRegistration(token);
+  function removeLocal(teamName) {
+    forgetTeamOnDevice(teamName);
     refreshLocal();
+    onChange?.();
   }
 
   const rows = compactSlug
@@ -106,6 +109,13 @@ export default function MyRegistrations({ compactSlug = null }) {
             >
               Manage
             </Link>
+            <button
+              type="button"
+              className="t-meta underline"
+              onClick={() => removeLocal(r.teamName)}
+            >
+              Forget
+            </button>
           </li>
         ))}
       </ul>
@@ -166,7 +176,7 @@ export default function MyRegistrations({ compactSlug = null }) {
                 <button
                   type="button"
                   className="t-meta underline"
-                  onClick={() => removeLocal(r.manageToken)}
+                  onClick={() => removeLocal(r.teamName)}
                 >
                   Forget
                 </button>

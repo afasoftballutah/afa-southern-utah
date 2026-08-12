@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import SignaturePad from "./SignaturePad";
 import RegisterBack from "./RegisterBack";
 import { RELEASE_TEXT, MAX_PLAYERS, MIN_PLAYERS } from "@/lib/waiver";
@@ -11,8 +11,16 @@ import {
   getRegionPrefServerSnapshot,
   subscribeRegionPref,
 } from "@/lib/region-pref";
-import { rememberRegistration, tokensFromLinks } from "@/lib/my-registrations";
+import {
+  rememberRegistration,
+  tokensFromLinks,
+  deviceTeamName,
+  localRegistrationForCombo,
+  localPrefillSource,
+  forgetTeamOnDevice,
+} from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
+import Link from "next/link";
 import PersonWizard from "@/components/forms/PersonWizard";
 import {
   managerPlayerDisplay,
@@ -205,8 +213,13 @@ export default function RegistrationForm({
     }
   }
 
+  const [deviceTick, setDeviceTick] = useState(0);
+  const [lockedTeam, setLockedTeam] = useState("");
+  const [blocked, setBlocked] = useState(null);
+  const [nameTaken, setNameTaken] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [afaMembershipNumber, setAfaMembershipNumber] = useState("");
+  const prefilledFor = useRef("");
 
   const [manager, setManager] = useState({
     legalFirstName: "",
@@ -228,6 +241,133 @@ export default function RegistrationForm({
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
 
+  useEffect(() => {
+    const name = deviceTeamName();
+    setLockedTeam(name || "");
+    if (name) setTeamName(name);
+  }, [deviceTick]);
+
+  function bumpDevice() {
+    setDeviceTick((n) => n + 1);
+  }
+
+  function forgetLockedTeam() {
+    const name = lockedTeam || teamName;
+    if (name) forgetTeamOnDevice(name);
+    prefilledFor.current = "";
+    setLockedTeam("");
+    setTeamName("");
+    setBlocked(null);
+    setNameTaken(false);
+    setAfaMembershipNumber("");
+    setManager({
+      legalFirstName: "",
+      legalLastName: "",
+      preferredName: "",
+      name: "",
+      email: "",
+      phone: "",
+      cell: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+    });
+    setPlayers([]);
+    bumpDevice();
+  }
+
+  useEffect(() => {
+    if (!tournament?.slug || !effectiveDivisionId) {
+      setBlocked(null);
+      setNameTaken(false);
+      return;
+    }
+    const name = (lockedTeam || teamName).trim();
+    if (!name) {
+      setBlocked(null);
+      setNameTaken(false);
+      return;
+    }
+    const existing = localRegistrationForCombo({
+      tournamentSlug: tournament.slug,
+      divisionId: effectiveDivisionId,
+      genderKey: selectedSeat?.genderKey,
+      levelLabel: selectedSeat?.levelLabel,
+      teamName: name,
+    });
+    if (existing) {
+      setBlocked(existing);
+      setNameTaken(false);
+      return;
+    }
+    setBlocked(null);
+
+    const source = lockedTeam
+      ? localPrefillSource({
+          tournamentSlug: tournament.slug,
+          teamName: lockedTeam,
+        })
+      : null;
+    if (source?.manageToken && prefilledFor.current !== source.manageToken) {
+      const token = source.manageToken;
+      fetch("/api/register/prefill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manageToken: token }),
+      })
+        .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+        .then(({ ok, json }) => {
+          if (!ok || !json) return;
+          prefilledFor.current = token;
+          if (json.afaMembershipNumber) {
+            setAfaMembershipNumber(json.afaMembershipNumber);
+          }
+          if (json.manager) {
+            setManager((cur) => ({ ...cur, ...json.manager }));
+          }
+          if (Array.isArray(json.players) && json.players.length > 0) {
+            setPlayers(json.players);
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (lockedTeam) {
+      setNameTaken(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    const t = setTimeout(() => {
+      fetch("/api/register/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tournamentId,
+          divisionId: effectiveDivisionId,
+          teamName: name,
+        }),
+        signal: ac.signal,
+      })
+        .then((res) => res.json())
+        .then((json) => setNameTaken(Boolean(json.taken)))
+        .catch(() => {});
+    }, 350);
+    return () => {
+      ac.abort();
+      clearTimeout(t);
+    };
+  }, [
+    tournament?.slug,
+    tournamentId,
+    effectiveDivisionId,
+    lockedTeam,
+    teamName,
+    selectedSeat?.genderKey,
+    selectedSeat?.levelLabel,
+  ]);
+
   // External host for off-site registration (Halloween → St George Rec, etc.)
   const externalRegisterUrl = tournament?.registration_url
     ? String(tournament.registration_url).trim()
@@ -245,6 +385,7 @@ export default function RegistrationForm({
     // Off-site registration never advances into our multi-step form
     if (step === 0) return Boolean(tournamentId) && !externalRegisterUrl;
     if (step === 1) {
+      if (blocked || nameTaken) return false;
       return (
         teamName.trim().length > 0 &&
         (registerableDivisions.length === 0 || Boolean(effectiveDivisionId))
@@ -311,7 +452,13 @@ export default function RegistrationForm({
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Registration failed");
+      if (!res.ok) {
+        if (json.code === "duplicate_key") {
+          setNameTaken(true);
+          if (step > 1) setStep(1);
+        }
+        throw new Error(json.error || "Registration failed");
+      }
       setSigners(json.signers ?? []);
       setRosterLink(json.rosterLink ?? "");
       setManageLink(json.manageLink ?? "");
@@ -335,6 +482,7 @@ export default function RegistrationForm({
             manageLink: json.manageLink,
             rosterLink: json.rosterLink,
             managerEmail: manager.email,
+            divisionId: effectiveDivisionId,
             genderKey: seat?.genderKey,
             genderLabel: seat?.genderLabel,
             levelLabel: seat?.levelLabel,
@@ -453,9 +601,9 @@ export default function RegistrationForm({
 
   return (
     <div className="space-y-4">
-      {step === 0 && <MyRegistrations />}
+      {step === 0 && <MyRegistrations onChange={bumpDevice} />}
       {skippedDoor && step === 1 && tournament?.slug ? (
-        <MyRegistrations compactSlug={tournament.slug} />
+        <MyRegistrations compactSlug={tournament.slug} onChange={bumpDevice} />
       ) : null}
       <div className="space-y-2">
         <div className="flex items-baseline justify-between gap-2">
@@ -628,15 +776,66 @@ export default function RegistrationForm({
 
         {step === 1 && (
           <div className="space-y-4">
-            <Field label="Team Name">
-              <input
-                className="form-field"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="e.g. Fallen"
-                autoComplete="organization"
-              />
-            </Field>
+            {blocked ? (
+              <div className="space-y-3">
+                <p className="t-body">
+                  <span className="team-name font-semibold">{blocked.teamName}</span>
+                  {" is already in "}
+                  {selectedSeat?.seatLabel || "this division"}.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/register/manage/${encodeURIComponent(blocked.manageToken)}`}
+                    className="btn-action"
+                  >
+                    Manage roster
+                  </Link>
+                  <button
+                    type="button"
+                    className="t-meta underline"
+                    onClick={forgetLockedTeam}
+                  >
+                    Forget
+                  </button>
+                  <span className="t-meta">to register a different team</span>
+                </div>
+              </div>
+            ) : (
+              <Field label="Team Name">
+                <input
+                  className={
+                    "form-field" + (lockedTeam ? " bg-afa-soft-gray/50" : "")
+                  }
+                  value={teamName}
+                  onChange={(e) => {
+                    if (lockedTeam) return;
+                    setTeamName(e.target.value);
+                  }}
+                  readOnly={Boolean(lockedTeam)}
+                  placeholder="e.g. Fallen"
+                  autoComplete="organization"
+                />
+                {lockedTeam ? (
+                  <p className="t-meta mt-1">
+                    This phone is {lockedTeam}.{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={forgetLockedTeam}
+                    >
+                      Forget
+                    </button>{" "}
+                    to register a different team.
+                  </p>
+                ) : null}
+                {nameTaken ? (
+                  <p className="text-sm text-red-700 mt-1" role="alert">
+                    {teamName.trim()} is already registered for this division.
+                    Use a different name.
+                  </p>
+                ) : null}
+              </Field>
+            )}
             {registerableDivisions.length > 0 && (
               <div>
                 <span className="form-label">Division</span>
@@ -670,14 +869,16 @@ export default function RegistrationForm({
                 )}
               </div>
             )}
-            <Field label="AFA Membership #">
-              <input
-                className="form-field"
-                value={afaMembershipNumber}
-                onChange={(e) => setAfaMembershipNumber(e.target.value)}
-                placeholder="optional"
-              />
-            </Field>
+            {!blocked && (
+              <Field label="AFA Membership #">
+                <input
+                  className="form-field"
+                  value={afaMembershipNumber}
+                  onChange={(e) => setAfaMembershipNumber(e.target.value)}
+                  placeholder="optional"
+                />
+              </Field>
+            )}
           </div>
         )}
 
@@ -775,7 +976,7 @@ export default function RegistrationForm({
               Back
             </button>
           )}
-          {step < STEPS.length - 1 && (
+          {step < STEPS.length - 1 && !blocked && (
             <button
               type="button"
               onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}

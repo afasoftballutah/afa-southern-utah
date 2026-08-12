@@ -23,7 +23,7 @@ async function getManageable(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, status, roster_token, manager_member_id, tournaments(name, slug), divisions(name, display_name, gender)"
+      "id, team_name, class, status, roster_token, manager_member_id, tournaments(name, slug), divisions(id, name, display_name, gender)"
     )
     .eq("manage_token", token)
     .maybeSingle();
@@ -47,6 +47,7 @@ async function getManageable(token) {
     teamName: registration.team_name,
     tournamentName: registration.tournaments?.name,
     tournamentSlug: registration.tournaments?.slug,
+    divisionId: registration.divisions?.id ?? null,
     divisionName: registration.divisions?.display_name ?? registration.divisions?.name,
     divisionGender: registration.divisions?.gender ?? null,
     className: registration.class,
@@ -105,6 +106,7 @@ export default async function ManageRosterPage({ params }) {
         tournamentSlug={data.tournamentSlug}
         manageToken={data.manageToken}
         rosterToken={data.rosterToken}
+        divisionId={data.divisionId}
         genderKey={seat?.genderKey}
         genderLabel={seat?.genderLabel}
         levelLabel={seat?.levelLabel}

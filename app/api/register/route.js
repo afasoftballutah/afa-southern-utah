@@ -135,9 +135,12 @@ export async function POST(request) {
     // this team, or tapped submit twice. Say so; a 500 makes her try again
     // and again against an index that will never let her through.
     if (insertError.code === "23505") {
-      return bad(
-        `${teamName.trim()} is already registered for this division. Check with whoever signed the team up — they have the link everyone signs from.`,
-        409
+      return Response.json(
+        {
+          error: `${teamName.trim()} is already registered for this division.`,
+          code: "duplicate_key",
+        },
+        { status: 409 }
       );
     }
     console.error("registrations insert failed", insertError);

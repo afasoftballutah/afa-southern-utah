@@ -75,7 +75,7 @@ export async function POST(request) {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, status, manage_token, roster_token, manager_email, submitted_at, tournaments(name, slug, start_date), divisions(name, display_name, gender)"
+      "id, team_name, status, manage_token, roster_token, manager_email, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
     )
     .ilike("manager_email", email)
     .order("submitted_at", { ascending: false })
@@ -102,6 +102,7 @@ export async function POST(request) {
       submittedAt: r.submitted_at,
       manageToken: r.manage_token,
       rosterToken: r.roster_token,
+      divisionId: r.divisions?.id || "",
       manageLink: `${origin}/register/manage/${r.manage_token}`,
       rosterLink: r.roster_token
         ? `${origin}/register/roster/${r.roster_token}`
