@@ -393,9 +393,7 @@ export default function ManageRoster({
                   · Also on {m.dualRosterTeams.join(", ")}
                 </span>
               ) : null}
-              {m.signed ? null : (
-                <span className="t-meta font-normal"> · Waiting to sign</span>
-              )}
+
             </span>
             <span className="flex gap-1.5 items-center shrink-0">
               {m.signPath || m.signed ? (
