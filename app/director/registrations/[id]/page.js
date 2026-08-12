@@ -339,14 +339,11 @@ export default async function RegistrationPage({ params }) {
 
       <div className="max-w-lg mx-auto space-y-2 mt-8">
         <h2 className="t-heading">Roster</h2>
-        <p className="t-meta">
-          Add or remove players, or claim someone from a withdrawn team.
-          Same tools as the manager link — you can do it here without leaving
-          the control center.
-          {suspendedCount > 0
-            ? ` ${suspendedCount} suspended — they stay listed but do not count toward roster requirements.`
-            : ""}
-        </p>
+        {suspendedCount > 0 ? (
+          <p className="t-meta">
+            {suspendedCount} suspended — listed, not counted.
+          </p>
+        ) : null}
         {r.manage_token ? (
           <ManageRoster
             token={r.manage_token}
