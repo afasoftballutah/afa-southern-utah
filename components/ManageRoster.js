@@ -409,7 +409,7 @@ export default function ManageRoster({
               ) : null}
             </span>
             <span className="flex flex-wrap gap-1.5 items-center shrink-0">
-              {m.signPath ? (
+              {m.signPath || m.signed ? (
                 <WaiverSignLink href={m.signPath} signed={m.signed} />
               ) : null}
               {directorMode && m.playerId ? (

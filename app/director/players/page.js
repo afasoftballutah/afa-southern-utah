@@ -341,24 +341,11 @@ export default async function PlayersPage() {
                       )}
                     </td>
                     <td className="px-2.5 py-1 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className={
-                            "tick text-[0.95em] " +
-                            (a.signed ? "text-afa-go" : "text-afa-muted/50")
-                          }
-                          title={a.signed ? "Signed" : "Not signed"}
-                        >
-                          {a.signed ? "☑" : "☐"}
-                        </span>
-                        {a.signPath ? (
-                          <WaiverSignLink
-                            href={a.signPath}
-                            signed={a.signed}
-                            compact
-                          />
-                        ) : null}
-                      </span>
+                      <WaiverSignLink
+                        href={a.signPath}
+                        signed={a.signed}
+                        compact
+                      />
                     </td>
                     <td className="px-2.5 py-1">
                       {a.registrationId ? (

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 /**
- * Director tool: open or copy a player's personal waiver sign page.
- * Path is /register/sign/{token} — one link per roster seat; one signature
- * covers the whole tournament for that person.
+ * Director tool for a player's waiver seat:
+ * - unsigned → link to their sign page
+ * - signed → quiet “ok” (no link, no copy)
  */
 export default function WaiverSignLink({
   href,
@@ -14,63 +13,44 @@ export default function WaiverSignLink({
   className = "",
   compact = false,
 }) {
-  const [copied, setCopied] = useState(false);
-  if (!href) return null;
-
-  const pill =
-    "inline-flex items-center justify-center rounded border border-afa-navy/25 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-afa-navy leading-none whitespace-nowrap hover:border-afa-navy/50";
-
-  async function copy() {
-    try {
-      const abs =
-        typeof window !== "undefined"
-          ? new URL(href, window.location.origin).toString()
-          : href;
-      await navigator.clipboard.writeText(abs);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  if (compact) {
+  if (signed) {
     return (
-      <span className={"inline-flex items-center gap-0.5 " + className}>
-        <Link
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={pill}
-          title={signed ? "Open signed waiver page" : "Open waiver for this player"}
-        >
-          {signed ? "Signed" : "Sign"}
-        </Link>
-        <button
-          type="button"
-          className={pill}
-          onClick={copy}
-          title="Copy sign link"
-        >
-          {copied ? "Copied" : "Copy"}
-        </button>
+      <span
+        className={
+          "inline-flex items-center gap-1 text-afa-go " +
+          (compact
+            ? "text-[11px] font-bold uppercase tracking-wide"
+            : "t-meta font-semibold") +
+          " " +
+          className
+        }
+        title="Waiver signed for this tournament"
+      >
+        <span className="tick text-[0.95em]" aria-hidden>
+          ☑
+        </span>
+        {!compact ? <span>Signed</span> : null}
       </span>
     );
   }
 
+  if (!href) {
+    return <span className={"t-meta " + className}>—</span>;
+  }
+
+  const linkClass = compact
+    ? "inline-flex items-center justify-center rounded border border-afa-navy/25 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-afa-navy leading-none whitespace-nowrap hover:border-afa-navy/50"
+    : "pill";
+
   return (
-    <span className={"inline-flex flex-wrap items-center gap-1.5 " + className}>
-      <Link
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="pill"
-      >
-        {signed ? "Open waiver" : "Sign waiver"}
-      </Link>
-      <button type="button" className="pill" onClick={copy}>
-        {copied ? "Copied" : "Copy link"}
-      </button>
-    </span>
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={linkClass + " " + className}
+      title="Open waiver for this player to sign"
+    >
+      Sign
+    </Link>
   );
 }
