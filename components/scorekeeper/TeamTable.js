@@ -4,6 +4,7 @@ import DirectorTable from "./DirectorTable";
 import TeamActions from "./TeamActions";
 import InlineSelect from "./InlineSelect";
 import EligibilityPill from "./EligibilityPill";
+import { enteredClassName } from "@/lib/class";
 
 // The teams in one division, one line each.
 //
@@ -54,7 +55,7 @@ export default function TeamTable({
   const rows = registrations.map((reg) => {
     const { active_members: active, signed_members: signed } =
       reg.progress ?? { active_members: 0, signed_members: 0 };
-    const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? null;
+    const enteredClass = enteredClassName(reg, classes);
     const sug = reg.suggestion;
 
     const tournamentName = reg.tournaments?.name ?? "—";

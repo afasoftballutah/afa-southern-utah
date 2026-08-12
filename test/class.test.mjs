@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { suggestClass, formatCounts, RATINGS } from "@/lib/class.js";
+import { suggestClass, formatCounts, RATINGS, enteredClassName } from "@/lib/class.js";
 
 const CLASSES = [
   { id: "rec", name: "Rec", sort_order: 10 },
@@ -197,4 +197,25 @@ test("a division with no minimums never flags", () => {
 
 test("an empty roster against a 5/5 division is short, not silently fine", () => {
   assert.equal(checkRoster([], { minMen: 5, minWomen: 5 }).ok, false);
+});
+
+test("entered class comes from class_id, then the division, never 'Men's D'", () => {
+  assert.equal(
+    enteredClassName({ class_id: "d", class: "Men's D" }, CLASSES),
+    "D"
+  );
+  assert.equal(
+    enteredClassName(
+      { class: "Men's D", divisions: { class_id: "d", display_name: "Men's D" } },
+      CLASSES
+    ),
+    "D"
+  );
+  assert.equal(
+    enteredClassName({ class: "Men's D", divisions: { display_name: "Men's D" } }, CLASSES),
+    "D"
+  );
+  assert.equal(enteredClassName({ class: "Open" }, CLASSES), "Open");
+  assert.equal(enteredClassName({ class: "Men's D" }, CLASSES), "D");
+  assert.equal(enteredClassName({ class: "not a class" }, CLASSES), null);
 });

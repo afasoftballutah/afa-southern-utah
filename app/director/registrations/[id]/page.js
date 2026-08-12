@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { hasValidDirectorSession } from "@/lib/scorekeeper-auth";
 import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
-import { suggestClass, checkEligibility, checkRoster } from "@/lib/class";
+import { suggestClass, checkEligibility, checkRoster, enteredClassName } from "@/lib/class";
 import { registrationScope } from "@/lib/director";
 import { directorPersonLabel } from "@/lib/person-name";
 import { leagueToday } from "@/lib/tournament-state";
@@ -153,7 +153,7 @@ async function load(id) {
     suspByPlayer
   );
 
-  const enteredClass = (classes ?? []).find((c) => c.id === registration.class_id)?.name ?? null;
+  const enteredClass = enteredClassName(registration, classes ?? []);
   const suggestion = suggestClass(counting, classes ?? [], offeredClassIds);
   const check = checkEligibility(
     counting,
@@ -247,12 +247,9 @@ export default async function RegistrationPage({ params }) {
   const data = await load(id);
   if (!data) notFound();
   const { registration: r, roster, removed, classes, knownPlayers } = data;
-  const enteredClassName =
-    (data.classes ?? []).find((c) => c.id === r.class_id)?.name ??
-    r.class ??
-    null;
+  const classOnFile = enteredClassName(r, data.classes ?? []);
   // "Do It for the T-Shirts · Coed D" — never "· Coed · Coed D · D"
-  const scope = registrationScope(r.divisions, enteredClassName);
+  const scope = registrationScope(r.divisions, classOnFile);
 
   const suspById = new Map();
   for (const s of data.suspensionsForRoster ?? []) {

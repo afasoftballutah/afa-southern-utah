@@ -108,12 +108,19 @@ export async function POST(request) {
 
   const { data: division, error: divError } = await supabase
     .from("divisions")
-    .select("id, tournament_id")
+    .select("id, tournament_id, class_id, classes(name)")
     .eq("id", divisionId)
     .maybeSingle();
   if (divError || !division || division.tournament_id !== tournamentId) {
     return bad("Tournament/division not found", 404);
   }
+
+  const divisionClassName = division.classes?.name ?? null;
+  const storedClass =
+    divisionClassName ||
+    (typeof className === "string" && /^(open|d|e|rec)$/i.test(className.trim())
+      ? className.trim()
+      : null);
 
   const { data: inserted, error: insertError } = await supabase
     .from("registrations")
@@ -121,7 +128,8 @@ export async function POST(request) {
       tournament_id: tournamentId,
       division_id: divisionId,
       team_name: teamName.trim(),
-      class: className ?? null,
+      class: storedClass,
+      class_id: division.class_id ?? null,
       afa_membership_number: afaMembershipNumber ?? null,
       manager_name: managerPerson.displayName,
       manager_email: managerPerson.email,

@@ -3,6 +3,7 @@
 import EligibilityPill from "./EligibilityPill";
 import InlineSelect from "./InlineSelect";
 import TeamActions from "./TeamActions";
+import { enteredClassName } from "@/lib/class";
 
 // One team's registration. Used twice: in the list on a tournament page,
 // where it needs its own name; and on that registration's own page, where the
@@ -28,7 +29,7 @@ export default function RegistrationCard({ registration, classes = [], divisions
   // Zero of zero signed is the truth about it, not a reason to crash.
   const { active_members: active, signed_members: signed } =
     reg.progress ?? { active_members: 0, signed_members: 0 };
-  const enteredClass = classes.find((c) => c.id === reg.class_id)?.name ?? reg.class ?? null;
+  const enteredClass = enteredClassName(reg, classes);
   const division = reg.divisions?.display_name ?? reg.divisions?.name;
   const sug = reg.suggestion;
   // Prefer division label alone when it already carries class ("Coed D").

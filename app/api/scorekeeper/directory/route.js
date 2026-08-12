@@ -51,7 +51,7 @@ export async function POST(request) {
 
       const { data: division } = await supabase
         .from("divisions")
-        .select("id, name, tournament_id")
+        .select("id, name, tournament_id, class_id, classes(name)")
         .eq("id", divisionId)
         .maybeSingle();
       if (!division) return bad("That division does not exist", 404);
@@ -72,7 +72,11 @@ export async function POST(request) {
 
       const { error } = await supabase
         .from("registrations")
-        .update({ division_id: divisionId })
+        .update({
+          division_id: divisionId,
+          class_id: division.class_id ?? null,
+          class: division.classes?.name ?? null,
+        })
         .eq("id", registrationId);
       if (error) {
         if (error.code === "23505") {
