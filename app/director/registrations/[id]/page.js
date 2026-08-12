@@ -337,7 +337,7 @@ export default async function RegistrationPage({ params }) {
         showTitle={false}
       />
 
-      <div className="max-w-lg mx-auto space-y-2">
+      <div className="max-w-lg mx-auto space-y-2 mt-8">
         <h2 className="t-heading">Roster</h2>
         <p className="t-meta">
           Add or remove players, or claim someone from a withdrawn team.
