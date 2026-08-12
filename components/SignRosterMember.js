@@ -67,7 +67,6 @@ export default function SignRosterMember({
   const [email, setEmail] = useState(member.email ?? "");
   const [address, setAddress] = useState(member.address ?? "");
   const [idAttested, setIdAttested] = useState(false);
-  const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState(null);
   const [state, setState] = useState(member.alreadySigned ? "done" : "idle");
   const [error, setError] = useState("");
@@ -83,7 +82,6 @@ export default function SignRosterMember({
       idAttested);
 
   const canSign =
-    agreed &&
     signature &&
     state !== "submitting" &&
     playerReady;
@@ -259,18 +257,6 @@ export default function SignRosterMember({
           <span className="register-agree__text">{ID_ATTESTATION_TEXT}</span>
         </label>
       )}
-
-      <label className="register-agree">
-        <input
-          type="checkbox"
-          className="register-agree__box"
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-        />
-        <span className="register-agree__text">
-          I have read this release and waiver of liability and I agree to it.
-        </span>
-      </label>
 
       <div>
         <p className="font-semibold text-sm mb-1">Your Signature</p>
