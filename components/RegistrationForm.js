@@ -20,49 +20,10 @@ import {
 } from "@/components/ManagerPlayerFields";
 import CompactPlayerAdd from "@/components/CompactPlayerAdd";
 import { PageDots } from "@/components/forms/SoftField";
-import { genderKeyFromDivisionName } from "@/lib/poster-deck";
-
-const GENDER_ROWS = [
-  { key: "womens", label: "Women's" },
-  { key: "mens", label: "Men's" },
-  { key: "coed", label: "Coed" },
-];
-const LEVEL_ORDER = ["Open", "D", "E", "Rec", "Upper", "Lower"];
-
-function divisionGenderKey(d) {
-  if (d.gender === "womens" || d.gender === "mens" || d.gender === "coed") {
-    return d.gender;
-  }
-  const k = genderKeyFromDivisionName(d.display_name ?? d.name);
-  return { w: "womens", m: "mens", c: "coed" }[k] ?? "coed";
-}
-
-function divisionLevelLabel(d) {
-  const raw = String(d.display_name ?? d.name ?? "").trim();
-  const stripped = raw.replace(/^(women'?s|men'?s|co-?ed)\s+/i, "").trim();
-  return stripped || raw || "—";
-}
-
-function levelSortIndex(label) {
-  const i = LEVEL_ORDER.findIndex(
-    (x) => x.toLowerCase() === String(label).toLowerCase()
-  );
-  return i === -1 ? LEVEL_ORDER.length : i;
-}
-
-/** True when the only "level" is the gender itself (no D/E/Open/Rec). */
-function isBareGenderDivision(d, genderLabel) {
-  const level = divisionLevelLabel(d)
-    .replace(/['’]/g, "")
-    .toLowerCase();
-  const g = String(genderLabel)
-    .replace(/['’]/g, "")
-    .toLowerCase();
-  if (!level || level === "—") return true;
-  if (level === g) return true;
-  if (level === g.replace(/s$/, "")) return true;
-  return false;
-}
+import {
+  divisionLevelLabel,
+  groupDivisionsByGender,
+} from "@/lib/division-layout";
 
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
 // Room flow: door (tournament) → rooms → exit (confirmation).
@@ -646,20 +607,9 @@ export default function RegistrationForm({
                   role="group"
                   aria-label="Division"
                 >
-                  {GENDER_ROWS.map((row) => {
-                    const inCol = registerableDivisions
-                      .filter((d) => divisionGenderKey(d) === row.key)
-                      .slice()
-                      .sort(
-                        (a, b) =>
-                          levelSortIndex(divisionLevelLabel(a)) -
-                            levelSortIndex(divisionLevelLabel(b)) ||
-                          (a.sort_order ?? 0) - (b.sort_order ?? 0)
-                      );
-                    if (inCol.length === 0) return null;
-                    const genderOnly =
-                      inCol.length === 1 &&
-                      isBareGenderDivision(inCol[0], row.label);
+                  {groupDivisionsByGender(registerableDivisions).map((row) => {
+                    const inCol = row.items;
+                    const genderOnly = row.genderOnly;
                     const colOn =
                       registerableDivisions.length === 1 ||
                       inCol.some((d) => d.id === divisionId);

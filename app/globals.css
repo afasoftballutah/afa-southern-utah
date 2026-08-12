@@ -849,8 +849,17 @@ textarea.form-field {
   color: #fff;
   cursor: default;
 }
-.register-division-col__card--header[type="button"] {
+.register-division-col__card--header[type="button"],
+a.register-division-col__card--header {
   cursor: pointer;
+}
+a.register-division-col__card:hover {
+  background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
+}
+a.register-division-col__card--header:hover {
+  background: #16356a;
+  border-color: #16356a;
+  color: #fff;
 }
 .register-division-col__card:hover:not(.register-division-col__card--header):not(.is-on) {
   background: color-mix(in srgb, var(--afa-navy) 5%, #fff);

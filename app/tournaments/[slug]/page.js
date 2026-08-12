@@ -23,6 +23,10 @@ import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
 import TournamentResults from "@/components/TournamentResults";
 import MyTeamCard from "@/components/MyTeamCard";
+import {
+  divisionLevelLabel,
+  groupDivisionsByGender,
+} from "@/lib/division-layout";
 
 // Where and when, split so a list of games lines up in columns.
 function whenParts(scheduledTime) {
@@ -346,12 +350,6 @@ export default async function TournamentDetailPage({ params }) {
           where they are and what is next, or where they finished. */}
       {groupCards.length > 0 && (
         <div className="space-y-3">
-          {groupCards.length > 1 && (
-            <div>
-              <h2 className="t-heading">My Team</h2>
-              <p className="t-meta">Schedule and tournament updates</p>
-            </div>
-          )}
           {groupCards.length === 1 ? (
             <MyTeamCard
               slug={tournament.slug}
@@ -359,19 +357,45 @@ export default async function TournamentDetailPage({ params }) {
               fallbackHref={`/tournaments/${tournament.slug}/division/${groupCards[0].id}`}
             />
           ) : (
-            groupCards.map((division) => (
-              <Card key={division.id} className="card-lift">
-                <Link
-                  href={`/tournaments/${tournament.slug}/division/${division.id}`}
-                  className="group block min-h-11"
-                >
-                  <p className="font-display text-lg text-afa-navy group-hover:underline">
-                    {division.display_name ?? division.name}
-                  </p>
-                  <p className="t-meta mt-0.5">Schedule and tournament updates</p>
-                </Link>
-              </Card>
-            ))
+            <>
+              <div>
+                <h2 className="t-heading">Divisions</h2>
+                <p className="t-meta">Schedule and tournament updates</p>
+              </div>
+              <div
+                className="register-division-cols"
+                role="navigation"
+                aria-label="Divisions"
+              >
+                {groupDivisionsByGender(groupCards).map((col) => (
+                  <div key={col.key} className="register-division-col">
+                    {col.genderOnly ? (
+                      <Link
+                        href={`/tournaments/${tournament.slug}/division/${col.items[0].id}`}
+                        className="register-division-col__card register-division-col__card--header"
+                      >
+                        {col.label}
+                      </Link>
+                    ) : (
+                      <>
+                        <span className="register-division-col__card register-division-col__card--header">
+                          {col.label}
+                        </span>
+                        {col.items.map((d) => (
+                          <Link
+                            key={d.id}
+                            href={`/tournaments/${tournament.slug}/division/${d.id}`}
+                            className="register-division-col__card"
+                          >
+                            {divisionLevelLabel(d)}
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
