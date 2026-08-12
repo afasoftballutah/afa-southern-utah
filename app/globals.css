@@ -827,31 +827,36 @@ textarea.form-field {
   width: 5.75rem;
   height: 2.75rem;
   padding: 0;
-  border: 1px solid var(--afa-ink);
+  border: 1px solid color-mix(in srgb, var(--afa-navy) 22%, transparent);
   border-radius: 0.375rem;
-  background: #fff;
+  background: var(--afa-soft-gray);
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--afa-navy);
+  color: color-mix(in srgb, var(--afa-navy) 55%, var(--afa-muted));
   cursor: pointer;
   flex-shrink: 0;
+  opacity: 0.62;
+  transition: opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease,
+    background 0.12s ease, color 0.12s ease;
 }
 .register-division-col__card--label {
   cursor: default;
-  background: var(--afa-soft-gray);
 }
 .register-division-col__card:hover:not(.register-division-col__card--label):not(.is-on) {
-  background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
+  opacity: 0.88;
+  background: #fff;
+  color: var(--afa-navy);
 }
 .register-division-col__card.is-on,
 .register-division-col__card.is-on:hover,
 .register-division-col__card.is-on:focus {
-  background: var(--afa-lime);
-  border-color: var(--afa-lime);
-  color: var(--afa-navy);
+  opacity: 1;
+  background: var(--afa-navy);
+  border-color: var(--afa-navy);
+  color: #fff;
   box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--afa-lime) 70%, #fff),
-    0 0 14px color-mix(in srgb, var(--afa-lime) 55%, transparent);
+    0 0 0 2px var(--afa-lime),
+    0 0 16px color-mix(in srgb, var(--afa-lime) 60%, transparent);
 }
 .register-division-col__card--label.is-on {
   cursor: default;
