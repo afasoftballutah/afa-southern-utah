@@ -108,7 +108,6 @@ export default function FindTournamentTeam({
       : teams
           .filter((t) => {
             if (t.name.toLowerCase().includes(needle)) return true;
-            if ((t.managerEmail || "").includes(needle)) return true;
             return (t.managerNames ?? []).some((m) =>
               String(m).toLowerCase().includes(needle)
             );
@@ -220,35 +219,11 @@ export default function FindTournamentTeam({
           {hits.length > 0 ? (
             <ul className="space-y-2" role="listbox">
               {hits.map((t) => {
-                const nameHits = hits.filter((h) =>
-                  sameRegistrationName(h.name, t.name)
-                );
-                const otherManagers = new Set(
-                  nameHits.map((h) => h.managerEmail || "").filter(Boolean)
-                );
                 const managers = (t.managerNames ?? []).filter((m) =>
                   String(m).toLowerCase().includes(needle)
                 );
-                const emailHit =
-                  t.managerEmail && t.managerEmail.includes(needle);
-                const showWho =
-                  managers.length > 0 ||
-                  emailHit ||
-                  otherManagers.size > 1;
-                const who = [
-                  ...(managers.length
-                    ? managers
-                    : showWho
-                      ? t.managerNames || []
-                      : []),
-                  ...(emailHit ? [t.managerEmail] : []),
-                ]
-                  .filter(Boolean)
-                  .filter((v, i, a) => a.indexOf(v) === i);
                 return (
-                  <li
-                    key={`${t.managerEmail || t.name}-${t.divisionId || t.seatLabel}`}
-                  >
+                  <li key={`${t.name}-${t.divisionId || t.seatLabel}`}>
                     <button
                       type="button"
                       role="option"
@@ -264,9 +239,9 @@ export default function FindTournamentTeam({
                         <span className="team-name font-semibold truncate block">
                           {t.name}
                         </span>
-                        {who.length > 0 ? (
+                        {managers.length > 0 ? (
                           <span className="t-meta block truncate mt-0.5">
-                            {who.join(" · ")}
+                            {managers.join(", ")}
                           </span>
                         ) : null}
                       </span>
