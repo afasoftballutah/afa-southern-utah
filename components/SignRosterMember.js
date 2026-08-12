@@ -172,41 +172,46 @@ export default function SignRosterMember({
             </label>
           </LegalIdBox>
 
-          <SoftField
-            label="Preferred name"
-            explainer="Optional — what you go by on rosters / score sheets"
-            value={preferredName}
-            onChange={(e) => setPreferredName(e.target.value)}
-            autoComplete="nickname"
-          />
-          <fieldset>
-            <legend className="form-label mb-1">Gender</legend>
-            <div className="flex gap-2">
-              {["M", "F"].map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  className={
-                    "flex-1 rounded-lg border-2 px-3 py-2 font-bold text-sm " +
-                    (gender === g
-                      ? "border-afa-navy bg-afa-navy text-white"
-                      : "border-afa-navy/20 bg-white text-afa-navy")
-                  }
-                  onClick={() => setGender(g)}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <SoftField
-            label="Birth date"
-            explainer="YYYY-MM-DD"
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            autoComplete="bday"
-          />
+          <div className="flex items-end gap-2">
+            <SoftField
+              className="min-w-0 flex-1"
+              label="Preferred name"
+              explainer="optional"
+              value={preferredName}
+              onChange={(e) => setPreferredName(e.target.value)}
+              autoComplete="nickname"
+            />
+            <fieldset className="shrink-0">
+              <legend className="t-label block mb-1 min-h-[1rem] leading-4">
+                Gender
+              </legend>
+              <div className="flex gap-1">
+                {["M", "F"].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={
+                      "form-field w-11 px-0 font-bold " +
+                      (gender === g
+                        ? "border-afa-navy bg-afa-navy text-white"
+                        : "bg-white text-afa-navy")
+                    }
+                    onClick={() => setGender(g)}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <SoftField
+              className="w-[10.5rem] shrink-0"
+              label="Birth date"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+            />
+          </div>
           <SoftField
             label="Email"
             explainer="Contact email (required)"
