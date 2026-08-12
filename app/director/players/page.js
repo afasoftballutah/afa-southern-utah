@@ -344,6 +344,10 @@ export default async function PlayersPage() {
                       <WaiverSignLink
                         href={a.signPath}
                         signed={a.signed}
+                        signedAt={a.signedAt}
+                        signedPlace={a.signedPlace}
+                        signedVia={a.signedVia}
+                        signedIp={a.signedIp}
                         compact
                       />
                     </td>

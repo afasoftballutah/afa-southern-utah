@@ -34,11 +34,24 @@ async function getManageable(token) {
     supabase
       .from("roster_members")
       .select(
-        "id, name, role, gender, birth_date, signed_at, removed_at, player_id, legal_first_name, legal_last_name, preferred_name"
+        "id, name, role, gender, birth_date, signed_at, signed_place, removed_at, player_id, legal_first_name, legal_last_name, preferred_name"
       )
       .eq("registration_id", registration.id)
       .order("legal_last_name", { ascending: true, nullsFirst: false })
-      .order("legal_first_name", { ascending: true, nullsFirst: false }),
+      .order("legal_first_name", { ascending: true, nullsFirst: false })
+      .then(async (res) => {
+        if (!res.error) return res;
+        const { isMissingAuditSchema } = await import("@/lib/sign-audit");
+        if (!isMissingAuditSchema(res.error)) return res;
+        return supabase
+          .from("roster_members")
+          .select(
+            "id, name, role, gender, birth_date, signed_at, removed_at, player_id, legal_first_name, legal_last_name, preferred_name"
+          )
+          .eq("registration_id", registration.id)
+          .order("legal_last_name", { ascending: true, nullsFirst: false })
+          .order("legal_first_name", { ascending: true, nullsFirst: false });
+      }),
     // Manage-token page only — directory for the add-player search.
     loadKnownPlayers(supabase),
   ]);
@@ -70,6 +83,8 @@ async function getManageable(token) {
       gender: m.gender ?? null,
       birthDate: m.birth_date,
       signed: Boolean(m.signed_at),
+      signedAt: m.signed_at ?? null,
+      signedPlace: m.signed_place ?? null,
       removed: Boolean(m.removed_at),
       isManager: m.id === registration.manager_member_id,
       playerId: m.player_id ?? null,

@@ -45,11 +45,24 @@ async function load(id) {
     supabase
       .from("roster_members")
       .select(
-        "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
+        "id, name, role, gender, signed_at, signed_ip, signed_place, signed_via, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
       )
       .eq("registration_id", id)
       .order("legal_last_name", { ascending: true, nullsFirst: false })
-      .order("legal_first_name", { ascending: true, nullsFirst: false }),
+      .order("legal_first_name", { ascending: true, nullsFirst: false })
+      .then(async (res) => {
+        if (!res.error) return res;
+        const { isMissingAuditSchema } = await import("@/lib/sign-audit");
+        if (!isMissingAuditSchema(res.error)) return res;
+        return supabase
+          .from("roster_members")
+          .select(
+            "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
+          )
+          .eq("registration_id", id)
+          .order("legal_last_name", { ascending: true, nullsFirst: false })
+          .order("legal_first_name", { ascending: true, nullsFirst: false });
+      }),
     supabase.from("classes").select("id, name, sort_order").order("sort_order"),
     supabase.from("registration_signing_progress").select("*").eq("registration_id", id),
     supabase
@@ -113,6 +126,10 @@ async function load(id) {
       gender: m.gender ?? person?.gender ?? null,
       birthDate: person?.birth_date ?? null,
       signed: Boolean(m.signed_at),
+      signedAt: m.signed_at ?? null,
+      signedPlace: m.signed_place ?? null,
+      signedVia: m.signed_via ?? null,
+      signedIp: m.signed_ip ?? null,
       signingToken: m.signing_token || null,
       signPath: m.signing_token
         ? `/register/sign/${m.signing_token}`
@@ -250,6 +267,10 @@ export default async function RegistrationPage({ params }) {
       gender: m.gender ?? null,
       rating: m.rating ?? null,
       signed: m.signed,
+      signedAt: m.signedAt ?? null,
+      signedPlace: m.signedPlace ?? null,
+      signedVia: m.signedVia ?? null,
+      signedIp: m.signedIp ?? null,
       signPath: m.signPath ?? null,
       removed: false,
       isManager: m.role === "manager" || m.id === r.manager_member_id,

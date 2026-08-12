@@ -256,6 +256,10 @@ export default function SignRosterMember({
       <div>
         <p className="font-semibold text-sm mb-1">Your Signature</p>
         <SignaturePad onChange={setSignature} />
+        <p className="t-meta mt-1">
+          Signing records the time and this device&rsquo;s approximate
+          location on this tournament&rsquo;s waiver file.
+        </p>
       </div>
 
       {state === "error" && (

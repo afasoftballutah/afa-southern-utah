@@ -1,19 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import {
+  formatSignAuditTitle,
+  formatSignRecord,
+} from "@/lib/sign-audit";
 
 /**
  * Director tool for a player's waiver seat:
  * - unsigned → link to their sign page
- * - signed → quiet “ok” (no link, no copy)
+ * - signed → quiet “ok” plus when / from where when we have it
  */
 export default function WaiverSignLink({
   href,
   signed = false,
+  signedAt = null,
+  signedPlace = null,
+  signedVia = null,
+  signedIp = null,
   className = "",
   compact = false,
 }) {
   if (signed) {
+    const record = formatSignRecord({ signedAt, signedPlace });
+    const title = formatSignAuditTitle({
+      signedAt,
+      signedPlace,
+      signedVia,
+      signedIp,
+    });
     return (
       <span
         className={
@@ -24,12 +39,25 @@ export default function WaiverSignLink({
           " " +
           className
         }
-        title="Waiver signed for this tournament"
+        title={title}
       >
         <span className="tick text-[0.95em]" aria-hidden>
           ☑
         </span>
         {!compact ? <span>Signed</span> : null}
+        {record ? (
+          <span
+            className={
+              compact
+                ? "normal-case tracking-normal font-semibold text-[11px]"
+                : "t-meta font-normal text-afa-go"
+            }
+          >
+            {record}
+          </span>
+        ) : !compact ? null : (
+          <span className="sr-only">Signed</span>
+        )}
       </span>
     );
   }

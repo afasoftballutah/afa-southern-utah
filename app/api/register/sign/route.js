@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer, normalizeName } from "@/lib/identity";
@@ -5,7 +6,15 @@ import {
   composeDisplayName,
   composeLegalName,
 } from "@/lib/person-name";
-import { propagateTournamentWaiver } from "@/lib/tournament-waiver";
+import { propagateTournamentWaiver, tournamentPersonKey } from "@/lib/tournament-waiver";
+import { hasValidDirectorSession } from "@/lib/scorekeeper-auth";
+import {
+  SIGN_VIA,
+  recordWaiverSignEvent,
+  rosterSignPatch,
+  signAuditFromRequest,
+  updateRosterSign,
+} from "@/lib/sign-audit";
 
 // Personal remote-sign endpoint. No outbound comms here either — this only
 // ever writes a signature to the roster_members row that matches the token
@@ -53,7 +62,7 @@ export async function POST(request) {
   const { data: member, error: findError } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, player_id, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id)"
+      "id, role, name, player_id, registration_id, removed_at, registrations!roster_members_registration_id_fkey(manager_member_id, tournament_id)"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -119,9 +128,13 @@ export async function POST(request) {
     name: member.name,
   });
 
+  const directorDesk = hasValidDirectorSession(await cookies());
+  const audit = signAuditFromRequest(
+    request,
+    directorDesk ? SIGN_VIA.DIRECTOR : SIGN_VIA.SIGN_LINK
+  );
   const patch = {
-    signature_png: signaturePng,
-    signed_at: now,
+    ...rosterSignPatch({ signaturePng, signedAt: now, audit }),
   };
 
   if (needsPlayerFields) {
@@ -174,13 +187,9 @@ export async function POST(request) {
     }
   }
 
-  const { error: updateError } = await supabase
-    .from("roster_members")
-    .update(patch)
-    .eq("id", member.id);
-
-  if (updateError) {
-    console.error("roster_members sign update failed", updateError);
+  const written = await updateRosterSign(supabase, member.id, patch);
+  if (!written.ok) {
+    console.error("roster_members sign update failed", written.error);
     return bad("Could not save your signature — please try again", 500);
   }
 
@@ -197,16 +206,35 @@ export async function POST(request) {
   // Same person, same tournament (other divisions/teams): copy this signature.
   // One waiver per person per event — not one per division.
   try {
-    await propagateTournamentWaiver(supabase, {
-      memberId: member.id,
-      registrationId: member.registration_id,
+    const personFields = {
       playerId: patch.player_id || member.player_id || null,
       birthDate: patch.birth_date || birth || null,
       legalFirstName: patch.legal_first_name || first || null,
       legalLastName: patch.legal_last_name || last || null,
       name: patch.name || member.name || null,
+    };
+    await recordWaiverSignEvent(supabase, {
+      tournamentId: member.registrations?.tournament_id ?? null,
+      registrationId: member.registration_id,
+      memberId: member.id,
+      playerId: personFields.playerId,
+      personKey: tournamentPersonKey(personFields),
+      signedAt: now,
+      signedIp: audit.signed_ip,
+      signedPlace: audit.signed_place,
+      signedUserAgent: audit.signed_user_agent,
+      signedVia: audit.signed_via,
+    });
+    await propagateTournamentWaiver(supabase, {
+      memberId: member.id,
+      registrationId: member.registration_id,
+      ...personFields,
       signaturePng,
       signedAt: now,
+      signedIp: audit.signed_ip,
+      signedPlace: audit.signed_place,
+      signedUserAgent: audit.signed_user_agent,
+      signedVia: audit.signed_via,
     });
   } catch (err) {
     console.error("tournament waiver propagate failed", err);

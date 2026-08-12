@@ -3,6 +3,14 @@ import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { getActiveWaiver } from "@/lib/site-docs";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
 import { personFieldsFromInput } from "@/lib/person-name";
+import {
+  SIGN_VIA,
+  recordWaiverSignEvent,
+  rosterSignPatch,
+  signAuditFromRequest,
+  updateRosterSign,
+} from "@/lib/sign-audit";
+import { tournamentPersonKey } from "@/lib/tournament-waiver";
 
 // NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
 // saves the registration, creates one roster_members row per player/coach
@@ -280,10 +288,29 @@ export async function POST(request) {
   // Her one signature also goes on her roster row, so the roster page and the
   // form's manager line cannot disagree.
   if (managerRow && signaturePng) {
-    await supabase
-      .from("roster_members")
-      .update({ signature_png: signaturePng, signed_at: new Date().toISOString() })
-      .eq("id", managerRow.id);
+    const now = new Date().toISOString();
+    const audit = signAuditFromRequest(request, SIGN_VIA.REGISTER);
+    await updateRosterSign(
+      supabase,
+      managerRow.id,
+      rosterSignPatch({ signaturePng, signedAt: now, audit })
+    );
+    await recordWaiverSignEvent(supabase, {
+      tournamentId,
+      registrationId,
+      memberId: managerRow.id,
+      playerId: null,
+      personKey: tournamentPersonKey({
+        legalFirstName: managerPerson.legalFirstName,
+        legalLastName: managerPerson.legalLastName,
+        name: managerPerson.displayName,
+      }),
+      signedAt: now,
+      signedIp: audit.signed_ip,
+      signedPlace: audit.signed_place,
+      signedUserAgent: audit.signed_user_agent,
+      signedVia: audit.signed_via,
+    });
   }
   await supabase.from("registrations").update(patch).eq("id", registrationId);
 

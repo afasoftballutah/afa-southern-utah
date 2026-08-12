@@ -6,6 +6,8 @@ import {
   formatLeagueShortTime,
   parseLeagueDateOnly,
   formatLeagueDateOnly,
+  formatLeagueDateTime,
+  formatLeagueSignedAt,
 } from "@/lib/league-time";
 
 // W14: five of thirteen date-render sites read the BROWSER's zone, so one
@@ -65,6 +67,12 @@ test("a calendar date is the day it says, with no zone applied", () => {
   assert.equal(formatLeagueDateOnly("2026-12-25"), "December 25, 2026");
 });
 
+test("a signed instant reads as a Mountain wall clock, not the browser zone", () => {
+  assert.equal(formatLeagueDateTime("2026-08-11T01:14:00Z"), "Aug 10, 2026, 7:14 PM MT");
+  assert.equal(formatLeagueSignedAt("2026-08-11T01:14:00Z"), "Aug 10, 7:14p");
+  assert.equal(formatLeagueDateTime("2026-01-15T02:14:00Z"), "Jan 14, 2026, 7:14 PM MT");
+});
+
 test("missing and malformed values render as blanks, not Invalid Date", () => {
   assert.equal(formatLeagueInputValue(null), "");
   assert.equal(formatLeagueInputValue("not a date"), "");
@@ -74,4 +82,6 @@ test("missing and malformed values render as blanks, not Invalid Date", () => {
   assert.equal(parseLeagueInputValue(null), null);
   assert.equal(parseLeagueDateOnly(""), null);
   assert.equal(formatLeagueDateOnly(null), "");
+  assert.equal(formatLeagueDateTime(null), "");
+  assert.equal(formatLeagueSignedAt(undefined), "");
 });

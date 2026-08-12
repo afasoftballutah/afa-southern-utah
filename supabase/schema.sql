@@ -205,9 +205,30 @@ create table if not exists public.roster_members (
   signing_token uuid not null default gen_random_uuid() unique,
   signature_png text, -- null until they sign
   signed_at timestamptz,
+  signed_ip text, -- client IP at signing (x-forwarded-for). Director-only audit.
+  signed_place text, -- coarse edge geo, e.g. "St. George, UT, US". Not GPS.
+  signed_user_agent text,
+  signed_via text, -- sign-link | director | register
   created_at timestamptz not null default now()
 );
 comment on table public.roster_members is 'PRIVATE. PII + signatures, one row per player/coach. No Data API exposure, no RLS policies — service_role only. signing_token gates the personal remote-sign link.';
+
+-- Append-only e-sign audit. One row per actual sign act (not per copied seat).
+create table if not exists public.waiver_sign_events (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  registration_id uuid not null references public.registrations(id) on delete cascade,
+  roster_member_id uuid not null references public.roster_members(id) on delete cascade,
+  player_id uuid,
+  person_key text,
+  signed_at timestamptz not null,
+  signed_ip text,
+  signed_place text,
+  signed_user_agent text,
+  signed_via text not null default 'sign-link',
+  created_at timestamptz not null default now()
+);
+comment on table public.waiver_sign_events is 'PRIVATE. Append-only e-sign audit for a person signing the AFA waiver for a tournament.';
 
 -- ============================================================
 -- brackets — PUBLIC READ. One row per division once generated. No PII —
@@ -341,6 +362,7 @@ alter table public.divisions enable row level security;
 alter table public.placements enable row level security;
 alter table public.registrations enable row level security;
 alter table public.roster_members enable row level security;
+alter table public.waiver_sign_events enable row level security;
 alter table public.brackets enable row level security;
 alter table public.games enable row level security;
 alter table public.pool_games enable row level security;
@@ -392,6 +414,7 @@ grant all on public.classes to service_role;
 grant all on public.pool_games to service_role;
 grant all on public.registrations to service_role;
 grant all on public.roster_members to service_role;
+grant all on public.waiver_sign_events to service_role;
 grant all on public.settings to service_role;
 grant all on public.scorekeeper_auth_throttle to service_role;
 
