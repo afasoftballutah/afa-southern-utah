@@ -49,6 +49,8 @@ export default function TournamentDivisionNav({
   teamSummaries = {},
   mode = "schedule",
   externalRegisterUrl = null,
+  selectedTeam = "",
+  hideTeamPicker = false,
 }) {
   const [team, setTeam] = useState("");
 
@@ -69,15 +71,17 @@ export default function TournamentDivisionNav({
     }
   }, [slug, teamSummaries]);
 
+  const activeTeam = hideTeamPicker ? selectedTeam || "" : selectedTeam || team;
+
   const mine = useMemo(() => {
     const ids = new Set();
-    if (!team) return ids;
-    const row = teamSummaries[team];
+    if (!activeTeam) return ids;
+    const row = teamSummaries[activeTeam];
     if (!row) return ids;
     for (const id of row.divisionIds ?? []) ids.add(id);
     if (row.divisionId) ids.add(row.divisionId);
     return ids;
-  }, [team, teamSummaries]);
+  }, [activeTeam, teamSummaries]);
 
   const hasMine = mine.size > 0;
   const teams = Object.keys(teamSummaries).sort((a, b) => a.localeCompare(b));
@@ -101,7 +105,7 @@ export default function TournamentDivisionNav({
 
   return (
     <div className="space-y-3">
-      {!registering && teams.length > 0 && (
+      {!registering && !hideTeamPicker && teams.length > 0 && (
         <label className="flex flex-wrap items-center justify-center gap-2">
           <span className="t-meta">Your team</span>
           <select

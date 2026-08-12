@@ -21,9 +21,12 @@ import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
 import TournamentResults from "@/components/TournamentResults";
-import MyTeamCard from "@/components/MyTeamCard";
-import TournamentDivisionNav from "@/components/TournamentDivisionNav";
+import TournamentTeamEntry from "@/components/TournamentTeamEntry";
 import { groupDivisionsByGender } from "@/lib/division-layout";
+import {
+  listTournamentTeams,
+  mergeTeamSummaries,
+} from "@/lib/tournament-teams";
 
 // Where and when, split so a list of games lines up in columns.
 function whenParts(scheduledTime) {
@@ -113,32 +116,6 @@ function splitSentences(text) {
 }
 
 
-// Hostname only, for off-site signup (city rec, etc.).
-function registrationHostname(url) {
-  if (!url) return null;
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function registerGridMeta(tournament) {
-  const bits = [];
-  if (tournament.registration_closes) {
-    bits.push(
-      `Closes ${formatDateRange(
-        tournament.registration_closes,
-        tournament.registration_closes
-      )}`
-    );
-  }
-  const host = registrationHostname(tournament.registration_url);
-  if (host) bits.push(`Opens on ${host}`);
-  if (tournament.registration_note) bits.push(tournament.registration_note);
-  return bits.join(" · ") || "Pick a division";
-}
-
 export default async function TournamentDetailPage({ params }) {
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
@@ -187,7 +164,11 @@ export default async function TournamentDetailPage({ params }) {
   ]);
   const withWhen = (list) => list.map((g) => ({ ...g, ...whenParts(g.scheduledTime) }));
   const hasSchedule = recentScores.length > 0 || upcomingGames.length > 0;
-  const teamSummaries = await getTeamSummaries(tournament);
+  const [teamSummariesRaw, registeredTeams] = await Promise.all([
+    getTeamSummaries(tournament),
+    listTournamentTeams(tournament),
+  ]);
+  const teamSummaries = mergeTeamSummaries(teamSummariesRaw, registeredTeams);
   const seedLabels = await getSeedLabels(tournament);
   const finished = isTournamentFinished(tournament);
   const tournamentResults = finished ? await getTournamentResults(tournament) : [];
@@ -236,21 +217,8 @@ export default async function TournamentDetailPage({ params }) {
     prizesLines.length > 0 ||
     specialRulesLines.length > 0;
 
-  // Same window as /register: dates + a real flyer. The division grid
-  // IS registration while that is true; after close it is schedule/results.
   const registrationOpen =
     isRegistrationOpen(tournament) && isRealPoster(tournament);
-  const showRegisterGrid = registrationOpen && groupCards.length > 0;
-  const gridHeading = registrationOpen
-    ? "Register"
-    : finished
-      ? "Results"
-      : "Schedule";
-  const gridMeta = registrationOpen
-    ? registerGridMeta(tournament)
-    : finished
-      ? null
-      : "Schedule and tournament updates";
 
   return (
     <div className="space-y-6">
@@ -295,62 +263,16 @@ export default async function TournamentDetailPage({ params }) {
         )}
       </div>
 
-      {/* Open: the grid is registration. Closed: same grid is schedule/results. */}
-      {groupCards.length > 0 && (
-        <div className="space-y-3">
-          {showRegisterGrid || groupCards.length > 1 ? (
-            <>
-              <div className="text-center">
-                <h2 className="t-heading">{gridHeading}</h2>
-                {gridMeta ? <p className="t-meta">{gridMeta}</p> : null}
-              </div>
-              <TournamentDivisionNav
-                slug={tournament.slug}
-                columns={groupDivisionsByGender(groupCards)}
-                teamSummaries={showRegisterGrid ? {} : teamSummaries}
-                mode={showRegisterGrid ? "register" : "schedule"}
-                externalRegisterUrl={
-                  showRegisterGrid && tournament.registration_url
-                    ? tournament.registration_url
-                    : null
-                }
-              />
-            </>
-          ) : (
-            <MyTeamCard
-              slug={tournament.slug}
-              summaries={teamSummaries}
-              fallbackHref={`/tournaments/${tournament.slug}/division/${groupCards[0].id}`}
-            />
-          )}
-        </div>
-      )}
-
-      {registrationOpen && groupCards.length === 0 && (
-        <div className="text-center space-y-2">
-          <h2 className="t-heading">Register</h2>
-          {tournament.registration_url ? (
-            <a
-              href={tournament.registration_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-action"
-            >
-              Register
-              {registrationHostname(tournament.registration_url)
-                ? ` · ${registrationHostname(tournament.registration_url)}`
-                : ""}
-            </a>
-          ) : (
-            <Link
-              href={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
-              className="btn-action"
-            >
-              Register
-            </Link>
-          )}
-        </div>
-      )}
+      <TournamentTeamEntry
+        slug={tournament.slug}
+        columns={groupDivisionsByGender(groupCards)}
+        teamSummaries={teamSummaries}
+        teams={registeredTeams}
+        registrationOpen={registrationOpen}
+        registerHref={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
+        externalRegisterUrl={tournament.registration_url || null}
+        finished={finished}
+      />
 
       {finished && tournamentResults.length > 0 ? (
         <TournamentResults
