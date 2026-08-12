@@ -637,7 +637,12 @@ export default function RegistrationForm({
               <div>
                 <span className="form-label">Division</span>
                 <div
-                  className="register-division-cols"
+                  className={
+                    "register-division-cols" +
+                    (divisionId || registerableDivisions.length === 1
+                      ? " has-pick"
+                      : "")
+                  }
                   role="group"
                   aria-label="Division"
                 >
