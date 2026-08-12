@@ -806,12 +806,70 @@ textarea.form-field {
   text-decoration: underline;
 }
 
-/* Register — division pick as buttons (Men's D, Coed D, …) */
-.register-division-picks {
+/* Register — division pick: Women's / Men's / Coed rows, equal level cards */
+.register-division-rows {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.35rem;
+}
+.register-division-row {
+  display: grid;
+  grid-template-columns: 6.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.register-division-row__gender {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--afa-ink);
+  border-radius: 0.375rem;
+  background: var(--afa-soft-gray);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--afa-navy);
+  text-align: center;
+}
+.register-division-row__levels {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.register-division-row__level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 0;
+  padding: 0.4rem 0.35rem;
+  border: 1px solid var(--afa-ink);
+  border-radius: 0.375rem;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--afa-navy);
+  cursor: pointer;
+}
+.register-division-row__level:hover {
+  background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
+}
+.register-division-row__level.is-on {
+  background: var(--afa-navy);
+  border-color: var(--afa-navy);
+  color: #fff;
+}
+@media (max-width: 420px) {
+  .register-division-row {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+  }
+  .register-division-row__gender,
+  .register-division-row__level {
+    font-size: 0.8125rem;
+  }
 }
 
 /* Free address typeahead (Photon / OSM) */

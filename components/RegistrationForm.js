@@ -20,6 +20,35 @@ import {
 } from "@/components/ManagerPlayerFields";
 import CompactPlayerAdd from "@/components/CompactPlayerAdd";
 import { PageDots } from "@/components/forms/SoftField";
+import { genderKeyFromDivisionName } from "@/lib/poster-deck";
+
+const GENDER_ROWS = [
+  { key: "womens", label: "Women's" },
+  { key: "mens", label: "Men's" },
+  { key: "coed", label: "Coed" },
+];
+const LEVEL_ORDER = ["Open", "D", "E", "Rec", "Upper", "Lower"];
+
+function divisionGenderKey(d) {
+  if (d.gender === "womens" || d.gender === "mens" || d.gender === "coed") {
+    return d.gender;
+  }
+  const k = genderKeyFromDivisionName(d.display_name ?? d.name);
+  return { w: "womens", m: "mens", c: "coed" }[k] ?? "coed";
+}
+
+function divisionLevelLabel(d) {
+  const raw = String(d.display_name ?? d.name ?? "").trim();
+  const stripped = raw.replace(/^(women'?s|men'?s|co-?ed)\s+/i, "").trim();
+  return stripped || raw || "—";
+}
+
+function levelSortIndex(label) {
+  const i = LEVEL_ORDER.findIndex(
+    (x) => x.toLowerCase() === String(label).toLowerCase()
+  );
+  return i === -1 ? LEVEL_ORDER.length : i;
+}
 
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
 // Room flow: door (tournament) → rooms → exit (confirmation).
@@ -594,43 +623,59 @@ export default function RegistrationForm({
               <div>
                 <span className="form-label">Division</span>
                 <div
-                  className="register-division-picks"
+                  className="register-division-rows"
                   role="group"
                   aria-label="Division"
                 >
-                  {registerableDivisions.map((d) => {
-                    const id = d.id;
-                    const label = d.display_name ?? d.name;
-                    const selected =
-                      registerableDivisions.length === 1 ||
-                      divisionId === id;
+                  {GENDER_ROWS.map((row) => {
+                    const inRow = registerableDivisions
+                      .filter((d) => divisionGenderKey(d) === row.key)
+                      .slice()
+                      .sort(
+                        (a, b) =>
+                          levelSortIndex(divisionLevelLabel(a)) -
+                            levelSortIndex(divisionLevelLabel(b)) ||
+                          (a.sort_order ?? 0) - (b.sort_order ?? 0)
+                      );
+                    if (inRow.length === 0) return null;
                     return (
-                      <button
-                        key={id}
-                        type="button"
-                        className={
-                          selected ? "btn-info" : "btn-transient"
-                        }
-                        aria-pressed={selected}
-                        onClick={() => setDivisionId(id)}
-                      >
-                        {label}
-                      </button>
+                      <div key={row.key} className="register-division-row">
+                        <span className="register-division-row__gender">
+                          {row.label}
+                        </span>
+                        <div className="register-division-row__levels">
+                          {inRow.map((d) => {
+                            const selected =
+                              registerableDivisions.length === 1 ||
+                              divisionId === d.id;
+                            return (
+                              <button
+                                key={d.id}
+                                type="button"
+                                className={
+                                  "register-division-row__level " +
+                                  (selected ? "is-on" : "")
+                                }
+                                aria-pressed={selected}
+                                onClick={() => setDivisionId(d.id)}
+                              >
+                                {divisionLevelLabel(d)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-                {registerableDivisions.length > 1 && !divisionId && (
-                  <p className="t-meta text-[12px] mt-1.5">
-                    Pick the division this team is entering.
-                  </p>
-                )}
               </div>
             )}
-            <Field label="AFA Membership # (optional)">
+            <Field label="AFA Membership #">
               <input
                 className="form-field"
                 value={afaMembershipNumber}
                 onChange={(e) => setAfaMembershipNumber(e.target.value)}
+                placeholder="optional"
               />
             </Field>
           </div>

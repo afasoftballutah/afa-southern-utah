@@ -22,7 +22,7 @@ async function getRegisterableTournaments() {
   const { data, error } = await supabase
     .from("tournaments")
     .select(
-      "id, slug, name, start_date, end_date, registration_closes, registration_url, registration_note, region, is_placeholder, status, poster_url, divisions(id, name, display_name, sort_order, parent_division_id)"
+      "id, slug, name, start_date, end_date, registration_closes, registration_url, registration_note, region, is_placeholder, status, poster_url, divisions(id, name, display_name, sort_order, parent_division_id, gender, class_id)"
     )
     .order("start_date", { ascending: true });
   if (error) throw error;
