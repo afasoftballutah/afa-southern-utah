@@ -127,13 +127,8 @@ export default async function ManageRosterPage({ params }) {
       <div className="card p-4 space-y-1">
         <p className="t-strong">Manage your roster</p>
         <p className="t-meta">
-          Keep this link to yourself. Search the directory to add someone
-          already on file, or type first name, last name, and gender for a new
-          player — they complete legal name, preferred name, birth date, email,
-          and address when they sign. Remove someone if they are not on this
-          team; you can put them back. Claim a free agent if another team
-          dropped out. A player cannot be on two teams in the same gender for
-          this tournament.
+          Keep this link to yourself. A player cannot be on two teams in the
+          same gender for this tournament.
         </p>
       </div>
 
