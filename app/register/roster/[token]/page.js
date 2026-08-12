@@ -109,11 +109,9 @@ export default async function RosterSigningPage({ params }) {
         <p className="t-strong">
           {official ? "Everyone has signed." : `${signed} of ${total} signed`}
         </p>
-        <p className="t-meta">
-          {official
-            ? "This registration is official. Nothing else is needed."
-            : "Find your name and tap it. You only sign for yourself."}
-        </p>
+        {official ? (
+          <p className="t-meta">This registration is official. Nothing else is needed.</p>
+        ) : null}
       </div>
 
       <ul className="card roster-sign-list divide-y divide-black/5">
