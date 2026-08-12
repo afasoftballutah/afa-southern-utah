@@ -45,7 +45,7 @@ async function load(id) {
     supabase
       .from("roster_members")
       .select(
-        "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name"
+        "id, name, role, gender, signed_at, removed_at, player_id, email, phone, legal_first_name, legal_last_name, preferred_name, signing_token"
       )
       .eq("registration_id", id)
       .order("legal_last_name", { ascending: true, nullsFirst: false })
@@ -113,6 +113,10 @@ async function load(id) {
       gender: m.gender ?? person?.gender ?? null,
       birthDate: person?.birth_date ?? null,
       signed: Boolean(m.signed_at),
+      signingToken: m.signing_token || null,
+      signPath: m.signing_token
+        ? `/register/sign/${m.signing_token}`
+        : null,
       suspended: Boolean(suspension),
       suspension,
     };
@@ -246,13 +250,13 @@ export default async function RegistrationPage({ params }) {
       gender: m.gender ?? null,
       rating: m.rating ?? null,
       signed: m.signed,
+      signPath: m.signPath ?? null,
       removed: false,
       isManager: m.role === "manager" || m.id === r.manager_member_id,
       suspended: m.suspended,
       suspension: m.suspension,
       suspensions: m.playerId ? suspById.get(m.playerId) ?? [] : [],
       dualRosterTeams: m.dualRosterTeams ?? [],
-      playerId: m.playerId,
     })),
     ...removed.map((m) => ({
       id: m.id,

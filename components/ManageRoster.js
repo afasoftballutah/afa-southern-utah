@@ -6,6 +6,7 @@ import {
   managerPlayerReady,
 } from "@/components/ManagerPlayerFields";
 import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
+import WaiverSignLink from "@/components/scorekeeper/WaiverSignLink";
 
 export default function ManageRoster({
   token,
@@ -408,6 +409,9 @@ export default function ManageRoster({
               ) : null}
             </span>
             <span className="flex flex-wrap gap-1.5 items-center shrink-0">
+              {m.signPath ? (
+                <WaiverSignLink href={m.signPath} signed={m.signed} />
+              ) : null}
               {directorMode && m.playerId ? (
                 <SuspendPlayer
                   player={{ id: m.playerId, name: m.name }}

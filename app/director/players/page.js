@@ -22,6 +22,7 @@ import DeletePlayer from "@/components/scorekeeper/DeletePlayer";
 import EditPlayer from "@/components/scorekeeper/EditPlayer";
 import NewPlayer from "@/components/scorekeeper/NewPlayer";
 import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
+import WaiverSignLink from "@/components/scorekeeper/WaiverSignLink";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // reads PII — never cached
@@ -307,6 +308,9 @@ export default async function PlayersPage() {
                   <th className="px-2.5 py-1 text-center t-label font-normal text-[10px]">
                     Waiver
                   </th>
+                  <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
+                    Sign
+                  </th>
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]" />
                 </tr>
               </thead>
@@ -348,6 +352,17 @@ export default async function PlayersPage() {
                       >
                         {a.signed ? "☑" : "☐"}
                       </span>
+                    </td>
+                    <td className="px-2.5 py-1 whitespace-nowrap">
+                      {a.signPath ? (
+                        <WaiverSignLink
+                          href={a.signPath}
+                          signed={a.signed}
+                          compact
+                        />
+                      ) : (
+                        <span className="t-meta">—</span>
+                      )}
                     </td>
                     <td className="px-2.5 py-1">
                       {a.registrationId ? (
