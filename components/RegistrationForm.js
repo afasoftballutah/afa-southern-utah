@@ -669,7 +669,7 @@ export default function RegistrationForm({
                           <button
                             type="button"
                             className={
-                              "register-division-col__card " +
+                              "register-division-col__card register-division-col__card--header " +
                               (colOn ? "is-on" : "")
                             }
                             aria-pressed={colOn}
@@ -681,7 +681,7 @@ export default function RegistrationForm({
                           <>
                             <span
                               className={
-                                "register-division-col__card register-division-col__card--label " +
+                                "register-division-col__card register-division-col__card--header " +
                                 (colOn ? "is-on" : "")
                               }
                             >

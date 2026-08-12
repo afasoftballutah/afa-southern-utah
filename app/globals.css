@@ -838,39 +838,48 @@ textarea.form-field {
   transition: opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease,
     background 0.12s ease, color 0.12s ease;
 }
-.register-division-col__card--label {
+/* Gender headers stay navy whether or not a pick is made. */
+.register-division-col__card--header {
+  background: var(--afa-navy);
+  border-color: var(--afa-navy);
+  color: #fff;
   cursor: default;
-  background: var(--afa-soft-gray);
 }
-.register-division-col__card:hover:not(.register-division-col__card--label):not(.is-on) {
+.register-division-col__card--header[type="button"] {
+  cursor: pointer;
+}
+.register-division-col__card:hover:not(.register-division-col__card--header):not(.is-on) {
   background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
 }
-/* After a pick: unselected seats step back; selected keeps lime glow. */
-.register-division-cols.has-pick .register-division-col__card:not(.is-on) {
-  opacity: 0.45;
+/* After a pick: other headers and unused levels recede. */
+.register-division-cols.has-pick
+  .register-division-col__card--header:not(.is-on) {
+  opacity: 0.38;
+}
+.register-division-cols.has-pick
+  .register-division-col__card:not(.is-on):not(.register-division-col__card--header) {
+  opacity: 0.42;
   border-color: color-mix(in srgb, var(--afa-navy) 22%, transparent);
   color: color-mix(in srgb, var(--afa-navy) 55%, var(--afa-muted));
   background: var(--afa-soft-gray);
 }
 .register-division-cols.has-pick
-  .register-division-col__card:not(.is-on):hover:not(.register-division-col__card--label) {
+  .register-division-col__card:not(.is-on):not(.register-division-col__card--header):hover {
   opacity: 0.85;
   background: #fff;
   color: var(--afa-navy);
 }
+/* Selected header + level: navy fill, lime ring. */
 .register-division-col__card.is-on,
 .register-division-col__card.is-on:hover,
 .register-division-col__card.is-on:focus {
   opacity: 1;
   background: var(--afa-navy);
-  border-color: var(--afa-navy);
+  border-color: var(--afa-lime);
   color: #fff;
   box-shadow:
     0 0 0 2px var(--afa-lime),
     0 0 16px color-mix(in srgb, var(--afa-lime) 60%, transparent);
-}
-.register-division-col__card--label.is-on {
-  cursor: default;
 }
 
 /* Free address typeahead (Photon / OSM) */
