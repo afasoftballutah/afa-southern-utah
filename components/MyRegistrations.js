@@ -8,6 +8,7 @@ import {
   rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
+import DivisionSeatMark from "@/components/DivisionSeatMark";
 
 /**
  * On /register: show teams this device already knows + email lookup
@@ -55,6 +56,10 @@ export default function MyRegistrations() {
           manageLink: t.manageLink,
           rosterLink: t.rosterLink,
           managerEmail: email,
+          genderKey: t.genderKey,
+          genderLabel: t.genderLabel,
+          levelLabel: t.levelLabel,
+          seatLabel: t.seatLabel,
         });
         if (t.teamName) {
           writeMe({ teamName: t.teamName, source: "picked" });
@@ -88,13 +93,26 @@ export default function MyRegistrations() {
           {local.map((r) => (
             <li
               key={r.manageToken}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-afa-navy/10 bg-white px-3 py-2.5"
+              className={
+                "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
+                (r.genderKey
+                  ? "reg-team-row--" + r.genderKey
+                  : "border-afa-navy/10 bg-white")
+              }
             >
               <div className="min-w-0">
                 <p className="team-name font-semibold truncate">{r.teamName}</p>
-                {r.tournamentName && (
-                  <p className="t-meta truncate">{r.tournamentName}</p>
-                )}
+                <p className="t-meta truncate flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <DivisionSeatMark
+                    genderKey={r.genderKey}
+                    seatLabel={r.seatLabel}
+                    genderLabel={r.genderLabel}
+                    levelLabel={r.levelLabel}
+                  />
+                  {r.tournamentName ? (
+                    <span>{r.tournamentName}</span>
+                  ) : null}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Link

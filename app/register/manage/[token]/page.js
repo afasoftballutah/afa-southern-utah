@@ -6,6 +6,8 @@ import { directorPersonLabel } from "@/lib/person-name";
 import ManageRoster from "@/components/ManageRoster";
 import RegisterBack from "@/components/RegisterBack";
 import RememberManageVisit from "@/components/RememberManageVisit";
+import DivisionSeatMark from "@/components/DivisionSeatMark";
+import { seatFromDivision } from "@/lib/division-layout";
 
 export const metadata = { title: "Manage Your Roster — AFA Southern Utah" };
 
@@ -46,6 +48,7 @@ async function getManageable(token) {
     tournamentName: registration.tournaments?.name,
     tournamentSlug: registration.tournaments?.slug,
     divisionName: registration.divisions?.display_name ?? registration.divisions?.name,
+    divisionGender: registration.divisions?.gender ?? null,
     className: registration.class,
     status: registration.status,
     rosterToken: registration.roster_token,
@@ -78,17 +81,11 @@ export default async function ManageRosterPage({ params }) {
   const data = await getManageable(token);
   if (!data) notFound();
 
-  // Division often already includes class ("Coed D") — don't append "D" again.
-  const scope = (() => {
-    const div = (data.divisionName ?? "").trim();
-    const cls = (data.className ?? "").trim();
-    if (!div && !cls) return "";
-    if (!cls) return div;
-    if (!div) return cls;
-    if (div.toLowerCase().includes(cls.toLowerCase())) return div;
-    if (cls.toLowerCase().includes(div.toLowerCase())) return cls;
-    return `${div} · ${cls}`;
-  })();
+  const seat = seatFromDivision({
+    gender: data.divisionGender,
+    display_name: data.divisionName,
+    name: data.divisionName,
+  });
 
   const backHref = data.rosterToken
     ? `/register/roster/${data.rosterToken}`
@@ -108,13 +105,20 @@ export default async function ManageRosterPage({ params }) {
         tournamentSlug={data.tournamentSlug}
         manageToken={data.manageToken}
         rosterToken={data.rosterToken}
+        genderKey={seat?.genderKey}
+        genderLabel={seat?.genderLabel}
+        levelLabel={seat?.levelLabel}
+        seatLabel={seat?.seatLabel}
       />
       <RegisterBack href={backHref} label={backLabel} />
       <div>
         <h1 className="team-name text-2xl">{data.teamName}</h1>
-        <p className="t-meta">
-          {data.tournamentName}
-          {scope ? ` · ${scope}` : ""}
+        <p className="t-meta flex flex-wrap items-center gap-1.5 mt-0.5">
+          <DivisionSeatMark
+            genderKey={seat?.genderKey}
+            seatLabel={seat?.seatLabel}
+          />
+          {data.tournamentName ? <span>{data.tournamentName}</span> : null}
         </p>
       </div>
 

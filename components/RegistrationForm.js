@@ -23,6 +23,7 @@ import { PageDots } from "@/components/forms/SoftField";
 import {
   divisionLevelLabel,
   groupDivisionsByGender,
+  seatFromDivision,
 } from "@/lib/division-layout";
 
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
@@ -295,6 +296,10 @@ export default function RegistrationForm({
           rosterLink: json.rosterLink,
         });
         if (manageToken) {
+          const div = (tournament?.divisions ?? []).find(
+            (d) => d.id === effectiveDivisionId
+          );
+          const seat = seatFromDivision(div);
           rememberRegistration({
             teamName: teamName.trim(),
             tournamentName: tournament?.name || "",
@@ -304,6 +309,10 @@ export default function RegistrationForm({
             manageLink: json.manageLink,
             rosterLink: json.rosterLink,
             managerEmail: manager.email,
+            genderKey: seat?.genderKey,
+            genderLabel: seat?.genderLabel,
+            levelLabel: seat?.levelLabel,
+            seatLabel: seat?.seatLabel,
           });
         }
         if (teamName.trim()) {

@@ -11,6 +11,10 @@ export default function RememberManageVisit({
   tournamentSlug,
   manageToken,
   rosterToken,
+  genderKey,
+  genderLabel,
+  levelLabel,
+  seatLabel,
 }) {
   useEffect(() => {
     if (!manageToken || !teamName) return;
@@ -20,9 +24,23 @@ export default function RememberManageVisit({
       tournamentSlug,
       manageToken,
       rosterToken,
+      genderKey,
+      genderLabel,
+      levelLabel,
+      seatLabel,
     });
     writeMe({ teamName, source: "picked" });
-  }, [teamName, tournamentName, tournamentSlug, manageToken, rosterToken]);
+  }, [
+    teamName,
+    tournamentName,
+    tournamentSlug,
+    manageToken,
+    rosterToken,
+    genderKey,
+    genderLabel,
+    levelLabel,
+    seatLabel,
+  ]);
 
   return null;
 }

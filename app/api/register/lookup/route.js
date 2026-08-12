@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
+import { seatFromDivision } from "@/lib/division-layout";
 
 // Manager recovery WITHOUT a password: look up registrations by the
 // manager_email they used when they registered. Returns manage + roster
@@ -74,7 +75,7 @@ export async function POST(request) {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, status, manage_token, roster_token, manager_email, submitted_at, tournaments(name, slug, start_date)"
+      "id, team_name, status, manage_token, roster_token, manager_email, submitted_at, tournaments(name, slug, start_date), divisions(name, display_name, gender)"
     )
     .ilike("manager_email", email)
     .order("submitted_at", { ascending: false })
@@ -91,19 +92,26 @@ export async function POST(request) {
   );
 
   const origin = new URL(request.url).origin;
-  const teams = rows.map((r) => ({
-    teamName: r.team_name,
-    status: r.status,
-    tournamentName: r.tournaments?.name || "",
-    tournamentSlug: r.tournaments?.slug || "",
-    submittedAt: r.submitted_at,
-    manageToken: r.manage_token,
-    rosterToken: r.roster_token,
-    manageLink: `${origin}/register/manage/${r.manage_token}`,
-    rosterLink: r.roster_token
-      ? `${origin}/register/roster/${r.roster_token}`
-      : null,
-  }));
+  const teams = rows.map((r) => {
+    const seat = seatFromDivision(r.divisions);
+    return {
+      teamName: r.team_name,
+      status: r.status,
+      tournamentName: r.tournaments?.name || "",
+      tournamentSlug: r.tournaments?.slug || "",
+      submittedAt: r.submitted_at,
+      manageToken: r.manage_token,
+      rosterToken: r.roster_token,
+      manageLink: `${origin}/register/manage/${r.manage_token}`,
+      rosterLink: r.roster_token
+        ? `${origin}/register/roster/${r.roster_token}`
+        : null,
+      genderKey: seat?.genderKey || "",
+      genderLabel: seat?.genderLabel || "",
+      levelLabel: seat?.levelLabel || "",
+      seatLabel: seat?.seatLabel || "",
+    };
+  });
 
   // Same shape whether 0 or many — no "email exists" oracle beyond list length
   return Response.json({ ok: true, email, teams });

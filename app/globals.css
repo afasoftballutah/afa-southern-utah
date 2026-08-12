@@ -943,6 +943,42 @@ a.register-division-col__card--header:hover:not(.is-mine) {
   opacity: 0.38;
 }
 
+/* Remembered team / manage header: same gender colors as the columns */
+.div-seat-mark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--afa-navy);
+  color: #fff;
+}
+.div-seat-mark--womens {
+  background: var(--afa-navy);
+}
+.div-seat-mark--mens {
+  background: var(--afa-red);
+}
+.div-seat-mark--coed {
+  background: #4c2482;
+}
+.reg-team-row--womens {
+  border-color: color-mix(in srgb, var(--afa-navy) 28%, transparent);
+  background: color-mix(in srgb, var(--afa-navy) 6%, #fff);
+}
+.reg-team-row--mens {
+  border-color: color-mix(in srgb, var(--afa-red) 30%, transparent);
+  background: color-mix(in srgb, var(--afa-red) 6%, #fff);
+}
+.reg-team-row--coed {
+  border-color: color-mix(in srgb, #4c2482 30%, transparent);
+  background: color-mix(in srgb, #4c2482 7%, #fff);
+}
+
 /* Free address typeahead (Photon / OSM) */
 .address-input {
   position: relative;
