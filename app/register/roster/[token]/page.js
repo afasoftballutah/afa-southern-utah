@@ -85,8 +85,6 @@ export default async function RosterSigningPage({ params }) {
     display_name: roster.divisionName,
     name: roster.divisionName,
   });
-  const rowTone = seat?.genderKey ? "reg-team-row--" + seat.genderKey : "";
-
   const backHref = roster.tournamentSlug
     ? `/tournaments/${roster.tournamentSlug}`
     : "/tournaments";
@@ -107,7 +105,7 @@ export default async function RosterSigningPage({ params }) {
         </p>
       </div>
 
-      <div className={"card p-4 space-y-1 " + rowTone}>
+      <div className="card p-4 space-y-1">
         <p className="t-strong">
           {official ? "Everyone has signed." : `${signed} of ${total} signed`}
         </p>
@@ -118,21 +116,26 @@ export default async function RosterSigningPage({ params }) {
         </p>
       </div>
 
-      <ul className="card divide-y divide-black/5">
+      <ul className="card roster-sign-list divide-y divide-black/5">
         {roster.signers.map((s) => (
           <li key={s.token}>
             {s.signed ? (
-              <div className="flex items-center justify-between gap-2 px-3 py-2">
-                <span className="t-body text-afa-ink/50 truncate min-w-0">
+              <div className="roster-sign-row roster-sign-row--done flex items-center justify-between gap-2 px-3 py-2">
+                <span className="t-body truncate min-w-0">
                   {s.name}
                   {needsRole(s) && <span className="t-meta"> &middot; {s.role}</span>}
                 </span>
-                <span className="t-label shrink-0 text-afa-go">Signed</span>
+                <span className="t-label shrink-0">
+                  <span className="tick" aria-hidden>
+                    ☑
+                  </span>{" "}
+                  Signed
+                </span>
               </div>
             ) : (
               <Link
                 href={`/register/sign/${s.token}`}
-                className="flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] roster-sign-row"
+                className="roster-sign-row flex items-center justify-between gap-2 px-3 py-2 min-h-[44px]"
               >
                 <span className="t-body truncate min-w-0">
                   {s.name}

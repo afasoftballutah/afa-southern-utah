@@ -998,11 +998,24 @@ a.register-division-col__card--header {
   border: 1px solid color-mix(in srgb, #4c2482 30%, transparent);
   background: color-mix(in srgb, #4c2482 7%, #fff);
 }
-.roster-sign-row .t-label {
-  color: var(--afa-action);
+.roster-sign-list {
+  overflow: hidden;
 }
-.roster-sign-row:hover {
-  background: color-mix(in srgb, var(--afa-action) 10%, #fff);
+.roster-sign-row {
+  color: var(--afa-ink);
+}
+.roster-sign-row .t-label {
+  color: var(--afa-ink);
+}
+.roster-sign-row:hover:not(.roster-sign-row--done) {
+  background: var(--afa-soft-gray);
+}
+.roster-sign-row--done {
+  background: color-mix(in srgb, var(--afa-go) 22%, #fff);
+  color: var(--afa-ink);
+}
+.roster-sign-row--done .t-label {
+  color: #15803d;
 }
 
 /* Free address typeahead (Photon / OSM) */
