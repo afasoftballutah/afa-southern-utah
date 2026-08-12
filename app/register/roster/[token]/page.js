@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import { directorPersonLabel } from "@/lib/person-name";
 import RegisterBack from "@/components/RegisterBack";
+import DivisionSeatMark from "@/components/DivisionSeatMark";
+import { seatFromDivision } from "@/lib/division-layout";
 
 export const metadata = { title: "Sign Your Waiver — AFA Southern Utah" };
 
@@ -24,7 +26,7 @@ async function getRoster(token) {
   const { data: registration } = await supabase
     .from("registrations")
     .select(
-      "id, team_name, class, manager_member_id, tournaments(name, slug), divisions(name, display_name)"
+      "id, team_name, class, manager_member_id, tournaments(name, slug), divisions(name, display_name, gender)"
     )
     .eq("roster_token", token)
     .maybeSingle();
@@ -62,6 +64,7 @@ async function getRoster(token) {
     tournamentName: registration.tournaments?.name,
     tournamentSlug: registration.tournaments?.slug,
     divisionName: registration.divisions?.display_name ?? registration.divisions?.name,
+    divisionGender: registration.divisions?.gender ?? null,
     className: registration.class,
     signers,
   };
@@ -77,17 +80,12 @@ export default async function RosterSigningPage({ params }) {
   const signed = roster.signers.filter((s) => s.signed).length;
   const total = roster.signers.length;
   const official = signed === total;
-  // Division often already includes class ("Coed D") — don't append "D" again.
-  const scope = (() => {
-    const div = (roster.divisionName ?? "").trim();
-    const cls = (roster.className ?? "").trim();
-    if (!div && !cls) return "";
-    if (!cls) return div;
-    if (!div) return cls;
-    if (div.toLowerCase().includes(cls.toLowerCase())) return div;
-    if (cls.toLowerCase().includes(div.toLowerCase())) return cls;
-    return `${div} · ${cls}`;
-  })();
+  const seat = seatFromDivision({
+    gender: roster.divisionGender,
+    display_name: roster.divisionName,
+    name: roster.divisionName,
+  });
+  const rowTone = seat?.genderKey ? "reg-team-row--" + seat.genderKey : "";
 
   const backHref = roster.tournamentSlug
     ? `/tournaments/${roster.tournamentSlug}`
@@ -98,13 +96,18 @@ export default async function RosterSigningPage({ params }) {
       <RegisterBack href={backHref} label={roster.tournamentName || "Tournament"} />
       <div>
         <h1 className="team-name text-2xl">{roster.teamName}</h1>
-        <p className="t-meta">
-          {roster.tournamentName}
-          {scope ? ` · ${scope}` : ""}
+        <p className="t-meta flex flex-wrap items-center gap-1.5 mt-0.5">
+          <DivisionSeatMark
+            genderKey={seat?.genderKey}
+            seatLabel={seat?.seatLabel}
+            genderLabel={seat?.genderLabel}
+            levelLabel={seat?.levelLabel}
+          />
+          {roster.tournamentName ? <span>{roster.tournamentName}</span> : null}
         </p>
       </div>
 
-      <div className="card p-4 space-y-1">
+      <div className={"card p-4 space-y-1 " + rowTone}>
         <p className="t-strong">
           {official ? "Everyone has signed." : `${signed} of ${total} signed`}
         </p>
@@ -115,7 +118,7 @@ export default async function RosterSigningPage({ params }) {
         </p>
       </div>
 
-      <ul className="card divide-y divide-black/5">
+      <ul className={"card divide-y divide-black/5 " + rowTone}>
         {roster.signers.map((s) => (
           <li key={s.token}>
             {s.signed ? (
@@ -124,18 +127,21 @@ export default async function RosterSigningPage({ params }) {
                   {s.name}
                   {needsRole(s) && <span className="t-meta"> &middot; {s.role}</span>}
                 </span>
-                <span className="t-label shrink-0">Signed</span>
+                <span className="t-label shrink-0 text-afa-go">Signed</span>
               </div>
             ) : (
               <Link
                 href={`/register/sign/${s.token}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 min-h-[44px]"
+                className={
+                  "flex items-center justify-between gap-3 px-4 py-3 min-h-[44px] roster-sign-row" +
+                  (seat?.genderKey ? " roster-sign-row--" + seat.genderKey : "")
+                }
               >
                 <span className="t-body">
                   {s.name}
                   {needsRole(s) && <span className="t-meta"> &middot; {s.role}</span>}
                 </span>
-                <span className="t-label text-afa-navy shrink-0">Sign &rsaquo;</span>
+                <span className="t-label shrink-0">Sign &rsaquo;</span>
               </Link>
             )}
           </li>

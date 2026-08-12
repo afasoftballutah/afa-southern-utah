@@ -983,16 +983,31 @@ a.register-division-col__card--header {
   background: #4c2482;
 }
 .reg-team-row--womens {
-  border-color: color-mix(in srgb, var(--afa-navy) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--afa-navy) 28%, transparent);
   background: color-mix(in srgb, var(--afa-navy) 6%, #fff);
 }
 .reg-team-row--mens {
-  border-color: color-mix(in srgb, var(--afa-red) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--afa-red) 30%, transparent);
   background: color-mix(in srgb, var(--afa-red) 6%, #fff);
 }
 .reg-team-row--coed {
-  border-color: color-mix(in srgb, #4c2482 30%, transparent);
+  border: 1px solid color-mix(in srgb, #4c2482 30%, transparent);
   background: color-mix(in srgb, #4c2482 7%, #fff);
+}
+.roster-sign-row .t-label {
+  color: var(--afa-navy);
+}
+.roster-sign-row--mens .t-label {
+  color: var(--afa-red);
+}
+.roster-sign-row--coed .t-label {
+  color: #4c2482;
+}
+.roster-sign-row:hover {
+  background: color-mix(in srgb, var(--afa-go) 12%, #fff);
+}
+.roster-sign-row:hover .t-label {
+  color: var(--afa-go);
 }
 
 /* Free address typeahead (Photon / OSM) */
