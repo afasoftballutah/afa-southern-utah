@@ -29,6 +29,8 @@ function pack(row, origin) {
     genderLabel: seat?.genderLabel || "",
     levelLabel: seat?.levelLabel || "",
     seatLabel: seat?.seatLabel || "",
+    managerEmail: row.manager_email || "",
+    managerName: row.manager_name || "",
   };
 }
 

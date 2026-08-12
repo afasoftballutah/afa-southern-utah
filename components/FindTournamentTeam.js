@@ -139,6 +139,7 @@ export default function FindTournamentTeam({
             genderLabel: t.genderLabel,
             levelLabel: t.levelLabel,
             seatLabel: t.seatLabel,
+            managerEmail: t.managerEmail,
           });
         }
         if (!cancelled) {

@@ -57,6 +57,23 @@ test("manager email is the manager key", () => {
   );
 });
 
+test("a missing email still matches the same printed manager name", () => {
+  assert.equal(
+    sameManager(
+      { managerEmail: "braybrooks23@gmail.com", managerName: "Brayden Brooks" },
+      { managerEmail: null, managerName: "Brayden Brooks" }
+    ),
+    true
+  );
+  assert.equal(
+    sameManager(
+      { managerEmail: "braybrooks23@gmail.com", managerName: "Brayden Brooks" },
+      { managerEmail: null, managerName: "Someone Else" }
+    ),
+    false
+  );
+});
+
 test("Fallen Men's and Fallen Coed are sibling seats for the same manager", () => {
   const mens = {
     id: "1",
