@@ -840,10 +840,12 @@ textarea.form-field {
   cursor: default;
   background: var(--afa-soft-gray);
 }
-.register-division-col__card:hover:not(.register-division-col__card--label) {
+.register-division-col__card:hover:not(.register-division-col__card--label):not(.is-on) {
   background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
 }
-.register-division-col__card.is-on {
+.register-division-col__card.is-on,
+.register-division-col__card.is-on:hover,
+.register-division-col__card.is-on:focus {
   background: var(--afa-navy);
   border-color: var(--afa-navy);
   color: #fff;
