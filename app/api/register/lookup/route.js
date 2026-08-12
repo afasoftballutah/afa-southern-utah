@@ -55,9 +55,18 @@ export async function POST(request) {
   }
 
   const email = normalizeEmail(body?.email);
-  if (!email || !isEmailShape(email)) {
+  const nameQ = String(body?.name || "")
+    .trim()
+    .replace(/[%_]/g, "")
+    .slice(0, 80);
+  const tournamentSlug =
+    typeof body?.tournamentSlug === "string" ? body.tournamentSlug.trim() : "";
+
+  const byEmail = Boolean(email && isEmailShape(email));
+  const byName = Boolean(nameQ.length >= 2 && tournamentSlug);
+  if (!byEmail && !byName) {
     return Response.json(
-      { error: "Enter the email you used when you registered." },
+      { error: "Enter a team name, manager name, or manager email." },
       { status: 400 }
     );
   }
@@ -71,25 +80,55 @@ export async function POST(request) {
   }
 
   const supabase = getServiceClient();
-  // Case-insensitive exact match (no wildcards in email after normalize)
-  const { data, error } = await supabase
-    .from("registrations")
-    .select(
-      "id, team_name, status, manage_token, roster_token, manager_email, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
-    )
-    .ilike("manager_email", email)
-    .order("submitted_at", { ascending: false })
-    .limit(25);
+  let rows = [];
 
-  if (error) {
-    console.error("register lookup failed", error);
-    return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
+  if (byEmail) {
+    const { data, error } = await supabase
+      .from("registrations")
+      .select(
+        "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
+      )
+      .ilike("manager_email", email)
+      .order("submitted_at", { ascending: false })
+      .limit(25);
+
+    if (error) {
+      console.error("register lookup failed", error);
+      return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
+    }
+    rows = (data || []).filter(
+      (r) => String(r.manager_email || "").trim().toLowerCase() === email
+    );
+  } else {
+    const { data: tour } = await supabase
+      .from("tournaments")
+      .select("id")
+      .eq("slug", tournamentSlug)
+      .maybeSingle();
+    if (!tour) {
+      return Response.json({ ok: true, teams: [] });
+    }
+    const { data, error } = await supabase
+      .from("registrations")
+      .select(
+        "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
+      )
+      .eq("tournament_id", tour.id)
+      .neq("status", "withdrawn")
+      .order("submitted_at", { ascending: false })
+      .limit(80);
+
+    if (error) {
+      console.error("register name lookup failed", error);
+      return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
+    }
+    const needle = nameQ.toLowerCase();
+    rows = (data || []).filter((r) => {
+      const team = String(r.team_name || "").trim().toLowerCase();
+      const manager = String(r.manager_name || "").trim().toLowerCase();
+      return team.includes(needle) || manager.includes(needle);
+    });
   }
-
-  // Defense in depth: require normalized equality even if ilike matched oddly
-  const rows = (data || []).filter(
-    (r) => String(r.manager_email || "").trim().toLowerCase() === email
-  );
 
   const origin = new URL(request.url).origin;
   const teams = rows.map((r) => {

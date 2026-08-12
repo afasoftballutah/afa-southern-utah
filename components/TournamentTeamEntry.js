@@ -15,43 +15,30 @@ export default function TournamentTeamEntry({
   finished = false,
 }) {
   const [team, setTeam] = useState("");
-  const [registering, setRegistering] = useState(false);
+  const [panel, setPanel] = useState(null);
 
-  function showRegister() {
-    setRegistering(true);
-    requestAnimationFrame(() => {
-      document.getElementById("tournament-divisions")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }
+  const showGrid =
+    panel === "register" || (finished && panel !== "find" && columns.length > 0);
 
   return (
     <div className="space-y-4">
       <FindTournamentTeam
         slug={slug}
-        teams={teams}
         selectedTeam={team}
         onTeam={setTeam}
         registrationOpen={registrationOpen}
-        registerHref={registerHref}
         externalRegisterUrl={externalRegisterUrl}
-        registering={registering}
-        onRegister={showRegister}
+        panel={panel}
+        onPanel={setPanel}
       />
-      {columns.length > 0 ? (
+      {showGrid ? (
         <div id="tournament-divisions" className="space-y-3">
           <div className="text-center">
             <h2 className="t-heading">
-              {registering ? "Register" : finished ? "Results" : "Divisions"}
+              {panel === "register" ? "Register" : "Results"}
             </h2>
             <p className="t-meta">
-              {registering
-                ? "Pick a division"
-                : finished
-                  ? "Schedule and results"
-                  : "Schedule and tournament updates"}
+              {panel === "register" ? "Pick a division" : "Schedule and results"}
             </p>
           </div>
           <TournamentDivisionNav
@@ -60,7 +47,7 @@ export default function TournamentTeamEntry({
             teamSummaries={teamSummaries}
             selectedTeam={team}
             hideTeamPicker
-            mode={registering ? "register" : "schedule"}
+            mode={panel === "register" ? "register" : "schedule"}
           />
         </div>
       ) : null}
