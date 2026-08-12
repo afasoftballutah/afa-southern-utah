@@ -843,7 +843,6 @@ export default function RegistrationForm({
               />
               {lockedTeam ? (
                 <p className="t-meta mt-1">
-                  This phone is {lockedTeam}.{" "}
                   <button
                     type="button"
                     className="underline"
