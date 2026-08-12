@@ -53,6 +53,8 @@ export default async function RegisterPage({ searchParams }) {
   const params = await searchParams;
   const initialTournamentSlug =
     typeof params?.tournament === "string" ? params.tournament : null;
+  const initialDivisionId =
+    typeof params?.division === "string" ? params.division : null;
 
   const waiver = await getActiveWaiver();
 
@@ -83,6 +85,7 @@ export default async function RegisterPage({ searchParams }) {
           tournaments={registerable}
           regionLabel={REGION_LABEL}
           initialTournamentSlug={initialTournamentSlug}
+          initialDivisionId={initialDivisionId}
           knownPlayers={knownPlayers}
           releaseText={waiver.text}
         />

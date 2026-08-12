@@ -14,10 +14,9 @@ import {
   isRealPoster,
   isGroupName,
 } from "@/lib/data";
-import { isRegistrationOpen, leagueToday } from "@/lib/tournament-state";
+import { isRegistrationOpen } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
-import Door from "@/components/ui/Door";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
@@ -114,66 +113,30 @@ function splitSentences(text) {
 }
 
 
-// Hostname only, for the "Register" door's sub-line (dispatch-brief-20) —
-// falls back to the raw URL if it somehow isn't parseable.
+// Hostname only, for off-site signup (city rec, etc.).
 function registrationHostname(url) {
   if (!url) return null;
   try {
-    return new URL(url).hostname;
+    return new URL(url).hostname.replace(/^www\./, "");
   } catch {
     return url;
   }
 }
 
-/** Why registration is closed — same date rules as isRegistrationOpen. */
-function registrationClosedMessage(tournament) {
-  if (tournament?.is_placeholder) {
-    return "Registration is not open for this listing.";
-  }
-  const today = leagueToday();
-  const dateOnly = (v) => (v ? String(v).slice(0, 10) : null);
-
-  const closes = dateOnly(tournament.registration_closes);
-  if (closes && closes < today) {
-    const when = formatDateRange(
-      tournament.registration_closes,
-      tournament.registration_closes
-    );
-    return `Registration closed ${when} — past the entry deadline.`;
-  }
-
-  const end = dateOnly(tournament.end_date) ?? dateOnly(tournament.start_date);
-  if (end && end < today) {
-    const day = tournament.end_date ?? tournament.start_date;
-    const when = formatDateRange(day, day);
-    return `Registration closed — this tournament ended ${when}.`;
-  }
-
-  return "Registration is closed.";
-}
-
-/**
- * Entry terms for the Registration card.
- *
- * The DEADLINE only. Fee, deposit, ump fees and guarantee belong to
- * Specifics, which already renders all four — listing them here too printed
- * "Entry fee $300 · Deposit $100 · Guarantee 3 games" twice on the same page,
- * a few hundred pixels apart. Registration answers "can I still get in, and
- * by when"; Specifics answers "what does it cost".
- *
- * Only fields that exist — never a bare "$". Data is thin: 1 of 40
- * tournaments carries a registration_closes today, so this is usually empty
- * and the card is a door with no terms under it.
- */
-function registrationTerms(tournament) {
-  const rows = [];
+function registerGridMeta(tournament) {
+  const bits = [];
   if (tournament.registration_closes) {
-    rows.push([
-      "Closes",
-      formatDateRange(tournament.registration_closes, tournament.registration_closes),
-    ]);
+    bits.push(
+      `Closes ${formatDateRange(
+        tournament.registration_closes,
+        tournament.registration_closes
+      )}`
+    );
   }
-  return rows;
+  const host = registrationHostname(tournament.registration_url);
+  if (host) bits.push(`Opens on ${host}`);
+  if (tournament.registration_note) bits.push(tournament.registration_note);
+  return bits.join(" · ") || "Pick a division";
 }
 
 export default async function TournamentDetailPage({ params }) {
@@ -273,24 +236,21 @@ export default async function TournamentDetailPage({ params }) {
     prizesLines.length > 0 ||
     specialRulesLines.length > 0;
 
-  // Registration — open by date AND real event poster (same as /register).
-  // Never use tournaments.status. Terms only when a field has a real value.
+  // Same window as /register: dates + a real flyer. The division grid
+  // IS registration while that is true; after close it is schedule/results.
   const registrationOpen =
     isRegistrationOpen(tournament) && isRealPoster(tournament);
-  const regTerms = registrationTerms(tournament);
-  // Show the block whenever registration is OPEN, terms or not. Gating it on
-  // having a deadline/url/note hid the door entirely on a tournament anyone
-  // could still enter — and only 1 of 40 tournaments carries a deadline, so
-  // that was almost all of them. When closed it still needs a reason to
-  // exist, which is what the other fields provide.
-  const hasRegistrationBlock = Boolean(
-    registrationOpen ||
-      tournament.registration_closes ||
-      tournament.registration_url ||
-      tournament.registration_note ||
-      regTerms.length > 0
-  );
-  const registrationHost = registrationHostname(tournament.registration_url);
+  const showRegisterGrid = registrationOpen && groupCards.length > 0;
+  const gridHeading = registrationOpen
+    ? "Register"
+    : finished
+      ? "Results"
+      : "Schedule";
+  const gridMeta = registrationOpen
+    ? registerGridMeta(tournament)
+    : finished
+      ? null
+      : "Schedule and tournament updates";
 
   return (
     <div className="space-y-6">
@@ -335,47 +295,63 @@ export default async function TournamentDetailPage({ params }) {
         )}
       </div>
 
-      {/* THE GRID — one card per group, carrying its day (now a calendar
-          link) and its divisions (afa-product-plan.md "central insight";
-          dispatch-brief-4/5). Each card is a Card (div) holding TWO
-          separate anchors, never a link inside a link: the main area
-          jumps to the group's section below; the right side is ONE
-          compact bordered date-card unit (day_label + "Add to calendar"),
-          one object, one tap, that IS the calendar link (JD ruling,
-          2026-07-23). */}
-      {/* The door into a team's own tournament. Once someone has picked a
-          team — the same pick the division page remembers — the card says
-          where they are and what is next, or where they finished. */}
+      {/* Open: the grid is registration. Closed: same grid is schedule/results. */}
       {groupCards.length > 0 && (
         <div className="space-y-3">
-          {groupCards.length === 1 ? (
+          {showRegisterGrid || groupCards.length > 1 ? (
+            <>
+              <div className="text-center">
+                <h2 className="t-heading">{gridHeading}</h2>
+                {gridMeta ? <p className="t-meta">{gridMeta}</p> : null}
+              </div>
+              <TournamentDivisionNav
+                slug={tournament.slug}
+                columns={groupDivisionsByGender(groupCards)}
+                teamSummaries={showRegisterGrid ? {} : teamSummaries}
+                mode={showRegisterGrid ? "register" : "schedule"}
+                externalRegisterUrl={
+                  showRegisterGrid && tournament.registration_url
+                    ? tournament.registration_url
+                    : null
+                }
+              />
+            </>
+          ) : (
             <MyTeamCard
               slug={tournament.slug}
               summaries={teamSummaries}
               fallbackHref={`/tournaments/${tournament.slug}/division/${groupCards[0].id}`}
             />
-          ) : (
-            <>
-              <div className="text-center">
-                <h2 className="t-heading">Divisions</h2>
-                <p className="t-meta">Schedule and tournament updates</p>
-              </div>
-              <TournamentDivisionNav
-                slug={tournament.slug}
-                columns={groupDivisionsByGender(groupCards)}
-                teamSummaries={teamSummaries}
-              />
-            </>
           )}
         </div>
       )}
 
-      {/* The games, in place of the "See Full Schedule" door (JD,
-          2026-07-26). A door to a list is a worse answer than the list. */}
-      {/* One card, and which one depends on where the tournament is (JD,
-          2026-07-26). Registration is the live question until there is a
-          schedule; the moment there is, the schedule is. They never both
-          hold the same spot. */}
+      {registrationOpen && groupCards.length === 0 && (
+        <div className="text-center space-y-2">
+          <h2 className="t-heading">Register</h2>
+          {tournament.registration_url ? (
+            <a
+              href={tournament.registration_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-action"
+            >
+              Register
+              {registrationHostname(tournament.registration_url)
+                ? ` · ${registrationHostname(tournament.registration_url)}`
+                : ""}
+            </a>
+          ) : (
+            <Link
+              href={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
+              className="btn-action"
+            >
+              Register
+            </Link>
+          )}
+        </div>
+      )}
+
       {finished && tournamentResults.length > 0 ? (
         <TournamentResults
           results={tournamentResults}
@@ -390,63 +366,6 @@ export default async function TournamentDetailPage({ params }) {
           seeds={seedLabels}
         />
       ) : null}
-
-      {/* Registration — same isRegistrationOpen rule as /register. Open:
-          state fee/deposit/guarantee/deadline plainly (only fields that
-          exist). Closed: say why (deadline vs event over), not a silent
-          missing button. Schedule still owns the spot once games exist. */}
-      {hasRegistrationBlock && !hasSchedule && (
-        <Card className="space-y-3">
-          <h2 className="t-heading">Registration</h2>
-          {registrationOpen ? (
-            <>
-              {regTerms.length > 0 && (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  {regTerms.map(([label, value]) => (
-                    <Fragment key={label}>
-                      <span className="t-strong">{label}</span>
-                      <span className="t-body">{value}</span>
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-              {tournament.registration_url ? (
-                <a
-                  href={tournament.registration_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-action-block"
-                >
-                  Register
-                  {registrationHost ? ` · ${registrationHost}` : ""}
-                </a>
-              ) : (
-                // No external URL means WE take the registration. Most
-                /* tournaments are this case, and without it an open
-                   tournament said "Registration" and offered no way in. */
-                <Link
-                  href={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
-                  className="btn-action-block"
-                >
-                  Register
-                </Link>
-              )}
-              {tournament.registration_note && (
-                <p className="text-sm text-afa-ink/70">{tournament.registration_note}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="font-bold text-afa-ink/60">
-                {registrationClosedMessage(tournament)}
-              </p>
-              {tournament.registration_note && (
-                <p className="text-sm text-afa-ink/70">{tournament.registration_note}</p>
-              )}
-            </>
-          )}
-        </Card>
-      )}
 
       {/* Specifics — organized, on-brand (dispatch-brief-6, JD ruling):
           three sub-sections instead of one free-floating notes column.

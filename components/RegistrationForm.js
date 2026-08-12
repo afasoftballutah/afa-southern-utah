@@ -50,12 +50,21 @@ export default function RegistrationForm({
   tournaments,
   regionLabel,
   initialTournamentSlug = null,
+  initialDivisionId = null,
   /** Directory for pick-existing-player on the Players step. */
   knownPlayers = [],
   /** Liability release text (from Director → Documents when set). */
   releaseText = RELEASE_TEXT,
 }) {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => {
+    if (!initialTournamentSlug || !initialDivisionId) return 0;
+    const t = tournaments.find((x) => x.slug === initialTournamentSlug);
+    if (!t) return 0;
+    const ok = (t.divisions ?? []).some(
+      (d) => d.id === initialDivisionId && d.parent_division_id == null
+    );
+    return ok ? 1 : 0;
+  });
   const [submitState, setSubmitState] = useState("idle"); // idle | submitting | done | error
   const [submitError, setSubmitError] = useState("");
   const [signers, setSigners] = useState([]);
@@ -151,7 +160,7 @@ export default function RegistrationForm({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [posterOpen]);
-  const [divisionId, setDivisionId] = useState("");
+  const [divisionId, setDivisionId] = useState(initialDivisionId || "");
 
   // Registerable divisions for the selected tournament — bracket-stage
   // children (Gold/Silver/Bronze) have a parent_division_id and must never

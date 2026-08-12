@@ -5,14 +5,50 @@ import Link from "next/link";
 import { divisionLevelLabel } from "@/lib/division-layout";
 import { readMe, writeMe } from "@/lib/me";
 
+function cardHref({ slug, divisionId, mode, externalRegisterUrl }) {
+  if (mode === "register") {
+    if (externalRegisterUrl) return externalRegisterUrl;
+    const q = new URLSearchParams({
+      tournament: slug,
+      division: divisionId,
+    });
+    return `/register?${q.toString()}`;
+  }
+  return `/tournaments/${slug}/division/${divisionId}`;
+}
+
+function CardLink({ href, className, children, external }) {
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 /**
- * Women's / Men's / Coed columns. Highlights every division this device's
- * team appears in — Coed plus Men's or Women's when they play both.
+ * Women's / Men's / Coed columns.
+ * Register mode: each card starts signup for that seat.
+ * Schedule mode: each card opens that division, and highlights every
+ * division this device's team plays (Coed plus Men's or Women's).
  */
 export default function TournamentDivisionNav({
   slug,
   columns = [],
   teamSummaries = {},
+  mode = "schedule",
+  externalRegisterUrl = null,
 }) {
   const [team, setTeam] = useState("");
 
@@ -60,9 +96,12 @@ export default function TournamentDivisionNav({
     }
   }
 
+  const registering = mode === "register";
+  const external = registering && Boolean(externalRegisterUrl);
+
   return (
     <div className="space-y-3">
-      {teams.length > 0 && (
+      {!registering && teams.length > 0 && (
         <label className="flex flex-wrap items-center justify-center gap-2">
           <span className="t-meta">Your team</span>
           <select
@@ -82,28 +121,34 @@ export default function TournamentDivisionNav({
       )}
       <div
         className={
-          "register-division-cols" + (hasMine ? " has-mine" : "")
+          "register-division-cols" + (!registering && hasMine ? " has-mine" : "")
         }
         role="navigation"
-        aria-label="Divisions"
+        aria-label={registering ? "Register for a division" : "Divisions"}
       >
         {columns.map((col) => {
-          const colMine = col.items.some((d) => mine.has(d.id));
+          const colMine = !registering && col.items.some((d) => mine.has(d.id));
           return (
             <div
               key={col.key}
               className={"register-division-col register-division-col--" + col.key}
             >
               {col.genderOnly ? (
-                <Link
-                  href={`/tournaments/${slug}/division/${col.items[0].id}`}
+                <CardLink
+                  href={cardHref({
+                    slug,
+                    divisionId: col.items[0].id,
+                    mode,
+                    externalRegisterUrl,
+                  })}
+                  external={external}
                   className={
                     "register-division-col__card register-division-col__card--header" +
-                    (mine.has(col.items[0].id) ? " is-mine" : "")
+                    (!registering && mine.has(col.items[0].id) ? " is-mine" : "")
                   }
                 >
                   {col.label}
-                </Link>
+                </CardLink>
               ) : (
                 <>
                   <span
@@ -115,16 +160,22 @@ export default function TournamentDivisionNav({
                     {col.label}
                   </span>
                   {col.items.map((d) => (
-                    <Link
+                    <CardLink
                       key={d.id}
-                      href={`/tournaments/${slug}/division/${d.id}`}
+                      href={cardHref({
+                        slug,
+                        divisionId: d.id,
+                        mode,
+                        externalRegisterUrl,
+                      })}
+                      external={external}
                       className={
                         "register-division-col__card" +
-                        (mine.has(d.id) ? " is-mine" : "")
+                        (!registering && mine.has(d.id) ? " is-mine" : "")
                       }
                     >
                       {divisionLevelLabel(d)}
-                    </Link>
+                    </CardLink>
                   ))}
                 </>
               )}

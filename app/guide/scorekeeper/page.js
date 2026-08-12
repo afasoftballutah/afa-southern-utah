@@ -213,7 +213,8 @@ export default function ScorekeeperGuidePage() {
         <Step n={3} title="One tournament page">
           <p>
             Poster, dates, fees, venue, divisions, and results when available.
-            Look for <strong>Register</strong> when sign-up is open.
+            While sign-up is open, tap a division to register. After it
+            closes, the same grid is the schedule and results.
           </p>
           <p className="text-sm text-afa-ink/60">
             Some events use an outside registration link (city rec, etc.). The
@@ -256,8 +257,8 @@ export default function ScorekeeperGuidePage() {
             Open <ExtLink href={REGISTER}>{REGISTER}</ExtLink>
           </p>
           <p>
-            Or from a tournament page, tap <strong>Register</strong> (that can
-            pre-select the event).
+            Or from a tournament page, tap a division — that starts
+            registration for that event and seat.
           </p>
           <p className="text-sm text-afa-ink/60">
             Only tournaments with an open window and a posted flyer appear here.
