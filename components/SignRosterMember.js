@@ -14,6 +14,15 @@ const ROLE_VERB = { player: "playing on", coach: "coaching", manager: "managing"
 export const ID_ATTESTATION_TEXT =
   "The information I provide on this form is true and correct. My legal name and date of birth are consistent with official identification I can present on game day (for example a driver’s license or other government-issued ID).";
 
+function asMF(g) {
+  const v = String(g ?? "")
+    .trim()
+    .toUpperCase();
+  if (v === "M" || v === "MALE") return "M";
+  if (v === "F" || v === "FEMALE") return "F";
+  return "";
+}
+
 function splitName(full) {
   const parts = String(full ?? "")
     .trim()
@@ -53,7 +62,7 @@ export default function SignRosterMember({
       fromManager.first ||
       ""
   );
-  const [gender, setGender] = useState(member.gender ?? "");
+  const [gender, setGender] = useState(asMF(member.gender));
   const [birthDate, setBirthDate] = useState(member.birthDate ?? "");
   const [email, setEmail] = useState(member.email ?? "");
   const [address, setAddress] = useState(member.address ?? "");
@@ -132,14 +141,6 @@ export default function SignRosterMember({
 
   return (
     <div className="space-y-4">
-      {member.name && (
-        <p className="t-meta">
-          Roster name from your manager:{" "}
-          <span className="font-semibold text-afa-navy">{member.name}</span>
-          {member.gender ? ` · ${member.gender}` : ""}
-        </p>
-      )}
-
       {needsPlayerFields && (
         <div className="space-y-3 form-surface p-3">
           <LegalIdBox detail="You must be able to present that ID on game day.">

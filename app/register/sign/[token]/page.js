@@ -15,8 +15,6 @@ export const metadata = { title: "Sign Your Waiver — AFA Southern Utah" };
 // cached or served to anyone but the person who was handed this exact link.
 export const dynamic = "force-dynamic";
 
-const ROLE_LABEL = { coach: "Coach", manager: "Manager", player: "Player" };
-
 // One kind of token. The manager is a roster member like anyone else, so
 // there is no separate manager lookup — only a manager LABEL on her row.
 async function getSignerByToken(token) {
@@ -100,13 +98,9 @@ export default async function SignPage({ params }) {
     <div className="max-w-lg mx-auto space-y-4">
       <RegisterBack href={backHref} label={backLabel} />
       <h1 className="t-title">Sign Your Waiver</h1>
-      <p className="text-afa-ink/80">
-        {signer.teamName} &mdash; {ROLE_LABEL[signer.role] ?? "Player"}
-      </p>
-      <p className="t-meta">
-        Confirm your legal name and details yourself. They must match official
-        ID you can present on game day.
-      </p>
+      {signer.tournamentName ? (
+        <p className="t-meta">{signer.tournamentName}</p>
+      ) : null}
       <SignRosterMember
         token={token}
         member={signer}
