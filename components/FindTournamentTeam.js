@@ -206,38 +206,43 @@ export default function FindTournamentTeam({
           ) : null}
           {hits.length > 0 ? (
             <ul className="space-y-2" role="listbox">
-              {hits.map((t) => (
-                <li key={t.name}>
-                  <button
-                    type="button"
-                    role="option"
-                    className={
-                      "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-                      (t.genderKey
-                        ? "reg-team-row--" + t.genderKey
-                        : "border-afa-navy/10 bg-white")
-                    }
-                    onClick={() => pick(t)}
-                  >
-                    <span className="min-w-0">
-                      <span className="team-name font-semibold truncate block">
-                        {t.name}
-                      </span>
-                      {(t.managerNames ?? []).length > 0 ? (
-                        <span className="t-meta block truncate mt-0.5">
-                          {t.managerNames.join(", ")}
+              {hits.map((t) => {
+                const managers = (t.managerNames ?? []).filter((m) =>
+                  String(m).toLowerCase().includes(needle)
+                );
+                return (
+                  <li key={t.name}>
+                    <button
+                      type="button"
+                      role="option"
+                      className={
+                        "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
+                        (t.genderKey
+                          ? "reg-team-row--" + t.genderKey
+                          : "border-afa-navy/10 bg-white")
+                      }
+                      onClick={() => pick(t)}
+                    >
+                      <span className="min-w-0">
+                        <span className="team-name font-semibold truncate block">
+                          {t.name}
                         </span>
-                      ) : null}
-                    </span>
-                    <DivisionSeatMark
-                      genderKey={t.genderKey}
-                      seatLabel={t.seatLabel}
-                      genderLabel={t.genderLabel}
-                      levelLabel={t.levelLabel}
-                    />
-                  </button>
-                </li>
-              ))}
+                        {managers.length > 0 ? (
+                          <span className="t-meta block truncate mt-0.5">
+                            {managers.join(", ")}
+                          </span>
+                        ) : null}
+                      </span>
+                      <DivisionSeatMark
+                        genderKey={t.genderKey}
+                        seatLabel={t.seatLabel}
+                        genderLabel={t.genderLabel}
+                        levelLabel={t.levelLabel}
+                      />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </div>
