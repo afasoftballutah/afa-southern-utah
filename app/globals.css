@@ -883,14 +883,18 @@ a.register-division-col__card:active {
 a.register-division-col__card--header {
   cursor: pointer;
 }
-a.register-division-col__card:hover:not(.is-mine):not(.is-on) {
-  background: color-mix(in srgb, var(--div-ink, var(--afa-navy)) 8%, #fff);
+a.register-division-col__card--header:hover:not(.is-mine):not(.is-on),
+.register-division-col__card--header[type="button"]:hover:not(.is-on) {
+  border-color: var(--afa-lime);
+  box-shadow:
+    0 0 0 2px var(--afa-lime),
+    0 0 12px color-mix(in srgb, var(--afa-lime) 50%, transparent);
 }
-a.register-division-col__card--header:hover:not(.is-mine) {
-  filter: brightness(1.08);
-}
-.register-division-col__card:hover:not(.register-division-col__card--header):not(.is-on) {
-  background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
+.register-division-col__card:hover:not(.register-division-col__card--header):not(.is-on):not(.is-mine),
+a.register-division-col__card:hover:not(.is-mine):not(.is-on):not(.register-division-col__card--header) {
+  background: var(--afa-lime);
+  border-color: var(--afa-lime);
+  color: var(--afa-navy);
 }
 /* After a pick: other headers and unused levels recede. */
 .register-division-cols.has-pick
@@ -906,8 +910,9 @@ a.register-division-col__card--header:hover:not(.is-mine) {
 }
 .register-division-cols.has-pick
   .register-division-col__card:not(.is-on):not(.register-division-col__card--header):hover {
-  opacity: 0.85;
-  background: #fff;
+  opacity: 1;
+  background: var(--afa-lime);
+  border-color: var(--afa-lime);
   color: var(--afa-navy);
 }
 /* Selected (register) or this-device team (tournament): gender color + lime. */
