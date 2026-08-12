@@ -34,6 +34,9 @@
   --afa-gold: #ffd700;
   /* Ticked, done, cleared. Only ever used for a completed state. */
   --afa-go: #10b981;
+  /* Do something — green so it never collides with Men's red. */
+  --afa-action: #15803d;
+  --afa-action-hover: #166534;
   /* Started, not finished. Amber only ever means partial. */
   --afa-part: #f59e0b;
   /* Tournament status chips — softball field colors */
@@ -91,8 +94,9 @@ body {
 /* ============================================================
  * COLOR LAW (JD, 2026-08)
  *
- *   RED    = action          (Register, submit, find, do)
- *   BLUE   = permanent info  (Rules, brand, standing facts)
+ *   GREEN  = action          (Find, Manage, Register, submit, do)
+ *   RED    = Men's seat / brand / remove
+ *   BLUE   = permanent info  (Rules, Women's seat, standing facts)
  *   WHITE  = transient info  (live chips, temporary state, toasts)
  *
  * Prefer these semantic classes over raw color utilities.
@@ -118,15 +122,15 @@ body {
     color var(--transition-base, 0.15s ease),
     border-color var(--transition-base, 0.15s ease);
 }
-/* RED — do something (border matches fill so box = blue/white siblings) */
+/* GREEN — do something (never Men's red) */
 .btn-action {
   color: var(--afa-white);
-  background: var(--afa-red);
-  border-color: var(--afa-red);
+  background: var(--afa-action);
+  border-color: var(--afa-action);
 }
 .btn-action:hover {
-  background: var(--afa-red-hover);
-  border-color: var(--afa-red-hover);
+  background: var(--afa-action-hover);
+  border-color: var(--afa-action-hover);
 }
 /* GREEN — create / add (list pages: “+ Add tournament”, etc.) */
 .btn-add {
@@ -141,14 +145,14 @@ body {
   line-height: 1.2;
   white-space: nowrap;
   border-radius: 0.375rem;
-  border: 1px solid #15803d;
+  border: 1px solid var(--afa-action);
   color: #fff;
-  background: #15803d;
+  background: var(--afa-action);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 .btn-add:hover {
-  background: #166534;
-  border-color: #166534;
+  background: var(--afa-action-hover);
+  border-color: var(--afa-action-hover);
 }
 .btn-add:disabled {
   opacity: 0.4;
@@ -1301,13 +1305,13 @@ a.register-division-col__card--header {
   font-weight: 700;
   line-height: 1.25;
   color: var(--afa-white);
-  background: var(--afa-red);
-  border: 1px solid var(--afa-red);
+  background: var(--afa-action);
+  border: 1px solid var(--afa-action);
   border-radius: 0.375rem;
 }
 .btn-action-block:hover {
-  background: var(--afa-red-hover);
-  border-color: var(--afa-red-hover);
+  background: var(--afa-action-hover);
+  border-color: var(--afa-action-hover);
 }
 /* ============================================================
  * HOME — match Grok Imagine mock
