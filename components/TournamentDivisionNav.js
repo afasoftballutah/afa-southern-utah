@@ -2,16 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { divisionLevelLabel, seatFromDivision } from "@/lib/division-layout";
+import { divisionLevelLabel } from "@/lib/division-layout";
 import { readMe, writeMe } from "@/lib/me";
-import { readMyRegistrations } from "@/lib/my-registrations";
-import { sameRegistrationCombo } from "@/lib/register-key";
 
-function cardHref({ slug, divisionId, mode, externalRegisterUrl, manageToken }) {
+function cardHref({ slug, divisionId, mode, externalRegisterUrl }) {
   if (mode === "register") {
-    if (manageToken) {
-      return `/register/manage/${encodeURIComponent(manageToken)}`;
-    }
     if (externalRegisterUrl) return externalRegisterUrl;
     const q = new URLSearchParams({
       tournament: slug,
@@ -56,13 +51,6 @@ export default function TournamentDivisionNav({
   externalRegisterUrl = null,
 }) {
   const [team, setTeam] = useState("");
-  const [localRegs, setLocalRegs] = useState([]);
-
-  useEffect(() => {
-    setLocalRegs(
-      readMyRegistrations().filter((r) => !slug || r.tournamentSlug === slug)
-    );
-  }, [slug]);
 
   useEffect(() => {
     let picked = "";
@@ -111,21 +99,6 @@ export default function TournamentDivisionNav({
   const registering = mode === "register";
   const external = registering && Boolean(externalRegisterUrl);
 
-  function manageTokenFor(d) {
-    if (!registering) return null;
-    const seat = seatFromDivision(d);
-    const hit = localRegs.find((r) =>
-      sameRegistrationCombo(r, {
-        teamName: r.teamName,
-        tournamentSlug: slug,
-        divisionId: d.id,
-        genderKey: seat?.genderKey,
-        levelLabel: seat?.levelLabel,
-      })
-    );
-    return hit?.manageToken || null;
-  }
-
   return (
     <div className="space-y-3">
       {!registering && teams.length > 0 && (
@@ -167,9 +140,8 @@ export default function TournamentDivisionNav({
                     divisionId: col.items[0].id,
                     mode,
                     externalRegisterUrl,
-                    manageToken: manageTokenFor(col.items[0]),
                   })}
-                  external={external && !manageTokenFor(col.items[0])}
+                  external={external}
                   className={
                     "register-division-col__card register-division-col__card--header" +
                     (!registering && mine.has(col.items[0].id) ? " is-mine" : "")
@@ -195,9 +167,8 @@ export default function TournamentDivisionNav({
                         divisionId: d.id,
                         mode,
                         externalRegisterUrl,
-                        manageToken: manageTokenFor(d),
                       })}
-                      external={external && !manageTokenFor(d)}
+                      external={external}
                       className={
                         "register-division-col__card" +
                         (!registering && mine.has(d.id) ? " is-mine" : "")
