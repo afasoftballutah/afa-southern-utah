@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireDirectorPage } from "@/lib/staff-gate";
 import { listTeams, scopeLabel, genderLabel, moneyCents } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
@@ -11,13 +10,25 @@ export const metadata = { title: "Teams — Director" };
 // Balance = sum of (entry fee − amount paid) across live registrations.
 // Not a payment processor — fee from tournament, paid_at / amount from director.
 const COLUMNS = [
-  { key: "name", label: "Team" },
-  { key: "class", label: "Class", width: "5rem" },
-  { key: "division", label: "Division", width: "6rem" },
-  { key: "manager", label: "Manager", hideBelow: "sm", width: "18rem" },
-  { key: "events", label: "Events", align: "right", width: "5rem" },
-  { key: "balance", label: "Balance", align: "right", width: "6.5rem" },
+  { key: "name", label: "Team", width: "10rem" },
+  { key: "class", label: "Class", width: "4.5rem" },
+  { key: "division", label: "Division", width: "5.5rem" },
+  { key: "manager", label: "Manager", hideBelow: "sm", width: "10rem" },
+  { key: "email", label: "Email", hideBelow: "sm" },
+  { key: "phone", label: "Phone", hideBelow: "sm", width: "9rem" },
+  { key: "events", label: "Events", align: "right", width: "4.5rem" },
+  { key: "balance", label: "Balance", align: "right", width: "5.5rem" },
 ];
+
+function cell(text, className = "") {
+  const s = String(text ?? "").trim();
+  if (!s) return "—";
+  return (
+    <span className={"block truncate " + className} title={s}>
+      {s}
+    </span>
+  );
+}
 
 const FILTERS = [
   { key: "unpaid", label: "Unpaid", tag: "unpaid" },
@@ -81,34 +92,26 @@ export default async function TeamsPage() {
       t.registrations.find((r) => r.managerName || r.managerEmail || r.managerPhone) ??
       t.registrations[0] ??
       null;
-    const managerBits = [
-      manager?.managerEmail,
-      manager?.managerPhone,
-    ].filter(Boolean);
     return {
       key: t.id,
       href: `/director/teams/${t.id}`,
       tags,
-      search: `${t.name} ${scopeLabel(t.gender, t.className)} ${manager?.managerName ?? ""} ${managerBits.join(" ")} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
+      search: `${t.name} ${scopeLabel(t.gender, t.className)} ${manager?.managerName ?? ""} ${manager?.managerEmail ?? ""} ${manager?.managerPhone ?? ""} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       cells: {
-        name: t.name,
+        name: cell(t.name, "max-w-[10rem]"),
         class: t.className ?? "—",
         division: genderLabel(t.gender) ?? "—",
-        manager: manager?.managerName || managerBits.length ? (
-          <span className="block min-w-0">
-            <span className="block truncate">{manager?.managerName || "—"}</span>
-            {managerBits.length > 0 ? (
-              <span className="t-meta block truncate">{managerBits.join(" · ")}</span>
-            ) : null}
-          </span>
-        ) : (
-          "—"
-        ),
+        manager: cell(manager?.managerName, "max-w-[10rem]"),
+        email: cell(manager?.managerEmail, "max-w-[16rem]"),
+        phone: cell(manager?.managerPhone, "max-w-[9rem]"),
         events: t.registrations.length,
         balance: balanceCell(money),
       },
       sortValues: {
         name: t.name.toLowerCase(),
+        manager: String(manager?.managerName ?? "").toLowerCase(),
+        email: String(manager?.managerEmail ?? "").toLowerCase(),
+        phone: String(manager?.managerPhone ?? ""),
         events: t.registrations.length,
         balance: sortBalance,
       },
@@ -125,15 +128,6 @@ export default async function TeamsPage() {
         empty="No team matches that."
         searchPlaceholder="Team, manager, email or tournament…"
       />
-      <p className="t-meta">
-        A team is name + manager + gender (class not in the key — clubs promote).
-        Most Heat Stroker rows were bulk-entered from results with no manager,
-        so they show — until you set one on the registration. Balance is entry
-        fee minus recorded paid.{" "}
-        <Link href="/director/players" className="underline">
-          Players
-        </Link>
-      </p>
     </DirectorShell>
   );
 }
