@@ -305,11 +305,8 @@ export default async function PlayersPage() {
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
                     Team
                   </th>
-                  <th className="px-2.5 py-1 text-center t-label font-normal text-[10px]">
-                    Waiver
-                  </th>
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]">
-                    Sign
+                    Waiver
                   </th>
                   <th className="px-2.5 py-1 text-left t-label font-normal text-[10px]" />
                 </tr>
@@ -343,26 +340,25 @@ export default async function PlayersPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-2.5 py-1 text-center">
-                      <span
-                        className={
-                          "tick text-[0.95em] " +
-                          (a.signed ? "text-afa-go" : "text-afa-muted/50")
-                        }
-                      >
-                        {a.signed ? "☑" : "☐"}
-                      </span>
-                    </td>
                     <td className="px-2.5 py-1 whitespace-nowrap">
-                      {a.signPath ? (
-                        <WaiverSignLink
-                          href={a.signPath}
-                          signed={a.signed}
-                          compact
-                        />
-                      ) : (
-                        <span className="t-meta">—</span>
-                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={
+                            "tick text-[0.95em] " +
+                            (a.signed ? "text-afa-go" : "text-afa-muted/50")
+                          }
+                          title={a.signed ? "Signed" : "Not signed"}
+                        >
+                          {a.signed ? "☑" : "☐"}
+                        </span>
+                        {a.signPath ? (
+                          <WaiverSignLink
+                            href={a.signPath}
+                            signed={a.signed}
+                            compact
+                          />
+                        ) : null}
+                      </span>
                     </td>
                     <td className="px-2.5 py-1">
                       {a.registrationId ? (
