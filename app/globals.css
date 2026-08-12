@@ -814,8 +814,8 @@ textarea.form-field {
   margin-top: 0.35rem;
 }
 .register-division-row {
-  display: grid;
-  grid-template-columns: 6.75rem minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: stretch;
 }
@@ -823,8 +823,10 @@ textarea.form-field {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  padding: 0.4rem 0.5rem;
+  box-sizing: border-box;
+  width: 6.5rem;
+  height: 2.75rem;
+  padding: 0;
   border: 1px solid var(--afa-ink);
   border-radius: 0.375rem;
   background: var(--afa-soft-gray);
@@ -832,20 +834,21 @@ textarea.form-field {
   font-weight: 700;
   color: var(--afa-navy);
   text-align: center;
+  flex-shrink: 0;
 }
 .register-division-row__levels {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 .register-division-row__level {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  min-width: 0;
-  padding: 0.4rem 0.35rem;
+  box-sizing: border-box;
+  width: 4.75rem;
+  height: 2.75rem;
+  padding: 0;
   border: 1px solid var(--afa-ink);
   border-radius: 0.375rem;
   background: #fff;
@@ -853,6 +856,7 @@ textarea.form-field {
   font-weight: 700;
   color: var(--afa-navy);
   cursor: pointer;
+  flex-shrink: 0;
 }
 .register-division-row__level:hover {
   background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
@@ -863,11 +867,12 @@ textarea.form-field {
   color: #fff;
 }
 @media (max-width: 420px) {
-  .register-division-row {
-    grid-template-columns: 5.25rem minmax(0, 1fr);
+  .register-division-row__gender {
+    width: 5.5rem;
+    font-size: 0.8125rem;
   }
-  .register-division-row__gender,
   .register-division-row__level {
+    width: 4.25rem;
     font-size: 0.8125rem;
   }
 }
