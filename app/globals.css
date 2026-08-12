@@ -846,9 +846,12 @@ textarea.form-field {
 .register-division-col__card.is-on,
 .register-division-col__card.is-on:hover,
 .register-division-col__card.is-on:focus {
-  background: var(--afa-navy);
-  border-color: var(--afa-navy);
-  color: #fff;
+  background: var(--afa-lime);
+  border-color: var(--afa-lime);
+  color: var(--afa-navy);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--afa-lime) 70%, #fff),
+    0 0 14px color-mix(in srgb, var(--afa-lime) 55%, transparent);
 }
 .register-division-col__card--label.is-on {
   cursor: default;
