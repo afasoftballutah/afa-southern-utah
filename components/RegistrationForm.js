@@ -598,25 +598,28 @@ export default function RegistrationForm({
   const stepTotal = skippedDoor ? STEPS.length - 1 : STEPS.length;
   const stepNumber = skippedDoor ? step : step + 1;
   const showFormBack = step > 0 && !(skippedDoor && step === 1);
+  const alreadyHere = Boolean(blocked);
 
   return (
     <div className="space-y-4">
       {step === 0 && <MyRegistrations onChange={bumpDevice} />}
-      {skippedDoor && step === 1 && tournament?.slug ? (
+      {skippedDoor && step === 1 && !alreadyHere && tournament?.slug ? (
         <MyRegistrations compactSlug={tournament.slug} onChange={bumpDevice} />
       ) : null}
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="t-strong">
-            {STEPS[step]}
-            <span className="t-meta font-normal">
-              {" "}
-              · {stepNumber} of {stepTotal}
-            </span>
-          </p>
+      {!alreadyHere && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="t-strong">
+              {STEPS[step]}
+              <span className="t-meta font-normal">
+                {" "}
+                · {stepNumber} of {stepTotal}
+              </span>
+            </p>
+          </div>
+          <PageDots page={stepNumber} total={stepTotal} />
         </div>
-        <PageDots page={stepNumber} total={stepTotal} />
-      </div>
+      )}
 
       <div className="form-surface p-4 space-y-4">
         {step === 0 && (
@@ -774,68 +777,90 @@ export default function RegistrationForm({
           </div>
         )}
 
-        {step === 1 && (
+        {step === 1 && alreadyHere && (
+          <div className="space-y-3">
+            <p className="flex flex-wrap items-center gap-2">
+              <span className="team-name font-semibold">{blocked.teamName}</span>
+              <DivisionSeatMark
+                genderKey={selectedSeat?.genderKey}
+                seatLabel={selectedSeat?.seatLabel}
+                genderLabel={selectedSeat?.genderLabel}
+                levelLabel={selectedSeat?.levelLabel}
+              />
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/register/manage/${encodeURIComponent(blocked.manageToken)}`}
+                className="btn-action"
+              >
+                Manage roster
+              </Link>
+              {registerableDivisions.length > 1 && (
+                <button
+                  type="button"
+                  className="btn-transient"
+                  onClick={() => setChangingDivision(true)}
+                >
+                  Change
+                </button>
+              )}
+              <button
+                type="button"
+                className="t-meta underline"
+                onClick={forgetLockedTeam}
+              >
+                Forget
+              </button>
+            </div>
+            {showDivisionGrid ? (
+              <DivisionPicker
+                divisions={registerableDivisions}
+                divisionId={effectiveDivisionId}
+                onPick={(id) => {
+                  setDivisionId(id);
+                  setChangingDivision(false);
+                }}
+              />
+            ) : null}
+          </div>
+        )}
+
+        {step === 1 && !alreadyHere && (
           <div className="space-y-4">
-            {blocked ? (
-              <div className="space-y-3">
-                <p className="t-body">
-                  <span className="team-name font-semibold">{blocked.teamName}</span>
-                  {" is already in "}
-                  {selectedSeat?.seatLabel || "this division"}.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/register/manage/${encodeURIComponent(blocked.manageToken)}`}
-                    className="btn-action"
-                  >
-                    Manage roster
-                  </Link>
+            <Field label="Team Name">
+              <input
+                className={
+                  "form-field" + (lockedTeam ? " bg-afa-soft-gray/50" : "")
+                }
+                value={teamName}
+                onChange={(e) => {
+                  if (lockedTeam) return;
+                  setTeamName(e.target.value);
+                }}
+                readOnly={Boolean(lockedTeam)}
+                placeholder="e.g. Fallen"
+                autoComplete="organization"
+              />
+              {lockedTeam ? (
+                <p className="t-meta mt-1">
+                  This phone is {lockedTeam}.{" "}
                   <button
                     type="button"
-                    className="t-meta underline"
+                    className="underline"
                     onClick={forgetLockedTeam}
                   >
                     Forget
-                  </button>
-                  <span className="t-meta">to register a different team</span>
-                </div>
-              </div>
-            ) : (
-              <Field label="Team Name">
-                <input
-                  className={
-                    "form-field" + (lockedTeam ? " bg-afa-soft-gray/50" : "")
-                  }
-                  value={teamName}
-                  onChange={(e) => {
-                    if (lockedTeam) return;
-                    setTeamName(e.target.value);
-                  }}
-                  readOnly={Boolean(lockedTeam)}
-                  placeholder="e.g. Fallen"
-                  autoComplete="organization"
-                />
-                {lockedTeam ? (
-                  <p className="t-meta mt-1">
-                    This phone is {lockedTeam}.{" "}
-                    <button
-                      type="button"
-                      className="underline"
-                      onClick={forgetLockedTeam}
-                    >
-                      Forget
-                    </button>{" "}
-                    to register a different team.
-                  </p>
-                ) : null}
-                {nameTaken ? (
-                  <p className="text-sm text-red-700 mt-1" role="alert">
-                    {teamName.trim()} is already registered for this division.
-                    Use a different name.
-                  </p>
-                ) : null}
-              </Field>
-            )}
+                  </button>{" "}
+                  to register a different team.
+                </p>
+              ) : null}
+              {nameTaken ? (
+                <p className="text-sm text-red-700 mt-1" role="alert">
+                  {teamName.trim()} is already registered for this division.
+                  Use a different name.
+                </p>
+              ) : null}
+            </Field>
             {registerableDivisions.length > 0 && (
               <div>
                 <span className="form-label">Division</span>
@@ -869,16 +894,14 @@ export default function RegistrationForm({
                 )}
               </div>
             )}
-            {!blocked && (
-              <Field label="AFA Membership #">
-                <input
-                  className="form-field"
-                  value={afaMembershipNumber}
-                  onChange={(e) => setAfaMembershipNumber(e.target.value)}
-                  placeholder="optional"
-                />
-              </Field>
-            )}
+            <Field label="AFA Membership #">
+              <input
+                className="form-field"
+                value={afaMembershipNumber}
+                onChange={(e) => setAfaMembershipNumber(e.target.value)}
+                placeholder="optional"
+              />
+            </Field>
           </div>
         )}
 
