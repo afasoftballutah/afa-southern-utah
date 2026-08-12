@@ -699,6 +699,31 @@ textarea.form-field {
   min-height: 6rem;
   resize: vertical;
 }
+.gender-pick {
+  box-sizing: border-box;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  color: var(--afa-ink);
+  background: var(--afa-white);
+  border: 1px solid var(--afa-ink);
+  border-radius: 0.375rem;
+}
+.gender-pick:focus {
+  outline: none;
+}
+.gender-pick.is-on,
+.gender-pick.is-on:focus {
+  color: #fff;
+  background: var(--afa-action);
+  border-color: var(--afa-action);
+  box-shadow: none;
+}
+
 .form-label {
   display: block;
   font-size: 0.875rem;

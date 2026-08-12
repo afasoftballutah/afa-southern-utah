@@ -189,12 +189,7 @@ export default function SignRosterMember({
                   <button
                     key={g}
                     type="button"
-                    className={
-                      "form-field w-11 px-0 font-bold " +
-                      (gender === g
-                        ? "border-[var(--afa-action)] bg-[var(--afa-action)] text-white"
-                        : "bg-white text-afa-navy")
-                    }
+                    className={"gender-pick" + (gender === g ? " is-on" : "")}
                     onClick={() => setGender(g)}
                   >
                     {g}
