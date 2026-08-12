@@ -23,10 +23,8 @@ import Chip from "@/components/ui/Chip";
 import GameFeed from "@/components/GameFeed";
 import TournamentResults from "@/components/TournamentResults";
 import MyTeamCard from "@/components/MyTeamCard";
-import {
-  divisionLevelLabel,
-  groupDivisionsByGender,
-} from "@/lib/division-layout";
+import TournamentDivisionNav from "@/components/TournamentDivisionNav";
+import { groupDivisionsByGender } from "@/lib/division-layout";
 
 // Where and when, split so a list of games lines up in columns.
 function whenParts(scheduledTime) {
@@ -358,43 +356,15 @@ export default async function TournamentDetailPage({ params }) {
             />
           ) : (
             <>
-              <div>
+              <div className="text-center">
                 <h2 className="t-heading">Divisions</h2>
                 <p className="t-meta">Schedule and tournament updates</p>
               </div>
-              <div
-                className="register-division-cols"
-                role="navigation"
-                aria-label="Divisions"
-              >
-                {groupDivisionsByGender(groupCards).map((col) => (
-                  <div key={col.key} className="register-division-col">
-                    {col.genderOnly ? (
-                      <Link
-                        href={`/tournaments/${tournament.slug}/division/${col.items[0].id}`}
-                        className="register-division-col__card register-division-col__card--header"
-                      >
-                        {col.label}
-                      </Link>
-                    ) : (
-                      <>
-                        <span className="register-division-col__card register-division-col__card--header">
-                          {col.label}
-                        </span>
-                        {col.items.map((d) => (
-                          <Link
-                            key={d.id}
-                            href={`/tournaments/${tournament.slug}/division/${d.id}`}
-                            className="register-division-col__card"
-                          >
-                            {divisionLevelLabel(d)}
-                          </Link>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <TournamentDivisionNav
+                slug={tournament.slug}
+                columns={groupDivisionsByGender(groupCards)}
+                teamSummaries={teamSummaries}
+              />
             </>
           )}
         </div>

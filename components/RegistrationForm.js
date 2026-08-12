@@ -614,7 +614,10 @@ export default function RegistrationForm({
                       registerableDivisions.length === 1 ||
                       inCol.some((d) => d.id === divisionId);
                     return (
-                      <div key={row.key} className="register-division-col">
+                      <div
+                        key={row.key}
+                        className={"register-division-col register-division-col--" + row.key}
+                      >
                         {genderOnly ? (
                           <button
                             type="button"
