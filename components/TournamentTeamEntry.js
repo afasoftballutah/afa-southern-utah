@@ -15,6 +15,17 @@ export default function TournamentTeamEntry({
   finished = false,
 }) {
   const [team, setTeam] = useState("");
+  const [registering, setRegistering] = useState(false);
+
+  function showRegister() {
+    setRegistering(true);
+    requestAnimationFrame(() => {
+      document.getElementById("tournament-divisions")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -26,15 +37,21 @@ export default function TournamentTeamEntry({
         registrationOpen={registrationOpen}
         registerHref={registerHref}
         externalRegisterUrl={externalRegisterUrl}
+        registering={registering}
+        onRegister={showRegister}
       />
       {columns.length > 0 ? (
-        <div className="space-y-3">
+        <div id="tournament-divisions" className="space-y-3">
           <div className="text-center">
-            <h2 className="t-heading">{finished ? "Results" : "Divisions"}</h2>
+            <h2 className="t-heading">
+              {registering ? "Register" : finished ? "Results" : "Divisions"}
+            </h2>
             <p className="t-meta">
-              {finished
-                ? "Schedule and results"
-                : "Schedule and tournament updates"}
+              {registering
+                ? "Pick a division"
+                : finished
+                  ? "Schedule and results"
+                  : "Schedule and tournament updates"}
             </p>
           </div>
           <TournamentDivisionNav
@@ -43,7 +60,7 @@ export default function TournamentTeamEntry({
             teamSummaries={teamSummaries}
             selectedTeam={team}
             hideTeamPicker
-            mode="schedule"
+            mode={registering ? "register" : "schedule"}
           />
         </div>
       ) : null}

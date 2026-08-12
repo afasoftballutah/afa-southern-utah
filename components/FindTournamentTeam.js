@@ -22,6 +22,8 @@ export default function FindTournamentTeam({
   registrationOpen = false,
   registerHref = "/register",
   externalRegisterUrl = null,
+  registering = false,
+  onRegister,
 }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -248,9 +250,14 @@ export default function FindTournamentTeam({
               Register a team
             </a>
           ) : (
-            <Link href={registerHref} className="t-meta underline">
+            <button
+              type="button"
+              className="t-meta underline"
+              aria-expanded={registering}
+              onClick={() => onRegister?.()}
+            >
               Register a team
-            </Link>
+            </button>
           )}
         </p>
       ) : null}
