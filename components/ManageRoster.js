@@ -7,6 +7,7 @@ import {
 } from "@/components/ManagerPlayerFields";
 import SuspendPlayer from "@/components/scorekeeper/SuspendPlayer";
 import WaiverSignLink from "@/components/scorekeeper/WaiverSignLink";
+import ConfirmDialog from "@/components/scorekeeper/ConfirmDialog";
 
 export default function ManageRoster({
   token,
@@ -42,6 +43,7 @@ export default function ManageRoster({
   const [dualProbe, setDualProbe] = useState(null); // { warnings, otherTeams, hasSameGender }
   const [addedLink, setAddedLink] = useState(null);
   const [copied, setCopied] = useState("");
+  const [pendingRemove, setPendingRemove] = useState(null);
 
   const excludeIds = useMemo(
     () =>
@@ -425,7 +427,7 @@ export default function ManageRoster({
                   type="button"
                   className="pill text-afa-red border-afa-red/30"
                   disabled={busy}
-                  onClick={() => remove(m)}
+                  onClick={() => setPendingRemove(m)}
                 >
                   Remove
                 </button>
@@ -722,6 +724,21 @@ export default function ManageRoster({
           </ul>
         </div>
       )}
+
+      {pendingRemove ? (
+        <ConfirmDialog
+          title={pendingRemove.name}
+          message={`Remove ${pendingRemove.name} from this roster? They can be put back from Removed.`}
+          confirmLabel="Remove"
+          busy={busy}
+          onConfirm={async () => {
+            const who = pendingRemove;
+            await remove(who);
+            setPendingRemove(null);
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
+      ) : null}
 
       {rosterToken && (
         <p className="t-meta">
