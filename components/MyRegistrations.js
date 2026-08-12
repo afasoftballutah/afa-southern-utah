@@ -20,7 +20,6 @@ export default function MyRegistrations() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [lookupResults, setLookupResults] = useState(null); // null | [] | teams
-  const [showLookup, setShowLookup] = useState(false);
 
   useEffect(() => {
     setLocal(readMyRegistrations());
@@ -83,8 +82,8 @@ export default function MyRegistrations() {
       <div>
         <p className="t-heading">Already registered?</p>
         <p className="t-meta mt-0.5">
-          Open a team you manage on this device, or look up by the email you
-          used when you registered.
+          Teams saved on this phone, or look up with the manager email from
+          registration.
         </p>
       </div>
 
@@ -142,70 +141,43 @@ export default function MyRegistrations() {
         </ul>
       )}
 
-      {!showLookup ? (
-        <button
-          type="button"
-          className="btn-transient w-full"
-          onClick={() => setShowLookup(true)}
-        >
-          {local.length
-            ? "Find a team on another phone"
-            : "Look up my team by email"}
-        </button>
-      ) : (
-        <form onSubmit={onLookup} className="space-y-2">
-          <label className="block">
-            <span className="t-label">Manager email</span>
-            <input
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="same email as registration"
-              className="mt-1 w-full rounded-lg border border-afa-navy/20 px-3 py-2.5 text-base"
-            />
-          </label>
-          {error && (
-            <p className="text-sm text-red-700" role="alert">
-              {error}
-            </p>
-          )}
-          {lookupResults && lookupResults.length === 0 && (
-            <p className="text-sm text-afa-ink/70">
-              No teams found for that email. Check the spelling, or register a
-              new team below.
-            </p>
-          )}
-          {lookupResults && lookupResults.length > 0 && (
-            <p className="text-sm text-[#2f7a4f] font-semibold">
-              Found {lookupResults.length} team
-              {lookupResults.length === 1 ? "" : "s"} — saved on this phone.
-              Use Manage roster above.
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={busy}
-              className="btn-action flex-1 min-w-[8rem]"
-            >
-              {busy ? "Looking…" : "Find my teams"}
-            </button>
-            <button
-              type="button"
-              className="btn-transient"
-              onClick={() => {
-                setShowLookup(false);
-                setError("");
-                setLookupResults(null);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+      <form onSubmit={onLookup} className="space-y-2">
+        <div className="flex flex-wrap gap-2 items-stretch">
+          <input
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Manager email"
+            aria-label="Manager email"
+            className="form-field flex-1 min-w-[12rem]"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="btn-action shrink-0 px-4"
+          >
+            {busy ? "Looking…" : "Find my teams"}
+          </button>
+        </div>
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        {lookupResults && lookupResults.length === 0 && (
+          <p className="text-sm text-afa-ink/70">
+            No teams for that email. Check the spelling, or register below.
+          </p>
+        )}
+        {lookupResults && lookupResults.length > 0 && (
+          <p className="text-sm text-[#2f7a4f] font-semibold">
+            Found {lookupResults.length} team
+            {lookupResults.length === 1 ? "" : "s"} — saved on this phone.
+          </p>
+        )}
+      </form>
     </div>
   );
 }
