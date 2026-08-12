@@ -126,7 +126,12 @@ export async function POST(request) {
     rows = (data || []).filter((r) => {
       const team = String(r.team_name || "").trim().toLowerCase();
       const manager = String(r.manager_name || "").trim().toLowerCase();
-      return team.includes(needle) || manager.includes(needle);
+      const emailAddr = String(r.manager_email || "").trim().toLowerCase();
+      return (
+        team.includes(needle) ||
+        manager.includes(needle) ||
+        emailAddr.includes(needle)
+      );
     });
   }
 
