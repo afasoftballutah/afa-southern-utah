@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-
 /**
  * Always-visible label + optional placeholder tip inside the field.
- * Date/time inputs ignore native placeholders — we paint the tip over them
- * when empty so "optional" still shows inside the control.
+ *
+ * Do not paint overlays on date/time inputs — `text-transparent` + browser
+ * mm/dd/yyyy UI stacks and looks broken (JD). Date/time stay native only.
  */
 export default function SoftField({
   label,
@@ -19,43 +18,25 @@ export default function SoftField({
   className = "",
   inputClassName = "form-field",
 }) {
-  const [focused, setFocused] = useState(false);
-  const filled = String(value ?? "").trim().length > 0;
-  const needsOverlay =
-    Boolean(explainer) &&
-    !filled &&
-    !focused &&
-    (type === "date" || type === "time" || type === "datetime-local");
+  // Placeholder is for text-like fields only. Date/time ignore it and break
+  // if we try to fake one with overlays.
+  const isDateLike =
+    type === "date" || type === "time" || type === "datetime-local";
+  const placeholder = isDateLike ? undefined : explainer;
 
   return (
     <label className={"block " + className}>
       <span className="t-label block mb-1 min-h-[1rem] leading-4">{label}</span>
-      <span className="relative block">
-        <input
-          type={type}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
-          list={list}
-          value={value ?? ""}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder={explainer}
-          className={
-            inputClassName +
-            " w-full " +
-            (needsOverlay ? "text-transparent" : "")
-          }
-        />
-        {needsOverlay && (
-          <span
-            className="pointer-events-none absolute inset-0 flex items-center px-3 text-afa-muted text-[1rem]"
-            aria-hidden
-          >
-            {explainer}
-          </span>
-        )}
-      </span>
+      <input
+        type={type}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        list={list}
+        value={value ?? ""}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={inputClassName + " w-full"}
+      />
     </label>
   );
 }

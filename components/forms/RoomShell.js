@@ -14,7 +14,8 @@ import WorkFocus from "@/components/forms/WorkFocus";
 
 /**
  * Soft field for room forms. Label always on.
- * optional → the word "optional" inside the empty field (placeholder / date overlay).
+ * optional text → placeholder "optional" inside the field.
+ * optional date/time → " · optional" on the label (native date UI cannot host a placeholder).
  * required is enforced by Continue disabled, not a stamp under every field.
  */
 export function RoomField({
@@ -27,20 +28,25 @@ export function RoomField({
   inputClassName = "form-field",
   list,
   inputMode,
+  type,
   ...rest
 }) {
-  // Optional fields always show "optional" inside when empty.
-  // Required fields may use explainer as a tip (e.g. "e.g. Coed Heat Stroker").
-  let tip = optional ? "optional" : explainer;
+  const isDateLike =
+    type === "date" || type === "time" || type === "datetime-local";
+  // Text: "optional" in the box. Date: never overlay — only mark the label.
+  const shownLabel =
+    optional && isDateLike ? `${label} · optional` : label;
+  let tip = optional && !isDateLike ? "optional" : explainer;
   if (!optional && tip === label) tip = undefined;
   return (
     <div className={"min-w-0 " + className}>
       <SoftField
-        label={label}
+        label={shownLabel}
         explainer={tip}
         inputClassName={inputClassName}
         list={list}
         inputMode={inputMode}
+        type={type}
         {...rest}
       />
     </div>
