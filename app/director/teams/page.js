@@ -10,11 +10,11 @@ export const metadata = { title: "Teams — Director" };
 // Balance = sum of (entry fee − amount paid) across live registrations.
 // Not a payment processor — fee from tournament, paid_at / amount from director.
 const COLUMNS = [
-  { key: "name", label: "Team", width: "10rem" },
+  { key: "name", label: "Team" },
   { key: "class", label: "Class", width: "4.5rem" },
   { key: "division", label: "Division", width: "5.5rem" },
   { key: "manager", label: "Manager", hideBelow: "sm", width: "10rem" },
-  { key: "email", label: "Email", hideBelow: "sm" },
+  { key: "email", label: "Email", hideBelow: "sm", width: "16rem" },
   { key: "phone", label: "Phone", hideBelow: "sm", width: "9rem" },
   { key: "events", label: "Events", align: "right", width: "4.5rem" },
   { key: "balance", label: "Balance", align: "right", width: "5.5rem" },
@@ -98,12 +98,12 @@ export default async function TeamsPage() {
       tags,
       search: `${t.name} ${scopeLabel(t.gender, t.className)} ${manager?.managerName ?? ""} ${manager?.managerEmail ?? ""} ${manager?.managerPhone ?? ""} ${t.registrations.map((r) => r.tournamentName).join(" ")}`,
       cells: {
-        name: cell(t.name, "max-w-[10rem]"),
+        name: t.name,
         class: t.className ?? "—",
         division: genderLabel(t.gender) ?? "—",
-        manager: cell(manager?.managerName, "max-w-[10rem]"),
-        email: cell(manager?.managerEmail, "max-w-[16rem]"),
-        phone: cell(manager?.managerPhone, "max-w-[9rem]"),
+        manager: cell(manager?.managerName),
+        email: cell(manager?.managerEmail),
+        phone: cell(manager?.managerPhone),
         events: t.registrations.length,
         balance: balanceCell(money),
       },
@@ -127,6 +127,7 @@ export default async function TeamsPage() {
         defaultSort={{ key: "name", dir: "asc" }}
         empty="No team matches that."
         searchPlaceholder="Team, manager, email or tournament…"
+        fixed
       />
     </DirectorShell>
   );

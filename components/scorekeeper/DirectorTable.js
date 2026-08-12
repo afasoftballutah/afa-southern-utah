@@ -65,6 +65,8 @@ export default function DirectorTable({
   // column and pushes everything else to the far side of the screen (JD,
   // 2026-07-27: "still seems super wide?").
   width = "",
+  /** Leftover width goes to columns without a set width (usually Team). */
+  fixed = false,
   // Rendered inside the same card, above the table. For a control that makes
   // the rows below it — a separate card left them looking unrelated.
   before = null,
@@ -260,7 +262,11 @@ export default function DirectorTable({
           {/* 14px, not 15 — the Team and Tournament columns had to fit on one
               line and a name may never be cut off (JD, 2026-07-27: "the names
               cant be ellipsis... shrink the fonts as needed"). */}
-          <table className="w-full text-[14px] leading-snug">
+          <table
+            className={
+              "w-full text-[14px] leading-snug" + (fixed ? " table-fixed" : "")
+            }
+          >
             <thead>
               {columns.some((c) => c.group) && (
                 <tr>
