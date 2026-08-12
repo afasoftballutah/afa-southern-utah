@@ -130,9 +130,10 @@ export default async function ManageRosterPage({ params }) {
           Keep this link to yourself. Search the directory to add someone
           already on file, or type first name, last name, and gender for a new
           player — they complete legal name, preferred name, birth date, email,
-          and address when they sign. Release someone to the free-agent pool or
-          claim free agents here. A player cannot be on two teams in the same
-          gender for this tournament.
+          and address when they sign. Remove someone if they are not on this
+          team; you can put them back. Claim a free agent if another team
+          dropped out. A player cannot be on two teams in the same gender for
+          this tournament.
         </p>
       </div>
 

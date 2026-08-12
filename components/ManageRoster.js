@@ -278,7 +278,7 @@ export default function ManageRoster({
     }
   }
 
-  async function remove(m, toPool) {
+  async function remove(m) {
     setBusy(true);
     setError("");
     try {
@@ -288,7 +288,6 @@ export default function ManageRoster({
         body: JSON.stringify({
           token,
           memberId: m.id,
-          toPool: Boolean(toPool),
         }),
       });
       const json = await res.json();
@@ -427,24 +426,14 @@ export default function ManageRoster({
                 />
               ) : null}
               {canEdit && !m.isManager ? (
-                <>
-                  <button
-                    type="button"
-                    className="pill"
-                    disabled={busy}
-                    onClick={() => remove(m, true)}
-                  >
-                    To pool
-                  </button>
-                  <button
-                    type="button"
-                    className="pill text-afa-red border-afa-red/30"
-                    disabled={busy}
-                    onClick={() => remove(m, false)}
-                  >
-                    Remove
-                  </button>
-                </>
+                <button
+                  type="button"
+                  className="pill text-afa-red border-afa-red/30"
+                  disabled={busy}
+                  onClick={() => remove(m)}
+                >
+                  Remove
+                </button>
               ) : null}
             </span>
           </li>
