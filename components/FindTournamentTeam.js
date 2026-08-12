@@ -4,50 +4,37 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import DivisionSeatMark from "@/components/DivisionSeatMark";
 import {
-  forgetTeamOnDevice,
+  forgetRegistration,
   readMyRegistrations,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
+import { sameRegistrationName } from "@/lib/register-key";
 
-function seatList(r) {
-  if (Array.isArray(r.seats) && r.seats.length > 0) return r.seats;
-  if (r.seatLabel || r.genderKey) {
-    return [
-      {
-        genderKey: r.genderKey,
-        seatLabel: r.seatLabel,
-        genderLabel: r.genderLabel,
-        levelLabel: r.levelLabel,
-        divisionId: r.divisionId,
-      },
-    ];
-  }
-  return [];
+function sameSeat(a, b) {
+  if (a.divisionId && b.divisionId) return a.divisionId === b.divisionId;
+  if (a.seatLabel && b.seatLabel) return a.seatLabel === b.seatLabel;
+  return false;
 }
 
 function TeamRow({ r, slug, onForget }) {
-  const seats = seatList(r);
-  const mixed = new Set(seats.map((s) => s.genderKey).filter(Boolean)).size > 1;
-  const tone = !mixed && (seats[0]?.genderKey || r.genderKey);
   return (
     <li
       className={
         "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-        (tone ? "reg-team-row--" + tone : "border-afa-navy/10 bg-white")
+        (r.genderKey
+          ? "reg-team-row--" + r.genderKey
+          : "border-afa-navy/10 bg-white")
       }
     >
       <div className="min-w-0">
         <p className="team-name font-semibold truncate">{r.teamName}</p>
         <p className="t-meta flex flex-wrap items-center gap-1.5 mt-0.5">
-          {seats.map((s) => (
-            <DivisionSeatMark
-              key={s.divisionId || s.seatLabel}
-              genderKey={s.genderKey}
-              seatLabel={s.seatLabel}
-              genderLabel={s.genderLabel}
-              levelLabel={s.levelLabel}
-            />
-          ))}
+          <DivisionSeatMark
+            genderKey={r.genderKey}
+            seatLabel={r.seatLabel}
+            genderLabel={r.genderLabel}
+            levelLabel={r.levelLabel}
+          />
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -78,7 +65,7 @@ function TeamRow({ r, slug, onForget }) {
           <button
             type="button"
             className="t-meta underline"
-            onClick={() => onForget(r.teamName)}
+            onClick={() => onForget(r)}
           >
             Forget
           </button>
@@ -138,41 +125,30 @@ export default function FindTournamentTeam({
     setQuery("");
   }
 
-  function forget(name) {
-    forgetTeamOnDevice(name);
+  function forget(row) {
+    if (row.manageToken) forgetRegistration(row.manageToken);
     setLocal(readMyRegistrations().filter((r) => r.tournamentSlug === slug));
-    if (selectedTeam === name) onTeam?.("");
+    if (selectedTeam === row.teamName) onTeam?.("");
   }
 
-  const covered = new Map();
-  for (const r of local) {
-    if (!covered.has(r.teamName)) covered.set(r.teamName, new Set());
-    if (r.seatLabel) covered.get(r.teamName).add(r.seatLabel);
-  }
-  const firstOf = new Set();
-  const shown = local.map((r) => {
-    const dir = teams.find((t) => t.name === r.teamName);
-    if (!dir?.seats?.length) return r;
-    if (firstOf.has(r.teamName)) return r;
-    firstOf.add(r.teamName);
-    const have = covered.get(r.teamName) || new Set();
-    const extra = dir.seats.filter((s) => !have.has(s.seatLabel));
-    if (extra.length === 0) return r;
-    return { ...r, seats: [...seatList(r), ...extra] };
-  });
-  if (selectedTeam && !shown.some((r) => r.teamName === selectedTeam)) {
-    const t = teams.find((x) => x.name === selectedTeam);
-    if (t) {
-      shown.push({
-        teamName: t.name,
-        divisionId: t.divisionId,
-        genderKey: t.genderKey,
-        genderLabel: t.genderLabel,
-        levelLabel: t.levelLabel,
-        seatLabel: t.seatLabel,
-        seats: t.seats,
-      });
-    }
+  const shown = [...local];
+  const clubs = new Set(local.map((r) => r.teamName));
+  for (const t of teams) {
+    if (![...clubs].some((n) => sameRegistrationName(n, t.name))) continue;
+    const already = shown.some(
+      (r) =>
+        sameRegistrationName(r.teamName, t.name) &&
+        sameSeat(r, t)
+    );
+    if (already) continue;
+    shown.push({
+      teamName: t.name,
+      divisionId: t.divisionId,
+      genderKey: t.genderKey,
+      genderLabel: t.genderLabel,
+      levelLabel: t.levelLabel,
+      seatLabel: t.seatLabel,
+    });
   }
 
   return (
@@ -181,7 +157,7 @@ export default function FindTournamentTeam({
         <ul className="space-y-2">
           {shown.map((r) => (
             <TeamRow
-              key={r.manageToken || r.teamName}
+              key={r.manageToken || `${r.teamName}-${r.divisionId || r.seatLabel}`}
               r={r}
               slug={slug}
               onForget={r.manageToken ? forget : undefined}
@@ -247,17 +223,15 @@ export default function FindTournamentTeam({
                   String(m).toLowerCase().includes(needle)
                 );
                 return (
-                  <li key={t.name}>
+                  <li key={`${t.name}-${t.divisionId || t.seatLabel}`}>
                     <button
                       type="button"
                       role="option"
                       className={
                         "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-                        (new Set((t.seats ?? []).map((s) => s.genderKey)).size > 1
-                          ? "border-afa-navy/10 bg-white"
-                          : t.genderKey
-                            ? "reg-team-row--" + t.genderKey
-                            : "border-afa-navy/10 bg-white")
+                        (t.genderKey
+                          ? "reg-team-row--" + t.genderKey
+                          : "border-afa-navy/10 bg-white")
                       }
                       onClick={() => pick(t)}
                     >
@@ -271,17 +245,12 @@ export default function FindTournamentTeam({
                           </span>
                         ) : null}
                       </span>
-                      <span className="flex flex-wrap gap-1.5 shrink-0">
-                        {(t.seats?.length ? t.seats : [t]).map((s) => (
-                          <DivisionSeatMark
-                            key={s.divisionId || s.seatLabel}
-                            genderKey={s.genderKey}
-                            seatLabel={s.seatLabel}
-                            genderLabel={s.genderLabel}
-                            levelLabel={s.levelLabel}
-                          />
-                        ))}
-                      </span>
+                      <DivisionSeatMark
+                        genderKey={t.genderKey}
+                        seatLabel={t.seatLabel}
+                        genderLabel={t.genderLabel}
+                        levelLabel={t.levelLabel}
+                      />
                     </button>
                   </li>
                 );
