@@ -5,12 +5,12 @@ import {
   composeDisplayName,
   composeLegalName,
 } from "@/lib/person-name";
+import { propagateTournamentWaiver } from "@/lib/tournament-waiver";
 
 // Personal remote-sign endpoint. No outbound comms here either — this only
 // ever writes a signature to the roster_members row that matches the token
-// and regenerates the stored PDF. The token itself is the credential
-// (unguessable UUID, never listed anywhere) — same trust model as any
-// e-sign share link. Looked up by exact match only; there is no list route.
+// and regenerates the stored PDF. One signature covers the whole tournament
+// for that person (all divisions/teams), not one seat per division.
 
 export const runtime = "nodejs";
 
@@ -194,10 +194,28 @@ export async function POST(request) {
       .eq("id", member.registration_id);
   }
 
+  // Same person, same tournament (other divisions/teams): copy this signature.
+  // One waiver per person per event — not one per division.
   try {
-    await regenerateAndStoreWaiverPdf(member.registration_id);
+    await propagateTournamentWaiver(supabase, {
+      memberId: member.id,
+      registrationId: member.registration_id,
+      playerId: patch.player_id || member.player_id || null,
+      birthDate: patch.birth_date || birth || null,
+      legalFirstName: patch.legal_first_name || first || null,
+      legalLastName: patch.legal_last_name || last || null,
+      name: patch.name || member.name || null,
+      signaturePng,
+      signedAt: now,
+    });
   } catch (err) {
-    console.error("PDF regeneration after signing failed", err);
+    console.error("tournament waiver propagate failed", err);
+    // Still regenerate this registration's PDF if propagate failed early.
+    try {
+      await regenerateAndStoreWaiverPdf(member.registration_id);
+    } catch (e2) {
+      console.error("PDF regeneration after signing failed", e2);
+    }
   }
 
   return Response.json({ ok: true });

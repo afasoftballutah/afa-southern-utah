@@ -422,6 +422,26 @@ export async function POST(request) {
     member = data;
   }
 
+  // One waiver per person per tournament: if they already signed for this
+  // event on another team/division, copy that signature onto this seat.
+  try {
+    const { applyExistingTournamentWaiver } = await import(
+      "@/lib/tournament-waiver"
+    );
+    await applyExistingTournamentWaiver(supabase, {
+      memberId: member.id,
+      registrationId: registration.id,
+      tournamentId: registration.tournament_id,
+      playerId: playerId || null,
+      birthDate: birthDate || null,
+      legalFirstName: legalFirst || null,
+      legalLastName: legalLast || null,
+      name: listName,
+    });
+  } catch (err) {
+    console.error("apply existing tournament waiver failed", err);
+  }
+
   try {
     await regenerateAndStoreWaiverPdf(registration.id);
   } catch (err) {

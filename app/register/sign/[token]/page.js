@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase";
 import { getActiveWaiver } from "@/lib/site-docs";
+import {
+  findTournamentWaiver,
+  tournamentPersonKey,
+} from "@/lib/tournament-waiver";
 import SignRosterMember from "@/components/SignRosterMember";
 import RegisterBack from "@/components/RegisterBack";
 
@@ -23,7 +27,7 @@ async function getSignerByToken(token) {
   const { data: member, error } = await supabase
     .from("roster_members")
     .select(
-      "id, role, name, legal_first_name, legal_last_name, preferred_name, gender, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(team_name, manager_member_id, roster_token, tournaments(slug, name))"
+      "id, role, name, player_id, legal_first_name, legal_last_name, preferred_name, gender, birth_date, address, email, phone, signed_at, removed_at, registrations!roster_members_registration_id_fkey(id, team_name, manager_member_id, roster_token, tournament_id, tournaments(slug, name))"
     )
     .eq("signing_token", token)
     .maybeSingle();
@@ -41,6 +45,20 @@ async function getSignerByToken(token) {
   const isManager = member.registrations?.manager_member_id === member.id;
   const reg = member.registrations;
 
+  // Already signed on this seat, or another seat in the same tournament.
+  let alreadySigned = Boolean(member.signed_at);
+  if (!alreadySigned && reg?.tournament_id) {
+    const personKey = tournamentPersonKey(member);
+    if (personKey) {
+      const existing = await findTournamentWaiver(supabase, {
+        tournamentId: reg.tournament_id,
+        personKey,
+        exceptMemberId: member.id,
+      });
+      alreadySigned = Boolean(existing);
+    }
+  }
+
   return {
     teamName: reg?.team_name,
     role: isManager ? "manager" : member.role,
@@ -55,7 +73,7 @@ async function getSignerByToken(token) {
     address: member.address,
     email: member.email,
     phone: member.phone,
-    alreadySigned: Boolean(member.signed_at),
+    alreadySigned,
     rosterToken: reg?.roster_token ?? null,
     tournamentSlug: reg?.tournaments?.slug ?? null,
     tournamentName: reg?.tournaments?.name ?? null,
