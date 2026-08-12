@@ -50,6 +50,20 @@ function levelSortIndex(label) {
   return i === -1 ? LEVEL_ORDER.length : i;
 }
 
+/** True when the only "level" is the gender itself (no D/E/Open/Rec). */
+function isBareGenderDivision(d, genderLabel) {
+  const level = divisionLevelLabel(d)
+    .replace(/['’]/g, "")
+    .toLowerCase();
+  const g = String(genderLabel)
+    .replace(/['’]/g, "")
+    .toLowerCase();
+  if (!level || level === "—") return true;
+  if (level === g) return true;
+  if (level === g.replace(/s$/, "")) return true;
+  return false;
+}
+
 // No coaches on public signup (JD). Coaches stay out of the form; manager + players only.
 // Room flow: door (tournament) → rooms → exit (confirmation).
 const STEPS = ["Tournament", "Team", "Manager", "Players", "Sign & Submit"];
@@ -623,12 +637,12 @@ export default function RegistrationForm({
               <div>
                 <span className="form-label">Division</span>
                 <div
-                  className="register-division-rows"
+                  className="register-division-cols"
                   role="group"
                   aria-label="Division"
                 >
                   {GENDER_ROWS.map((row) => {
-                    const inRow = registerableDivisions
+                    const inCol = registerableDivisions
                       .filter((d) => divisionGenderKey(d) === row.key)
                       .slice()
                       .sort(
@@ -637,33 +651,58 @@ export default function RegistrationForm({
                             levelSortIndex(divisionLevelLabel(b)) ||
                           (a.sort_order ?? 0) - (b.sort_order ?? 0)
                       );
-                    if (inRow.length === 0) return null;
+                    if (inCol.length === 0) return null;
+                    const genderOnly =
+                      inCol.length === 1 &&
+                      isBareGenderDivision(inCol[0], row.label);
+                    const colOn =
+                      registerableDivisions.length === 1 ||
+                      inCol.some((d) => d.id === divisionId);
                     return (
-                      <div key={row.key} className="register-division-row">
-                        <span className="register-division-row__gender">
-                          {row.label}
-                        </span>
-                        <div className="register-division-row__levels">
-                          {inRow.map((d) => {
-                            const selected =
-                              registerableDivisions.length === 1 ||
-                              divisionId === d.id;
-                            return (
-                              <button
-                                key={d.id}
-                                type="button"
-                                className={
-                                  "register-division-row__level " +
-                                  (selected ? "is-on" : "")
-                                }
-                                aria-pressed={selected}
-                                onClick={() => setDivisionId(d.id)}
-                              >
-                                {divisionLevelLabel(d)}
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <div key={row.key} className="register-division-col">
+                        {genderOnly ? (
+                          <button
+                            type="button"
+                            className={
+                              "register-division-col__card " +
+                              (colOn ? "is-on" : "")
+                            }
+                            aria-pressed={colOn}
+                            onClick={() => setDivisionId(inCol[0].id)}
+                          >
+                            {row.label}
+                          </button>
+                        ) : (
+                          <>
+                            <span
+                              className={
+                                "register-division-col__card register-division-col__card--label " +
+                                (colOn ? "is-on" : "")
+                              }
+                            >
+                              {row.label}
+                            </span>
+                            {inCol.map((d) => {
+                              const selected =
+                                registerableDivisions.length === 1 ||
+                                divisionId === d.id;
+                              return (
+                                <button
+                                  key={d.id}
+                                  type="button"
+                                  className={
+                                    "register-division-col__card " +
+                                    (selected ? "is-on" : "")
+                                  }
+                                  aria-pressed={selected}
+                                  onClick={() => setDivisionId(d.id)}
+                                >
+                                  {divisionLevelLabel(d)}
+                                </button>
+                              );
+                            })}
+                          </>
+                        )}
                       </div>
                     );
                   })}

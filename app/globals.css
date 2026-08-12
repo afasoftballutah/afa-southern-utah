@@ -806,47 +806,25 @@ textarea.form-field {
   text-decoration: underline;
 }
 
-/* Register — division pick: Women's / Men's / Coed rows, equal level cards */
-.register-division-rows {
+/* Register — division pick: Women's / Men's / Coed columns, same-size cards */
+.register-division-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.35rem;
+  align-items: flex-start;
+}
+.register-division-col {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-top: 0.35rem;
 }
-.register-division-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: stretch;
-}
-.register-division-row__gender {
+.register-division-col__card {
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 6.5rem;
-  height: 2.75rem;
-  padding: 0;
-  border: 1px solid var(--afa-ink);
-  border-radius: 0.375rem;
-  background: var(--afa-soft-gray);
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--afa-navy);
-  text-align: center;
-  flex-shrink: 0;
-}
-.register-division-row__levels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.register-division-row__level {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 4.75rem;
+  width: 5.75rem;
   height: 2.75rem;
   padding: 0;
   border: 1px solid var(--afa-ink);
@@ -858,23 +836,20 @@ textarea.form-field {
   cursor: pointer;
   flex-shrink: 0;
 }
-.register-division-row__level:hover {
+.register-division-col__card--label {
+  cursor: default;
+  background: var(--afa-soft-gray);
+}
+.register-division-col__card:hover:not(.register-division-col__card--label) {
   background: color-mix(in srgb, var(--afa-navy) 5%, #fff);
 }
-.register-division-row__level.is-on {
+.register-division-col__card.is-on {
   background: var(--afa-navy);
   border-color: var(--afa-navy);
   color: #fff;
 }
-@media (max-width: 420px) {
-  .register-division-row__gender {
-    width: 5.5rem;
-    font-size: 0.8125rem;
-  }
-  .register-division-row__level {
-    width: 4.25rem;
-    font-size: 0.8125rem;
-  }
+.register-division-col__card--label.is-on {
+  cursor: default;
 }
 
 /* Free address typeahead (Photon / OSM) */
