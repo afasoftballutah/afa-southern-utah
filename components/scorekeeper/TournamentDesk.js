@@ -54,8 +54,11 @@ export default function TournamentDesk({
       {door === "teams" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/director/registrations/new" className="pill">
-              + Add team
+            <Link
+              href={`/director/registrations/new?tournament=${encodeURIComponent(tournament.id)}`}
+              className="pill"
+            >
+              Add Team
             </Link>
             {publicHref ? (
               <Link href={publicHref} className="t-meta underline">

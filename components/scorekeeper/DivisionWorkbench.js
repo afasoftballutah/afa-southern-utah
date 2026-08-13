@@ -7,7 +7,6 @@ import TeamTable from "./TeamTable";
 import InlineNumber from "./InlineNumber";
 import DivisionPlayDay from "./DivisionPlayDay";
 import TournamentPlayDays from "./TournamentPlayDays";
-import DirectorForm, { Field, directorPost } from "./DirectorForm";
 
 // The divisions of one tournament, and whatever you are doing with one.
 //
@@ -277,9 +276,11 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <AddTeams division={d} />
-        <Link href="/director/registrations/new" className="pill">
-          One team, with a manager
+        <Link
+          href={`/director/registrations/new?tournament=${encodeURIComponent(d.tournamentId)}&division=${encodeURIComponent(d.id)}`}
+          className="pill"
+        >
+          Add Team
         </Link>
       </div>
       {forDivision.length === 0 ? (
@@ -297,44 +298,4 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
   );
 }
 
-// Names, one per line. For entering a bracket that already happened or a stack
-// of paper entry forms — a manager and a roster come later, or never (JD,
-// 2026-07-28: "the teams should be put in, with no managers or players yet").
-function AddTeams({ division: d }) {
-  const [text, setText] = useState("");
-  const names = [...new Set(text.split(/[\n,]/).map((n) => n.trim()).filter(Boolean))];
 
-  return (
-    <DirectorForm
-      heading="Add teams"
-      triggerClass="pill"
-      submitLabel="Add them"
-      confirmMessage={
-        names.length === 0
-          ? "Type at least one team name."
-          : `Add ${names.length === 1 ? names[0] : `${names.length} teams`} to ${d.label}. No manager, no roster, no waiver.`
-      }
-      onSubmit={async () => {
-        if (names.length === 0) return "Type at least one team name";
-        const res = await directorPost({
-          action: "addTeams",
-          tournamentId: d.tournamentId,
-          divisionId: d.id,
-          names: text,
-        });
-        if (res.error) return res.error;
-        window.location.reload();
-      }}
-    >
-      <Field label="Team names" hint="One per line." group>
-        <textarea
-          rows={6}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={"Backwards K\nDel Fuegos\nApex"}
-          className="w-full border border-afa-navy/30 rounded-lg px-2 py-2 text-[14px]"
-        />
-      </Field>
-    </DirectorForm>
-  );
-}

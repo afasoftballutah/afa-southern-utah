@@ -94,7 +94,7 @@ export default async function RegistrationsPage() {
       count={count}
       add={
         <Link href="/director/registrations/new" className="btn-add shrink-0">
-          + Add team
+          Add Team
         </Link>
       }
     >
@@ -106,7 +106,7 @@ export default async function RegistrationsPage() {
             <Link href="/register" className="underline">
               the form
             </Link>
-            , or use + Add team.
+            , or use Add Team.
           </p>
         </div>
       ) : (

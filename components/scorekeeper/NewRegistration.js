@@ -15,10 +15,27 @@ const ROOM = {
  * Director add-team — Room flow (same chrome as umpires).
  * Collects less than public register: manager email optional, no signatures.
  */
-export default function NewRegistration({ tournaments }) {
-  const [page, setPage] = useState(1);
-  const [tournamentId, setTournamentId] = useState(tournaments[0]?.id ?? "");
-  const [divisionId, setDivisionId] = useState("");
+export default function NewRegistration({
+  tournaments,
+  initialTournamentId = "",
+  initialDivisionId = "",
+}) {
+  const seededTournament =
+    tournaments.find((t) => t.id === initialTournamentId)?.id ??
+    tournaments[0]?.id ??
+    "";
+  const seededDivisions =
+    tournaments.find((t) => t.id === seededTournament)?.divisions ?? [];
+  const seededDivision = seededDivisions.some((d) => d.id === initialDivisionId)
+    ? initialDivisionId
+    : seededDivisions.length === 1
+      ? seededDivisions[0].id
+      : "";
+  const startOnTeam = Boolean(seededTournament && seededDivision);
+
+  const [page, setPage] = useState(startOnTeam ? 2 : 1);
+  const [tournamentId, setTournamentId] = useState(seededTournament);
+  const [divisionId, setDivisionId] = useState(seededDivision);
   const [teamName, setTeamName] = useState("");
   const [managerName, setManagerName] = useState("");
   const [managerEmail, setManagerEmail] = useState("");
@@ -57,7 +74,7 @@ export default function NewRegistration({ tournaments }) {
     Boolean(teamName.trim()) ||
     Boolean(managerName.trim()) ||
     Boolean(names.trim()) ||
-    page > 1;
+    page > (startOnTeam ? 2 : 1);
 
   function canPage1() {
     return Boolean(tournamentId) && Boolean(effectiveDivision);

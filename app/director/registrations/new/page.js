@@ -8,7 +8,7 @@ import NewRegistration from "@/components/scorekeeper/NewRegistration";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Add a team — Director" };
 
-export default async function NewRegistrationPage() {
+export default async function NewRegistrationPage({ searchParams }) {
   const gate = await requireDirectorPage();
   if (gate.needPin) {
     return (
@@ -28,6 +28,9 @@ export default async function NewRegistrationPage() {
   // Every tournament that has not finished — a director enters teams for
   // events that are already running, which the public form deliberately does
   // not allow.
+  const raw = await searchParams;
+  const one = (v) => (Array.isArray(v) ? v[0] : v) || "";
+  const params = { tournament: one(raw?.tournament), division: one(raw?.division) };
   const tournaments = (data ?? [])
     .filter((t) => !t.is_placeholder)
     .map((t) => ({
@@ -49,7 +52,11 @@ export default async function NewRegistrationPage() {
       back="/director/registrations"
       backLabel="Registrations"
     >
-      <NewRegistration tournaments={tournaments} />
+      <NewRegistration
+        tournaments={tournaments}
+        initialTournamentId={params?.tournament ?? ""}
+        initialDivisionId={params?.division ?? ""}
+      />
     </DirectorShell>
   );
 }
