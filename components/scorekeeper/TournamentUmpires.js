@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 import {
   timeInputValue,
   formatTimeWindowLabel,
-  formatTimeOfDayLabel,
 } from "@/lib/league-time";
 
 const STATUS = [
@@ -66,6 +66,7 @@ export default function TournamentUmpires({
   const [editFrom, setEditFrom] = useState("");
   const [editUntil, setEditUntil] = useState("");
   const [editStatus, setEditStatus] = useState("available");
+  const [drop, setDrop] = useState(null);
 
   const onCrew = useMemo(
     () => new Set(entries.map((e) => e.umpireId)),
@@ -191,19 +192,13 @@ export default function TournamentUmpires({
   }
 
   async function remove(e) {
-    if (
-      !window.confirm(
-        `Remove ${umpLabel(e.umpire)} from ${tournamentName || "this tournament"}?`
-      )
-    ) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
       await post({ action: "removeTournamentUmpire", id: e.id });
       setEntries((cur) => cur.filter((row) => row.id !== e.id));
       if (editingId === e.id) setEditingId(null);
+      setDrop(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -211,48 +206,24 @@ export default function TournamentUmpires({
     }
   }
 
-  const availableCount = entries.filter((e) => e.status === "available").length;
-  const limitedCount = entries.filter((e) => e.status === "limited").length;
-  const dayLabel = formatTimeOfDayLabel(dayStartTime);
-
   return (
-    <div className="card overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-afa-navy/10 bg-afa-soft-gray/50 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <p className="t-strong text-sm">Umpire crew</p>
-          <p className="t-meta text-[12px]">
-            Who is on this event and when they can work each day
-            {dayLabel ? ` (fields open ${dayLabel})` : ""}. Times are shared
-            across all divisions — games run in parallel on the same clock.
-          </p>
-        </div>
-        <p className="t-meta text-[12px] tabular-nums">
-          {entries.length === 0
-            ? "Nobody listed"
-            : `${entries.length} listed · ${availableCount} available${
-                limitedCount ? ` · ${limitedCount} limited` : ""
-              }`}
+    <div className="space-y-3">
+      {error ? (
+        <p className="t-meta text-afa-red font-semibold" role="alert">
+          {error}
         </p>
-      </div>
+      ) : null}
 
-      <div className="p-4 space-y-4">
-        {error && (
-          <p className="t-meta text-afa-red font-semibold" role="alert">
-            {error}
-          </p>
-        )}
-
-        {!dayStartTime && (
-          <p className="t-meta text-[12px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            No day start on Event — new umpires will not default to first pitch.
-          </p>
-        )}
-
-        {entries.length === 0 ? (
-          <p className="t-meta text-center py-2">
-            No umpires on this tournament yet. Add someone below.
-          </p>
-        ) : (
+      {entries.length === 0 && roster.length === 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="t-meta">Nobody on file.</p>
+          <a href="/director/umpires" className="pill">
+            Add umpires
+          </a>
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="t-meta">Nobody on this event yet.</p>
+      ) : (
           <ul className="divide-y divide-afa-navy/10 rounded-lg border border-afa-navy/10 overflow-hidden">
             {entries.map((e) => {
               const st = statusMeta(e.status);
@@ -374,7 +345,7 @@ export default function TournamentUmpires({
                         type="button"
                         className="pill text-[12px] text-afa-red border-afa-red/30"
                         disabled={busy}
-                        onClick={() => remove(e)}
+                        onClick={() => setDrop(e)}
                       >
                         Remove
                       </button>
@@ -386,99 +357,44 @@ export default function TournamentUmpires({
           </ul>
         )}
 
-        <div className="rounded-lg border border-dashed border-afa-navy/20 p-3 space-y-2 bg-afa-soft-gray/30">
-          <p className="t-strong text-sm">Add from roster</p>
-          {roster.length === 0 ? (
-            <p className="t-meta text-[12px]">
-              No umpires on file yet. Add people under{" "}
-              <a href="/director/umpires" className="underline">
-                Umpires
-              </a>{" "}
-              first.
-            </p>
-          ) : addable.length === 0 ? (
-            <p className="t-meta text-[12px]">
-              Everyone active on the roster is already listed here.
-            </p>
-          ) : (
-            <>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block sm:col-span-2">
-                  <span className="form-label">Umpire</span>
-                  <select
-                    className="form-field"
-                    value={pickId}
-                    onChange={(e) => setPickId(e.target.value)}
-                    disabled={busy}
-                  >
-                    <option value="">— pick —</option>
-                    {addable.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {umpLabel(u)}
-                        {u.pitchFast || u.pitchSlow
-                          ? ` (${pitchTag(u)})`
-                          : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="form-label">Status</span>
-                  <select
-                    className="form-field"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    disabled={busy}
-                  >
-                    {STATUS.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span className="hidden sm:block" />
-                <label className="block">
-                  <span className="form-label">
-                    Available from
-                    {defaultFrom ? (
-                      <span className="t-meta font-normal">
-                        {" "}
-                        (default day start)
-                      </span>
-                    ) : null}
-                  </span>
-                  <input
-                    type="time"
-                    className="form-field"
-                    value={fromTime}
-                    onChange={(e) => setFromTime(e.target.value)}
-                    disabled={busy}
-                  />
-                </label>
-                <label className="block">
-                  <span className="form-label">Until</span>
-                  <input
-                    type="time"
-                    className="form-field"
-                    value={untilTime}
-                    onChange={(e) => setUntilTime(e.target.value)}
-                    disabled={busy}
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="pill pill-solid"
-                disabled={busy || !pickId}
-                onClick={add}
-              >
-                {busy ? "Adding…" : "Add to tournament"}
-              </button>
-            </>
-          )}
+      {addable.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="form-field min-w-[12rem] max-w-xs"
+            value={pickId}
+            aria-label="Umpire"
+            onChange={(e) => setPickId(e.target.value)}
+            disabled={busy}
+          >
+            <option value="">Add umpire…</option>
+            {addable.map((u) => (
+              <option key={u.id} value={u.id}>
+                {umpLabel(u)}
+                {u.pitchFast || u.pitchSlow ? ` (${pitchTag(u)})` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="pill"
+            disabled={busy || !pickId}
+            onClick={add}
+          >
+            {busy ? "Adding…" : "Add"}
+          </button>
         </div>
-      </div>
+      ) : null}
+
+      {drop ? (
+        <ConfirmDialog
+          title={`Remove ${umpLabel(drop.umpire)}`}
+          message={`Take ${umpLabel(drop.umpire)} off ${tournamentName || "this event"}?`}
+          confirmLabel="Remove"
+          busy={busy}
+          onConfirm={() => remove(drop)}
+          onCancel={() => setDrop(null)}
+        />
+      ) : null}
     </div>
   );
 }

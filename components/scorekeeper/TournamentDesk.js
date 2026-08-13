@@ -46,6 +46,8 @@ export default function TournamentDesk({
             {d.label}
             {d.key === "teams" ? (
               <span className="ml-1 opacity-80">{live.length}</span>
+            ) : d.key === "umps" ? (
+              <span className="ml-1 opacity-80">{crew.length}</span>
             ) : null}
           </button>
         ))}
