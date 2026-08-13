@@ -194,7 +194,7 @@ export default function DivisionWorkbench({
                   : "none"
           }
         >
-          <Link className="pill" href={`/director/division/${d.id}`}>
+          <Link className="pill" href={`/director/division/${d.id}?view=scores`}>
             Scores{d.gamesTotal > 0 ? ` ${d.gamesTotal - d.unplayed}/${d.gamesTotal}` : ""}
           </Link>
         </Step>

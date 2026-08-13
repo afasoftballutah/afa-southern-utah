@@ -12,6 +12,7 @@ import BracketScores from "@/components/scorekeeper/BracketScores";
 import CreatePoolRoundRobin from "@/components/scorekeeper/CreatePoolRoundRobin";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
+import ScoreTable from "@/components/scorekeeper/ScoreTable";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Division — Director" };
@@ -132,8 +133,25 @@ async function loadDivisionData(divisionId) {
   };
 }
 
-export default async function DirectorDivisionPage({ params }) {
+function ViewDoors({ divisionId, view }) {
+  const scores = view === "scores";
+  const base = `/director/division/${divisionId}`;
+  return (
+    <div className="seg-view" role="tablist" aria-label="This division">
+      <Link href={base} className={scores ? "btn-transient" : "btn-info"} role="tab" aria-selected={!scores}>
+        Matchups
+      </Link>
+      <Link href={`${base}?view=scores`} className={scores ? "btn-info" : "btn-transient"} role="tab" aria-selected={scores}>
+        Scores
+      </Link>
+    </div>
+  );
+}
+
+export default async function DirectorDivisionPage({ params, searchParams }) {
   const { divisionId } = await params;
+  const rawView = (await searchParams)?.view;
+  const view = (Array.isArray(rawView) ? rawView[0] : rawView) === "scores" ? "scores" : "matchups";
   const gate = await requireDirectorPage();
   if (gate.needPin) {
     return (
@@ -183,6 +201,21 @@ export default async function DirectorDivisionPage({ params }) {
           ← Tournaments
         </Link>
       </div>
+      <ViewDoors divisionId={divisionId} view={view} />
+      {view === "scores" ? (
+        <div className="space-y-4">
+          {data.poolGames.length > 0 ? (
+            <ScoreTable games={data.poolGames} kind="pool" title="Pool play" />
+          ) : null}
+          {data.games.length > 0 ? (
+            <ScoreTable games={data.games} kind="bracket" title="Bracket" />
+          ) : null}
+          {data.poolGames.length === 0 && data.games.length === 0 ? (
+            <p className="t-meta">No games to score yet.</p>
+          ) : null}
+        </div>
+      ) : (
+      <>
       {canCreatePool && (
         <CreatePoolRoundRobin
           divisionId={divisionId}
@@ -283,6 +316,8 @@ export default async function DirectorDivisionPage({ params }) {
             </div>
           )}
         </section>
+      )}
+      </>
       )}
     </div>
   );
