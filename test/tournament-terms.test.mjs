@@ -90,3 +90,12 @@ test("the Event door is facts until Edit", async () => {
   assert.match(src, /if \(!editing\)/);
   assert.match(src, /TermsView/);
 });
+
+test("clicking a tournament opens the event sheet, not a team editor", async () => {
+  const src = await readFile(
+    path.join(import.meta.dirname, "../components/scorekeeper/TournamentDesk.js"),
+    "utf8"
+  );
+  assert.match(src, /useState\("event"\)/);
+  assert.match(src, /editClass=\{false\}/);
+});

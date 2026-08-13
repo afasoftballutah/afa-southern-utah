@@ -8,15 +8,14 @@ import DivisionWorkbench from "./DivisionWorkbench";
 import TeamTable from "./TeamTable";
 
 const DOORS = [
+  { key: "event", label: "Event" },
   { key: "teams", label: "Teams" },
   { key: "divisions", label: "Divisions" },
-  { key: "event", label: "Event" },
   { key: "umps", label: "Umpires" },
 ];
 
 /**
- * One tournament, one job at a time.
- * Opening the row used to dump terms, umpires, setup, and every division.
+ * Click the tournament, read the tournament. Other doors are jobs.
  */
 export default function TournamentDesk({
   tournament,
@@ -29,7 +28,7 @@ export default function TournamentDesk({
   divisions = [],
   publicHref = null,
 }) {
-  const [door, setDoor] = useState("teams");
+  const [door, setDoor] = useState("event");
   const live = registrations.filter((r) => r.status !== "withdrawn");
 
   return (
@@ -72,6 +71,7 @@ export default function TournamentDesk({
               classes={classes}
               divisions={divisions}
               layout="tournament"
+              editClass={false}
             />
           )}
         </div>

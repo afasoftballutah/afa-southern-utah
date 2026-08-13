@@ -290,6 +290,7 @@ function Panel({ division: d, action, registrations, classes, divisionOptions })
           classes={classes}
           divisions={divisionOptions}
           divisionHasClass={d.classId != null}
+          editClass={false}
         />
       )}
     </div>

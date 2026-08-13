@@ -60,6 +60,8 @@ export default function TeamTable({
   wide = false,
   /** One event: team + division, no tournament column. */
   layout = null,
+  /** Class as text. Change it on the team page, not in this list. */
+  editClass = true,
 }) {
   const rows = registrations.map((reg) => {
     const { active_members: active, signed_members: signed } =
@@ -106,8 +108,8 @@ export default function TeamTable({
           </Link>
         ),
         // A bracket that already IS a class (Coed D) says so in its own row.
-        // Only a class-less division needs this control on every team.
-        class: divisionHasClass ? (
+        // Opening a tournament is a list, not a wall of class pickers.
+        class: !editClass || divisionHasClass ? (
           (enteredClass ?? "—")
         ) : (
           <span className="inline-flex items-center gap-1">
@@ -184,6 +186,7 @@ export default function TeamTable({
 
   const inTournament = layout === "tournament";
   const columns = wide ? WIDE : inTournament ? TOURNAMENT : COLUMNS;
+  const many = registrations.length >= 12;
   return (
     <DirectorTable
       columns={columns}
@@ -194,7 +197,7 @@ export default function TeamTable({
           ? { key: "tournament", dir: "asc" }
           : { key: "team", dir: "asc" }
       }
-      search={wide || inTournament}
+      search={wide || (inTournament && many)}
       searchPlaceholder={
         wide ? "Team, manager or tournament…" : "Team or manager…"
       }
