@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
 import { isRegistrationOpen, stillToPlayIn, playableIn, GAME_STATE_FIELDS } from "@/lib/tournament-state";
@@ -7,10 +6,9 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import DirectorTable from "@/components/scorekeeper/DirectorTable";
 import NewTournament from "@/components/scorekeeper/NewTournament";
-import TournamentEditor from "@/components/scorekeeper/TournamentEditor";
 import TournamentSetup from "@/components/scorekeeper/TournamentSetup";
-import TournamentUmpires from "@/components/scorekeeper/TournamentUmpires";
 import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
+import TournamentDesk from "@/components/scorekeeper/TournamentDesk";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tournaments — Director" };
@@ -268,17 +266,22 @@ export default async function TournamentsPage() {
         fee: t.entry_fee_cents ?? -1,
         closes: t.registration_closes ?? "",
       },
-      // Everything about a tournament, inside its own row.
+      // One job at a time — not terms + umps + every division at once.
       detail: (
-        <div className="space-y-4">
-          <TournamentEditor tournament={plain(t)} venues={venues} />
-          <TournamentUmpires
-            tournamentId={t.id}
-            tournamentName={t.name}
-            dayStartTime={t.day_start_time ?? null}
-            roster={plainRoster}
-            initial={plain(crewByTournament.get(t.id) ?? [])}
-          />
+        <TournamentDesk
+          tournament={plain(t)}
+          venues={venues}
+          umpireRoster={plainRoster}
+          crew={plain(crewByTournament.get(t.id) ?? [])}
+          registrations={plain(regs)}
+          classes={classes}
+          divisions={mine.map((d) => ({
+            id: d.id,
+            label: d.display_name ?? d.name,
+            tournamentId: t.id,
+          }))}
+          publicHref={`/tournaments/${t.slug}`}
+          workbench={
           <DivisionWorkbench
             tournamentId={t.id}
             tournamentStart={t.start_date}
@@ -348,12 +351,8 @@ export default async function TournamentsPage() {
               />
             }
           />
-          <p className="t-meta">
-            <Link href={`/tournaments/${t.slug}`} className="underline">
-              See the public page
-            </Link>
-          </p>
-        </div>
+          }
+        />
       ),
     };
   });

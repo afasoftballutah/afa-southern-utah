@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import DirectorTable from "./DirectorTable";
 import TeamActions from "./TeamActions";
 import InlineSelect from "./InlineSelect";
@@ -43,6 +44,12 @@ const FILTERS = [
   { key: "nomanager", label: "No manager", tag: "nomanager" },
 ];
 
+const TOURNAMENT = [
+  { key: "team", label: "Team" },
+  { key: "division", label: "Division", width: "8rem" },
+  ...TAIL,
+];
+
 export default function TeamTable({
   registrations,
   classes = [],
@@ -51,6 +58,8 @@ export default function TeamTable({
   // The whole league rather than one bracket: two more columns, a search box
   // and the filters that go with a long list.
   wide = false,
+  /** One event: team + division, no tournament column. */
+  layout = null,
 }) {
   const rows = registrations.map((reg) => {
     const { active_members: active, signed_members: signed } =
@@ -86,9 +95,15 @@ export default function TeamTable({
         tournament: tournamentName,
         division: divisionLabel,
         team: (
-          <span className={reg.status === "withdrawn" ? "line-through opacity-60" : ""}>
+          <Link
+            href={`/director/registrations/${reg.id}`}
+            className={
+              "hover:underline " +
+              (reg.status === "withdrawn" ? "line-through opacity-60" : "")
+            }
+          >
             {reg.team_name}
-          </span>
+          </Link>
         ),
         // A bracket that already IS a class (Coed D) says so in its own row.
         // Only a class-less division needs this control on every team.
@@ -167,15 +182,29 @@ export default function TeamTable({
     };
   });
 
+  const inTournament = layout === "tournament";
+  const columns = wide ? WIDE : inTournament ? TOURNAMENT : COLUMNS;
   return (
     <DirectorTable
-      columns={wide ? WIDE : COLUMNS}
+      columns={columns}
       rows={rows}
-      filters={wide ? FILTERS : []}
-      defaultSort={wide ? { key: "tournament", dir: "asc" } : { key: "team", dir: "asc" }}
-      search={wide}
-      searchPlaceholder="Team, manager or tournament…"
-      empty={wide ? "Nobody matches that." : "No teams in this division yet."}
+      filters={wide || inTournament ? FILTERS : []}
+      defaultSort={
+        wide
+          ? { key: "tournament", dir: "asc" }
+          : { key: "team", dir: "asc" }
+      }
+      search={wide || inTournament}
+      searchPlaceholder={
+        wide ? "Team, manager or tournament…" : "Team or manager…"
+      }
+      empty={
+        wide
+          ? "Nobody matches that."
+          : inTournament
+            ? "Nobody has registered for this event yet."
+            : "No teams in this division yet."
+      }
     />
   );
 }
