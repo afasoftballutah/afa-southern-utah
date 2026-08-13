@@ -7,6 +7,7 @@ import TeamTable from "./TeamTable";
 import InlineNumber from "./InlineNumber";
 import DivisionPlayDay from "./DivisionPlayDay";
 import TournamentPlayDays from "./TournamentPlayDays";
+import ConfirmDialog from "./ConfirmDialog";
 
 // The divisions of one tournament, and whatever you are doing with one.
 //
@@ -119,7 +120,6 @@ export default function DivisionWorkbench({
       <Panel
         key={`panel-${d.key}`}
         division={d}
-        action={panel.action}
         registrations={registrations}
         classes={classes}
         divisionOptions={divisionOptions}
@@ -178,13 +178,7 @@ export default function DivisionWorkbench({
       ),
       matchups: (
         <Step key={`matchups-${d.key}`} state={d.gamesTotal > 0 ? "done" : "none"}>
-          <button
-            type="button"
-            className={"pill" + (isOn(d, "setup") ? " ring-2 ring-afa-navy/30" : "")}
-            onClick={() => open(d.key, "setup")}
-          >
-            Matchups{d.gamesTotal > 0 ? ` ${d.gamesTotal}` : ""}
-          </button>
+          <MatchupsButton division={d} />
         </Step>
       ),
       scores: (
@@ -256,22 +250,42 @@ export default function DivisionWorkbench({
 // if part of the accordion" — a panel below the table left the list intact but
 // disconnected from the row that opened it, and collapsing the list to hide
 // that just traded one problem for another.
-function Panel({ division: d, action, registrations, classes, divisionOptions }) {
-  const forDivision = registrations.filter((r) => r.division_id === d.id);
+function MatchupsButton({ division: d }) {
+  const [ask, setAsk] = useState(false);
+  const href = `/director/division/${d.id}`;
+  const need = d.minTeams ?? 6;
+  const short = d.gamesTotal === 0 && d.teams < need;
 
-  if (action === "setup") {
-    return (
-      <div className="space-y-3">
-        <p className="t-body">
-          {d.teams} {d.teams === 1 ? "team is" : "teams are"} in {d.label}.
-          {d.teams < d.minTeams && ` It takes ${d.minTeams} to run this division.`}
-        </p>
-        <Link href={`/director/division/${d.id}`} className="pill">
-          Build pools and brackets
-        </Link>
-      </div>
-    );
+  function go() {
+    window.location.href = href;
   }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="pill"
+        onClick={() => (short ? setAsk(true) : go())}
+      >
+        Matchups{d.gamesTotal > 0 ? ` ${d.gamesTotal}` : ""}
+      </button>
+      {ask ? (
+        <ConfirmDialog
+          title={`Build ${d.label}`}
+          message={`${d.label} has ${
+            d.teams === 0 ? "no teams" : d.teams === 1 ? "1 team" : `${d.teams} teams`
+          }. It takes ${need}.`}
+          confirmLabel="Build anyway"
+          onConfirm={go}
+          onCancel={() => setAsk(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function Panel({ division: d, registrations, classes, divisionOptions }) {
+  const forDivision = registrations.filter((r) => r.division_id === d.id);
 
   return (
     <div className="space-y-3">
