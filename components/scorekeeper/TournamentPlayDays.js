@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatPlayDayLabel } from "@/lib/league-time";
+import { playDaysSummary } from "@/lib/tournament-terms";
 
 /**
  * Bulk play-day tools for a multi-day tournament:
@@ -38,6 +39,12 @@ export default function TournamentPlayDays({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
+  const summary = playDaysSummary({
+    startDate,
+    endDate,
+    divisions,
+  });
 
   async function post(body) {
     const res = await fetch("/api/scorekeeper/directory", {
@@ -92,18 +99,18 @@ export default function TournamentPlayDays({
   if (parents.length === 0) return null;
 
   return (
-    <div className="card p-3 sm:p-4 space-y-3">
-      <div>
-        <p className="t-strong text-sm">Play days</p>
-        <p className="t-meta text-[12px]">
-          Which calendar day each division runs. Men&apos;s and women&apos;s
-          often share a day; coed is usually a different day so dual-roster
-          players can do both. The day scheduler only places games for one
-          date at a time.
-        </p>
-      </div>
+    <div className={"card p-3 sm:p-4 space-y-3 " + (open ? "" : "py-2.5")}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full text-left"
+      >
+        <span className="text-afa-navy/40 inline-block w-2">{open ? "▾" : "▸"}</span>
+        <span className="t-strong text-sm">Play days</span>
+        {!open ? <span className="t-meta truncate">{summary}</span> : null}
+      </button>
 
-      {oneDay ? (
+      {!open ? null : oneDay ? (
         <div className="flex flex-wrap items-end gap-2">
           <p className="t-meta text-[13px]">
             One-day tournament
@@ -192,7 +199,7 @@ export default function TournamentPlayDays({
         </div>
       )}
 
-      {!oneDay && (
+      {open && !oneDay ? (
         <div className="flex flex-wrap items-end gap-2 pt-1 border-t border-afa-navy/10">
           <label className="block">
             <span className="form-label">Set every division to</span>
@@ -215,14 +222,14 @@ export default function TournamentPlayDays({
             Apply to all
           </button>
         </div>
-      )}
+      ) : null}
 
-      {error && (
+      {open && error ? (
         <p className="t-meta text-afa-red font-semibold" role="alert">
           {error}
         </p>
-      )}
-      {msg && <p className="t-meta text-afa-go font-semibold">{msg}</p>}
+      ) : null}
+      {open && msg ? <p className="t-meta text-afa-go font-semibold">{msg}</p> : null}
     </div>
   );
 }

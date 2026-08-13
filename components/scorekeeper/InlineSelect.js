@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 
-// A field you change where you read it — and it asks before it changes.
+// A field you change where you read it. View is the value; tap to pick.
 //
 // JD, 2026-07-27: "make rating editable on click" / "can you give me the
 // ability to modify M/F as well?" / "can we have basic confirms for changes
 // (any)?"
-//
-// I had argued against confirming here, on the grounds that rating a roster
-// of twelve would be miserable. He asked for it anyway, and he is the one
-// doing it twenty times a morning: a wrong rating changes which class a team
-// is eligible for, and silence is the wrong default for that.
 export default function InlineSelect({
   action,
   payload,
@@ -26,6 +21,8 @@ export default function InlineSelect({
   const [pending, setPending] = useState(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const pendingRef = useRef(null);
 
   async function save(next) {
     setBusy(true);
@@ -38,6 +35,8 @@ export default function InlineSelect({
       });
       if (!res.ok) throw new Error();
       setCurrent(next);
+      pendingRef.current = null;
+      setEditing(false);
     } catch {
       setFailed(true);
       setTimeout(() => setFailed(false), 2500);
@@ -51,28 +50,53 @@ export default function InlineSelect({
 
   return (
     <>
-      <select
-        value={current}
-        onChange={(e) => setPending(e.target.value)}
-        aria-label={label}
-        // appearance-none drops the native arrow, which is what makes a
-        // select in a table cell tall and wide. It still opens on click.
-        className={
-          "w-full appearance-none rounded-lg bg-white border text-center text-[14px] leading-none py-1 px-1 cursor-pointer " +
-          (failed
-            ? "border-afa-red text-afa-red"
-            : current
-              ? "border-afa-navy/25 hover:border-afa-navy/50 text-afa-ink"
-              : "border-afa-navy/25 hover:border-afa-navy/50 text-afa-muted")
-        }
-      >
-        <option value="">—</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+      {editing ? (
+        <select
+          value={current}
+          autoFocus
+          onChange={(e) => {
+            pendingRef.current = e.target.value;
+            setPending(e.target.value);
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              if (pendingRef.current === null) setEditing(false);
+            }, 0);
+          }}
+          aria-label={label}
+          className={
+            "w-full appearance-none rounded-lg bg-white border text-center text-[14px] leading-none py-1 px-1 cursor-pointer " +
+            (failed
+              ? "border-afa-red text-afa-red"
+              : current
+                ? "border-afa-navy/25 hover:border-afa-navy/50 text-afa-ink"
+                : "border-afa-navy/25 hover:border-afa-navy/50 text-afa-muted")
+          }
+        >
+          <option value="">—</option>
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <button
+          type="button"
+          aria-label={label}
+          onClick={() => setEditing(true)}
+          className={
+            "w-full rounded-lg text-center text-[14px] leading-none py-1 px-1 hover:bg-afa-navy/5 " +
+            (failed
+              ? "text-afa-red"
+              : current
+                ? "text-afa-ink"
+                : "text-afa-muted")
+          }
+        >
+          {current || "—"}
+        </button>
+      )}
 
       {pending !== null && (
         <ConfirmDialog
@@ -81,7 +105,11 @@ export default function InlineSelect({
           confirmLabel="Change it"
           busy={busy}
           onConfirm={() => save(pending)}
-          onCancel={() => setPending(null)}
+          onCancel={() => {
+            pendingRef.current = null;
+            setPending(null);
+            setEditing(false);
+          }}
         />
       )}
     </>

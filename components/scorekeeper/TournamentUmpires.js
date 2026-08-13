@@ -244,8 +244,7 @@ export default function TournamentUmpires({
 
         {!dayStartTime && (
           <p className="t-meta text-[12px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            Set <strong>Day start</strong> in tournament terms above so new
-            umpires default to first pitch. You can still enter times manually.
+            No day start on Event — new umpires will not default to first pitch.
           </p>
         )}
 
