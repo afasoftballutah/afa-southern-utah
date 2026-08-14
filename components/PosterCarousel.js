@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 /**
@@ -12,6 +12,50 @@ import Link from "next/link";
  * Upcoming: neon lime tag.
  * Multi-gender: W / M / Coed tabs, gold (champ) per division only.
  */
+
+const SWIPE_MIN = 40;
+
+/** Horizontal swipe / drag → step(-1 | 1). Vertical scroll stays the page's. */
+function useSwipe(onStep) {
+  const origin = useRef(null);
+  const swiped = useRef(false);
+
+  return useMemo(
+    () => ({
+      onPointerDown(e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        if (e.target?.closest?.("a, button, input, select, textarea, label")) return;
+        origin.current = { x: e.clientX, y: e.clientY };
+        swiped.current = false;
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* capture is optional */
+        }
+      },
+      onPointerUp(e) {
+        const start = origin.current;
+        origin.current = null;
+        if (!start) return;
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
+        swiped.current = true;
+        onStep(dx < 0 ? 1 : -1);
+      },
+      onPointerCancel() {
+        origin.current = null;
+      },
+      onClickCapture(e) {
+        if (!swiped.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        swiped.current = false;
+      },
+    }),
+    [onStep]
+  );
+}
 
 function wrapDelta(i, center, n) {
   let d = i - center;
@@ -53,6 +97,7 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
   );
 
   const closeLightbox = useCallback(() => setLightboxId(null), []);
+  const swipe = useSwipe(step);
 
   // Side (gray) posters only rotate into center; only the featured center can open.
   // Ignore clicks that started on a real control/link inside the card.
@@ -114,7 +159,7 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
   return (
     <section className="poster-deck" aria-label="Season flyers">
       <div className="poster-deck__frame">
-        <div className="poster-deck__stage">
+        <div className="poster-deck__stage" {...swipe}>
           <button
             type="button"
             className="poster-deck__edge poster-deck__edge--prev"
@@ -175,6 +220,7 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
           aria-modal="true"
           aria-label={lightboxSlide.name}
           onClick={closeLightbox}
+          {...swipe}
         >
           <button
             type="button"
@@ -208,6 +254,7 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
                 src={lightboxSlide.posterUrl}
                 alt={lightboxSlide.name}
                 className="poster-deck__lightbox-img"
+                draggable={false}
               />
               {lightboxSlide.finished ? (
                 <span className="poster-deck__done">Completed</span>
@@ -284,7 +331,7 @@ function PosterCard({ slide, active, activeTab, onTab }) {
     <div className={"poster-deck__card" + (active ? " is-active" : "")}>
       <div className="poster-deck__poster">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={slide.posterUrl} alt="" />
+        <img src={slide.posterUrl} alt="" draggable={false} />
         {slide.finished ? (
           <span className="poster-deck__done">Completed</span>
         ) : (

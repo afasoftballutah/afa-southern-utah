@@ -1591,6 +1591,7 @@ a.register-division-col__card--header {
   margin: 0;
   user-select: none;
   overflow: visible;
+  touch-action: pan-y;
 }
 /* Edge arrows — red pills */
 .poster-deck__edge {
@@ -1947,6 +1948,7 @@ a.register-division-col__card--header {
   backdrop-filter: blur(8px);
   cursor: zoom-out;
   animation: poster-deck-fade-in 0.18s ease;
+  touch-action: pan-y;
 }
 @keyframes poster-deck-fade-in {
   from { opacity: 0; }
