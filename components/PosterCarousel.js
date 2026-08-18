@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /**
  * Perspective poster deck for the home page.
  * Always shows up to 5 slots: … | -2 | -1 | center | +1 | +2 | …
  * Infinite wrap. Center full color; sides desaturated.
- * Click side poster → rotate to center. Click center → lightbox; backdrop/Esc closes.
+ * Click side poster → rotate to center. Click center → that tournament.
  * Finished posters: black Completed tag + champion stamps (G/S/B, O/D/E/R, U/L).
  * Upcoming: neon lime tag.
  * Multi-gender: W / M / Coed tabs, gold (champ) per division only.
@@ -72,35 +73,27 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
     return i >= 0 ? i : 0;
   }, [slides]);
 
+  const router = useRouter();
   const [center, setCenter] = useState(initial);
   // Gender tab selection per slide id (so rotating away doesn't reset all)
   const [tabBySlide, setTabBySlide] = useState({});
-  const [lightboxId, setLightboxId] = useState(null);
 
   // Region switch / new slide list → snap to that region’s next tournament
   useEffect(() => {
     setCenter(initial);
-    setLightboxId(null);
   }, [initial, resetKey]);
 
-  // Advance carousel; when lightbox is open, keep it on the new center poster.
   const step = useCallback(
     (dir) => {
       if (n < 1) return;
-      setCenter((c) => {
-        const next = (c + dir + n) % n;
-        setLightboxId((open) => (open != null ? slides[next]?.id ?? null : open));
-        return next;
-      });
+      setCenter((c) => (c + dir + n) % n);
     },
-    [n, slides]
+    [n]
   );
 
-  const closeLightbox = useCallback(() => setLightboxId(null), []);
   const swipe = useSwipe(step);
 
-  // Side (gray) posters only rotate into center; only the featured center can open.
-  // Ignore clicks that started on a real control/link inside the card.
+  // Side posters rotate in. The selected poster is the tournament.
   const onSlotClick = useCallback(
     (i, isCenter, e) => {
       const t = e?.target;
@@ -111,19 +104,14 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
         setCenter(i);
         return;
       }
-      setLightboxId(slides[i]?.id ?? null);
+      const slug = slides[i]?.slug;
+      if (slug) router.push(`/tournaments/${slug}`);
     },
-    [slides]
+    [slides, router]
   );
 
   useEffect(() => {
     function onKey(e) {
-      if (e.key === "Escape" && lightboxId != null) {
-        e.preventDefault();
-        closeLightbox();
-        return;
-      }
-      // Don't hijack arrows while typing or focused in other UI
       const tag = (e.target && e.target.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target?.isContentEditable) {
         return;
@@ -139,22 +127,9 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, lightboxId, closeLightbox]);
-
-  // Lock page scroll while lightbox is open
-  useEffect(() => {
-    if (lightboxId == null) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [lightboxId]);
+  }, [step]);
 
   if (n === 0) return null;
-
-  const lightboxSlide =
-    lightboxId != null ? slides.find((s) => s.id === lightboxId) : null;
 
   return (
     <section className="poster-deck" aria-label="Season flyers">
@@ -195,7 +170,7 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
                   }
                 }}
                 aria-label={
-                  isCenter ? `${slide.name} — open poster` : `Show ${slide.name}`
+                  isCenter ? `${slide.name} — open tournament` : `Show ${slide.name}`
                 }
                 aria-current={isCenter ? "true" : undefined}
               >
@@ -212,96 +187,6 @@ export default function PosterCarousel({ slides = [], /** Force remount center w
           })}
         </div>
       </div>
-
-      {lightboxSlide && (
-        <div
-          className="poster-deck__lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={lightboxSlide.name}
-          onClick={closeLightbox}
-          {...swipe}
-        >
-          <button
-            type="button"
-            className="poster-deck__edge poster-deck__edge--prev poster-deck__edge--lightbox"
-            onClick={(e) => {
-              e.stopPropagation();
-              step(-1);
-            }}
-            aria-label="Previous flyer"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className="poster-deck__edge poster-deck__edge--next poster-deck__edge--lightbox"
-            onClick={(e) => {
-              e.stopPropagation();
-              step(1);
-            }}
-            aria-label="Next flyer"
-          >
-            ›
-          </button>
-          <div
-            className="poster-deck__lightbox-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="poster-deck__lightbox-frame">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={lightboxSlide.posterUrl}
-                alt={lightboxSlide.name}
-                className="poster-deck__lightbox-img"
-                draggable={false}
-              />
-              {lightboxSlide.finished ? (
-                <span className="poster-deck__done">Completed</span>
-              ) : (
-                <span className="poster-deck__done poster-deck__done--upcoming">
-                  Upcoming
-                </span>
-              )}
-            </div>
-            <div className="poster-deck__lightbox-meta">
-              <p className="poster-deck__lightbox-name">{lightboxSlide.name}</p>
-              <p className="poster-deck__lightbox-sub">
-                {[lightboxSlide.when, lightboxSlide.where].filter(Boolean).join(" · ")}
-              </p>
-              <div className="poster-deck__lightbox-actions">
-                {lightboxSlide.registerHref ? (
-                  lightboxSlide.externalRegister ? (
-                    <a
-                      href={lightboxSlide.registerHref}
-                      className="poster-deck__lightbox-btn"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Register
-                    </a>
-                  ) : (
-                    <Link
-                      href={lightboxSlide.registerHref}
-                      className="poster-deck__lightbox-btn"
-                    >
-                      Register
-                    </Link>
-                  )
-                ) : null}
-                {lightboxSlide.slug && (
-                  <Link
-                    href={`/tournaments/${lightboxSlide.slug}`}
-                    className="poster-deck__lightbox-btn poster-deck__lightbox-btn--ghost"
-                  >
-                    Tournament
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
