@@ -1593,11 +1593,11 @@ a.register-division-col__card--header {
   overflow: visible;
   touch-action: pan-y;
 }
-/* Edge arrows — red pills */
+/* Edge arrows — red pills. Under the flyers so a click on art is the flyer. */
 .poster-deck__edge {
   position: absolute;
   top: 50%;
-  z-index: 8;
+  z-index: 1;
   transform: translateY(-50%);
   width: 2.25rem;
   height: 2.25rem;
@@ -1655,6 +1655,7 @@ a.register-division-col__card--header {
     z-index 0s linear 0.2s;
   transform-style: preserve-3d;
   cursor: pointer;
+  pointer-events: none;
 }
 .poster-deck__slot:not(.is-center) {
   filter: grayscale(0.92) brightness(0.72);
@@ -1697,6 +1698,7 @@ a.register-division-col__card--header {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  pointer-events: auto;
 }
 .poster-deck__poster {
   position: relative;

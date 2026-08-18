@@ -24,7 +24,8 @@ function useSwipe(onStep) {
   return useMemo(
     () => ({
       onPointerDown(e) {
-        if (e.pointerType === "mouse" && e.button !== 0) return;
+        // Mouse has arrows. Capture+swipe on mouse ate ordinary clicks.
+        if (e.pointerType === "mouse") return;
         if (e.target?.closest?.("a, button, input, select, textarea, label")) return;
         origin.current = { x: e.clientX, y: e.clientY };
         swiped.current = false;
@@ -226,8 +227,6 @@ function PosterCard({ slide, active, activeTab, onTab }) {
         {slide.finished && rows.length > 0 && (
           <div
             className={"poster-deck__champ" + (multi ? " poster-deck__champ--tabs" : "")}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
           >
             <div className="poster-deck__champ-title">Champions</div>
             {multi && (
@@ -268,7 +267,7 @@ function PosterCard({ slide, active, activeTab, onTab }) {
         )}
 
         {!slide.finished && (
-          <div className="poster-deck__cta" onClick={(e) => e.stopPropagation()}>
+          <div className="poster-deck__cta">
             <span className="poster-deck__cta-when">{slide.when}</span>
             {slide.registerHref ? (
               slide.externalRegister ? (
