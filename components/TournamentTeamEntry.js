@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import FindTournamentTeam from "@/components/FindTournamentTeam";
 import TournamentDivisionNav from "@/components/TournamentDivisionNav";
 
@@ -17,8 +18,8 @@ export default function TournamentTeamEntry({
   const [team, setTeam] = useState("");
   const [panel, setPanel] = useState(null);
 
-  const showGrid =
-    panel === "register" || (finished && panel !== "find" && columns.length > 0);
+  const registering = panel === "register";
+  const showGrid = columns.length > 0 && panel !== "find";
 
   return (
     <div className="space-y-4">
@@ -36,10 +37,12 @@ export default function TournamentTeamEntry({
         <div id="tournament-divisions" className="space-y-3">
           <div className="text-center">
             <h2 className="t-heading">
-              {panel === "register" ? "Register" : "Results"}
+              {registering ? "Register" : finished ? "Results" : "Divisions"}
             </h2>
             <p className="t-meta">
-              {panel === "register" ? "Pick a division" : "Schedule and results"}
+              {registering
+                ? "Pick a division"
+                : "Open your division for the bracket and games"}
             </p>
           </div>
           <TournamentDivisionNav
@@ -48,8 +51,18 @@ export default function TournamentTeamEntry({
             teamSummaries={teamSummaries}
             selectedTeam={team}
             hideTeamPicker
-            mode={panel === "register" ? "register" : "schedule"}
+            mode={registering ? "register" : "schedule"}
           />
+          {!registering ? (
+            <p className="text-center">
+              <Link
+                href={`/tournaments/${slug}/schedule`}
+                className="t-meta underline"
+              >
+                All games
+              </Link>
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

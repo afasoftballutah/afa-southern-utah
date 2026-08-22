@@ -1,11 +1,7 @@
 import { Fragment } from "react";
-import { LEAGUE_TZ } from "@/lib/bracket/tree";
 import { notFound } from "next/navigation";
 import {
-  getRecentScores,
-  getUpcomingGames,
   getTeamSummaries,
-  getSeedLabels,
   getTournamentBySlug,
   getTournamentResults,
   isTournamentFinished,
@@ -19,7 +15,6 @@ import Link from "next/link";
 import Poster from "@/components/ui/Poster";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
-import GameFeed from "@/components/GameFeed";
 import TournamentResults from "@/components/TournamentResults";
 import TournamentTeamEntry from "@/components/TournamentTeamEntry";
 import { groupDivisionsByGender } from "@/lib/division-layout";
@@ -27,24 +22,6 @@ import {
   listTournamentTeams,
   mergeTeamSummaries,
 } from "@/lib/tournament-teams";
-
-// Where and when, split so a list of games lines up in columns.
-function whenParts(scheduledTime) {
-  if (!scheduledTime) return { whenDay: "", whenTime: "TBD" };
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: LEAGUE_TZ,
-  }).formatToParts(new Date(scheduledTime));
-  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
-  const min = get("minute");
-  return {
-    whenDay: get("weekday"),
-    whenTime: `${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`,
-  };
-}
 
 // Prizes read as a podium, not as prose (JD, 2026-07-26). The league
 // writes them "1st place: custom jerseys", so the place comes out of the
@@ -153,23 +130,11 @@ export default async function TournamentDetailPage({ params }) {
     );
   }
 
-  // Recent scores live here now, not on the front page (JD, 2026-07-26).
-  // A game belongs to a tournament; a list of them a mile from anything
-  // that named it was the wrong home. Scoped to THIS tournament's
-  // divisions rather than the league.
-  const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
-  const [recentScores, upcomingGames] = await Promise.all([
-    getRecentScores(8, divisionIds),
-    getUpcomingGames(8, divisionIds),
-  ]);
-  const withWhen = (list) => list.map((g) => ({ ...g, ...whenParts(g.scheduledTime) }));
-  const hasSchedule = recentScores.length > 0 || upcomingGames.length > 0;
   const [teamSummariesRaw, registeredTeams] = await Promise.all([
     getTeamSummaries(tournament),
     listTournamentTeams(tournament),
   ]);
   const teamSummaries = mergeTeamSummaries(teamSummariesRaw, registeredTeams);
-  const seedLabels = await getSeedLabels(tournament);
   const finished = isTournamentFinished(tournament);
   const tournamentResults = finished ? await getTournamentResults(tournament) : [];
 
@@ -278,14 +243,6 @@ export default async function TournamentDetailPage({ params }) {
         <TournamentResults
           results={tournamentResults}
           slug={tournament.slug}
-        />
-      ) : null}
-
-      {hasSchedule ? (
-        <GameFeed
-          results={withWhen(recentScores)}
-          upcoming={withWhen(upcomingGames)}
-          seeds={seedLabels}
         />
       ) : null}
 
