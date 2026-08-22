@@ -8,8 +8,8 @@ import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
-import BracketScores from "@/components/scorekeeper/BracketScores";
 import CreatePoolRoundRobin from "@/components/scorekeeper/CreatePoolRoundRobin";
+import HandGames from "@/components/scorekeeper/HandGames";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
 import ScoreTable from "@/components/scorekeeper/ScoreTable";
@@ -168,13 +168,11 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
   //
   //  - a `brackets` row exists -> BracketManager, the generated bracket it
   //    owns end to end.
-  //  - games but no `brackets` row -> a transcribed bracket (Gold/Silver/
-  //    Bronze, dispatch-brief-24). Read and score them; never offer to
-  //    generate a new structure over live games.
+  //  - games but no `brackets` row -> hand-built / transcribed. Score them;
+  //    never offer to generate a new structure over live games.
   //  - no pool, no games -> generate from director seed order.
   //  - pools finished, no bracket yet -> generate from pool finish order.
   //  - pools in progress -> StageView only (score pools first).
-  const transcribed = !data.mainBracket && data.games.length > 0;
   const poolState = seedOrderFromPools(data.poolGames);
   const poolsReady = data.poolGames.length > 0 && poolState.complete;
   const noPoolPath =
@@ -250,8 +248,14 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
           }
         />
       )}
-      {transcribed && <BracketScores games={data.games} />}
-      {/* No-pool path: bracket tools live on the page (not under StageView). */}
+      {!data.mainBracket && (data.poolGames.length === 0 || poolsReady) ? (
+        <HandGames
+          divisionId={divisionId}
+          games={data.games}
+          teamNames={data.teamNames}
+        />
+      ) : null}
+      {/* No-pool path: generated-bracket tools (not under StageView). */}
       {data.poolGames.length === 0 && (data.mainBracket || generatable) && (
         <BracketManager
           divisionId={divisionId}

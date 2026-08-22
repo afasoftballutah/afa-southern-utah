@@ -1617,6 +1617,131 @@ export async function POST(request) {
       return Response.json({ ok: true, suspension: row });
     }
 
+    // ---- Hand-built bracket (director typed the games; no Generate) --
+    case "addHandGame": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const divisionId = body.divisionId;
+      if (!divisionId) return bad("Which division?");
+      const { data: generated } = await supabase
+        .from("brackets")
+        .select("id")
+        .eq("division_id", divisionId)
+        .eq("bracket_group", "main")
+        .maybeSingle();
+      if (generated) {
+        return bad(
+          "This division already has a generated bracket. Use Matchups on that bracket, or Clear & generate first."
+        );
+      }
+
+      const { data: existing, error: existErr } = await supabase
+        .from("games")
+        .select("id, round")
+        .eq("division_id", divisionId)
+        .eq("bracket_group", "main")
+        .order("round", { ascending: false });
+      if (existErr) return bad("Could not load games", 500);
+      const byRound = new Map((existing ?? []).map((g) => [g.round, g.id]));
+      const nextRound = ((existing ?? [])[0]?.round ?? 0) + 1;
+
+      function seat(raw) {
+        const name = String(raw ?? "").trim();
+        if (!name) return { error: "Both sides need a team, or Winner/Loser of a game." };
+        const win = /^Winner of Game (\d+)$/i.exec(name);
+        const lose = /^Loser of Game (\d+)$/i.exec(name);
+        const ref = win || lose;
+        if (ref) {
+          const n = Number(ref[1]);
+          const id = byRound.get(n);
+          if (!id) return { error: `Game ${n} is not on this bracket yet.` };
+          if (n >= nextRound) return { error: `Game ${n} is not on this bracket yet.` };
+          return {
+            name: `${win ? "Winner" : "Loser"} of Game ${n}`,
+            sourceId: id,
+            sourceResult: win ? "winner" : "loser",
+          };
+        }
+        return { name, sourceId: null, sourceResult: null };
+      }
+
+      const left = seat(body.team1Name);
+      if (left.error) return bad(left.error);
+      const right = seat(body.team2Name);
+      if (right.error) return bad(right.error);
+
+      const field = String(body.field ?? "").trim() || null;
+      let scheduled_time = null;
+      if (body.scheduledTime) {
+        const d = new Date(body.scheduledTime);
+        if (Number.isNaN(d.getTime())) return bad("That time is not a time.");
+        scheduled_time = d.toISOString();
+      }
+
+      const row = {
+        division_id: divisionId,
+        bracket_group: "main",
+        bracket_side: "winners",
+        round: nextRound,
+        slot: 1,
+        team1_name: left.name,
+        team2_name: right.name,
+        team1_source_game_id: left.sourceId,
+        team1_source_result: left.sourceResult,
+        team2_source_game_id: right.sourceId,
+        team2_source_result: right.sourceResult,
+        field,
+        scheduled_time,
+        status: "pending",
+      };
+      const { data: inserted, error: insErr } = await supabase
+        .from("games")
+        .insert(row)
+        .select("id, round")
+        .maybeSingle();
+      if (insErr) {
+        console.error("addHandGame failed", insErr);
+        return bad("Could not add that game", 500);
+      }
+      return Response.json({ ok: true, game: inserted });
+    }
+
+    case "deleteHandGame": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const gameId = body.gameId;
+      if (!gameId) return bad("Which game?");
+      const { data: game, error: findErr } = await supabase
+        .from("games")
+        .select("id, division_id, status, is_bye")
+        .eq("id", gameId)
+        .maybeSingle();
+      if (findErr || !game) return bad("Game not found", 404);
+      const { data: generated } = await supabase
+        .from("brackets")
+        .select("id")
+        .eq("division_id", game.division_id)
+        .eq("bracket_group", "main")
+        .maybeSingle();
+      if (generated) return bad("Generated brackets are cleared from Matchups, not one game at a time.");
+      if (game.status === "final" && !game.is_bye) {
+        return bad("That game already has a score.");
+      }
+      const { count, error: depErr } = await supabase
+        .from("games")
+        .select("id", { count: "exact", head: true })
+        .or(`team1_source_game_id.eq.${gameId},team2_source_game_id.eq.${gameId}`);
+      if (depErr) return bad("Could not check later games", 500);
+      if ((count ?? 0) > 0) {
+        return bad("A later game still reads Winner/Loser of this one. Remove that first.");
+      }
+      const { error: delErr } = await supabase.from("games").delete().eq("id", gameId);
+      if (delErr) return bad("Could not remove that game", 500);
+      return Response.json({ ok: true });
+    }
+
     default:
       return bad("Unknown action");
   }
