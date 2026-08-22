@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { directorPost } from "./DirectorForm";
 import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
+import ReadSheet from "./ReadSheet";
 
 /**
  * Director-typed bracket. No Generate. Each game is one line the way they
@@ -80,8 +81,13 @@ export default function HandGames({ divisionId, games = [], teamNames = [], play
         <p className="t-strong">Your own bracket</p>
         <p className="t-meta">
           First games are team vs team. After those are in, the list also has
-          Winner of Game 1 and Loser of Game 1.
+          Winner of Game 1 and Loser of Game 1. Or photograph the paper sheet.
         </p>
+        <ReadSheet
+          divisionId={divisionId}
+          playDay={playDay}
+          onApplied={() => router.refresh()}
+        />
       </div>
 
       {list.length > 0 ? (

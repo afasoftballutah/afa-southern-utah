@@ -12,6 +12,7 @@ import { isSurvivorPoolGame } from "@/lib/bracket/lives";
 import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
 import { directorPost } from "./DirectorForm";
+import ReadSheet from "./ReadSheet";
 
 const FORMATS = [
   { value: "three_gg_hybrid", label: "3GG" },
@@ -179,6 +180,13 @@ export default function BracketManager({
       )}
 
       {/* 4. Score */}
+      {hasBracket && (
+        <ReadSheet
+          divisionId={divisionId}
+          playDay={playDay}
+          onApplied={() => router.refresh()}
+        />
+      )}
       {hasBracket && mainGames.length > 0 && (
         <div className="space-y-4">
           <ScoreList

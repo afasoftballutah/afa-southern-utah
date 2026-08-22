@@ -1818,6 +1818,24 @@ export async function POST(request) {
       return Response.json({ ok: true, game: inserted });
     }
 
+    case "applySheetDraft": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const divisionId = body.divisionId;
+      const games = body.games;
+      if (!divisionId) return bad("Which division?");
+      if (!Array.isArray(games) || games.length === 0) return bad("No games to apply.");
+      try {
+        const { applySheetDraft } = await import("@/lib/bracket/apply-sheet");
+        const result = await applySheetDraft(supabase, { divisionId, games });
+        return Response.json({ ok: true, ...result });
+      } catch (err) {
+        console.error("applySheetDraft failed", err);
+        return bad(err.message || "Could not save that draft", 500);
+      }
+    }
+
     case "deleteHandGame": {
       if (!(await requireDirectorSession())) {
         return Response.json({ error: "Director only" }, { status: 403 });
