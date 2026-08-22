@@ -19,7 +19,7 @@ export default function TournamentTeamEntry({
   const [panel, setPanel] = useState(null);
 
   const registering = panel === "register";
-  const showGrid = columns.length > 0 && panel !== "find";
+  const showGrid = columns.length > 0;
 
   return (
     <div className="space-y-4">

@@ -184,6 +184,7 @@ export default function FindTournamentTeam({
       /* private browsing */
     }
     setQuery("");
+    onPanel?.(null);
   }
 
   function forget(row) {
