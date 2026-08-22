@@ -377,7 +377,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
 
       {expanded && (
         <div className="space-y-3 pt-2 border-t border-afa-navy/10">
-          {draft && game.status === "pending" && (
+          {game.status !== "cancelled" && (
             <div className="grid grid-cols-2 gap-2">
               <TeamSelect
                 value={team1}
@@ -479,6 +479,9 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
 
 function TeamSelect({ value, onChange, teamNames, games = [], exceptId }) {
   const fromGames = (games ?? []).filter((g) => g.id !== exceptId && g.status !== "cancelled");
+  const known = new Set((teamNames ?? []).map(String));
+  const extra =
+    value && !String(value).startsWith("__") && !known.has(value) ? value : null;
   return (
     <select
       className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
@@ -486,6 +489,7 @@ function TeamSelect({ value, onChange, teamNames, games = [], exceptId }) {
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">—</option>
+      {extra ? <option value={extra}>{extra}</option> : null}
       {teamNames.map((name) => (
         <option key={name} value={name}>
           {name}

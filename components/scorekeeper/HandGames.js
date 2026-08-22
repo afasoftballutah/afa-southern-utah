@@ -92,6 +92,8 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
             <HandGameLine
               key={g.id}
               game={g}
+              games={list}
+              teamNames={teams}
               onChanged={() => router.refresh()}
             />
           ))}
@@ -162,6 +164,23 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
   );
 }
 
+function seatFromName(raw, games, selfId) {
+  const name = String(raw ?? "").trim();
+  const win = /^Winner of Game (\d+)$/i.exec(name);
+  const lose = /^Loser of Game (\d+)$/i.exec(name);
+  const ref = win || lose;
+  if (ref) {
+    const n = Number(ref[1]);
+    const src = (games ?? []).find((g) => g.round === n && g.id !== selfId);
+    return {
+      name: `${win ? "Winner" : "Loser"} of Game ${n}`,
+      sourceId: src?.id ?? null,
+      sourceResult: win ? "winner" : "loser",
+    };
+  }
+  return { name: name || null, sourceId: null, sourceResult: null };
+}
+
 function Seat({ label, value, onChange, teams, fromGames }) {
   return (
     <label className="block min-w-0">
@@ -192,13 +211,43 @@ function Seat({ label, value, onChange, teams, fromGames }) {
   );
 }
 
-function HandGameLine({ game, onChanged }) {
+function HandGameLine({ game, games, teamNames, onChanged }) {
   const [open, setOpen] = useState(false);
   const [round, setRound] = useState(String(game.round ?? ""));
+  const [team1, setTeam1] = useState(game.team1_name || "");
+  const [team2, setTeam2] = useState(game.team2_name || "");
   const [field, setField] = useState(game.field || "");
   const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  async function saveTeams() {
+    setBusy(true);
+    setError("");
+    try {
+      const left = seatFromName(team1, games, game.id);
+      const right = seatFromName(team2, games, game.id);
+      const res = await fetch(`/api/scorekeeper/games/${game.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team1Name: left.name,
+          team2Name: right.name,
+          team1SourceGameId: left.sourceId,
+          team1SourceResult: left.sourceResult,
+          team2SourceGameId: right.sourceId,
+          team2SourceResult: right.sourceResult,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not save");
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function saveSchedule() {
     setBusy(true);
@@ -260,6 +309,38 @@ function HandGameLine({ game, onChanged }) {
       </button>
       {open ? (
         <div className="grid gap-2 sm:grid-cols-2 pt-2 border-t border-afa-navy/10">
+          <Seat
+            label="Team 1"
+            value={team1}
+            onChange={setTeam1}
+            teams={teamNames}
+            fromGames={(games ?? [])
+              .filter((g) => g.id !== game.id)
+              .flatMap((g) => [
+                `Winner of Game ${g.round}`,
+                `Loser of Game ${g.round}`,
+              ])}
+          />
+          <Seat
+            label="Team 2"
+            value={team2}
+            onChange={setTeam2}
+            teams={teamNames}
+            fromGames={(games ?? [])
+              .filter((g) => g.id !== game.id)
+              .flatMap((g) => [
+                `Winner of Game ${g.round}`,
+                `Loser of Game ${g.round}`,
+              ])}
+          />
+          <button
+            type="button"
+            className="sm:col-span-2 text-afa-navy underline text-sm font-semibold text-left"
+            disabled={busy}
+            onClick={saveTeams}
+          >
+            Save teams
+          </button>
           <label className="block min-w-0">
             <span className="t-label block mb-1">Game #</span>
             <input
