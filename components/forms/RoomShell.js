@@ -317,8 +317,12 @@ export default function RoomShell({
     <div className={frameClass}>{body}</div>
   );
 
+  // Close is the door. The dimmed desk is not a hidden close button —
+  // a native <select> list (Division, Tournament) paints over that layer,
+  // and the click to pick an option was firing Close and dumping the
+  // director back on Registrations with nothing saved.
   return (
-    <WorkFocus onScrimClick={requestClose} className="max-w-md">
+    <WorkFocus className="max-w-md">
       {panel}
     </WorkFocus>
   );

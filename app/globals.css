@@ -457,6 +457,7 @@ body:has(.scorekeeper-scope) {
 .work-focus {
   position: relative;
   z-index: 40;
+  isolation: isolate;
   /* Lift the whole focus stack so it reads above dimmed siblings */
   margin-bottom: 0.5rem;
 }
@@ -473,8 +474,13 @@ body:has(.scorekeeper-scope) {
     );
   backdrop-filter: blur(3px) saturate(0.75);
   -webkit-backdrop-filter: blur(3px) saturate(0.75);
-  pointer-events: auto;
+  /* Visual only unless --clickable. A full-screen hit target steals
+     clicks meant for native <select> lists that paint over the wash. */
+  pointer-events: none;
   cursor: default;
+}
+.work-focus__scrim--clickable {
+  pointer-events: auto;
 }
 .work-focus__panel {
   position: relative;

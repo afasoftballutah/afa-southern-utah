@@ -15,7 +15,10 @@ export default function WorkFocus({ children, onScrimClick, className = "" }) {
   return (
     <div className={"work-focus w-full " + className}>
       <div
-        className="work-focus__scrim print:hidden"
+        className={
+          "work-focus__scrim print:hidden" +
+          (onScrimClick ? " work-focus__scrim--clickable" : "")
+        }
         aria-hidden
         onClick={onScrimClick}
       />
