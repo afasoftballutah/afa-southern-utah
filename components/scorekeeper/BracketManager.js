@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlacementsUpload from "./PlacementsUpload";
 import DirectorSeedList from "./DirectorSeedList";
@@ -215,6 +215,7 @@ function ScoreList({ games, draft, teamNames, onChanged }) {
         <GameRow
           key={g.id}
           game={g}
+          games={sorted}
           teamNames={teamNames}
           draft={draft}
           onChanged={onChanged}
@@ -229,10 +230,33 @@ function slotLabel(name, isOpenEntry) {
   return isOpenEntry ? "awaiting team" : "—";
 }
 
-function GameRow({ game, teamNames, draft, onChanged }) {
+function seatKey(game, side) {
+  const src = game[`team${side}_source_game_id`];
+  const res = game[`team${side}_source_result`];
+  if (src && (res === "winner" || res === "loser")) return `__${res}:${src}`;
+  return game[`team${side}_name`] || "";
+}
+
+function parseSeat(value, games) {
+  const m = /^__(winner|loser):(.+)$/.exec(String(value ?? ""));
+  if (m) {
+    const src = (games ?? []).find((g) => g.id === m[2]);
+    const n = src?.round;
+    const who = m[1] === "winner" ? "Winner" : "Loser";
+    return {
+      name: n != null ? `${who} of Game ${n}` : `${who}`,
+      sourceId: m[2],
+      sourceResult: m[1],
+    };
+  }
+  const name = String(value ?? "").trim();
+  return { name: name || null, sourceId: null, sourceResult: null };
+}
+
+function GameRow({ game, games = [], teamNames, draft, onChanged }) {
   const [expanded, setExpanded] = useState(false);
-  const [team1, setTeam1] = useState(game.team1_name || "");
-  const [team2, setTeam2] = useState(game.team2_name || "");
+  const [team1, setTeam1] = useState(() => seatKey(game, "1"));
+  const [team2, setTeam2] = useState(() => seatKey(game, "2"));
   const [field, setField] = useState(game.field || "");
   const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
   const [score1, setScore1] = useState(game.team1_score ?? "");
@@ -247,10 +271,19 @@ function GameRow({ game, teamNames, draft, onChanged }) {
     setBusy(true);
     setError("");
     try {
+      const left = parseSeat(team1, games);
+      const right = parseSeat(team2, games);
       const res = await fetch(`/api/scorekeeper/games/${game.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team1Name: team1 || null, team2Name: team2 || null }),
+        body: JSON.stringify({
+          team1Name: left.name,
+          team2Name: right.name,
+          team1SourceGameId: left.sourceId,
+          team1SourceResult: left.sourceResult,
+          team2SourceGameId: right.sourceId,
+          team2SourceResult: right.sourceResult,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save");
@@ -336,8 +369,20 @@ function GameRow({ game, teamNames, draft, onChanged }) {
         <div className="space-y-3 pt-2 border-t border-afa-navy/10">
           {draft && game.status === "pending" && (
             <div className="grid grid-cols-2 gap-2">
-              <TeamSelect value={team1} onChange={setTeam1} teamNames={teamNames} />
-              <TeamSelect value={team2} onChange={setTeam2} teamNames={teamNames} />
+              <TeamSelect
+                value={team1}
+                onChange={setTeam1}
+                teamNames={teamNames}
+                games={games}
+                exceptId={game.id}
+              />
+              <TeamSelect
+                value={team2}
+                onChange={setTeam2}
+                teamNames={teamNames}
+                games={games}
+                exceptId={game.id}
+              />
               <button
                 type="button"
                 onClick={saveSlots}
@@ -412,7 +457,8 @@ function GameRow({ game, teamNames, draft, onChanged }) {
   );
 }
 
-function TeamSelect({ value, onChange, teamNames }) {
+function TeamSelect({ value, onChange, teamNames, games = [], exceptId }) {
+  const fromGames = (games ?? []).filter((g) => g.id !== exceptId && g.status !== "cancelled");
   return (
     <select
       className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
@@ -425,6 +471,16 @@ function TeamSelect({ value, onChange, teamNames }) {
           {name}
         </option>
       ))}
+      {fromGames.length > 0 ? (
+        <optgroup label="From an earlier game">
+          {fromGames.map((g) => (
+            <Fragment key={g.id}>
+              <option value={`__winner:${g.id}`}>Winner of Game {g.round}</option>
+              <option value={`__loser:${g.id}`}>Loser of Game {g.round}</option>
+            </Fragment>
+          ))}
+        </optgroup>
+      ) : null}
     </select>
   );
 }

@@ -46,6 +46,14 @@ export async function PATCH(request, { params }) {
     }
     if ("team1Name" in body) patch.team1_name = body.team1Name || null;
     if ("team2Name" in body) patch.team2_name = body.team2Name || null;
+    if ("team1SourceGameId" in body) {
+      patch.team1_source_game_id = body.team1SourceGameId || null;
+      patch.team1_source_result = body.team1SourceResult || null;
+    }
+    if ("team2SourceGameId" in body) {
+      patch.team2_source_game_id = body.team2SourceGameId || null;
+      patch.team2_source_result = body.team2SourceResult || null;
+    }
   }
 
   if (Object.keys(patch).length === 0) {
