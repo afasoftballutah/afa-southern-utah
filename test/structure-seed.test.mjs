@@ -6,7 +6,7 @@ import {
   SURVIVOR_FIELD,
   GUARANTEE_NET_FIELD,
 } from "@/lib/bracket/structure";
-import { forDrawnBracket, gamesFromStructure } from "@/lib/bracket/for-drawn-bracket";
+import { forDrawnBracket, gamesFromStructure, scheduleSlotLabel } from "@/lib/bracket/for-drawn-bracket";
 import { slotDisplay, assignGameNumbers } from "@/lib/bracket/tree";
 
 test("4-team DE pads to 4; every registered team appears in WR1", () => {
@@ -46,6 +46,21 @@ test("generate3GG(9) reference sheet matches JD's order", () => {
   assert.equal(line(13), "L2 vs W11");
   assert.equal(line(20), "W8 vs W19");
   assert.equal(line(21), "W20 vs L20");
+});
+
+test("paper G#s label as Game 4, not Winners R4", () => {
+  const paper = [
+    { round: 1, bracket_side: "winners", status: "pending" },
+    { round: 4, bracket_side: "winners", status: "pending" },
+  ];
+  assert.equal(scheduleSlotLabel(paper, paper[1]), "Game 4");
+
+  const engine = [
+    { round: 1, bracket_side: "winners", status: "pending" },
+    { round: 1, bracket_side: "winners", status: "pending" },
+    { round: 2, bracket_side: "winners", status: "pending" },
+  ];
+  assert.equal(scheduleSlotLabel(engine, engine[2]), "Winners R2");
 });
 
 test("3GG structure maps generate3GG into DrawnBracket language", () => {
