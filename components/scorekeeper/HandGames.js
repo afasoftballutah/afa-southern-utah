@@ -30,20 +30,14 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const options = useMemo(() => {
-    const out = teams.map((n) => ({ value: n, label: n }));
-    for (const g of list) {
-      out.push({
-        value: `Winner of Game ${g.round}`,
-        label: `Winner of Game ${g.round}`,
-      });
-      out.push({
-        value: `Loser of Game ${g.round}`,
-        label: `Loser of Game ${g.round}`,
-      });
-    }
-    return out;
-  }, [teams, list]);
+  const fromGames = useMemo(
+    () =>
+      list.flatMap((g) => [
+        `Winner of Game ${g.round}`,
+        `Loser of Game ${g.round}`,
+      ]),
+    [list]
+  );
 
   async function add(e) {
     e?.preventDefault?.();
@@ -74,7 +68,8 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
       <div>
         <p className="t-strong">Your own bracket</p>
         <p className="t-meta">
-          Add each game the director already made. Field and time can wait.
+          First games are team vs team. After those are in, the list also has
+          Winner of Game 1 and Loser of Game 1.
         </p>
       </div>
 
@@ -99,13 +94,15 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
             label="Team 1"
             value={team1}
             onChange={setTeam1}
-            options={options}
+            teams={teams}
+            fromGames={fromGames}
           />
           <Seat
             label="Team 2"
             value={team2}
             onChange={setTeam2}
-            options={options}
+            teams={teams}
+            fromGames={fromGames}
           />
           <label className="block min-w-0">
             <span className="t-label block mb-1">Field</span>
@@ -141,24 +138,32 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
   );
 }
 
-function Seat({ label, value, onChange, options }) {
-  const listId = `hand-seat-${label.replace(/\s+/g, "-")}`;
+function Seat({ label, value, onChange, teams, fromGames }) {
   return (
     <label className="block min-w-0">
       <span className="t-label block mb-1">{label}</span>
-      <input
+      <select
         className="form-field w-full"
-        list={listId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Team or Winner of Game 1"
         required
-      />
-      <datalist id={listId}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value} />
+      >
+        <option value="">Pick one…</option>
+        {teams.map((n) => (
+          <option key={`t-${n}`} value={n}>
+            {n}
+          </option>
         ))}
-      </datalist>
+        {fromGames.length > 0 ? (
+          <optgroup label="From an earlier game">
+            {fromGames.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+      </select>
     </label>
   );
 }
