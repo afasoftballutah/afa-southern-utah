@@ -46,6 +46,7 @@ export default function HandGames({
   const [gameNumber, setGameNumber] = useState(String(nextNumber));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [showDrawing, setShowDrawing] = useState(false);
 
   useEffect(() => {
     setGameNumber(String(nextNumber));
@@ -87,15 +88,24 @@ export default function HandGames({
 
   return (
     <div className="space-y-3">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="t-strong">Your own bracket</p>
-        <p className="t-meta">
-          First games are team vs team. After those are in, the list also has
-          Winner of Game 1 and Loser of Game 1.
-        </p>
+        {list.length > 0 ? (
+          <button
+            type="button"
+            className={showDrawing ? "btn-transient text-sm" : "btn-action"}
+            onClick={() => setShowDrawing((v) => !v)}
+          >
+            {showDrawing ? "Hide" : "Draw bracket"}
+          </button>
+        ) : null}
       </div>
+      <p className="t-meta">
+        First games are team vs team. After those are in, the list also has
+        Winner of Game 1 and Loser of Game 1.
+      </p>
 
-      {list.length > 0 ? (
+      {showDrawing && list.length > 0 ? (
         <DrawnBracket games={list} division={divisionName} />
       ) : null}
 
