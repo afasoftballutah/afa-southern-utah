@@ -4,7 +4,7 @@ import FeedAwareName from "@/components/ui/FeedAwareName";
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
 function roundLabel(_side, round) {
-  return `Game ${round}`;
+  return `G${round}`;
 }
 
 /** Read-only, public-facing grouped list — same anatomy the scorekeeper's

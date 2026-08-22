@@ -1,4 +1,5 @@
 import { getTournamentBasicsBySlug, getTournamentSchedule } from "@/lib/data";
+import { compactFeedLabel } from "@/lib/quickscores";
 
 // A SUBSCRIBABLE game-by-game feed (JD, 2026-07-25: "quickscores has a
 // subscribe link"). QuickScores' own copy makes the case better than we
@@ -88,16 +89,18 @@ export async function GET(request, { params }) {
   const vevents = games.flatMap((g) => {
     const start = new Date(g.scheduledTime);
     const end = new Date(start.getTime() + GAME_MINUTES * 60_000);
+    const t1 = compactFeedLabel(g.team1) ?? g.team1;
+    const t2 = compactFeedLabel(g.team2) ?? g.team2;
     const vs = g.isFinal
-      ? `${g.team1} ${g.score1}–${g.score2} ${g.team2}`
-      : `${g.team1} vs ${g.team2}`;
+      ? `${t1} ${g.score1}–${g.score2} ${t2}`
+      : `${t1} vs ${t2}`;
     const where = [g.field, venue].filter(Boolean).join(", ");
     const detail = [
       `${g.divisionName} · ${g.label}`,
       // Only name an opponent that exists. "vs Winner of Game 5" is
       // honest on a bracket sheet and useless in a calendar alert.
       team && isRealTeam(g.team1 === team ? g.team2 : g.team1)
-        ? `Opponent: ${g.team1 === team ? g.team2 : g.team1}`
+        ? `Opponent: ${compactFeedLabel(g.team1 === team ? g.team2 : g.team1)}`
         : null,
       `${origin}/tournaments/${slug}`,
     ]
@@ -113,8 +116,8 @@ export async function GET(request, { params }) {
       `LAST-MODIFIED:${dtstamp}`,
       `DTSTART:${icsTimestamp(start)}`,
       `DTEND:${icsTimestamp(end)}`,
-      // "Pool A: ..." already names itself; "Game 5: ..." does not — a
-      // calendar entry has to say WHICH bracket without the page open.
+      // "Pool A: ..." already names itself; "G5" does not — a calendar
+      // entry has to say WHICH bracket without the page open.
       fold(
         `SUMMARY:${icsEscape(
           `${g.label.startsWith("Pool") ? g.label : `${g.divisionName} ${g.label}`}: ${vs}`

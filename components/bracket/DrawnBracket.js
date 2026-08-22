@@ -830,7 +830,7 @@ export function computeLayout(games) {
 // is the same transcribed-list rendering the page showed before this
 // component existed. Only the DRAWN bracket's cells use the compact form.
 function fullCaption(g) {
-  return [`Game ${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · ");
+  return [`G${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · ");
 }
 
 // Compact caption for the drawn bracket ONLY — a 180-220px box has no room

@@ -48,19 +48,19 @@ test("generate3GG(9) reference sheet matches JD's order", () => {
   assert.equal(line(21), "W20 vs L20");
 });
 
-test("paper G#s label as Game 4, not Winners R4", () => {
+test("paper G#s label as G4, not Winners R4", () => {
   const paper = [
     { round: 1, bracket_side: "winners", status: "pending" },
     { round: 4, bracket_side: "winners", status: "pending" },
   ];
-  assert.equal(scheduleSlotLabel(paper, paper[1]), "Game 4");
+  assert.equal(scheduleSlotLabel(paper, paper[1]), "G4");
 
   const engine = [
-    { round: 1, bracket_side: "winners", status: "pending" },
-    { round: 1, bracket_side: "winners", status: "pending" },
-    { round: 2, bracket_side: "winners", status: "pending" },
+    { id: "a", round: 1, slot: 0, bracket_side: "winners", status: "pending", team1_name: "A", team2_name: "B" },
+    { id: "b", round: 1, slot: 1, bracket_side: "winners", status: "pending", team1_name: "C", team2_name: "D" },
+    { id: "c", round: 2, slot: 0, bracket_side: "winners", status: "pending", team1_name: "E", team2_name: "F" },
   ];
-  assert.equal(scheduleSlotLabel(engine, engine[2]), "Winners R2");
+  assert.equal(scheduleSlotLabel(engine, engine[2]), "G3");
 });
 
 test("3GG structure maps generate3GG into DrawnBracket language", () => {

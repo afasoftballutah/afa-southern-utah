@@ -211,7 +211,7 @@ export default function BracketMatchup({
         <span
           className="absolute left-[7px] top-[5px] z-[3] min-w-[18px] h-[14px] px-1 rounded inline-flex items-center justify-center text-[9px] font-bold tabular-nums text-white"
           style={{ background: badgeColor || "var(--afa-navy)" }}
-          title={`Game ${game.round}`}
+          title={`G${game.round}`}
         >
           {game.round}
         </span>
