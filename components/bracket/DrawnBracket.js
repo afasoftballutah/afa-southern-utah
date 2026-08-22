@@ -94,19 +94,31 @@ function feedersOf(game, byRound, roundByGameId) {
     .map((s) => s.round);
 }
 
-// Feeds that get a DRAWN LINE. Loser drops are deliberately not drawn
-// (JD, 2026-07-24, marking them up on a screenshot as "lines we don't
-// need"): a loser drop always crosses from the winners band to the losers
-// band, so it renders as a long vertical running the height of the whole
-// bracket, and several of them stack in the same gutter into one
-// meaningless stripe. The slot already SAYS "Loser of Game 4" in words —
-// drawing it too states the same fact twice, in the noisiest way
-// available. Loser feeds still drive column and row placement; they just
-// aren't inked.
+// Winner-of feeds that own the LAYOUT tree (computeBandRows). Loser-of
+// feeds still drive column depth via feedersOf; they just must not claim
+// the same children as the winner tree — 3GG lets one losers-band game
+// feed TWO later games (its winner AND its loser).
 function drawnFeedersOf(game, byRound, roundByGameId) {
   return parseSlots(game, byRound, roundByGameId)
     .filter((s) => s && s.type === "Winner")
     .map((s) => s.round);
+}
+
+// Feeds that get a DRAWN LINE. Winner-of always. Loser-of only when BOTH
+// games sit in the losers band (3GG: Loser of Game 7 still plays in Game
+// 10; survivor nets L9/L10). Winners-band → losers-band drops are the
+// long verticals JD marked as noise (2026-07-24) and stay behind "Show
+// loser paths" / computeDrops — the slot already says "Loser of Game 4".
+function inkedFeedsOf(game, byRound, roundByGameId, targetBand, rectByRound) {
+  return parseSlots(game, byRound, roundByGameId)
+    .filter((s) => {
+      if (!s) return false;
+      if (s.type === "Winner") return true;
+      if (s.type !== "Loser") return false;
+      const src = rectByRound.get(s.round);
+      return targetBand === "losers" && src?.band === "losers";
+    })
+    .map((s) => ({ round: s.round, result: s.type === "Loser" ? "loser" : "winner" }));
 }
 
 // Column (x) = longest-path depth from the feed graph, memoised DFS. A
@@ -420,10 +432,10 @@ function roundedPath(pts, r) {
  * not be drawn: drawn straight, they stacked into a stripe of parallel
  * verticals. Drawn like this they do not.
  *
- *   - Only OUT of the winners bracket. A losers-bracket game's loser is
- *     eliminated. The one other "loser of" edge is the grand final
- *     feeding the if-necessary game, which is a rematch, not a fall, and
- *     is drawn separately.
+ *   - Only OUT of the winners bracket (the long fall into losers). A
+ *     loser-of edge that stays inside the losers band is drawn with the
+ *     advancement connectors, not here. The if-necessary rematch is
+ *     drawn separately.
  *   - Each winners card in a column takes its own exit tick along its
  *     bottom edge, 1/(M+1), 2/(M+1)... where M counts WINNERS games in
  *     that column only. Four games in round 1 exit at a fifth, two
@@ -711,11 +723,9 @@ export function computeLayout(games) {
   //      horizontals still sit only at their own endpoints' Y — never at
   //      a third, made-up height. A vertical is never checked for
   //      clearance: it always runs inside a gutter, and a gutter never
-  //      holds a box. This is also exactly what draws a drop-down: a
-  //      winners-band game's LOSER feeding a losers-band game is just a
-  //      connector whose two endpoints sit in different bands, so the
-  //      vertical run naturally spans the band gap without any special
-  //      case.
+  //      holds a box. Same-band loser-of edges (3GG G7→G10) use this
+  //      routing too — they stay inside the losers band. Winners→losers
+  //      drops do not; those are computeDrops.
   const connectors = [];
   // Endpoints kept alongside the path strings so the markers can be drawn
   // without measuring the DOM: a server render has no getPointAtLength.
@@ -723,17 +733,25 @@ export function computeLayout(games) {
   const joggedFeeds = []; // feeds where the vertical had to move earlier than the gutter right before the destination — reported per brief step 2
   for (const r of rounds) {
     const target = rectByRound.get(r);
-    for (const f of drawnFeedersOf(byRound.get(r), byRound, roundByGameId)) {
+    for (const { round: f, result } of inkedFeedsOf(
+      byRound.get(r),
+      byRound,
+      roundByGameId,
+      target?.band,
+      rectByRound
+    )) {
       const source = rectByRound.get(f);
+      if (!source || !target) continue;
       const x1 = source.x + CELL_W;
       const y1 = source.y + BOX_H / 2;
       const x2 = target.x;
       const y2 = target.y + BOX_H / 2;
+      const end = { fromRound: f, toRound: r, result };
 
       if (Math.abs(y1 - y2) < 1) {
         // Rule 1 — same center, dead straight, no elbow at all.
         connectors.push(`M ${x1} ${Math.round(y1)} H ${Math.round(x2)}`);
-        connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: Math.round(x2), y: Math.round(y1) } });
+        connectorEnds.push({ ...end, a: { x: x1, y: Math.round(y1) }, b: { x: Math.round(x2), y: Math.round(y1) } });
         continue;
       }
 
@@ -743,7 +761,7 @@ export function computeLayout(games) {
         // vertical can go, so there is no clearance search to run.
         const gx = Math.round(x1 + GUTTER / 2);
         connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
-        connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
+        connectorEnds.push({ ...end, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
         continue;
       }
 
@@ -765,7 +783,7 @@ export function computeLayout(games) {
       const lastY1Depth = splitAt > 0 ? interveningDepths[splitAt - 1] : source.depth;
       const gx = Math.round(xForCol(lastY1Depth) + CELL_W + GUTTER / 2);
       connectors.push(`M ${x1} ${Math.round(y1)} H ${gx} V ${Math.round(y2)} H ${x2}`);
-      connectorEnds.push({ fromRound: f, toRound: r, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
+      connectorEnds.push({ ...end, a: { x: x1, y: Math.round(y1) }, b: { x: x2, y: Math.round(y2) } });
     }
   }
 
@@ -1010,7 +1028,15 @@ export default function DrawnBracket({
         )
       )
     : null;
-  const loseTo = focus ? layout.drops.find((d) => d.from === focus) : null;
+  const loseToDrop = focus ? layout.drops.find((d) => d.from === focus) : null;
+  const loseToSameBand = focus
+    ? layout.connectorEnds.find((e) => e.fromRound === focus && e.result === "loser")
+    : null;
+  const loseTo = loseToDrop
+    ? loseToDrop
+    : loseToSameBand
+      ? { from: loseToSameBand.fromRound, to: loseToSameBand.toRound }
+      : null;
   const focusRole = (round) =>
     round === focus || round === selectedRound ? "focus" : winTo && winTo.round === round ? "win" : loseTo && loseTo.to === round ? "lose" : focus ? "dim" : null;
 
@@ -1062,23 +1088,30 @@ export default function DrawnBracket({
   const LOSS_GLOW = "drop-shadow(0 0 5px rgba(200,42,54,.6))";
 
   const minePath = useMemo(() => {
-    if (mine.rounds.size === 0) return { connectors: new Set(), drops: new Set() };
+    if (mine.rounds.size === 0) {
+      return { connectors: new Set(), lossConnectors: new Set(), drops: new Set() };
+    }
     // A line belongs to a team only if THEY are the one who travelled it.
     // "Played both ends" was not enough: The Pliggas lost Silver game 15
     // and came back through the losers side, but 15 -> 18 is the WINNERS
     // advancement line — GWZ's route — and they played both games, so it
     // lit up as theirs (JD, 2026-07-26). An advancement line is only
-    // yours if you WON the game it leaves; a drop is only yours if you
-    // lost it.
+    // yours if you WON the game it leaves; a drop / same-band loser-of
+    // is only yours if you lost it.
     const connectors = new Set();
+    const lossConnectors = new Set();
     layout.connectorEnds.forEach((e, i) => {
-      if (mine.won.has(e.fromRound) && mine.rounds.has(e.toRound)) connectors.add(i);
+      if (e.result === "loser") {
+        if (mine.lost.has(e.fromRound) && mine.rounds.has(e.toRound)) lossConnectors.add(i);
+      } else if (mine.won.has(e.fromRound) && mine.rounds.has(e.toRound)) {
+        connectors.add(i);
+      }
     });
     const drops = new Set();
     layout.drops.forEach((d, i) => {
       if (mine.lost.has(d.from) && mine.rounds.has(d.to)) drops.add(i);
     });
-    return { connectors, drops };
+    return { connectors, lossConnectors, drops };
   }, [mine.won, mine.lost, mine.rounds, layout.connectorEnds, layout.drops]);
 
   // Bring that next game into view. The drawing is wider than any phone,
@@ -1230,23 +1263,37 @@ export default function DrawnBracket({
               />
             ))}
           {layout.connectors.map((d, i) => {
-            const from = layout.connectorEnds[i]?.fromRound;
+            const end = layout.connectorEnds[i];
+            const from = end?.fromRound;
+            const isLoserFeed = end?.result === "loser";
             const lit = focus != null && from === focus;
             // A followed team's own segment: thicker, and the rest of the
             // drawing steps back so the path reads as a line you can
             // follow rather than as one line among forty.
-            const isMine = minePath.connectors.has(i);
-            const stepBack = focus == null && minePath.connectors.size > 0 && !isMine;
+            const isMineWin = minePath.connectors.has(i);
+            const isMineLoss = minePath.lossConnectors.has(i);
+            const isMine = isMineWin || isMineLoss;
+            const hasMinePath =
+              minePath.connectors.size > 0 || minePath.lossConnectors.size > 0;
+            const stepBack = focus == null && hasMinePath && !isMine;
             return (
               <path
                 key={i}
                 d={d}
-                stroke="var(--afa-navy)"
-                strokeWidth={lit || isMine ? 2.5 : 1}
+                stroke={isMineLoss ? "var(--afa-red)" : "var(--afa-navy)"}
+                strokeWidth={lit || isMine ? 2.5 : isLoserFeed ? 1.6 : 1}
+                strokeDasharray={isLoserFeed ? "0.1 4" : undefined}
+                strokeLinecap={isLoserFeed ? "round" : undefined}
                 opacity={focus != null && !lit ? 0.08 : stepBack ? 0.25 : 1}
                 fill="none"
-                style={isMine ? { filter: WIN_GLOW } : undefined}
-                shapeRendering={lit || isMine ? undefined : "crispEdges"}
+                style={
+                  isMineLoss
+                    ? { filter: LOSS_GLOW }
+                    : isMineWin
+                      ? { filter: WIN_GLOW }
+                      : undefined
+                }
+                shapeRendering={lit || isMine || isLoserFeed ? undefined : "crispEdges"}
               />
             );
           })}
