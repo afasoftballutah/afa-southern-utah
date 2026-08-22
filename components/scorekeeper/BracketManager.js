@@ -9,7 +9,7 @@ import { isCompleteSeedOrder, normalizeSeedOrder } from "@/lib/bracket/seed-orde
 import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { forDrawnBracket } from "@/lib/bracket/for-drawn-bracket";
 import { isSurvivorPoolGame } from "@/lib/bracket/lives";
-import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import { formatGameWhenInput, parseGameWhenInput, defaultGameWhenInput } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
 import { directorPost } from "./DirectorForm";
 
@@ -278,7 +278,9 @@ function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged
   const [team2, setTeam2] = useState(() => seatKey(game, "2"));
   const [round, setRound] = useState(String(game.round ?? ""));
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
+  const [time, setTime] = useState(
+    formatGameWhenInput(game.scheduled_time, playDay) || defaultGameWhenInput(playDay)
+  );
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
   const [busy, setBusy] = useState(false);

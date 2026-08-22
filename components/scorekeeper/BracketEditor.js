@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
-import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import { formatGameWhenInput, parseGameWhenInput, defaultGameWhenInput } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
 
 // BracketEditor — the director's bracket. Same drawing the public sees,
@@ -79,7 +79,7 @@ export default function BracketEditor({ stages, playDay = null }) {
       s1: g.team1_score ?? "",
       s2: g.team2_score ?? "",
       field: g.field ?? "",
-      time: formatGameWhenInput(g.scheduled_time, playDay),
+      time: formatGameWhenInput(g.scheduled_time, playDay) || defaultGameWhenInput(playDay),
     });
   }
 

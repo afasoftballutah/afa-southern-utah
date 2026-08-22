@@ -11,6 +11,7 @@ import {
   formatLeagueTimeInputValue,
   formatGameWhenInput,
   parseGameWhenInput,
+  defaultGameWhenInput,
   knownPlayDay,
 } from "@/lib/league-time";
 
@@ -93,6 +94,15 @@ test("a known play day only asks for time", () => {
   assert.equal(
     knownPlayDay({ tournaments: { start_date: "2026-08-22", end_date: "2026-08-23" } }),
     null
+  );
+});
+
+test("an empty game clock starts on the hour", () => {
+  assert.equal(defaultGameWhenInput("2026-08-22"), "08:00");
+  assert.match(defaultGameWhenInput(null), /^\d{4}-\d{2}-\d{2}T08:00$/);
+  assert.equal(
+    parseGameWhenInput(defaultGameWhenInput("2026-08-22"), "2026-08-22").toISOString(),
+    parseGameWhenInput("08:00", "2026-08-22").toISOString()
   );
 });
 

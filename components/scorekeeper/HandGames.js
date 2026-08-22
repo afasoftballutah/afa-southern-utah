@@ -6,6 +6,7 @@ import { directorPost } from "./DirectorForm";
 import {
   formatGameWhenInput,
   parseGameWhenInput,
+  defaultGameWhenInput,
   formatLeagueShortTime,
 } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
@@ -35,7 +36,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [], play
   const [team1, setTeam1] = useState("");
   const [team2, setTeam2] = useState("");
   const [field, setField] = useState("");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(() => defaultGameWhenInput(playDay));
   const [gameNumber, setGameNumber] = useState(String(nextNumber));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +75,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [], play
     setTeam1("");
     setTeam2("");
     setField("");
-    setTime("");
+    setTime(defaultGameWhenInput(playDay));
     router.refresh();
   }
 
@@ -221,7 +222,9 @@ function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
   const [team1, setTeam1] = useState(game.team1_name || "");
   const [team2, setTeam2] = useState(game.team2_name || "");
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
+  const [time, setTime] = useState(
+    formatGameWhenInput(game.scheduled_time, playDay) || defaultGameWhenInput(playDay)
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
