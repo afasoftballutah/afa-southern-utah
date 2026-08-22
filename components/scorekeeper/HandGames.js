@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { directorPost } from "./DirectorForm";
-import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import {
+  formatGameWhenInput,
+  parseGameWhenInput,
+  formatLeagueShortTime,
+} from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
 
 /**
@@ -301,7 +305,7 @@ function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
           {game.team1_name || "—"} vs {game.team2_name || "—"}
         </span>
         <span className="t-meta shrink-0">
-          {[game.field, timeLabel(game.scheduled_time)].filter(Boolean).join(" · ")}
+          {[game.field, formatLeagueShortTime(game.scheduled_time, "")].filter(Boolean).join(" · ")}
         </span>
       </button>
       {open ? (
@@ -387,10 +391,4 @@ function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
   );
 }
 
-function timeLabel(iso) {
-  if (!iso) return "";
-  const v = formatLeagueInputValue(iso);
-  if (!v) return "";
-  const [d, t] = v.split("T");
-  return t ? `${d} ${t}` : d;
-}
+
