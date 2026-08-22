@@ -10,6 +10,7 @@ import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { forDrawnBracket } from "@/lib/bracket/for-drawn-bracket";
 import { isSurvivorPoolGame } from "@/lib/bracket/lives";
 import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
+import { directorPost } from "./DirectorForm";
 
 const FORMATS = [
   { value: "three_gg_hybrid", label: "3GG" },
@@ -257,6 +258,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
   const [expanded, setExpanded] = useState(false);
   const [team1, setTeam1] = useState(() => seatKey(game, "1"));
   const [team2, setTeam2] = useState(() => seatKey(game, "2"));
+  const [round, setRound] = useState(String(game.round ?? ""));
   const [field, setField] = useState(game.field || "");
   const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
   const [score1, setScore1] = useState(game.team1_score ?? "");
@@ -299,6 +301,14 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
     setBusy(true);
     setError("");
     try {
+      if (String(round) !== String(game.round)) {
+        const numbered = await directorPost({
+          action: "setHandGameNumber",
+          gameId: game.id,
+          gameNumber: Number(round),
+        });
+        if (numbered.error) throw new Error(numbered.error);
+      }
       const res = await fetch(`/api/scorekeeper/games/${game.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -395,6 +405,16 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
           )}
 
           <div className="grid grid-cols-2 gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              step="1"
+              className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+              aria-label="Game number"
+              value={round}
+              onChange={(e) => setRound(e.target.value)}
+            />
             <input
               className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
               placeholder="Field"

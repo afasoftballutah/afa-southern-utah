@@ -1761,26 +1761,19 @@ export async function POST(request) {
       if (!Number.isInteger(n) || n < 1) return bad("Game number has to be a whole number, 1 or more.");
       const { data: game, error: findErr } = await supabase
         .from("games")
-        .select("id, division_id, round")
+        .select("id, division_id, round, bracket_group, bracket_side, slot")
         .eq("id", gameId)
         .maybeSingle();
       if (findErr || !game) return bad("Game not found", 404);
-      const { data: generated } = await supabase
-        .from("brackets")
-        .select("id")
-        .eq("division_id", game.division_id)
-        .eq("bracket_group", "main")
-        .maybeSingle();
-      if (generated) return bad("Generated brackets keep their own game numbers.");
       if (game.round === n) return Response.json({ ok: true, round: n });
       const { data: clash } = await supabase
         .from("games")
         .select("id")
         .eq("division_id", game.division_id)
-        .eq("bracket_group", "main")
-        .eq("bracket_side", "winners")
+        .eq("bracket_group", game.bracket_group)
+        .eq("bracket_side", game.bracket_side)
         .eq("round", n)
-        .eq("slot", 1)
+        .eq("slot", game.slot)
         .maybeSingle();
       if (clash) return bad(`Game ${n} is already on this bracket.`);
       const { error: updErr } = await supabase
