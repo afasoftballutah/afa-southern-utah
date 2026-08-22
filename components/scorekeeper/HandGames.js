@@ -183,16 +183,19 @@ function seatFromName(raw, games, selfId) {
 }
 
 function Seat({ label, value, onChange, teams, fromGames }) {
+  const extra =
+    value && !teams.includes(value) && !fromGames.includes(value) ? value : null;
   return (
     <label className="block min-w-0">
       <span className="t-label block mb-1">{label}</span>
       <select
-        className="form-field w-full"
+        className="form-field w-full min-h-11 text-base bg-white appearance-auto"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required
       >
         <option value="">Pick one…</option>
+        {extra ? <option value={extra}>{extra}</option> : null}
         {teams.map((n) => (
           <option key={`t-${n}`} value={n}>
             {n}

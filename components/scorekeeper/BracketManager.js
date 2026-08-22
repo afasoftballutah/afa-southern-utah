@@ -272,11 +272,6 @@ function parseSeat(value, games) {
   return { name: name || null, sourceId: null, sourceResult: null };
 }
 
-function seatDisplay(value, games) {
-  const parsed = parseSeat(value, games);
-  return parsed.name || "";
-}
-
 function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged }) {
   const [expanded, setExpanded] = useState(false);
   const [team1, setTeam1] = useState(() => seatKey(game, "1"));
@@ -499,28 +494,33 @@ function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged
 
 function TeamSelect({ value, onChange, teamNames, games = [], exceptId, side }) {
   const fromGames = (games ?? []).filter((g) => g.id !== exceptId && g.status !== "cancelled");
-  const listId = `teams-${exceptId}-${side}`;
+  const known = new Set((teamNames ?? []).map(String));
+  const extra =
+    value && !String(value).startsWith("__") && !known.has(value) ? value : null;
   return (
-    <>
-      <input
-        className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
-        list={listId}
-        value={seatDisplay(value, games)}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={side === "1" ? "Team 1" : "Team 2"}
-        placeholder="Team name"
-      />
-      <datalist id={listId}>
-        {(teamNames ?? []).map((name) => (
-          <option key={name} value={name} />
-        ))}
-        {fromGames.map((g) => (
-          <Fragment key={g.id}>
-            <option value={`Winner of Game ${g.round}`} />
-            <option value={`Loser of Game ${g.round}`} />
-          </Fragment>
-        ))}
-      </datalist>
-    </>
+    <select
+      className="w-full min-h-11 border border-afa-navy/30 rounded px-2 py-2 text-base bg-white"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={side === "1" ? "Team 1" : "Team 2"}
+    >
+      <option value="">—</option>
+      {extra ? <option value={extra}>{extra}</option> : null}
+      {(teamNames ?? []).map((name) => (
+        <option key={name} value={name}>
+          {name}
+        </option>
+      ))}
+      {fromGames.length > 0 ? (
+        <optgroup label="From an earlier game">
+          {fromGames.map((g) => (
+            <Fragment key={g.id}>
+              <option value={`__winner:${g.id}`}>Winner of Game {g.round}</option>
+              <option value={`__loser:${g.id}`}>Loser of Game {g.round}</option>
+            </Fragment>
+          ))}
+        </optgroup>
+      ) : null}
+    </select>
   );
 }
