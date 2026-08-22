@@ -258,6 +258,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
           games={data.games}
           teamNames={data.teamNames}
           playDay={playDay}
+          divisionName={data.division.display_name || data.division.name}
         />
       ) : null}
       {/* No-pool path: generated-bracket tools (not under StageView). */}

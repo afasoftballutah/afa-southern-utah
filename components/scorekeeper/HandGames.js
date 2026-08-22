@@ -9,12 +9,19 @@ import {
   formatLeagueShortTime,
 } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
+import DrawnBracket from "@/components/bracket/DrawnBracket";
 
 /**
  * Director-typed bracket. No Generate. Each game is one line the way they
  * already wrote it on paper: two sides, a field, a time.
  */
-export default function HandGames({ divisionId, games = [], teamNames = [], playDay = null }) {
+export default function HandGames({
+  divisionId,
+  games = [],
+  teamNames = [],
+  playDay = null,
+  divisionName = "Bracket",
+}) {
   const router = useRouter();
   const list = useMemo(
     () => [...games].sort((a, b) => (a.round ?? 0) - (b.round ?? 0)),
@@ -87,6 +94,10 @@ export default function HandGames({ divisionId, games = [], teamNames = [], play
           Winner of Game 1 and Loser of Game 1.
         </p>
       </div>
+
+      {list.length > 0 ? (
+        <DrawnBracket games={list} division={divisionName} />
+      ) : null}
 
       {list.length > 0 ? (
         <div className="space-y-2">
