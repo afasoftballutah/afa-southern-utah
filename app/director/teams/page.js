@@ -12,11 +12,11 @@ export const metadata = { title: "Teams — Director" };
 const COLUMNS = [
   { key: "name", label: "Team" },
   { key: "class", label: "Class", width: "4.5rem" },
-  { key: "division", label: "Division", width: "5.5rem" },
+  { key: "division", label: "Division", hideBelow: "sm", width: "5.5rem" },
   { key: "manager", label: "Manager", hideBelow: "sm", width: "10rem" },
   { key: "email", label: "Email", hideBelow: "sm", width: "16rem" },
   { key: "phone", label: "Phone", hideBelow: "sm", width: "9rem" },
-  { key: "events", label: "Events", align: "right", width: "4.5rem" },
+  { key: "events", label: "Events", align: "right", hideBelow: "sm", width: "4.5rem" },
   { key: "balance", label: "Balance", align: "right", width: "5.5rem" },
 ];
 

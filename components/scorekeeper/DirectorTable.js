@@ -264,7 +264,8 @@ export default function DirectorTable({
               cant be ellipsis... shrink the fonts as needed"). */}
           <table
             className={
-              "w-full text-[14px] leading-snug" + (fixed ? " table-fixed" : "")
+              "w-full text-[14px] leading-snug" +
+              (fixed ? " table-auto sm:table-fixed" : "")
             }
           >
             <thead>
@@ -290,7 +291,9 @@ export default function DirectorTable({
                       (c.align === "right" ? "text-right " : c.align === "center" ? "text-center " : "text-left ") +
                       (c.hideBelow === "sm" ? "hidden sm:table-cell " : "")
                     }
-                    style={c.width ? { width: c.width } : undefined}
+                    style={
+                      c.width && !c.hideBelow ? { width: c.width } : undefined
+                    }
                   >
                     <button
                       type="button"
@@ -347,7 +350,10 @@ export default function DirectorTable({
                           <td
                             key={c.key}
                             className={
-                              "px-3 py-1.5 whitespace-nowrap " +
+                              "px-3 py-1.5 overflow-hidden " +
+                              (i === 0
+                                ? "min-w-0 break-words "
+                                : "whitespace-nowrap ") +
                               (c.align === "right"
                                 ? "text-right tabular-nums "
                                 : c.align === "center"
