@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
-import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
+import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import GameWhenInput from "./GameWhenInput";
 
 // BracketEditor — the director's bracket. Same drawing the public sees,
 // but tapping a game opens it for editing instead of showing what happens
@@ -50,7 +51,7 @@ function findConflicts(allGames) {
   return clashing;
 }
 
-export default function BracketEditor({ stages }) {
+export default function BracketEditor({ stages, playDay = null }) {
   const router = useRouter();
   const [shownId, setShownId] = useState(stages?.[0]?.id ?? null);
   const [selected, setSelected] = useState(null); // game row
@@ -78,7 +79,7 @@ export default function BracketEditor({ stages }) {
       s1: g.team1_score ?? "",
       s2: g.team2_score ?? "",
       field: g.field ?? "",
-      time: formatLeagueInputValue(g.scheduled_time),
+      time: formatGameWhenInput(g.scheduled_time, playDay),
     });
   }
 
@@ -116,7 +117,7 @@ export default function BracketEditor({ stages }) {
     try {
       await post(`/api/scorekeeper/games/${selected.id}`, {
         field: draft.field || null,
-        scheduledTime: parseLeagueInputValue(draft.time)?.toISOString() ?? null,
+        scheduledTime: parseGameWhenInput(draft.time, playDay)?.toISOString() ?? null,
       });
       setSelected(null);
       router.refresh();
@@ -289,11 +290,11 @@ export default function BracketEditor({ stages }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold">Time</span>
-                <input
-                  type="datetime-local"
-                  className="w-full rounded border border-afa-navy/30 px-2"
+                <GameWhenInput
+                  playDay={playDay}
                   value={draft.time}
-                  onChange={(e) => setDraft((d) => ({ ...d, time: e.target.value }))}
+                  onChange={(time) => setDraft((d) => ({ ...d, time }))}
+                  className="w-full rounded border border-afa-navy/30 px-2"
                 />
               </label>
               <button

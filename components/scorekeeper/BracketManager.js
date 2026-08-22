@@ -9,7 +9,8 @@ import { isCompleteSeedOrder, normalizeSeedOrder } from "@/lib/bracket/seed-orde
 import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { forDrawnBracket } from "@/lib/bracket/for-drawn-bracket";
 import { isSurvivorPoolGame } from "@/lib/bracket/lives";
-import { formatLeagueInputValue, parseLeagueInputValue } from "@/lib/league-time";
+import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import GameWhenInput from "./GameWhenInput";
 import { directorPost } from "./DirectorForm";
 
 const FORMATS = [
@@ -31,6 +32,7 @@ export default function BracketManager({
   completion,
   tournamentSlug = null,
   divisionName = "Draft",
+  playDay = null,
 }) {
   const router = useRouter();
   const poolDerived = useMemo(() => seedOrderFromPools(poolGames), [poolGames]);
@@ -183,6 +185,7 @@ export default function BracketManager({
             games={mainGames}
             draft={mainDraft}
             teamNames={teams}
+            playDay={playDay}
             onChanged={() => router.refresh()}
           />
           {consolationBracket && consolationGames.length > 0 && (
@@ -190,6 +193,7 @@ export default function BracketManager({
               games={consolationGames}
               draft={consolationDraft}
               teamNames={teams}
+              playDay={playDay}
               onChanged={() => router.refresh()}
             />
           )}
@@ -199,7 +203,7 @@ export default function BracketManager({
   );
 }
 
-function ScoreList({ games, draft, teamNames, onChanged }) {
+function ScoreList({ games, draft, teamNames, playDay, onChanged }) {
   const sorted = useMemo(() => {
     const sideRank = { winners: 0, losers: 1, final: 2 };
     return [...(games ?? [])].sort((a, b) => {
@@ -220,6 +224,7 @@ function ScoreList({ games, draft, teamNames, onChanged }) {
           games={sorted}
           teamNames={teamNames}
           draft={draft}
+          playDay={playDay}
           onChanged={onChanged}
         />
       ))}
@@ -272,13 +277,13 @@ function seatDisplay(value, games) {
   return parsed.name || "";
 }
 
-function GameRow({ game, games = [], teamNames, draft, onChanged }) {
+function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged }) {
   const [expanded, setExpanded] = useState(false);
   const [team1, setTeam1] = useState(() => seatKey(game, "1"));
   const [team2, setTeam2] = useState(() => seatKey(game, "2"));
   const [round, setRound] = useState(String(game.round ?? ""));
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
+  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
   const [busy, setBusy] = useState(false);
@@ -332,7 +337,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           field: field || null,
-          scheduledTime: parseLeagueInputValue(time)?.toISOString() ?? null,
+          scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
         }),
       });
       const json = await res.json();
@@ -441,12 +446,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
               value={field}
               onChange={(e) => setField(e.target.value)}
             />
-            <input
-              type="datetime-local"
-              className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
+            <GameWhenInput playDay={playDay} value={time} onChange={setTime} />
             <button
               type="button"
               onClick={saveSchedule}

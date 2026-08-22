@@ -57,6 +57,7 @@ export default function StageView({
   bracketPanel = null,
   /** Prefer opening on Bracket after first generate */
   preferBracket = false,
+  playDay = null,
 }) {
   const router = useRouter();
   const confirmed = Boolean(confirmedAt);
@@ -171,7 +172,7 @@ export default function StageView({
             </p>
           )}
           {bracketPanel}
-          {hasChildStages && <BracketEditor stages={stages} />}
+          {hasChildStages && <BracketEditor stages={stages} playDay={playDay} />}
           {!bracketPanel && !hasChildStages && (
             <p className="t-meta">No bracket yet — generate one or finish seeding into stages.</p>
           )}

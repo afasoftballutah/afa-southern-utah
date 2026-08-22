@@ -8,6 +8,10 @@ import {
   formatLeagueDateOnly,
   formatLeagueDateTime,
   formatLeagueSignedAt,
+  formatLeagueTimeInputValue,
+  formatGameWhenInput,
+  parseGameWhenInput,
+  knownPlayDay,
 } from "@/lib/league-time";
 
 // W14: five of thirteen date-render sites read the BROWSER's zone, so one
@@ -71,6 +75,25 @@ test("a signed instant reads as a Mountain wall clock, not the browser zone", ()
   assert.equal(formatLeagueDateTime("2026-08-11T01:14:00Z"), "Aug 10, 2026, 7:14 PM MT");
   assert.equal(formatLeagueSignedAt("2026-08-11T01:14:00Z"), "Aug 10, 7:14p");
   assert.equal(formatLeagueDateTime("2026-01-15T02:14:00Z"), "Jan 14, 2026, 7:14 PM MT");
+});
+
+test("a known play day only asks for time", () => {
+  assert.equal(formatLeagueTimeInputValue("2026-07-15T01:00:00Z"), "19:00");
+  assert.equal(formatGameWhenInput("2026-07-15T01:00:00Z", "2026-07-14"), "19:00");
+  assert.equal(formatGameWhenInput("2026-07-15T01:00:00Z", null), "2026-07-14T19:00");
+  assert.equal(
+    parseGameWhenInput("19:00", "2026-07-14").toISOString(),
+    "2026-07-15T01:00:00.000Z"
+  );
+  assert.equal(knownPlayDay({ day_date: "2026-08-22" }), "2026-08-22");
+  assert.equal(
+    knownPlayDay({ tournaments: { start_date: "2026-08-22", end_date: "2026-08-22" } }),
+    "2026-08-22"
+  );
+  assert.equal(
+    knownPlayDay({ tournaments: { start_date: "2026-08-22", end_date: "2026-08-23" } }),
+    null
+  );
 });
 
 test("missing and malformed values render as blanks, not Invalid Date", () => {

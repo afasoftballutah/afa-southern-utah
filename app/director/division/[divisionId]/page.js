@@ -13,6 +13,7 @@ import HandGames from "@/components/scorekeeper/HandGames";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
 import ScoreTable from "@/components/scorekeeper/ScoreTable";
+import { knownPlayDay } from "@/lib/league-time";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Division — Director" };
@@ -25,7 +26,7 @@ async function loadDivisionData(divisionId) {
   // identically, which is what lets this ship before the migration runs.
   const { data: division, error } = await supabase
     .from("divisions")
-    .select("*, tournaments(name, slug)")
+    .select("*, tournaments(name, slug, start_date, end_date)")
     .eq("id", divisionId)
     .maybeSingle();
   if (error || !division) return null;
@@ -187,6 +188,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
 
   const openPool = stillToPlayIn(data.poolGames);
   const openBracket = stillToPlayIn(data.games);
+  const playDay = knownPlayDay(data.division);
 
   return (
     <div className="space-y-4">
@@ -228,6 +230,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
           stages={data.stages}
           confirmedAt={data.confirmedAt}
           preferBracket={Boolean(data.mainBracket)}
+          playDay={playDay}
           bracketPanel={
             data.mainBracket || generatable ? (
               <BracketManager
@@ -243,6 +246,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
                 completion={data.completion}
                 tournamentSlug={data.division.tournaments?.slug}
                 divisionName={data.division.display_name || data.division.name}
+                playDay={playDay}
               />
             ) : null
           }
@@ -253,6 +257,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
           divisionId={divisionId}
           games={data.games}
           teamNames={data.teamNames}
+          playDay={playDay}
         />
       ) : null}
       {/* No-pool path: generated-bracket tools (not under StageView). */}
@@ -270,6 +275,7 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
           completion={data.completion}
           tournamentSlug={data.division.tournaments?.slug}
           divisionName={data.division.display_name || data.division.name}
+          playDay={playDay}
         />
       )}
 

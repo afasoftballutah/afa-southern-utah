@@ -3,16 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { directorPost } from "./DirectorForm";
-import {
-  formatLeagueInputValue,
-  parseLeagueInputValue,
-} from "@/lib/league-time";
+import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
+import GameWhenInput from "./GameWhenInput";
 
 /**
  * Director-typed bracket. No Generate. Each game is one line the way they
  * already wrote it on paper: two sides, a field, a time.
  */
-export default function HandGames({ divisionId, games = [], teamNames = [] }) {
+export default function HandGames({ divisionId, games = [], teamNames = [], playDay = null }) {
   const router = useRouter();
   const list = useMemo(
     () => [...games].sort((a, b) => (a.round ?? 0) - (b.round ?? 0)),
@@ -62,7 +60,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
       team2Name: team2,
       gameNumber,
       field,
-      scheduledTime: parseLeagueInputValue(time)?.toISOString() ?? null,
+      scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
     });
     setBusy(false);
     if (res.error) {
@@ -94,6 +92,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
               game={g}
               games={list}
               teamNames={teams}
+              playDay={playDay}
               onChanged={() => router.refresh()}
             />
           ))}
@@ -139,15 +138,13 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
               placeholder="optional"
             />
           </label>
-          <label className="block min-w-0">
-            <span className="t-label block mb-1">Time</span>
-            <input
-              type="datetime-local"
-              className="form-field w-full"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </label>
+          <GameWhenInput
+            playDay={playDay}
+            value={time}
+            onChange={setTime}
+            className="form-field w-full"
+            label="Time"
+          />
         </div>
         {error ? (
           <p className="text-afa-ink font-bold underline text-sm">{error}</p>
@@ -211,13 +208,13 @@ function Seat({ label, value, onChange, teams, fromGames }) {
   );
 }
 
-function HandGameLine({ game, games, teamNames, onChanged }) {
+function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
   const [open, setOpen] = useState(false);
   const [round, setRound] = useState(String(game.round ?? ""));
   const [team1, setTeam1] = useState(game.team1_name || "");
   const [team2, setTeam2] = useState(game.team2_name || "");
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
+  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -266,7 +263,7 @@ function HandGameLine({ game, games, teamNames, onChanged }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           field: field || null,
-          scheduledTime: parseLeagueInputValue(time)?.toISOString() ?? null,
+          scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
         }),
       });
       const json = await res.json();
@@ -359,11 +356,11 @@ function HandGameLine({ game, games, teamNames, onChanged }) {
             value={field}
             onChange={(e) => setField(e.target.value)}
           />
-          <input
-            type="datetime-local"
-            className="form-field w-full"
+          <GameWhenInput
+            playDay={playDay}
             value={time}
-            onChange={(e) => setTime(e.target.value)}
+            onChange={setTime}
+            className="form-field w-full"
           />
           <button
             type="button"
