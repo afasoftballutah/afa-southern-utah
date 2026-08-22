@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { directorPost } from "./DirectorForm";
 import {
@@ -23,12 +23,24 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
     [teamNames]
   );
 
+  const nextNumber = useMemo(() => {
+    const used = new Set(list.map((g) => g.round));
+    let n = 1;
+    while (used.has(n)) n += 1;
+    return n;
+  }, [list]);
+
   const [team1, setTeam1] = useState("");
   const [team2, setTeam2] = useState("");
   const [field, setField] = useState("");
   const [time, setTime] = useState("");
+  const [gameNumber, setGameNumber] = useState(String(nextNumber));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setGameNumber(String(nextNumber));
+  }, [nextNumber]);
 
   const fromGames = useMemo(
     () =>
@@ -48,6 +60,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
       divisionId,
       team1Name: team1,
       team2Name: team2,
+      gameNumber,
       field,
       scheduledTime: parseLeagueInputValue(time)?.toISOString() ?? null,
     });
@@ -86,10 +99,21 @@ export default function HandGames({ divisionId, games = [], teamNames = [] }) {
       ) : null}
 
       <form className="card p-4 space-y-3" onSubmit={add}>
-        <p className="t-label">
-          Game {(list[list.length - 1]?.round ?? 0) + 1}
-        </p>
         <div className="grid gap-2 sm:grid-cols-2">
+          <label className="block min-w-0">
+            <span className="t-label block mb-1">Game #</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              step="1"
+              className="form-field w-full"
+              value={gameNumber}
+              onChange={(e) => setGameNumber(e.target.value)}
+              required
+            />
+          </label>
+          <div className="hidden sm:block" />
           <Seat
             label="Team 1"
             value={team1}
@@ -170,6 +194,7 @@ function Seat({ label, value, onChange, teams, fromGames }) {
 
 function HandGameLine({ game, onChanged }) {
   const [open, setOpen] = useState(false);
+  const [round, setRound] = useState(String(game.round ?? ""));
   const [field, setField] = useState(game.field || "");
   const [time, setTime] = useState(formatLeagueInputValue(game.scheduled_time));
   const [busy, setBusy] = useState(false);
@@ -179,6 +204,14 @@ function HandGameLine({ game, onChanged }) {
     setBusy(true);
     setError("");
     try {
+      if (String(round) !== String(game.round)) {
+        const numbered = await directorPost({
+          action: "setHandGameNumber",
+          gameId: game.id,
+          gameNumber: Number(round),
+        });
+        if (numbered.error) throw new Error(numbered.error);
+      }
       const res = await fetch(`/api/scorekeeper/games/${game.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -227,8 +260,20 @@ function HandGameLine({ game, onChanged }) {
       </button>
       {open ? (
         <div className="grid gap-2 sm:grid-cols-2 pt-2 border-t border-afa-navy/10">
+          <label className="block min-w-0">
+            <span className="t-label block mb-1">Game #</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              step="1"
+              className="form-field w-full"
+              value={round}
+              onChange={(e) => setRound(e.target.value)}
+            />
+          </label>
           <input
-            className="form-field w-full"
+            className="form-field w-full self-end"
             placeholder="Field"
             value={field}
             onChange={(e) => setField(e.target.value)}
@@ -245,7 +290,7 @@ function HandGameLine({ game, onChanged }) {
             disabled={busy}
             onClick={saveSchedule}
           >
-            Save schedule
+            Save
           </button>
           <button
             type="button"

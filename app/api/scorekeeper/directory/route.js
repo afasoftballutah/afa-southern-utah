@@ -1644,7 +1644,9 @@ export async function POST(request) {
         .order("round", { ascending: false });
       if (existErr) return bad("Could not load games", 500);
       const byRound = new Map((existing ?? []).map((g) => [g.round, g.id]));
-      const nextRound = ((existing ?? [])[0]?.round ?? 0) + 1;
+      const used = [...byRound.keys()];
+      let nextRound = 1;
+      while (used.includes(nextRound)) nextRound += 1;
 
       function seat(raw) {
         const name = String(raw ?? "").trim();
@@ -1656,7 +1658,6 @@ export async function POST(request) {
           const n = Number(ref[1]);
           const id = byRound.get(n);
           if (!id) return { error: `Game ${n} is not on this bracket yet.` };
-          if (n >= nextRound) return { error: `Game ${n} is not on this bracket yet.` };
           return {
             name: `${win ? "Winner" : "Loser"} of Game ${n}`,
             sourceId: id,
@@ -1679,11 +1680,19 @@ export async function POST(request) {
         scheduled_time = d.toISOString();
       }
 
+      let round = nextRound;
+      if (body.gameNumber != null && String(body.gameNumber).trim() !== "") {
+        const n = Number(body.gameNumber);
+        if (!Number.isInteger(n) || n < 1) return bad("Game number has to be a whole number, 1 or more.");
+        if (byRound.has(n)) return bad(`Game ${n} is already on this bracket.`);
+        round = n;
+      }
+
       const row = {
         division_id: divisionId,
         bracket_group: "main",
         bracket_side: "winners",
-        round: nextRound,
+        round,
         slot: 1,
         team1_name: left.name,
         team2_name: right.name,
@@ -1740,6 +1749,68 @@ export async function POST(request) {
       const { error: delErr } = await supabase.from("games").delete().eq("id", gameId);
       if (delErr) return bad("Could not remove that game", 500);
       return Response.json({ ok: true });
+    }
+
+    case "setHandGameNumber": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const gameId = body.gameId;
+      const n = Number(body.gameNumber);
+      if (!gameId) return bad("Which game?");
+      if (!Number.isInteger(n) || n < 1) return bad("Game number has to be a whole number, 1 or more.");
+      const { data: game, error: findErr } = await supabase
+        .from("games")
+        .select("id, division_id, round")
+        .eq("id", gameId)
+        .maybeSingle();
+      if (findErr || !game) return bad("Game not found", 404);
+      const { data: generated } = await supabase
+        .from("brackets")
+        .select("id")
+        .eq("division_id", game.division_id)
+        .eq("bracket_group", "main")
+        .maybeSingle();
+      if (generated) return bad("Generated brackets keep their own game numbers.");
+      if (game.round === n) return Response.json({ ok: true, round: n });
+      const { data: clash } = await supabase
+        .from("games")
+        .select("id")
+        .eq("division_id", game.division_id)
+        .eq("bracket_group", "main")
+        .eq("bracket_side", "winners")
+        .eq("round", n)
+        .eq("slot", 1)
+        .maybeSingle();
+      if (clash) return bad(`Game ${n} is already on this bracket.`);
+      const { error: updErr } = await supabase
+        .from("games")
+        .update({ round: n, updated_at: new Date().toISOString() })
+        .eq("id", gameId);
+      if (updErr) return bad("Could not change that number", 500);
+      const { data: deps } = await supabase
+        .from("games")
+        .select("id, team1_name, team2_name, team1_source_game_id, team2_source_game_id")
+        .or(`team1_source_game_id.eq.${gameId},team2_source_game_id.eq.${gameId}`);
+      for (const dep of deps ?? []) {
+        const patch = { updated_at: new Date().toISOString() };
+        if (dep.team1_source_game_id === gameId) {
+          patch.team1_name = String(dep.team1_name ?? "").replace(
+            /^(Winner|Loser) of Game \d+$/i,
+            `$1 of Game ${n}`
+          );
+        }
+        if (dep.team2_source_game_id === gameId) {
+          patch.team2_name = String(dep.team2_name ?? "").replace(
+            /^(Winner|Loser) of Game \d+$/i,
+            `$1 of Game ${n}`
+          );
+        }
+        if (Object.keys(patch).length > 1) {
+          await supabase.from("games").update(patch).eq("id", dep.id);
+        }
+      }
+      return Response.json({ ok: true, round: n });
     }
 
     default:
