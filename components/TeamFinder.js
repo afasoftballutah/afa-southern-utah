@@ -5,6 +5,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { teamSlug } from "@/lib/teams";
 import Chip from "@/components/ui/Chip";
+import FeedAwareName from "@/components/ui/FeedAwareName";
 import { readMe, writeMe } from "@/lib/me";
 
 // The bracket a team finished in, tinted as itself — the same three
@@ -264,7 +265,7 @@ export default function TeamFinder({
                         phone it was the difference between one line and
                         two (JD, 2026-07-26). */}
                     <span className="team-name min-w-0 truncate font-semibold" title={opponent}>
-                      {opponent}
+                      <FeedAwareName name={opponent} />
                     </span>
                     <span className="whitespace-nowrap text-right text-xs text-afa-muted">
                       {g.whenShort?.time}

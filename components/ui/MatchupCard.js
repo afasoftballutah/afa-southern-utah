@@ -13,6 +13,8 @@
 // seed refs and source games and carries the drop colours, none of which
 // exist outside the drawing. This is the same recipe with plain props.
 
+import FeedAwareName from "@/components/ui/FeedAwareName";
+
 const GROUND = {
   Gold: "#fbf6e6",
   Silver: "#f4f6f9",
@@ -53,7 +55,7 @@ function Pill({ name, seed, score, won, waiting, medal }) {
         style={waiting ? undefined : { fontWeight: won ? 700 : 400 }}
       >
         {seed && <span className="text-[11.5px] font-bold text-afa-muted">[{seed}] </span>}
-        {name ?? "TBD"}
+        <FeedAwareName name={name} />
       </span>
       {score != null && (
         <span

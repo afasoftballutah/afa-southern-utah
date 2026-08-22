@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseBracketResults, parsePoolResults, parsePlacements, normalizeTeam,
-         stripSeedPrefix, isPlaceholderName } from "@/lib/quickscores";
+         stripSeedPrefix, isPlaceholderName, compactFeedLabel } from "@/lib/quickscores";
 import { fixture } from "./load.mjs";
 
 // Saved from the live pages the hourly sync reads. If QuickScores changes
@@ -56,4 +56,11 @@ test("a provenance placeholder is not a team", () => {
   assert.ok(isPlaceholderName("Winner of Game 5"));
   assert.ok(isPlaceholderName("Loser of Game 12"));
   assert.ok(!isPlaceholderName("Backwards K"));
+});
+
+test("phone schedule lists compact Winner/Loser of Game N to W-G# / L-G#", () => {
+  assert.equal(compactFeedLabel("Winner of Game 1"), "W-G1");
+  assert.equal(compactFeedLabel("Loser of Game 10"), "L-G10");
+  assert.equal(compactFeedLabel("Dirtbags"), "Dirtbags");
+  assert.equal(compactFeedLabel(null), null);
 });

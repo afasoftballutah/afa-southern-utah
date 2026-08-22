@@ -1,3 +1,5 @@
+import FeedAwareName from "@/components/ui/FeedAwareName";
+
 // Matchup — the bracket tree's own vocabulary (afa-bracket-tree-spec.md),
 // lifted out to a shared component (dispatch-brief-12) so a matchup reads
 // the same way everywhere it appears: an optional caption, then the two
@@ -41,7 +43,7 @@ export default function Matchup({
       <div className={`divide-y divide-afa-navy/10${caption ? " mt-2" : ""}`}>
         <div className="flex items-center justify-between gap-2 py-1.5">
           <span className={`team-name text-sm min-w-0 truncate ${team1Highlighted ? "font-semibold" : "font-normal"}`}>
-            {team1 ?? "TBD"}
+            <FeedAwareName name={team1} />
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team1Won ? "font-semibold" : ""}`}>
             {isFinal ? score1 : ""}
@@ -49,7 +51,7 @@ export default function Matchup({
         </div>
         <div className="flex items-center justify-between gap-2 py-1.5">
           <span className={`team-name text-sm min-w-0 truncate ${team2Highlighted ? "font-semibold" : "font-normal"}`}>
-            {team2 ?? "TBD"}
+            <FeedAwareName name={team2} />
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team2Won ? "font-semibold" : ""}`}>
             {isFinal ? score2 : ""}

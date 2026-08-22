@@ -1,4 +1,5 @@
 import { splitSides, isGf2Dashed, slotText } from "@/lib/bracket/tree";
+import FeedAwareName from "@/components/ui/FeedAwareName";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
@@ -57,10 +58,14 @@ function GameLine({ game, dashed }) {
   const t2 = slotText(game.team2_name, game.team2_is_open_entry);
   return (
     <p className={`text-sm ${dashed ? "border border-dashed border-afa-navy/40 rounded px-2 py-1 inline-block" : ""}`}>
-      <span className={game.winner_slot === "team1" ? "font-bold" : ""}>{t1}</span>
+      <span className={game.winner_slot === "team1" ? "font-bold" : ""}>
+        <FeedAwareName name={t1} fallback={t1} />
+      </span>
       {!pending && game.team1_score != null ? ` ${game.team1_score}` : ""}
       <span className="text-afa-ink/40"> vs </span>
-      <span className={game.winner_slot === "team2" ? "font-bold" : ""}>{t2}</span>
+      <span className={game.winner_slot === "team2" ? "font-bold" : ""}>
+        <FeedAwareName name={t2} fallback={t2} />
+      </span>
       {!pending && game.team2_score != null ? ` ${game.team2_score}` : ""}
     </p>
   );
