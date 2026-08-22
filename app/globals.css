@@ -504,19 +504,23 @@ body:has(.scorekeeper-scope) {
   outline-offset: 3px;
   transform: translateY(-2px);
 }
-/* Sibling content under the desk dims while a room is open */
-body.work-focus-active .director-desk > *:not(:has(.work-focus)) {
+/* Sibling content under the desk dims while a room is open.
+   :has(.work-focus) misses the room itself — it IS .work-focus, it does
+   not contain one. That was greying the add-team card and setting
+   pointer-events: none, so Division could not be clicked. */
+body.work-focus-active .director-desk > *:not(.work-focus):not(:has(.work-focus)) {
   opacity: 0.28;
   filter: grayscale(0.35) brightness(0.96);
   pointer-events: none;
   transition: opacity 0.18s ease, filter 0.18s ease;
 }
-body.work-focus-active .director-print-body > *:not(:has(.work-focus)) {
+body.work-focus-active .director-print-body > *:not(.work-focus):not(:has(.work-focus)) {
   opacity: 0.28;
   filter: grayscale(0.35) brightness(0.96);
   pointer-events: none;
   transition: opacity 0.18s ease, filter 0.18s ease;
 }
+body.work-focus-active .director-print-body > .work-focus,
 body.work-focus-active .director-print-body > *:has(.work-focus) {
   opacity: 1;
   filter: none;
