@@ -2,9 +2,8 @@ import { splitSides, isGf2Dashed, slotText } from "@/lib/bracket/tree";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
 
-function roundLabel(side, round) {
-  if (side === "final") return round === 1 ? "Grand Final" : "If Necessary";
-  return `Round ${round}`;
+function roundLabel(_side, round) {
+  return `Game ${round}`;
 }
 
 /** Read-only, public-facing grouped list — same anatomy the scorekeeper's

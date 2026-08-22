@@ -273,10 +273,27 @@ export default function TreeCanvas({
       rounds.forEach((r, idx) => {
         const x = xForCol(idx);
         let label;
-        if (sideName === "winners") label = idx === n - 1 && n > 1 ? "SEMIS" : `ROUND ${idx + 1}`;
-        else label = `ELIMINATION ${idx + 1}`;
+        const paper =
+          rounds.length ===
+          new Set(rounds.flatMap((r) => r.games.map((g) => g.round))).size;
+        if (paper) {
+          label = r.games[0] ? `G${r.games[0].round}` : `G${r.round}`;
+        } else if (sideName === "winners") {
+          label = idx === n - 1 && n > 1 ? "SEMIS" : `ROUND ${idx + 1}`;
+        } else {
+          label = `ELIMINATION ${idx + 1}`;
+        }
         roundHeaders.push({ x, y: headerY, w: C.cellW, label });
-        if (sideName === "winners") roundStops.push({ x, label: idx === n - 1 && n > 1 ? "SF" : `R${idx + 1}` });
+        if (sideName === "winners") {
+          roundStops.push({
+            x,
+            label: paper
+              ? (r.games[0] ? `G${r.games[0].round}` : `G${r.round}`)
+              : idx === n - 1 && n > 1
+                ? "SF"
+                : `R${idx + 1}`,
+          });
+        }
         r.games.forEach((g) => {
           const center = centers.get(`${r.round}-${g.slot}`) ?? 0;
           const y = boxTop + center * C.rowH;

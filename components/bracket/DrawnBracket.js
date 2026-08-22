@@ -770,9 +770,6 @@ export function computeLayout(games) {
   }
 
   const headers = [];
-  for (let d = 0; d <= maxDepth; d++) {
-    headers.push({ x: xForCol(d), w: CELL_W, label: `Round ${d + 1}` });
-  }
 
   // Band captions, left margin — one per band actually present, vertically
   // pinned near that band's own top.
