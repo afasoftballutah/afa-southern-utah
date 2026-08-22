@@ -15,6 +15,10 @@ import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 import { mootIfRounds } from "@/lib/bracket/if-game";
+import {
+  forDrawnBracket,
+  usesPaperGameNumbers,
+} from "@/lib/bracket/for-drawn-bracket";
 import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
 import { teamSlug } from "@/lib/teams";
 
@@ -340,6 +344,9 @@ export default async function DivisionPage({ params }) {
   const placements = division.placements ?? [];
   const hasPlacements = placements.length > 0;
   const hasBracket = (division.brackets ?? []).length > 0;
+  const mainFormat =
+    (division.brackets ?? []).find((b) => b.bracket_group === "main")?.format ??
+    null;
   const poolGames = division.pool_games ?? [];
   // Chronological, then by the printed game number — the order the bracket
   // is actually played in.
@@ -513,6 +520,24 @@ export default async function DivisionPage({ params }) {
   ].sort((a, b) => a.localeCompare(b));
   const showsFinder = finderTeams.length > 0 || stages.length > 1;
 
+  // Paper G#s (hand-built or remapped 3GG) must not go through BracketTree —
+  // that renderer treats `round` as ROUND 1 / ELIMINATION / CHAMPIONSHIP.
+  const paperNumbers = usesPaperGameNumbers(bracketGames);
+  const drawPaper =
+    bracketGames.length > 0 &&
+    (paperNumbers || mainFormat === "three_gg_hybrid" || !hasBracket);
+  const drawnGames = paperNumbers
+    ? bracketGames
+    : forDrawnBracket(bracketGames);
+  const ownDrawn =
+    drawPaper && drawnGames.length > 0 ? (
+      <DrawnBracket
+        games={drawnGames}
+        division={renderedName}
+        seeds={seeds}
+      />
+    ) : null;
+
   return (
     <div className="space-y-4">
       {/* Where you are and how to get back, on ONE line (JD, 2026-07-26).
@@ -576,7 +601,14 @@ export default async function DivisionPage({ params }) {
           poolByTeam={poolByTeam}
           teamStatus={teamStatus}
           slug={slug}
-          bracketLive={bracketLive}
+          bracketLive={
+            bracketLive ||
+            bracketGames.some(
+              (g) =>
+                g.status === "final" ||
+                (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
+            )
+          }
           poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} /> : null}
           standingsPanes={Object.fromEntries(
             Object.entries(playableStageGames)
@@ -590,19 +622,22 @@ export default async function DivisionPage({ params }) {
                 />,
               ])
           )}
-          bracketPanes={Object.fromEntries(
-            Object.entries(playableStageGames)
-              .filter(([, list]) => list.length > 0)
-              .map(([id, list]) => [
-                id,
-                <DrawnBracket
-                  key={id}
-                  games={list}
-                  division={stages.find((st) => st.id === id)?.name}
-                  seeds={seeds}
-                />,
-              ])
-          )}
+          bracketPanes={{
+            ...Object.fromEntries(
+              Object.entries(playableStageGames)
+                .filter(([, list]) => list.length > 0)
+                .map(([id, list]) => [
+                  id,
+                  <DrawnBracket
+                    key={id}
+                    games={list}
+                    division={stages.find((st) => st.id === id)?.name}
+                    seeds={seeds}
+                  />,
+                ])
+            ),
+            ...(ownDrawn ? { [division.id]: ownDrawn } : {}),
+          }}
         />
       )}
 
@@ -627,7 +662,7 @@ export default async function DivisionPage({ params }) {
         </Card>
       )}
 
-      {hasBracket && <BracketTree division={division} />}
+      {hasBracket && !drawPaper && <BracketTree division={division} />}
 
       {/* A drawn-but-unplayed bracket. These games are transcribed from the
           league's own pre-drawn bracket, so they carry their real field and
@@ -645,11 +680,7 @@ export default async function DivisionPage({ params }) {
       {/* Only when this page has no picker at all — otherwise the
           bracket lives inside the Pool play / Bracket toggle above, and
           drawing it twice would be two answers to one question. */}
-      {!hasBracket && bracketGames.length > 0 && !showsFinder && (
-        <div>
-          <DrawnBracket games={bracketGames} division={division?.name} seeds={seeds} />
-        </div>
-      )}
+      {ownDrawn && !showsFinder && <div>{ownDrawn}</div>}
 
       {!hasPlacements && !hasBracket && !hasPoolGames && bracketGames.length === 0 && (
         <p className="text-afa-ink/70 text-sm">

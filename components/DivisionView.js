@@ -53,8 +53,12 @@ export default function DivisionView({
   // touches the toggle — after that the screen is theirs.
   const [touched, setTouched] = useState(false);
   useEffect(() => {
-    if (!touched) setStage(bracketLive && hasBracket ? "bracket" : "pools");
-  }, [bracketLive, hasBracket, touched]);
+    if (!touched) {
+      setStage(
+        hasBracket && (bracketLive || !hasPools) ? "bracket" : "pools"
+      );
+    }
+  }, [bracketLive, hasBracket, hasPools, touched]);
 
   // A team's own bracket, when we know it. Otherwise the first one, which
   // is what a spectator with no team gets.
