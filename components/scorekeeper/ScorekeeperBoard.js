@@ -70,6 +70,7 @@ export default function ScorekeeperBoard({
   const [stage, setStage] = useState("all"); // all | pool | bracket
   const [field, setField] = useState("all");
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Flatten only games that can actually need a score: no byes, no cancelled,
   // no if-games the undefeated side made unnecessary. Those never belong on
@@ -189,6 +190,18 @@ export default function ScorekeeperBoard({
     return order.map((id) => byDiv.get(id));
   }, [filtered]);
 
+  const divisionLabel =
+    divisionId === "all"
+      ? null
+      : divisionOptions.find((d) => d.id === divisionId)?.label;
+  const filterBits = [
+    status === "need" ? "Need score" : status === "scored" ? "Scored" : "All",
+    divisionLabel,
+    stage === "pool" ? "Pool" : stage === "bracket" ? "Bracket" : null,
+    field !== "all" ? field : null,
+    query.trim() || null,
+  ].filter(Boolean);
+
   return (
     <div className="space-y-4">
       {/* Sticky control strip — the scorekeeper’s whole decision surface */}
@@ -207,6 +220,21 @@ export default function ScorekeeperBoard({
           </p>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex w-full items-center gap-2 text-left min-h-9"
+          aria-expanded={filtersOpen}
+        >
+          <span className="text-afa-navy/40 w-2 shrink-0">{filtersOpen ? "▾" : "▸"}</span>
+          <span className="t-label text-[11px] shrink-0">Filters</span>
+          {!filtersOpen ? (
+            <span className="t-meta truncate min-w-0">{filterBits.join(" · ")}</span>
+          ) : null}
+        </button>
+
+        {filtersOpen ? (
+        <>
         <ChipGroup label="Show">
           <Chip
             on={status === "need"}
@@ -327,6 +355,8 @@ export default function ScorekeeperBoard({
             </button>
           )}
         </div>
+        </>
+        ) : null}
       </div>
 
       {sections.length === 0 ? (
