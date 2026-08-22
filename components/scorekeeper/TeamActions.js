@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import Modal from "./Modal";
 import RowAction from "./RowAction";
+import { directorPost } from "./DirectorForm";
 
 // Everything a director can do to one team's entry. One set of buttons, used
 // by the row that opens in the division list and by the registration's own
@@ -92,6 +93,8 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
   }, [reg.amount_paid_cents]);
 
   const [payDollars, setPayDollars] = useState(defaultPayDollars);
+  const [renaming, setRenaming] = useState(false);
+  const [renameTo, setRenameTo] = useState(reg.team_name);
 
   const confirmThen = (message, body, confirmLabel) =>
     setAsk({ message, body, confirmLabel });
@@ -199,6 +202,62 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
         </ActionRow>
 
         <ActionRow label="Team">
+          {renaming ? (
+            <form
+              className="flex min-w-0 flex-1 items-center gap-1.5"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setBusy(true);
+                setError("");
+                const json = await directorPost({
+                  action: "renameTeam",
+                  divisionId: reg.division_id,
+                  fromName: reg.team_name,
+                  toName: renameTo,
+                });
+                if (json.error) {
+                  setError(json.error);
+                  setBusy(false);
+                  return;
+                }
+                if (onDone) onDone({ ...reg, team_name: json.name });
+                else window.location.reload();
+              }}
+            >
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-afa-navy/30 px-2 py-1.5 text-sm"
+                value={renameTo}
+                autoFocus
+                aria-label="Team name"
+                onChange={(e) => setRenameTo(e.target.value)}
+              />
+              <button type="submit" className="pill" disabled={busy}>
+                Save
+              </button>
+              <button
+                type="button"
+                className="pill"
+                disabled={busy}
+                onClick={() => {
+                  setRenaming(false);
+                  setRenameTo(reg.team_name);
+                }}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button
+              className="pill"
+              disabled={busy}
+              onClick={() => {
+                setRenameTo(reg.team_name);
+                setRenaming(true);
+              }}
+            >
+              Rename
+            </button>
+          )}
           {reg.status !== "withdrawn" ? (
             <button
               className="pill"

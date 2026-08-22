@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeSeedOrder, isCompleteSeedOrder } from "@/lib/bracket/seed-order";
+import { directorPost } from "./DirectorForm";
 
 /**
  * Director sets seed #1 … #N. Generate uses this list — not registration time.
@@ -14,6 +15,7 @@ export default function DirectorSeedList({
   poolDefault = null,
   onSaved,
   onOrderChange,
+  onRenamed,
   meta = null,
 }) {
   const baseline = useMemo(
@@ -24,6 +26,9 @@ export default function DirectorSeedList({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState("");
+  const skipBlur = useRef(false);
 
   useEffect(() => {
     const next = normalizeSeedOrder(teamNames, initialOrder ?? poolDefault ?? teamNames);
@@ -51,6 +56,31 @@ export default function DirectorSeedList({
   function usePoolFinish() {
     if (!poolDefault?.length) return;
     setOrderAndNotify(normalizeSeedOrder(teamNames, poolDefault));
+  }
+
+  async function rename(from) {
+    const to = draft.trim();
+    if (!to || to === from) {
+      setEditing(null);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const json = await directorPost({
+      action: "renameTeam",
+      divisionId,
+      fromName: from,
+      toName: to,
+    });
+    setBusy(false);
+    if (json.error) {
+      setError(json.error);
+      return;
+    }
+    const next = order.map((n) => (n === from ? to : n));
+    setOrderAndNotify(next);
+    setEditing(null);
+    onRenamed?.(from, to);
   }
 
   async function save() {
@@ -88,7 +118,7 @@ export default function DirectorSeedList({
           <p className="t-strong">Seed order</p>
           <p className="t-meta">
             {meta ||
-              "#1 is the top seed. Reorder freely, then generate. Not registration time."}
+              "#1 is the top seed. Tap a name to fix spelling."}
           </p>
         </div>
         {poolDefault?.length >= 2 && (
@@ -106,7 +136,41 @@ export default function DirectorSeedList({
         {order.map((name, i) => (
           <li key={name} className="flex items-center gap-2 px-3 py-2 bg-white">
             <span className="t-label w-10 shrink-0">#{i + 1}</span>
-            <span className="t-body flex-1 min-w-0 truncate">{name}</span>
+            {editing === name ? (
+              <input
+                className="t-body flex-1 min-w-0 rounded-lg border border-afa-navy/30 px-2 py-1"
+                value={draft}
+                autoFocus
+                aria-label={`Rename ${name}`}
+                disabled={busy}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => {
+                  if (skipBlur.current) {
+                    skipBlur.current = false;
+                    return;
+                  }
+                  rename(name);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    skipBlur.current = true;
+                    setEditing(null);
+                  }
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="t-body flex-1 min-w-0 truncate text-left hover:underline"
+                onClick={() => {
+                  setDraft(name);
+                  setEditing(name);
+                }}
+              >
+                {name}
+              </button>
+            )}
             <button
               type="button"
               className="pill"

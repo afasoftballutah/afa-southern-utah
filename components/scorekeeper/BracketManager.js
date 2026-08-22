@@ -130,6 +130,7 @@ export default function BracketManager({
         poolDefault={poolsComplete ? poolDerived.order : null}
         onOrderChange={setSeedOrder}
         onSaved={setSeedOrder}
+        onRenamed={() => router.refresh()}
       />
 
       {/* 2. Format + one action */}
@@ -251,7 +252,24 @@ function parseSeat(value, games) {
     };
   }
   const name = String(value ?? "").trim();
+  const feed = /^(Winner|Loser) of Game (\d+)$/i.exec(name);
+  if (feed) {
+    const src = (games ?? []).find((g) => Number(g.round) === Number(feed[2]));
+    if (src) {
+      const who = feed[1].toLowerCase() === "loser" ? "Loser" : "Winner";
+      return {
+        name: `${who} of Game ${src.round}`,
+        sourceId: src.id,
+        sourceResult: who === "Loser" ? "loser" : "winner",
+      };
+    }
+  }
   return { name: name || null, sourceId: null, sourceResult: null };
+}
+
+function seatDisplay(value, games) {
+  const parsed = parseSeat(value, games);
+  return parsed.name || "";
 }
 
 function GameRow({ game, games = [], teamNames, draft, onChanged }) {
@@ -385,6 +403,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
                 teamNames={teamNames}
                 games={games}
                 exceptId={game.id}
+                side="1"
               />
               <TeamSelect
                 value={team2}
@@ -392,6 +411,7 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
                 teamNames={teamNames}
                 games={games}
                 exceptId={game.id}
+                side="2"
               />
               <button
                 type="button"
@@ -477,34 +497,30 @@ function GameRow({ game, games = [], teamNames, draft, onChanged }) {
   );
 }
 
-function TeamSelect({ value, onChange, teamNames, games = [], exceptId }) {
+function TeamSelect({ value, onChange, teamNames, games = [], exceptId, side }) {
   const fromGames = (games ?? []).filter((g) => g.id !== exceptId && g.status !== "cancelled");
-  const known = new Set((teamNames ?? []).map(String));
-  const extra =
-    value && !String(value).startsWith("__") && !known.has(value) ? value : null;
+  const listId = `teams-${exceptId}-${side}`;
   return (
-    <select
-      className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">—</option>
-      {extra ? <option value={extra}>{extra}</option> : null}
-      {teamNames.map((name) => (
-        <option key={name} value={name}>
-          {name}
-        </option>
-      ))}
-      {fromGames.length > 0 ? (
-        <optgroup label="From an earlier game">
-          {fromGames.map((g) => (
-            <Fragment key={g.id}>
-              <option value={`__winner:${g.id}`}>Winner of Game {g.round}</option>
-              <option value={`__loser:${g.id}`}>Loser of Game {g.round}</option>
-            </Fragment>
-          ))}
-        </optgroup>
-      ) : null}
-    </select>
+    <>
+      <input
+        className="w-full border border-afa-navy/30 rounded px-2 py-2 text-sm"
+        list={listId}
+        value={seatDisplay(value, games)}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={side === "1" ? "Team 1" : "Team 2"}
+        placeholder="Team name"
+      />
+      <datalist id={listId}>
+        {(teamNames ?? []).map((name) => (
+          <option key={name} value={name} />
+        ))}
+        {fromGames.map((g) => (
+          <Fragment key={g.id}>
+            <option value={`Winner of Game ${g.round}`} />
+            <option value={`Loser of Game ${g.round}`} />
+          </Fragment>
+        ))}
+      </datalist>
+    </>
   );
 }

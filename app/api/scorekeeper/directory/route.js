@@ -1381,6 +1381,108 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    // ---- Fix a team name at the ballpark --------------------------------
+    case "renameTeam": {
+      const { divisionId, fromName, toName } = body;
+      if (!divisionId) return bad("Which division?");
+      const from = String(fromName ?? "").trim();
+      const to = String(toName ?? "").trim();
+      if (!from) return bad("Which team?");
+      if (!to) return bad("A team needs a name");
+      if (/^(Winner|Loser) of Game \d+$/i.test(to)) {
+        return bad("That's a game result, not a team name");
+      }
+      if (from === to) return Response.json({ ok: true, name: to });
+
+      const { data: division } = await supabase
+        .from("divisions")
+        .select("id, tournament_id, seed_order")
+        .eq("id", divisionId)
+        .maybeSingle();
+      if (!division) return bad("Division not found", 404);
+
+      const same = (s) => String(s ?? "").trim().toLowerCase() === from.toLowerCase();
+      const { data: regs, error: regErr } = await supabase
+        .from("registrations")
+        .select("id, team_name")
+        .eq("division_id", divisionId);
+      if (regErr) return bad("Could not load teams", 500);
+      const clash = (regs ?? []).find(
+        (r) => String(r.team_name).trim().toLowerCase() === to.toLowerCase() && !same(r.team_name)
+      );
+      if (clash) return bad(`${to} is already in this division`, 409);
+
+      for (const r of regs ?? []) {
+        if (!same(r.team_name)) continue;
+        const { error } = await supabase
+          .from("registrations")
+          .update({ team_name: to })
+          .eq("id", r.id);
+        if (error) {
+          if (error.code === "23505") return bad(`${to} is already in this division`, 409);
+          console.error("rename registration failed", error);
+          return bad("Could not rename that team", 500);
+        }
+      }
+
+      async function rewriteNames(table) {
+        const { data: rows } = await supabase
+          .from(table)
+          .select("id, team1_name, team2_name")
+          .eq("division_id", divisionId);
+        for (const row of rows ?? []) {
+          const patch = {};
+          if (same(row.team1_name)) patch.team1_name = to;
+          if (same(row.team2_name)) patch.team2_name = to;
+          if (Object.keys(patch).length === 0) continue;
+          patch.updated_at = new Date().toISOString();
+          await supabase.from(table).update(patch).eq("id", row.id);
+        }
+      }
+      await rewriteNames("games");
+      await rewriteNames("pool_games");
+
+      const seedOrder = (division.seed_order ?? []).map((n) => (same(n) ? to : n));
+      if ((division.seed_order ?? []).some(same)) {
+        await supabase.from("divisions").update({ seed_order: seedOrder }).eq("id", divisionId);
+      }
+
+      if (division.tournament_id) {
+        const { data: statuses } = await supabase
+          .from("team_status")
+          .select("team_name, state, last_game_label, last_game_at, placement, bracket_name")
+          .eq("tournament_id", division.tournament_id);
+        for (const row of statuses ?? []) {
+          if (!same(row.team_name)) continue;
+          await supabase
+            .from("team_status")
+            .delete()
+            .eq("tournament_id", division.tournament_id)
+            .eq("team_name", row.team_name);
+          await supabase.from("team_status").insert({
+            tournament_id: division.tournament_id,
+            team_name: to,
+            state: row.state,
+            last_game_label: row.last_game_label,
+            last_game_at: row.last_game_at,
+            placement: row.placement ?? null,
+            bracket_name: row.bracket_name ?? null,
+            updated_at: new Date().toISOString(),
+          });
+        }
+        for (const r of regs ?? []) {
+          if (!same(r.team_name)) continue;
+          await supabase
+            .from("placements")
+            .update({ team_name: to })
+            .eq("division_id", divisionId)
+            .eq("team_name", r.team_name);
+        }
+      }
+
+      return Response.json({ ok: true, name: to, seedOrder });
+    }
+
     // ---- Director seed order for a division ----------------------------
     case "setDivisionSeedOrder": {
       const { divisionId, seedOrder } = body;
