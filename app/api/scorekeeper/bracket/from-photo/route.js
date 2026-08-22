@@ -1,6 +1,10 @@
 import { requireDirectorSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
-import { parseSheetModelText, responsesOutputText } from "@/lib/bracket/read-sheet";
+import {
+  missingSheetTeams,
+  parseSheetModelText,
+  responsesOutputText,
+} from "@/lib/bracket/read-sheet";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -117,7 +121,11 @@ Rules:
       knownTeams,
       playDay: body.playDay || null,
     });
-    return Response.json({ ok: true, games: draft.games });
+    return Response.json({
+      ok: true,
+      games: draft.games,
+      newTeams: missingSheetTeams(draft.games, knownTeams),
+    });
   } catch (err) {
     return bad(err.message || "Could not read games off that photo.");
   }

@@ -86,6 +86,7 @@ export default function HandGames({ divisionId, games = [], teamNames = [], play
         <ReadSheet
           divisionId={divisionId}
           playDay={playDay}
+          teamNames={teams}
           onApplied={() => router.refresh()}
         />
       </div>

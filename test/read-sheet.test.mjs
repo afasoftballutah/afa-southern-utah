@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   canonicalFeedName,
   matchKnownTeam,
+  missingSheetTeams,
   parseSheetClock,
   parseSheetModelText,
   seatFromSheetName,
@@ -41,6 +42,15 @@ test("model JSON becomes a sorted draft", () => {
   assert.equal(games[1].b, "Loser of Game 7");
   assert.equal(games[1].time, "14:00");
   assert.ok(games[1].scheduledTime);
+});
+
+test("names not already in the division are new teams", () => {
+  const games = [
+    { n: 1, a: "Dirtbags", b: "New Era" },
+    { n: 6, a: "Loser of Game 1", b: "New Era" },
+  ];
+  assert.deepEqual(missingSheetTeams(games, ["Dirtbags"]), ["New Era"]);
+  assert.deepEqual(missingSheetTeams(games, ["Dirtbags", "New Era"]), []);
 });
 
 test("a feed seat keeps the paper words and links when the game exists", () => {

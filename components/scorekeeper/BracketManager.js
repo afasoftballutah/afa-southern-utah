@@ -184,6 +184,7 @@ export default function BracketManager({
         <ReadSheet
           divisionId={divisionId}
           playDay={playDay}
+          teamNames={teams}
           onApplied={() => router.refresh()}
         />
       )}

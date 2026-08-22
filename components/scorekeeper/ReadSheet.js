@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { directorPost } from "./DirectorForm";
+import { missingSheetTeams } from "@/lib/bracket/read-sheet";
 
 const MAX_DIMENSION = 1800;
 const JPEG_QUALITY = 0.72;
@@ -31,7 +32,12 @@ function compressImage(file) {
 /**
  * Photo of a paper bracket → editable draft → apply to this division.
  */
-export default function ReadSheet({ divisionId, playDay = null, onApplied }) {
+export default function ReadSheet({
+  divisionId,
+  playDay = null,
+  teamNames = [],
+  onApplied,
+}) {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -63,6 +69,8 @@ export default function ReadSheet({ divisionId, playDay = null, onApplied }) {
   function setGame(i, patch) {
     setGames((cur) => cur.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
   }
+
+  const newcomers = games ? missingSheetTeams(games, teamNames) : [];
 
   async function apply() {
     setBusy(true);
@@ -106,6 +114,11 @@ export default function ReadSheet({ divisionId, playDay = null, onApplied }) {
             Draft — {games.length} game{games.length === 1 ? "" : "s"}. Fix anything wrong, then
             apply.
           </p>
+          {newcomers.length > 0 ? (
+            <p className="t-meta">
+              Will add {newcomers.join(", ")} — manager TBD, no roster.
+            </p>
+          ) : null}
           <ol className="space-y-2">
             {games.map((g, i) => (
               <li key={`${g.n}-${i}`} className="grid grid-cols-[3rem_1fr] gap-2 items-start">
