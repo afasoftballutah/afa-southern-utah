@@ -8,6 +8,7 @@ import {
   isPlaceholderManager,
   isSiblingSeat,
 } from "@/lib/register-key.js";
+import { clubDivisionIds } from "@/lib/tournament-teams.js";
 
 test("registrationNameKey matches the live unique index: lower(trim(name))", () => {
   assert.equal(registrationNameKey("  Fallen  "), "fallen");
@@ -103,6 +104,27 @@ test("TBD is not a manager — Fallen stubs in other divisions stay other clubs"
       }
     ),
     false
+  );
+});
+
+test("division highlights follow the manager, not every Fallen", () => {
+  const directory = [
+    { name: "Fallen", divisionId: "mens-d", managerNames: ["Brayden Brooks"] },
+    { name: "Fallen", divisionId: "coed-d", managerNames: ["Brayden Brooks"] },
+    { name: "Fallen", divisionId: "mens-e", managerNames: ["TBD"] },
+    { name: "Fallen", divisionId: "coed-e", managerNames: ["Tbd"] },
+  ];
+  assert.deepEqual(
+    clubDivisionIds(directory, { teamName: "Fallen", managerName: "Brayden Brooks" }).sort(),
+    ["coed-d", "mens-d"]
+  );
+  assert.deepEqual(
+    clubDivisionIds(directory, {
+      teamName: "Fallen",
+      managerName: "TBD",
+      divisionId: "mens-e",
+    }),
+    ["mens-e"]
   );
 });
 

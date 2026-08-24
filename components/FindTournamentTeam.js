@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DivisionSeatMark from "@/components/DivisionSeatMark";
 import {
@@ -9,7 +9,8 @@ import {
   rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
-import { sameManager, sameRegistrationName } from "@/lib/register-key";
+import { isPlaceholderManager, sameManager, sameRegistrationName } from "@/lib/register-key";
+import { clubDivisionIds } from "@/lib/tournament-teams";
 
 function sameSeat(a, b) {
   if (a.divisionId && b.divisionId) return a.divisionId === b.divisionId;
@@ -95,6 +96,7 @@ export default function FindTournamentTeam({
   teams = [],
   selectedTeam = "",
   onTeam,
+  onMineDivisions,
   registrationOpen = false,
   externalRegisterUrl = null,
   panel = null,
@@ -177,7 +179,18 @@ export default function FindTournamentTeam({
           .slice(0, 12);
 
   function pick(t) {
+    const mgr = (t.managerNames ?? [])[0] || "";
+    const ids = isPlaceholderManager(mgr)
+      ? t.divisionId
+        ? [t.divisionId]
+        : []
+      : clubDivisionIds(teams, {
+          teamName: t.name,
+          managerName: mgr,
+          divisionId: t.divisionId,
+        });
     onTeam?.(t.name);
+    onMineDivisions?.(ids);
     writeMe({ teamName: t.name, source: "picked" });
     try {
       window.localStorage.setItem(`afa-team-${slug}`, t.name);
@@ -197,30 +210,43 @@ export default function FindTournamentTeam({
       !next.some((r) => sameRegistrationName(r.teamName, selectedTeam))
     ) {
       onTeam?.("");
+      onMineDivisions?.([]);
     }
   }
 
-  const shown = [...local];
-  for (const t of teams) {
-    const already = shown.some(
-      (r) =>
-        sameRegistrationName(r.teamName, t.name) &&
-        sameSeat(r, t)
-    );
-    if (already) continue;
-    const mine = local.filter((r) => sameRegistrationName(r.teamName, t.name));
-    if (mine.length === 0) continue;
-    const dirMgr = { managerName: (t.managerNames ?? [])[0] || "" };
-    if (!mine.some((r) => sameManager(r, dirMgr))) continue;
-    shown.push({
-      teamName: t.name,
-      divisionId: t.divisionId,
-      genderKey: t.genderKey,
-      genderLabel: t.genderLabel,
-      levelLabel: t.levelLabel,
-      seatLabel: t.seatLabel,
-    });
-  }
+  const shown = useMemo(() => {
+    const rows = [...local];
+    for (const t of teams) {
+      const already = rows.some(
+        (r) =>
+          sameRegistrationName(r.teamName, t.name) &&
+          sameSeat(r, t)
+      );
+      if (already) continue;
+      const mine = local.filter((r) => sameRegistrationName(r.teamName, t.name));
+      if (mine.length === 0) continue;
+      const dirMgr = { managerName: (t.managerNames ?? [])[0] || "" };
+      if (!mine.some((r) => sameManager(r, dirMgr))) continue;
+      rows.push({
+        teamName: t.name,
+        divisionId: t.divisionId,
+        genderKey: t.genderKey,
+        genderLabel: t.genderLabel,
+        levelLabel: t.levelLabel,
+        seatLabel: t.seatLabel,
+      });
+    }
+    return rows;
+  }, [local, teams]);
+
+  const shownDivisionIds = useMemo(
+    () => [...new Set(shown.map((r) => r.divisionId).filter(Boolean))],
+    [shown]
+  );
+
+  useEffect(() => {
+    if (shownDivisionIds.length) onMineDivisions?.(shownDivisionIds);
+  }, [shownDivisionIds, onMineDivisions]);
 
   return (
     <div className="space-y-3">

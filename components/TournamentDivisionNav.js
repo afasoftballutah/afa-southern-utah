@@ -50,6 +50,7 @@ export default function TournamentDivisionNav({
   mode = "schedule",
   externalRegisterUrl = null,
   selectedTeam = "",
+  mineDivisionIds = null,
   hideTeamPicker = false,
 }) {
   const [team, setTeam] = useState("");
@@ -75,13 +76,17 @@ export default function TournamentDivisionNav({
 
   const mine = useMemo(() => {
     const ids = new Set();
+    if (Array.isArray(mineDivisionIds)) {
+      for (const id of mineDivisionIds) if (id) ids.add(id);
+      return ids;
+    }
     if (!activeTeam) return ids;
     const row = teamSummaries[activeTeam];
     if (!row) return ids;
     for (const id of row.divisionIds ?? []) ids.add(id);
     if (row.divisionId) ids.add(row.divisionId);
     return ids;
-  }, [activeTeam, teamSummaries]);
+  }, [activeTeam, teamSummaries, mineDivisionIds]);
 
   const hasMine = mine.size > 0;
   const teams = Object.keys(teamSummaries).sort((a, b) => a.localeCompare(b));

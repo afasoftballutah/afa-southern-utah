@@ -16,6 +16,7 @@ export default function TournamentTeamEntry({
   finished = false,
 }) {
   const [team, setTeam] = useState("");
+  const [mineDivisionIds, setMineDivisionIds] = useState([]);
   const [panel, setPanel] = useState(null);
 
   const registering = panel === "register";
@@ -28,6 +29,7 @@ export default function TournamentTeamEntry({
         teams={teams}
         selectedTeam={team}
         onTeam={setTeam}
+        onMineDivisions={setMineDivisionIds}
         registrationOpen={registrationOpen}
         externalRegisterUrl={externalRegisterUrl}
         panel={panel}
@@ -50,6 +52,7 @@ export default function TournamentTeamEntry({
             columns={columns}
             teamSummaries={teamSummaries}
             selectedTeam={team}
+            mineDivisionIds={mineDivisionIds}
             hideTeamPicker
             mode={registering ? "register" : "schedule"}
           />
