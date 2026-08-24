@@ -5,6 +5,7 @@ import {
   sameRegistrationName,
   sameRegistrationCombo,
   sameManager,
+  isPlaceholderManager,
   isSiblingSeat,
 } from "@/lib/register-key.js";
 
@@ -69,6 +70,37 @@ test("a missing email still matches the same printed manager name", () => {
     sameManager(
       { managerEmail: "braybrooks23@gmail.com", managerName: "Brayden Brooks" },
       { managerEmail: null, managerName: "Someone Else" }
+    ),
+    false
+  );
+});
+
+test("TBD is not a manager — Fallen stubs in other divisions stay other clubs", () => {
+  assert.equal(isPlaceholderManager("TBD"), true);
+  assert.equal(isPlaceholderManager("Tbd"), true);
+  assert.equal(isPlaceholderManager("Brayden Brooks"), false);
+  assert.equal(
+    sameManager({ managerName: "Brayden Brooks" }, { managerName: "TBD" }),
+    false
+  );
+  assert.equal(
+    sameManager({ managerName: "TBD" }, { managerName: "Tbd" }),
+    false
+  );
+  assert.equal(
+    isSiblingSeat(
+      {
+        id: "1",
+        team_name: "Fallen",
+        tournament_id: "t",
+        manager_name: "Brayden Brooks",
+      },
+      {
+        id: "2",
+        team_name: "Fallen",
+        tournament_id: "t",
+        manager_name: "TBD",
+      }
     ),
     false
   );

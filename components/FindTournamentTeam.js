@@ -9,7 +9,7 @@ import {
   rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
-import { sameRegistrationName } from "@/lib/register-key";
+import { sameManager, sameRegistrationName } from "@/lib/register-key";
 
 function sameSeat(a, b) {
   if (a.divisionId && b.divisionId) return a.divisionId === b.divisionId;
@@ -140,6 +140,7 @@ export default function FindTournamentTeam({
             levelLabel: t.levelLabel,
             seatLabel: t.seatLabel,
             managerEmail: t.managerEmail,
+            managerName: t.managerName,
           });
         }
         if (!cancelled) {
@@ -200,15 +201,17 @@ export default function FindTournamentTeam({
   }
 
   const shown = [...local];
-  const clubs = new Set(local.map((r) => r.teamName));
   for (const t of teams) {
-    if (![...clubs].some((n) => sameRegistrationName(n, t.name))) continue;
     const already = shown.some(
       (r) =>
         sameRegistrationName(r.teamName, t.name) &&
         sameSeat(r, t)
     );
     if (already) continue;
+    const mine = local.filter((r) => sameRegistrationName(r.teamName, t.name));
+    if (mine.length === 0) continue;
+    const dirMgr = { managerName: (t.managerNames ?? [])[0] || "" };
+    if (!mine.some((r) => sameManager(r, dirMgr))) continue;
     shown.push({
       teamName: t.name,
       divisionId: t.divisionId,

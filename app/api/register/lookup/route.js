@@ -150,6 +150,7 @@ export async function POST(request) {
       genderLabel: seat?.genderLabel || "",
       levelLabel: seat?.levelLabel || "",
       seatLabel: seat?.seatLabel || "",
+      managerName: r.manager_name || "",
     };
   });
 

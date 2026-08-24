@@ -59,6 +59,7 @@ export default function MyRegistrations({ compactSlug = null, onChange }) {
           manageLink: t.manageLink,
           rosterLink: t.rosterLink,
           managerEmail: email,
+          managerName: t.managerName,
           genderKey: t.genderKey,
           genderLabel: t.genderLabel,
           levelLabel: t.levelLabel,
