@@ -106,6 +106,17 @@ test("an empty game clock starts on the hour", () => {
   );
 });
 
+test("a phone time with seconds still lands on the play day", () => {
+  assert.equal(
+    parseGameWhenInput("08:00:00", "2026-08-22").toISOString(),
+    parseGameWhenInput("08:00", "2026-08-22").toISOString()
+  );
+  assert.equal(
+    parseGameWhenInput("8:00", "2026-08-22").toISOString(),
+    parseGameWhenInput("08:00", "2026-08-22").toISOString()
+  );
+});
+
 test("missing and malformed values render as blanks, not Invalid Date", () => {
   assert.equal(formatLeagueInputValue(null), "");
   assert.equal(formatLeagueInputValue("not a date"), "");
