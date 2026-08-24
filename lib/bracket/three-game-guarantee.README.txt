@@ -5,7 +5,8 @@ One file, no dependencies: three-game-guarantee.js
 Usage:
   const { generate3GG } = require('./three-game-guarantee') // or paste inline
   const games = generate3GG(9)                 // any pool size 4..24
-  // optional: generate3GG(9, { reentry: "strict" })
+  // 4–16: PrintYourBrackets seeded 3GG (https://www.printyourbrackets.com/3-game-guarantee-tournament-brackets.html)
+  // optional: generate3GG(9, { reentry: "strict" })  // non-PYB algorithm only
 
 Returns an ordered array of games:
   { g: 11, a: "L9", b: "L10", note: "survivor" }

@@ -3,10 +3,8 @@ import assert from "node:assert/strict";
 import {
   buildBracketStructure,
   generate3GG,
-  SURVIVOR_FIELD,
-  GUARANTEE_NET_FIELD,
 } from "@/lib/bracket/structure";
-import { forDrawnBracket, gamesFromStructure, scheduleSlotLabel } from "@/lib/bracket/for-drawn-bracket";
+import { drawnGamesFrom3GG, scheduleSlotLabel } from "@/lib/bracket/for-drawn-bracket";
 import { slotDisplay, assignGameNumbers } from "@/lib/bracket/tree";
 
 test("4-team DE pads to 4; every registered team appears in WR1", () => {
@@ -27,10 +25,11 @@ test("seed #1 and #2 are kept apart in standard 8-team order", () => {
   assert.equal(wr1[0].team2.name, "S8");
 });
 
-test("generate3GG(9) reference sheet matches JD's order", () => {
+test("generate3GG(9) matches the PrintYourBrackets seeded sheet", () => {
   const { games, meta } = generate3GG(9);
   assert.equal(meta.unsettled, 0);
-  assert.equal(games.length, 21);
+  assert.equal(meta.source, "printyourbrackets");
+  assert.equal(games.length, 20);
   const fmt = (r) =>
     r.seed !== undefined ? `seed${r.seed}` : r.W !== undefined ? `W${r.W}` : `L${r.L}`;
   const line = (id) => {
@@ -38,14 +37,63 @@ test("generate3GG(9) reference sheet matches JD's order", () => {
     return `${fmt(g.a)} vs ${fmt(g.b)}`;
   };
   assert.equal(line(1), "seed8 vs seed9");
-  assert.equal(line(2), "seed1 vs W1");
-  assert.equal(line(9), "L1 vs L3");
-  assert.equal(line(10), "L4 vs L5");
-  assert.equal(line(11), "L9 vs L10");
-  assert.equal(games.find((g) => g.id === 11).bracket, "net");
-  assert.equal(line(13), "L2 vs W11");
-  assert.equal(line(20), "W8 vs W19");
-  assert.equal(line(21), "W20 vs L20");
+  assert.equal(line(2), "seed2 vs seed7");
+  assert.equal(line(5), "seed1 vs W1");
+  assert.equal(line(6), "L1 vs L2");
+  assert.equal(line(16), "W12 vs W13");
+  assert.equal(line(19), "W16 vs W18");
+  assert.equal(line(20), "W19 vs L19");
+});
+
+test("generate3GG(7) and (8) match PrintYourBrackets game numbers", () => {
+  const fmt = (r) =>
+    r.seed !== undefined ? `seed${r.seed}` : r.W !== undefined ? `W${r.W}` : `L${r.L}`;
+  const line = (games, id) => {
+    const g = games.find((x) => x.id === id);
+    return `${fmt(g.a)} vs ${fmt(g.b)}`;
+  };
+  const seven = generate3GG(7).games;
+  assert.equal(seven.length, 15);
+  assert.equal(line(seven, 1), "seed4 vs seed5");
+  assert.equal(line(seven, 4), "seed1 vs W1");
+  assert.equal(line(seven, 6), "L1 vs L2");
+  assert.equal(line(seven, 11), "W4 vs W5");
+  assert.equal(line(seven, 15), "W14 vs L14");
+
+  const eight = generate3GG(8).games;
+  assert.equal(eight.length, 17);
+  assert.equal(line(eight, 1), "seed1 vs seed8");
+  assert.equal(line(eight, 3), "seed3 vs seed6");
+  assert.equal(line(eight, 5), "L1 vs L2");
+  assert.equal(line(eight, 9), "W5 vs L6");
+  assert.equal(line(eight, 13), "W7 vs W8");
+  assert.equal(line(eight, 17), "W16 vs L16");
+});
+
+test("PrintYourBrackets 3GG sheets 4..16 cover every seed and only earlier games", () => {
+  for (let n = 4; n <= 16; n++) {
+    const { games, meta } = generate3GG(n);
+    assert.equal(meta.source, "printyourbrackets", `${n}: source`);
+    const seeds = new Set();
+    for (const g of games) {
+      for (const side of [g.a, g.b]) {
+        if (side.seed !== undefined) {
+          assert.ok(side.seed >= 1 && side.seed <= n, `${n} G${g.id} bad seed`);
+          assert.equal(seeds.has(side.seed), false, `${n} duplicate seed ${side.seed}`);
+          seeds.add(side.seed);
+        }
+        const ref = side.W ?? side.L;
+        if (ref != null) {
+          assert.ok(ref >= 1 && ref < g.id, `${n} G${g.id} points at G${ref}`);
+        }
+      }
+    }
+    assert.equal(seeds.size, n, `${n}: missing seeds`);
+    const last = games[games.length - 1];
+    assert.equal(last.bracket, "final", `${n}: last is if-necessary`);
+    assert.equal(last.a.W, last.id - 1);
+    assert.equal(last.b.L, last.id - 1);
+  }
 });
 
 test("paper G#s label as G4, not Winners R4", () => {
@@ -69,22 +117,19 @@ test("3GG structure maps generate3GG into DrawnBracket language", () => {
   assert.equal(structure.paperNumbered, true);
   assert.equal(structure.bracketSize, 16);
 
-  const drawn = forDrawnBracket(gamesFromStructure(structure));
+  const drawn = drawnGamesFrom3GG(names);
   const byG = Object.fromEntries(drawn.map((g) => [g.round, g]));
 
   assert.equal(byG[1].team1_name, "Hotel");
   assert.equal(byG[1].team2_name, "India");
-  assert.equal(byG[2].team1_name, "Alpha");
-  assert.equal(byG[2].team2_name, "Winner of Game 1");
-  assert.equal(byG[9].team1_name, "Loser of Game 1");
-  assert.equal(byG[9].team2_name, "Loser of Game 3");
-  assert.equal(byG[10].team1_name, "Loser of Game 4");
-  assert.equal(byG[10].team2_name, "Loser of Game 5");
-  assert.equal(byG[11].team1_name, "Loser of Game 9");
-  assert.equal(byG[11].team2_name, "Loser of Game 10");
-  assert.equal(byG[11].field, SURVIVOR_FIELD);
-  assert.equal(byG[13].team1_name, "Loser of Game 2");
-  assert.equal(byG[13].team2_name, "Winner of Game 11");
+  assert.equal(byG[2].team1_name, "Bravo");
+  assert.equal(byG[2].team2_name, "Golf");
+  assert.equal(byG[5].team1_name, "Alpha");
+  assert.equal(byG[5].team2_name, "Winner of Game 1");
+  assert.equal(byG[6].team1_name, "Loser of Game 1");
+  assert.equal(byG[6].team2_name, "Loser of Game 2");
+  assert.equal(byG[20].team1_name, "Winner of Game 19");
+  assert.equal(byG[20].team2_name, "Loser of Game 19");
 });
 
 test("generate3GG runs for field sizes 4..24 without unsettled", () => {

@@ -38,10 +38,10 @@ export default function ThreeGg9MockupPage() {
         </p>
         <h1 className="font-display text-2xl text-afa-navy mb-1">9-team 3GG</h1>
         <p className="text-sm text-afa-ink/70 mb-4 max-w-2xl">
-          Built only from <code className="text-afa-navy">generate3GG(9)</code> in{" "}
-          <code className="text-xs">lib/bracket/three-game-guarantee.js</code>, rendered with the
+          PrintYourBrackets 9-team seeded 3GG via{" "}
+          <code className="text-afa-navy">generate3GG(9)</code>, rendered with the
           site’s <code className="text-afa-navy">DrawnBracket</code> (paper G#, Winner/Loser of Game
-          N, feed-graph layout). Compare to{" "}
+          N). Compare to{" "}
           <a
             className="underline font-semibold text-afa-navy"
             href="/tournaments/2026-coed-heat-stroker/division/00e80340-8db4-4149-bb8f-c77cb1e6e425"
