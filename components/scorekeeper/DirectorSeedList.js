@@ -134,11 +134,54 @@ export default function DirectorSeedList({
       </div>
       <ol className="divide-y divide-black/5 border border-black/10 rounded-lg overflow-hidden">
         {order.map((name, i) => (
-          <li key={name} className="flex items-center gap-2 px-3 py-2 bg-white">
-            <span className="t-label w-10 shrink-0">#{i + 1}</span>
+          <li
+            key={name}
+            className={
+              editing === name
+                ? "flex flex-col gap-2 px-3 py-3 bg-white"
+                : "flex items-center gap-2 px-3 py-2 bg-white"
+            }
+          >
+            <div className="flex items-center gap-2">
+              <span className="t-label w-10 shrink-0">#{i + 1}</span>
+              {editing === name ? null : (
+                <button
+                  type="button"
+                  className="t-body flex-1 min-w-0 truncate text-left hover:underline"
+                  onClick={() => {
+                    setDraft(name);
+                    setEditing(name);
+                  }}
+                >
+                  {name}
+                </button>
+              )}
+              {editing === name ? null : (
+                <>
+                  <button
+                    type="button"
+                    className="pill"
+                    disabled={busy || i === 0}
+                    onClick={() => move(i, -1)}
+                    aria-label={`Move ${name} up`}
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    className="pill"
+                    disabled={busy || i === order.length - 1}
+                    onClick={() => move(i, 1)}
+                    aria-label={`Move ${name} down`}
+                  >
+                    Down
+                  </button>
+                </>
+              )}
+            </div>
             {editing === name ? (
               <input
-                className="t-body flex-1 min-w-0 rounded-lg border border-afa-navy/30 px-2 py-1"
+                className="form-field w-full"
                 value={draft}
                 autoFocus
                 aria-label={`Rename ${name}`}
@@ -159,36 +202,7 @@ export default function DirectorSeedList({
                   }
                 }}
               />
-            ) : (
-              <button
-                type="button"
-                className="t-body flex-1 min-w-0 truncate text-left hover:underline"
-                onClick={() => {
-                  setDraft(name);
-                  setEditing(name);
-                }}
-              >
-                {name}
-              </button>
-            )}
-            <button
-              type="button"
-              className="pill"
-              disabled={busy || i === 0}
-              onClick={() => move(i, -1)}
-              aria-label={`Move ${name} up`}
-            >
-              Up
-            </button>
-            <button
-              type="button"
-              className="pill"
-              disabled={busy || i === order.length - 1}
-              onClick={() => move(i, 1)}
-              aria-label={`Move ${name} down`}
-            >
-              Down
-            </button>
+            ) : null}
           </li>
         ))}
       </ol>

@@ -204,7 +204,7 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
         <ActionRow label="Team">
           {renaming ? (
             <form
-              className="flex min-w-0 flex-1 items-center gap-1.5"
+              className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center"
               onSubmit={async (e) => {
                 e.preventDefault();
                 setBusy(true);
@@ -225,12 +225,13 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
               }}
             >
               <input
-                className="min-w-0 flex-1 rounded-lg border border-afa-navy/30 px-2 py-1.5 text-sm"
+                className="form-field w-full min-w-0 sm:flex-1"
                 value={renameTo}
                 autoFocus
                 aria-label="Team name"
                 onChange={(e) => setRenameTo(e.target.value)}
               />
+              <div className="flex flex-wrap gap-1.5">
               <button type="submit" className="pill" disabled={busy}>
                 Save
               </button>
@@ -245,6 +246,7 @@ export default function TeamActions({ registration: reg, divisions = [], fees = 
               >
                 Cancel
               </button>
+              </div>
             </form>
           ) : (
             <button
