@@ -1,5 +1,6 @@
 import { getTournamentBasicsBySlug, getTournamentSchedule } from "@/lib/data";
 import { compactFeedLabel } from "@/lib/quickscores";
+import { venueForField } from "@/lib/venues";
 
 // A SUBSCRIBABLE game-by-game feed (JD, 2026-07-25: "quickscores has a
 // subscribe link"). QuickScores' own copy makes the case better than we
@@ -94,7 +95,11 @@ export async function GET(request, { params }) {
     const vs = g.isFinal
       ? `${t1} ${g.score1}–${g.score2} ${t2}`
       : `${t1} vs ${t2}`;
-    const where = [g.field, venue].filter(Boolean).join(", ");
+    // Two-park tournament: the game's own park, not the tournament's city.
+    const park = venueForField(tournament, g.field);
+    const where = [g.field, park ? [park.name, park.address].filter(Boolean).join(", ") : venue]
+      .filter(Boolean)
+      .join(", ");
     const detail = [
       `${g.divisionName} · ${g.label}`,
       // Only name an opponent that exists. "vs Winner of Game 5" is

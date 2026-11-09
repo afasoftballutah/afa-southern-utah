@@ -21,6 +21,7 @@ import {
 } from "@/lib/bracket/for-drawn-bracket";
 import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
 import { teamSlug } from "@/lib/teams";
+import { shortField } from "@/lib/venues";
 
 export const revalidate = 30;
 
@@ -60,10 +61,9 @@ function whenShort(scheduledTime) {
 }
 
 // "Field 3" -> "F3" — same helper as the scorekeeper's compact row.
+// A park prefix stays ("Hunter F1") so two parks' F1s never read the same.
 function fieldAbbrev(field) {
-  if (!field) return "";
-  const m = field.match(/\d+/);
-  return m ? `F${m[0]}` : field;
+  return shortField(field);
 }
 
 // One game, one row per team, that team's score on its own row — the same
