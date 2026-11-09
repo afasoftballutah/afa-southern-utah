@@ -2,7 +2,7 @@
 // subscribing to all teams with the matched name, not just the relevant one").
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { divisionFamily, teamFeedGames, teamFeedHref, feedSequence, sourceSlotLabeler } from "../lib/team-feed.js";
+import { divisionFamily, teamFeedGames, teamFeedHref, teamFromFeedFile, feedSequence, sourceSlotLabeler } from "../lib/team-feed.js";
 
 // Worlds 2026: two different teams called Fallen.
 const WORLDS_DIVS = [
@@ -72,14 +72,34 @@ test("a division id from another tournament falls back to name-only", () => {
   assert.equal(divisionFamily(WORLDS_DIVS, null), null);
 });
 
-test("subscribe link carries team and division, encoded", () => {
+test("subscribe link is a plain .ics path: no query string, spaces as %20", () => {
+  // JD's iPhone: "opened calendar and didnt add". No "&", no "+".
+  const href = teamFeedHref({ host: "afa.example", slug: "2026-afa-world-series", team: "Hit & Run", divisionId: "womens-rec" });
+  assert.equal(href, "webcal://afa.example/tournaments/2026-afa-world-series/cal/womens-rec/Hit%20%26%20Run.ics");
+  assert.ok(!href.includes("?") && !href.includes("+"));
   assert.equal(
-    teamFeedHref({ host: "afa.example", slug: "2026-afa-world-series", team: "Hit & Run", divisionId: "womens-rec" }),
-    "webcal://afa.example/tournaments/2026-afa-world-series/games.ics?team=Hit+%26+Run&division=womens-rec"
+    teamFeedHref({ host: "afa.example", slug: "s", team: "Laced Up", divisionId: "5349d521-435a-42d2-8551-df96b8e2f95b" }),
+    "webcal://afa.example/tournaments/s/cal/5349d521-435a-42d2-8551-df96b8e2f95b/Laced%20Up.ics"
   );
+  // Before mount: same path, no host.
+  assert.equal(teamFeedHref({ slug: "s", team: "Legacy", divisionId: "d" }), "/tournaments/s/cal/d/Legacy.ics");
+});
+
+test("the path round-trips every team name back to the exact name", () => {
+  for (const team of ["Legacy", "Laced Up", "Hit & Run", "Mama's Boys", "Côté · Team", "100% Fun", "A+B"]) {
+    const href = teamFeedHref({ slug: "s", team, divisionId: "d" });
+    assert.equal(teamFromFeedFile(href.split("/").pop()), team);
+  }
+  assert.equal(teamFromFeedFile("Legacy"), null);
+  assert.equal(teamFromFeedFile(".ics"), null);
+  assert.equal(teamFromFeedFile("%E0%A4%A.ics"), null);
+});
+
+test("no division, or a name with a slash: the old games.ics link", () => {
+  assert.equal(teamFeedHref({ slug: "s", team: "Fallen" }), "/tournaments/s/games.ics?team=Fallen");
   assert.equal(
-    teamFeedHref({ slug: "s", team: "Fallen" }),
-    "/tournaments/s/games.ics?team=Fallen"
+    teamFeedHref({ slug: "s", team: "A/B", divisionId: "d" }),
+    "/tournaments/s/games.ics?team=A%2FB&division=d"
   );
 });
 
