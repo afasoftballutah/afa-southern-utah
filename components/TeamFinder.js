@@ -243,7 +243,12 @@ export default function TeamFinder({
           {teamGames.length > 0 ? (
             /* Day, time, opponent, field, result — fixed tracks, so every
                column starts at the same x down the whole card. */
-            <ul className="divide-y divide-afa-navy/10">
+            /* One grid on the list, rows on subgrid: the time and field
+               tracks size to the widest entry in this list ("10 AM PST",
+               "Pioneer F3" at an away tournament; "9 AM", "F2" at home),
+               so nothing overlaps Scheduled and the columns still line up
+               down the card. */
+            <ul className="grid grid-cols-[26px_minmax(0,1fr)_auto_auto_14px_44px] gap-x-1.5 divide-y divide-afa-navy/10">
               {teamGames.map((g) => {
                 const won =
                   g.isFinal &&
@@ -255,7 +260,7 @@ export default function TeamFinder({
                 return (
                   <li
                     key={g.id}
-                    className="grid grid-cols-[26px_minmax(0,1fr)_46px_30px_14px_44px] items-center gap-x-1.5 py-2 text-sm"
+                    className="col-span-6 grid grid-cols-subgrid items-center py-2 text-sm"
                   >
                     <span className="whitespace-nowrap text-xs text-afa-muted">
                       {g.whenShort?.day}
