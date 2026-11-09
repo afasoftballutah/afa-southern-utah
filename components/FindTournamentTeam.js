@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import DivisionSeatMark from "@/components/DivisionSeatMark";
 import {
   forgetRegistration,
@@ -11,6 +12,7 @@ import {
 import { writeMe } from "@/lib/me";
 import { isPlaceholderManager, sameManager, sameRegistrationName } from "@/lib/register-key";
 import { clubDivisionIds } from "@/lib/tournament-teams";
+import { searchTournamentTeams, teamBracketHref, teamSearchKey } from "@/lib/team-search";
 
 function sameSeat(a, b) {
   if (a.divisionId && b.divisionId) return a.divisionId === b.divisionId;
@@ -165,20 +167,15 @@ export default function FindTournamentTeam({
     if (mine?.teamName) onTeam?.(mine.teamName);
   }, [slug, selectedTeam, onTeam]);
 
+  const router = useRouter();
   const needle = query.trim().toLowerCase();
-  const hits =
-    needle.length === 0
-      ? []
-      : teams
-          .filter((t) => {
-            if (t.name.toLowerCase().includes(needle)) return true;
-            return (t.managerNames ?? []).some((m) =>
-              String(m).toLowerCase().includes(needle)
-            );
-          })
-          .slice(0, 12);
+  const hits = searchTournamentTeams(teams, query, 12);
 
-  function pick(t) {
+  // Remember the pick (this page's division highlight, and the division
+  // page's TeamFinder, which reads afa-team-<slug>). `leaving` is true
+  // when the pick also opens the team's bracket: the page is about to
+  // change, so the panel stays put instead of collapsing under the tap.
+  function pick(t, { leaving = false } = {}) {
     const mgr = (t.managerNames ?? [])[0] || "";
     const ids = isPlaceholderManager(mgr)
       ? t.divisionId
@@ -197,8 +194,18 @@ export default function FindTournamentTeam({
     } catch {
       /* private browsing */
     }
+    if (leaving) return;
     setQuery("");
     onPanel?.(null);
+  }
+
+  // Enter in the box opens the first result, the same as tapping it.
+  function onSearchKey(e) {
+    if (e.key !== "Enter" || hits.length === 0) return;
+    e.preventDefault();
+    const href = teamBracketHref(slug, hits[0]);
+    pick(hits[0], { leaving: Boolean(href) });
+    if (href) router.push(href);
   }
 
   function forget(row) {
@@ -305,50 +312,70 @@ export default function FindTournamentTeam({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onSearchKey}
             placeholder="Team or manager name"
             aria-label="Team or manager name"
-            aria-autocomplete="list"
             className="form-field w-full"
           />
           {needle.length > 0 && hits.length === 0 ? (
             <p className="t-meta">No team matches that name.</p>
           ) : null}
           {hits.length > 0 ? (
-            <ul className="space-y-2" role="listbox">
+            <ul className="space-y-2" aria-label="Matching teams">
               {hits.map((t) => {
                 const managers = (t.managerNames ?? []).filter((m) =>
                   String(m).toLowerCase().includes(needle)
                 );
-                return (
-                  <li key={`${t.name}-${t.divisionId || t.seatLabel}`}>
-                    <button
-                      type="button"
-                      role="option"
-                      className={
-                        "w-full text-left flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 " +
-                        (t.genderKey
-                          ? "reg-team-row--" + t.genderKey
-                          : "border-afa-navy/10 bg-white")
-                      }
-                      onClick={() => pick(t)}
-                    >
-                      <span className="min-w-0">
-                        <span className="team-name font-semibold truncate block">
-                          {t.name}
-                        </span>
+                const href = teamBracketHref(slug, t);
+                const rowClass =
+                  "team-search-hit w-full text-left flex items-center gap-3 rounded-lg border px-3 py-2.5 " +
+                  (t.genderKey
+                    ? "reg-team-row--" + t.genderKey
+                    : "border-afa-navy/10 bg-white");
+                const body = (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className="team-name font-semibold truncate block">
+                        {t.name}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2">
+                        <DivisionSeatMark
+                          genderKey={t.genderKey}
+                          seatLabel={t.seatLabel}
+                          genderLabel={t.genderLabel}
+                          levelLabel={t.levelLabel}
+                          className="div-seat-mark--lg"
+                        />
                         {managers.length > 0 ? (
-                          <span className="t-meta block truncate mt-0.5">
+                          <span className="t-meta truncate">
                             {managers.join(", ")}
                           </span>
                         ) : null}
                       </span>
-                      <DivisionSeatMark
-                        genderKey={t.genderKey}
-                        seatLabel={t.seatLabel}
-                        genderLabel={t.genderLabel}
-                        levelLabel={t.levelLabel}
-                      />
-                    </button>
+                    </span>
+                    {href ? (
+                      <span className="team-search-hit__go shrink-0" aria-hidden="true">
+                        Bracket &rsaquo;
+                      </span>
+                    ) : null}
+                  </>
+                );
+                return (
+                  <li key={teamSearchKey(t)}>
+                    {href ? (
+                      <Link
+                        href={href}
+                        className={rowClass}
+                        aria-label={`${t.name}, ${t.seatLabel || "division"}: open bracket`}
+                        onClick={() => pick(t, { leaving: true })}
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <button type="button" className={rowClass} onClick={() => pick(t)}>
+                        {body}
+                      </button>
+                    )}
                   </li>
                 );
               })}
