@@ -777,6 +777,7 @@ export async function POST(request) {
           teamName: teamName.trim(),
           divisionId,
           managerName: managerName ?? null,
+          managerEmail: managerEmail ?? null,
         });
         await supabase
           .from("registrations")

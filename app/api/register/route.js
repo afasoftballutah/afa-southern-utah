@@ -251,6 +251,7 @@ export async function POST(request) {
       teamName: teamName.trim(),
       divisionId,
       managerName: managerPerson.displayName ?? null,
+      managerEmail: managerPerson.email ?? null,
     });
 
     await Promise.all(
