@@ -89,7 +89,8 @@ test("survives being passed straight to Array.filter", () => {
   // filter hands (element, index, array). If the index reached `now`, the
   // clock would read 1970 and every finished tournament would reopen.
   const list = [
-    t({ name: "future" }),
+    // Real clock here (filter passes no date), so "future" must stay future.
+    t({ name: "future", start_date: "2099-08-22", end_date: "2099-08-23" }),
     t({ name: "past", start_date: "2020-01-01", end_date: "2020-01-02" }),
   ];
   assert.deepEqual(

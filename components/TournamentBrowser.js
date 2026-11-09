@@ -13,6 +13,7 @@ import {
   REGION_LABEL,
 } from "@/lib/data";
 import { venueParts } from "@/lib/director";
+import { isPastTournament } from "@/lib/tournament-state";
 import { parseLeagueDateOnly } from "@/lib/league-time";
 import {
   getRegionPrefSnapshot,
@@ -94,7 +95,9 @@ export default function TournamentBrowser({ groups }) {
   // (games settled, moot if-games excluded) counts as past even when the
   // row still says "upcoming". status === "complete" still covers older
   // seed rows with no game data.
-  const isPast = (t) => t.status === "complete" || t.finished === true;
+  // Shared rule (lib/tournament-state tournamentPhase): last day before today
+  // in the tournament's zone, every game final, or status "complete".
+  const isPast = (t) => isPastTournament(t);
 
   // Public upcoming = has a real event poster, or a bracket on the site.
   // Others stay listed but greyed (not linked / not registerable) until a

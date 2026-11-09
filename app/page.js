@@ -9,7 +9,7 @@ import {
   canonicalRegion,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { leagueToday } from "@/lib/tournament-state";
+import { isPastTournament } from "@/lib/tournament-state";
 import { championshipGameOf } from "@/lib/bracket/if-game";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import { venueParts } from "@/lib/director";
@@ -23,7 +23,8 @@ import HomeRegionContent from "@/components/HomeRegionContent";
 export const revalidate = 30;
 
 // Home — Last Tournament + Upcoming Events | Recent Results.
-// Upcoming is date-derived (end_date >= today). Never trust status —
+// Upcoming / past come from tournamentPhase (lib/tournament-state): dates in
+// the tournament's own zone, or every game final. Never trust status —
 // Heat Stroker stayed "upcoming" after it finished (spec-signup-flow).
 export default async function Home() {
   const configured = isSupabaseConfigured();
@@ -47,18 +48,13 @@ export default async function Home() {
     (d) => (d.placements ?? []).length > 0
   );
 
-  const today = leagueToday();
+  // One clock for the whole page; each tournament reads it in its own zone.
+  const today = new Date();
   const dateOnly = (v) => (v ? String(v).slice(0, 10) : null);
   const eventEnd = (t) => dateOnly(t.end_date) ?? dateOnly(t.start_date);
-  const isPastByDate = (t) => {
-    const end = eventEnd(t);
-    return Boolean(end && end < today);
-  };
-  const isUpcomingByDate = (t) => {
-    if (t?.is_placeholder) return false;
-    const end = eventEnd(t);
-    return Boolean(end && end >= today);
-  };
+  const isPastByDate = (t) => Boolean(eventEnd(t)) && isPastTournament(t, today);
+  const isUpcomingByDate = (t) =>
+    !t?.is_placeholder && Boolean(eventEnd(t)) && !isPastTournament(t, today);
 
   const posterSlides = buildPosterDeckSlides(seasonGroups, {
     today,

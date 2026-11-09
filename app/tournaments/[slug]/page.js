@@ -13,7 +13,7 @@ import {
 } from "@/lib/data";
 import { tournamentVenues } from "@/lib/venues";
 import { tournamentZoneLabel } from "@/lib/zone";
-import { isRegistrationOpen } from "@/lib/tournament-state";
+import { isRegistrationOpen, isPastTournament } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
 import Card from "@/components/ui/Card";
@@ -104,7 +104,27 @@ export default async function TournamentDetailPage({ params }) {
   // No event poster yet → not a public lobby (still in DB / greyed on list).
   // Finished events with results can stay viewable even if poster was a schedule.
   const finishedEarly = isTournamentFinished(tournament);
+  // Over by date (its own zone) or by results — never "coming soon".
+  const isPast = finishedEarly || isPastTournament(tournament);
   if (!isRealPoster(tournament) && !finishedEarly && !hasPublishedBracket(tournament)) {
+    if (isPast) {
+      return (
+        <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
+          <h1 className="t-title">{tournament.name}</h1>
+          <p className="t-meta">
+            {formatDateRange(tournament.start_date, tournament.end_date)}
+            {tournament.venue_name ? ` · ${tournament.venue_name}` : ""}
+          </p>
+          <p className="t-strong">Completed</p>
+          <p className="t-meta">This tournament has been played.</p>
+          <div className="flex flex-wrap gap-2 justify-center pt-2">
+            <Link href="/tournaments" className="btn-transient">
+              All tournaments
+            </Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
         <h1 className="t-title">{tournament.name}</h1>
@@ -202,7 +222,7 @@ export default async function TournamentDetailPage({ params }) {
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 flex-wrap">
           <h1 className="t-title">{tournament.name}</h1>
-          {tournament.status === "complete" && <Chip variant="muted">Final</Chip>}
+          {isPast && <Chip variant="muted">Completed</Chip>}
         </div>
         {/* The calendar link lives on the DATES now (JD, 2026-07-26). It
             used to sit on the right of each group card, in the spot that
