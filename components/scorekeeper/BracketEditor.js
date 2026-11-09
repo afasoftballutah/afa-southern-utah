@@ -1,9 +1,10 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
-import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { LEAGUE_TZ, formatFieldTime } from "@/lib/bracket/tree";
 import { formatGameWhenInput, parseGameWhenInput } from "@/lib/league-time";
 import GameWhenInput from "./GameWhenInput";
 
@@ -21,14 +22,9 @@ import GameWhenInput from "./GameWhenInput";
 const PLACEHOLDER_RE = /^(Winner|Loser) of Game \d+$/;
 const isPlaceholder = (n) => !!n && PLACEHOLDER_RE.test(n);
 
-function whenLabel(iso) {
+function whenLabel(iso, timeZone = LEAGUE_TZ) {
   if (!iso) return "no time set";
-  const d = new Date(iso);
-  return (
-    d.toLocaleDateString("en-US", { weekday: "short", timeZone: LEAGUE_TZ }) +
-    " " +
-    d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ })
-  );
+  return formatFieldTime({ scheduled_time: iso }, timeZone);
 }
 
 /**
@@ -52,6 +48,7 @@ function findConflicts(allGames) {
 }
 
 export default function BracketEditor({ stages, playDay = null }) {
+  const timeZone = useTimeZone();
   const router = useRouter();
   const [shownId, setShownId] = useState(stages?.[0]?.id ?? null);
   const [selected, setSelected] = useState(null); // game row
@@ -79,7 +76,7 @@ export default function BracketEditor({ stages, playDay = null }) {
       s1: g.team1_score ?? "",
       s2: g.team2_score ?? "",
       field: g.field ?? "",
-      time: formatGameWhenInput(g.scheduled_time, playDay),
+      time: formatGameWhenInput(g.scheduled_time, playDay, timeZone),
     });
   }
 
@@ -117,7 +114,7 @@ export default function BracketEditor({ stages, playDay = null }) {
     try {
       await post(`/api/scorekeeper/games/${selected.id}`, {
         field: draft.field || null,
-        scheduledTime: parseGameWhenInput(draft.time, playDay)?.toISOString() ?? null,
+        scheduledTime: parseGameWhenInput(draft.time, playDay, timeZone)?.toISOString() ?? null,
       });
       setSelected(null);
       router.refresh();
@@ -191,7 +188,7 @@ export default function BracketEditor({ stages, playDay = null }) {
           {clashes.map((group, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-afa-ink/70">
-                {group[0].field} · {whenLabel(group[0].scheduled_time)} —{" "}
+                {group[0].field} · {whenLabel(group[0].scheduled_time, timeZone)} —{" "}
                 {group.map((g) => `G${g.round}`).join(" and ")}
               </span>
               {group.length === 2 && (
@@ -230,7 +227,7 @@ export default function BracketEditor({ stages, playDay = null }) {
             <div className="flex items-baseline gap-2">
               <p className="font-bold text-afa-navy">Game {selected.round}</p>
               <p className="text-sm text-afa-ink/60">
-                {stage.name} · {whenLabel(selected.scheduled_time)}
+                {stage.name} · {whenLabel(selected.scheduled_time, timeZone)}
                 {selected.field ? ` · ${selected.field}` : ""}
               </p>
               <button

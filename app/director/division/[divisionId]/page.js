@@ -14,6 +14,8 @@ import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
 import ScoreTable from "@/components/scorekeeper/ScoreTable";
 import { knownPlayDay } from "@/lib/league-time";
+import { tournamentTimeZone } from "@/lib/zone";
+import { TimeZoneProvider } from "@/components/TimeZoneContext";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Division — Director" };
@@ -26,7 +28,7 @@ async function loadDivisionData(divisionId) {
   // identically, which is what lets this ship before the migration runs.
   const { data: division, error } = await supabase
     .from("divisions")
-    .select("*, tournaments(name, slug, start_date, end_date)")
+    .select("*, tournaments(*)")
     .eq("id", divisionId)
     .maybeSingle();
   if (error || !division) return null;
@@ -189,8 +191,11 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
   const openPool = stillToPlayIn(data.poolGames);
   const openBracket = stillToPlayIn(data.games);
   const playDay = knownPlayDay(data.division);
+  // Times read and typed in the tournament's zone (Mesquite: Pacific).
+  const timeZone = tournamentTimeZone(data.division.tournaments);
 
   return (
+    <TimeZoneProvider timeZone={timeZone}>
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
@@ -331,5 +336,6 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
       </>
       )}
     </div>
+    </TimeZoneProvider>
   );
 }

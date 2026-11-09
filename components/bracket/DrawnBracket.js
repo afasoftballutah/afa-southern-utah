@@ -7,7 +7,8 @@ import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
 import { useDrops } from "@/components/bracket/DropsContext";
 import { useFocusRound } from "@/components/bracket/FocusRoundContext";
 import { mootIfRounds } from "@/lib/bracket/if-game";
-import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
+import { formatFieldTime, compactGameCaption } from "@/lib/bracket/tree";
+import { useTimeZone } from "@/components/TimeZoneContext";
 
 // DrawnBracket — lays out ANY bracket from its feed graph (dispatch-brief-15),
 // for brackets lib/bracket/tree.js can't draw. tree.js assumes every round
@@ -829,8 +830,8 @@ export function computeLayout(games) {
 // The site-wide caption, unabbreviated — kept for the fallback list, which
 // is the same transcribed-list rendering the page showed before this
 // component existed. Only the DRAWN bracket's cells use the compact form.
-function fullCaption(g) {
-  return [`G${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · ");
+function fullCaption(g, timeZone) {
+  return [`G${g.round}`, formatFieldTime(g, timeZone)].filter(Boolean).join(" · ");
 }
 
 // Compact caption for the drawn bracket ONLY — a 180-220px box has no room
@@ -843,35 +844,14 @@ function fullCaption(g) {
 // The card's own caption, which no longer carries the game number: that
 // moved into the badge inside the card's top-left corner (spec 5.2). Same
 // abbreviation rules as compactCaption, minus the G-part.
-function scheduleCaption(g) {
-  return compactCaption(g).replace(/^G\d+\s*·\s*/, "");
+function scheduleCaption(g, timeZone) {
+  return compactCaption(g, timeZone).replace(/^G\d+\s*·\s*/, "");
 }
 
-function compactCaption(g) {
-  const parts = [`G${g.round}`];
-  if (g.scheduled_time) {
-    const d = new Date(g.scheduled_time);
-    const day = d.toLocaleDateString("en-US", { weekday: "short", timeZone: LEAGUE_TZ }).toUpperCase();
-    const full = d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: LEAGUE_TZ,
-    });
-    const m = /^(\d+):(\d+)\s*([AP])M$/.exec(full);
-    if (m) {
-      const [, hour, minute, meridiem] = m;
-      const time = minute === "00" ? `${hour}${meridiem}` : `${hour}:${minute}${meridiem}`;
-      parts.push(`${day} ${time}`);
-    } else {
-      parts.push(day);
-    }
-  }
-  if (g.field) {
-    const m = /field\s*#?\s*(\S+)/i.exec(g.field);
-    parts.push(m ? `F${m[1]}` : g.field);
-  }
-  return parts.join(" · ");
+// compactGameCaption lives in lib/bracket/tree.js (pure, tested), with the
+// tournament's zone (labelled "THU 2P PST" when not league time).
+function compactCaption(g, timeZone) {
+  return compactGameCaption(g, timeZone);
 }
 
 // The label that names an outcome in the consequences view. Sits above
@@ -893,12 +873,13 @@ function OutcomeTag({ children, color }) {
 // before this component existed. Full, readable captions — unabbreviated,
 // same as the schedule and pool pages.
 function FallbackList({ games }) {
+  const timeZone = useTimeZone();
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {(games ?? []).map((g) => (
         <Matchup
           key={g.id}
-          caption={fullCaption(g)}
+          caption={fullCaption(g, timeZone)}
           team1={g.team1_name}
           team2={g.team2_name}
           score1={g.team1_score}
@@ -933,6 +914,7 @@ export default function DrawnBracket({
   // side it arrives from the team picker through context.
   const followed = useHighlightTeam();
   const team = highlightTeam ?? followed;
+  const timeZone = useTimeZone();
   const layout = useMemo(() => computeLayout(games), [games]);
   const scrollerRef = useRef(null);
   // Off by default (JD, 2026-07-25). The drop lines answer "where does a
@@ -1382,7 +1364,7 @@ export default function DrawnBracket({
             <BracketMatchup
               game={game}
               division={division}
-              caption={scheduleCaption(game)}
+              caption={scheduleCaption(game, timeZone)}
               order={layout.rowOrders[round]}
               badgeColor={showDrops ? badgeOf.get(round) : null}
               slotTint={

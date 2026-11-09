@@ -12,6 +12,7 @@ import {
   isGroupName,
 } from "@/lib/data";
 import { tournamentVenues } from "@/lib/venues";
+import { tournamentZoneLabel } from "@/lib/zone";
 import { isRegistrationOpen } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
@@ -175,6 +176,7 @@ export default async function TournamentDetailPage({ params }) {
     `${tournament.venue_name}, ${tournament.venue_address ?? ""}`
   )}`;
   const dateRange = formatDateRange(tournament.start_date, tournament.end_date);
+  const zoneLabel = tournamentZoneLabel(tournament);
 
   const numberRows = buildNumberRows(tournament);
   const divisionNotesLines = splitSentences(tournament.division_notes);
@@ -247,6 +249,9 @@ export default async function TournamentDetailPage({ params }) {
             {dateRange}
           </a>
         </p>
+        {/* Played away from league time (Mesquite is Pacific): say so once,
+            here, and every game time on the site carries the same label. */}
+        {zoneLabel && <p className="t-meta mt-1">Game times are {zoneLabel}</p>}
         {tournament.is_placeholder && (
           <p className="text-sm text-afa-ink/60 mt-1">
             Shown for reference — not a confirmed date.

@@ -12,7 +12,9 @@ import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
 import MatchupCard from "@/components/ui/MatchupCard";
 import DivisionView from "@/components/DivisionView";
-import { formatFieldTime, LEAGUE_TZ } from "@/lib/bracket/tree";
+import { formatFieldTime, gameWhenShort, LEAGUE_TZ } from "@/lib/bracket/tree";
+import { tournamentTimeZone } from "@/lib/zone";
+import { TimeZoneProvider } from "@/components/TimeZoneContext";
 import { poolFinishOrder, resolveSeeds, parseSeedRef } from "@/lib/bracket/seed";
 import { mootIfRounds } from "@/lib/bracket/if-game";
 import {
@@ -42,22 +44,9 @@ function poolLetters(byPool) {
 // on the server because the league's time zone lives here; a client
 // component would render it in the reader's, and a team in California
 // does not want their Utah game an hour early.
-function whenShort(scheduledTime) {
-  if (!scheduledTime) return { day: "", time: "" };
-  const d = new Date(scheduledTime);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: LEAGUE_TZ,
-  }).formatToParts(d);
-  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
-  const min = get("minute");
-  return {
-    day: get("weekday"),
-    time: `${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`,
-  };
+// In the tournament's zone; "2 PM PST" when that is not league time.
+function whenShort(scheduledTime, timeZone = LEAGUE_TZ) {
+  return gameWhenShort(scheduledTime, timeZone);
 }
 
 // "Field 3" -> "F3" — same helper as the scorekeeper's compact row.
@@ -71,8 +60,8 @@ function fieldAbbrev(field) {
 // Two names either side of a shared "12-10" made you work out which score
 // belonged to whom, and it truncated both names to do it. Here the name has
 // the whole row and wraps if it needs to; nothing is ever cut off.
-function PoolGameRow({ game }) {
-  const { day, time } = whenShort(game.scheduled_time);
+function PoolGameRow({ game, timeZone }) {
+  const { day, time } = whenShort(game.scheduled_time, timeZone);
   return (
     <div data-pool-game={game.id}>
       {/* The same card, and the same meta column, as the schedule and the
@@ -100,7 +89,7 @@ function PoolGameRow({ game }) {
 // them, in the same grammar as the scorekeeper's screen. Two cards stacked
 // per pool read as two unrelated things, and PCT restates W-L in a
 // two-game pool while stealing the width the names needed.
-function PoolPlaySection({ poolGames }) {
+function PoolPlaySection({ poolGames, timeZone }) {
   if (!poolGames || poolGames.length === 0) return null;
 
   const byPool = {};
@@ -184,7 +173,7 @@ function PoolPlaySection({ poolGames }) {
                 </p>
                 <div className="space-y-1">
                   {games.map((g) => (
-                    <PoolGameRow key={g.id} game={g} />
+                    <PoolGameRow key={g.id} game={g} timeZone={timeZone} />
                   ))}
                 </div>
               </div>
@@ -340,6 +329,7 @@ export default async function DivisionPage({ params }) {
   if (!division || division.tournament?.slug !== slug) notFound();
 
   const tournament = division.tournament;
+  const timeZone = tournamentTimeZone(tournament);
   const renderedName = division.display_name ?? division.name;
   const placements = division.placements ?? [];
   const hasPlacements = placements.length > 0;
@@ -460,9 +450,9 @@ export default async function DivisionPage({ params }) {
       id: g.id,
       pool: g.pool,
       when: g.scheduled_time,
-      whenShort: whenShort(g.scheduled_time),
+      whenShort: whenShort(g.scheduled_time, timeZone),
       field: g.field ?? null,
-      caption: formatFieldTime(g),
+      caption: formatFieldTime(g, timeZone),
       team1: g.team1_name,
       team2: g.team2_name,
       score1: g.team1_score,
@@ -487,9 +477,9 @@ export default async function DivisionPage({ params }) {
           id: g.id,
           pool: null,
           when: g.scheduled_time,
-          whenShort: whenShort(g.scheduled_time),
+          whenShort: whenShort(g.scheduled_time, timeZone),
           field: g.field ?? null,
-          caption: [`${stageName} G${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
+          caption: [`${stageName} G${g.round}`, formatFieldTime(g, timeZone)].filter(Boolean).join(" · "),
           team1: g.team1_name,
           team2: g.team2_name,
           score1: g.team1_score,
@@ -505,9 +495,9 @@ export default async function DivisionPage({ params }) {
       id: g.id,
       pool: null,
       when: g.scheduled_time,
-      whenShort: whenShort(g.scheduled_time),
+      whenShort: whenShort(g.scheduled_time, timeZone),
       field: g.field ?? null,
-      caption: [`G${g.round}`, formatFieldTime(g)].filter(Boolean).join(" · "),
+      caption: [`G${g.round}`, formatFieldTime(g, timeZone)].filter(Boolean).join(" · "),
       team1: g.team1_name,
       team2: g.team2_name,
       score1: g.team1_score,
@@ -539,6 +529,7 @@ export default async function DivisionPage({ params }) {
     ) : null;
 
   return (
+    <TimeZoneProvider timeZone={timeZone}>
     <div className="space-y-4">
       {/* Where you are and how to get back, on ONE line (JD, 2026-07-26).
           A back link, then a centred title on its own row, cost most of a
@@ -609,7 +600,7 @@ export default async function DivisionPage({ params }) {
                 (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
             )
           }
-          poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} /> : null}
+          poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} timeZone={timeZone} /> : null}
           standingsPanes={Object.fromEntries(
             Object.entries(playableStageGames)
               .filter(([, list]) => list.length > 0)
@@ -688,5 +679,6 @@ export default async function DivisionPage({ params }) {
         </p>
       )}
     </div>
+    </TimeZoneProvider>
   );
 }

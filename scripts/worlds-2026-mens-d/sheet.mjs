@@ -109,3 +109,35 @@ export function parseToken(tok) {
   const m = /^([WL])(\d+)$/.exec(tok);
   return m ? { kind: m[1], n: Number(m[2]) } : { kind: "team", name: tok };
 }
+
+// Mesquite is Pacific. tournaments.timezone; the sheet's clock times are
+// stored as true Pacific instants and the site shows them as "2 PM PST".
+export const TIME_ZONE = "America/Los_Angeles";
+
+// The classless "Men's" placeholder division the load removes (J.D.,
+// 2026-11-08: Men's D is the only men's division). Every column as the
+// public site served it on 2026-11-08 (divisions(*) in the /tournaments
+// payload), so the rollback recreates it exactly.
+export const OLD_MENS = {
+  id: "cc1281b4-3877-42c9-b644-0dcc79f516d5",
+  tournament_id: TOURNAMENT_ID,
+  name: "Men's",
+  display_name: "Men's",
+  gender: "mens",
+  class_id: null,
+  bracket_type: "double_elim",
+  sort_order: 0,
+  day_date: "2026-11-12",
+  day_label: "Thu, Nov 12",
+  min_teams: 6,
+  max_teams: null,
+  min_men: 10,
+  min_women: 0,
+  seed_order: null,
+  third_life_teams: [],
+  parent_division_id: null,
+  source_url: null,
+  bracket_confirmed_at: null,
+  bracket_confirmed_by: null,
+  created_at: "2026-07-21T18:18:17.136295+00:00",
+};

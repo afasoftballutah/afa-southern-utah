@@ -1,5 +1,6 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import {
   splitSides,
@@ -97,9 +98,10 @@ function MatchCell({
   loserToPool = false,
   paperNum = null,
 }) {
+  const timeZone = useTimeZone();
   if (!game) return null;
   const pending = game.status === "pending";
-  const fieldTime = formatFieldTime(game);
+  const fieldTime = formatFieldTime(game, timeZone);
   const { teamRowH, pillGap, scoreW, gameUnitH } = box;
 
   const pillStyle = {
