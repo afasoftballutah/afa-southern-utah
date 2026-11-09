@@ -4,6 +4,7 @@ import { venueForField } from "@/lib/venues";
 import { icsTimestamp } from "@/lib/ics-time";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import { isAwayZone, tournamentTimeZone } from "@/lib/zone";
+import { divisionFamily, feedSequence, teamFeedGames } from "@/lib/team-feed";
 
 // A SUBSCRIBABLE game-by-game feed (JD, 2026-07-25: "quickscores has a
 // subscribe link"). QuickScores' own copy makes the case better than we
@@ -16,8 +17,10 @@ import { isAwayZone, tournamentTimeZone } from "@/lib/zone";
 // anything. calendar.ics next door is a different thing and stays: it is
 // the one all-day "this tournament is happening" event you add once.
 //
-// ?team=<name> narrows it to one team's games, which is what a player
-// actually wants. A bracket game the team has not reached yet simply is
+// ?team=<name>&division=<id> narrows it to one team's games, which is what
+// a player actually wants. The division keeps a name shared by two teams
+// (Worlds: Fallen in Men's D and Men's E) to the one that was picked — see
+// lib/team-feed.js. An old link with only ?team= still works as before. A bracket game the team has not reached yet simply is
 // not in the feed, and appears the moment the bracket names them —
 // again, only because this is a subscription and not a download.
 export const revalidate = 300;
@@ -77,15 +80,18 @@ export async function GET(request, { params }) {
 
   const { searchParams } = new URL(request.url);
   const team = searchParams.get("team");
+  const family = divisionFamily(tournament.divisions, searchParams.get("division"));
 
   // A game with no time cannot go in a calendar — there is nothing to put
   // it beside. It arrives once it is scheduled.
   let games = rows.filter((g) => g.scheduledTime);
-  if (team) games = games.filter((g) => g.team1 === team || g.team2 === team);
+  if (team) games = teamFeedGames(games, { team, family });
 
   const origin = new URL(request.url).origin;
   const venue = [tournament.venue_name, tournament.venue_address].filter(Boolean).join(", ");
-  const dtstamp = icsTimestamp(new Date());
+  const builtAt = new Date();
+  const dtstamp = icsTimestamp(builtAt);
+  const sequence = feedSequence(builtAt);
   const calName = team ? `${team} — ${tournament.name}` : tournament.name;
   // DTSTART stays UTC (correct anywhere). A tournament away from league
   // time also names its zone and says the local start in the details.
@@ -95,8 +101,10 @@ export async function GET(request, { params }) {
   const vevents = games.flatMap((g) => {
     const start = new Date(g.scheduledTime);
     const end = new Date(start.getTime() + GAME_MINUTES * 60_000);
-    const t1 = compactFeedLabel(g.team1) ?? g.team1;
-    const t2 = compactFeedLabel(g.team2) ?? g.team2;
+    const name1 = g.team1 ?? g.team1From ?? "TBD";
+    const name2 = g.team2 ?? g.team2From ?? "TBD";
+    const t1 = compactFeedLabel(name1) ?? name1;
+    const t2 = compactFeedLabel(name2) ?? name2;
     const vs = g.isFinal
       ? `${t1} ${g.score1}–${g.score2} ${t2}`
       : `${t1} vs ${t2}`;
@@ -123,6 +131,7 @@ export async function GET(request, { params }) {
       // Stable per game, so a moved game is EDITED in the subscriber's
       // calendar rather than added a second time.
       `UID:${g.id}@afa-southern-utah`,
+      `SEQUENCE:${sequence}`,
       `DTSTAMP:${dtstamp}`,
       `LAST-MODIFIED:${dtstamp}`,
       `DTSTART:${icsTimestamp(start)}`,
