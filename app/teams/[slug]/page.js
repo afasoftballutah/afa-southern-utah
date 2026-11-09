@@ -1,30 +1,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTeamPageBySlug, formatDateRange } from "@/lib/data";
-import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { LEAGUE_TZ, gameWhenShort } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import MatchupCard from "@/components/ui/MatchupCard";
+import { shortField } from "@/lib/venues";
 
 export const revalidate = 30;
 
-function whenParts(scheduledTime) {
-  if (!scheduledTime) return { whenDay: "", whenTime: "" };
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: LEAGUE_TZ,
-  }).formatToParts(new Date(scheduledTime));
-  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
-  const min = get("minute");
-  return {
-    whenDay: get("weekday"),
-    whenTime: `${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`,
-  };
+// In the game's own tournament zone; "2 PM PST" when not league time.
+function whenParts(scheduledTime, timeZone) {
+  const { day, time } = gameWhenShort(scheduledTime, timeZone ?? LEAGUE_TZ);
+  return { whenDay: day, whenTime: time };
 }
 
-const fieldShort = (f) => (f ? String(f).replace(/^Field\s*/i, "F") : "");
+const fieldShort = (f) => shortField(f);
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -126,7 +116,7 @@ function TournamentCard({ card }) {
       ) : (
         <div className="space-y-2">
           {card.games.map((g) => {
-            const { whenDay, whenTime } = whenParts(g.scheduledTime);
+            const { whenDay, whenTime } = whenParts(g.scheduledTime, g.timeZone);
             const href =
               g.tournamentSlug && g.divisionId
                 ? g.pool

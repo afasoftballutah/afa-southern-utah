@@ -1,5 +1,6 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { directorPost } from "./DirectorForm";
@@ -22,6 +23,7 @@ export default function HandGames({
   playDay = null,
   divisionName = "Bracket",
 }) {
+  const timeZone = useTimeZone();
   const router = useRouter();
   const list = useMemo(
     () => [...games].sort((a, b) => (a.round ?? 0) - (b.round ?? 0)),
@@ -71,7 +73,7 @@ export default function HandGames({
       team2Name: team2,
       gameNumber,
       field,
-      scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
+      scheduledTime: parseGameWhenInput(time, playDay, timeZone)?.toISOString() ?? null,
     });
     setBusy(false);
     if (res.error) {
@@ -227,12 +229,13 @@ function Seat({ label, value, onChange, teams, fromGames }) {
 }
 
 function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
+  const timeZone = useTimeZone();
   const [open, setOpen] = useState(false);
   const [round, setRound] = useState(String(game.round ?? ""));
   const [team1, setTeam1] = useState(game.team1_name || "");
   const [team2, setTeam2] = useState(game.team2_name || "");
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
+  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay, timeZone));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -281,7 +284,7 @@ function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           field: field || null,
-          scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
+          scheduledTime: parseGameWhenInput(time, playDay, timeZone)?.toISOString() ?? null,
         }),
       });
       const json = await res.json();
@@ -319,7 +322,7 @@ function HandGameLine({ game, games, teamNames, playDay = null, onChanged }) {
           {game.team1_name || "—"} vs {game.team2_name || "—"}
         </span>
         <span className="t-meta shrink-0">
-          {[game.field, formatLeagueShortTime(game.scheduled_time, "")].filter(Boolean).join(" · ")}
+          {[game.field, formatLeagueShortTime(game.scheduled_time, "", timeZone)].filter(Boolean).join(" · ")}
         </span>
       </button>
       {open ? (

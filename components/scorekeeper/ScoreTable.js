@@ -1,10 +1,11 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import DirectorTable from "./DirectorTable";
 import ConfirmDialog from "./ConfirmDialog";
-import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { LEAGUE_TZ, formatFieldTime } from "@/lib/bracket/tree";
 import { mootIfRounds } from "@/lib/bracket/if-game";
 
 // Every game in a division, one line each.
@@ -26,14 +27,10 @@ import { mootIfRounds } from "@/lib/bracket/if-game";
 const PLACEHOLDER_RE = /^(Winner|Loser) of Game \d+$/;
 const isPlaceholder = (name) => Boolean(name) && PLACEHOLDER_RE.test(name);
 
-function timeLabel(scheduledTime) {
+function timeLabel(scheduledTime, timeZone = LEAGUE_TZ) {
   if (!scheduledTime) return "TBD";
-  const d = new Date(scheduledTime);
-  return (
-    d.toLocaleDateString("en-US", { weekday: "short", timeZone: LEAGUE_TZ }) +
-    " " +
-    d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ })
-  );
+  // Same text as formatFieldTime; "Thu 2:00 PM PST" away from league time.
+  return formatFieldTime({ scheduled_time: scheduledTime }, timeZone);
 }
 
 /** "Field 4" and "4" both print as F4; the column is three characters wide. */
@@ -65,6 +62,7 @@ export default function ScoreTable({
   /** When true, parent owns filters (ScorekeeperBoard toolbar). */
   hideFilters = false,
 }) {
+  const timeZone = useTimeZone();
   const router = useRouter();
   const api = ENDPOINTS[kind] ?? ENDPOINTS.bracket;
   const list = games ?? [];
@@ -123,7 +121,7 @@ export default function ScoreTable({
       },
       cells: {
         num: <span className="font-semibold text-afa-navy">{number}</span>,
-        when: timeLabel(g.scheduled_time),
+        when: timeLabel(g.scheduled_time, timeZone),
         field: fieldLabel(g.field),
         team1: (
           <span className={won1 ? "font-semibold text-afa-navy" : ""}>{g.team1_name || "TBD"}</span>

@@ -31,17 +31,20 @@ function getStoredViewServer() {
 // field, and games with no field at all land in a final "Field TBD"
 // bucket. Reused both to order the By-field rows and to order games
 // within a single By-time slot.
+// A park prefix ("Hunter F1", "Pioneer F3") keeps a park's fields together.
 function fieldSortKey(field) {
-  if (!field) return [2, 0, ""];
+  if (!field) return [2, 0, "", ""];
   const match = field.match(/\d+/);
-  if (match) return [0, parseInt(match[0], 10), field];
-  return [1, 0, field];
+  const park = match ? field.slice(0, match.index).replace(/\b(field|f)\s*#?\s*$/i, "").trim() : "";
+  if (match) return [0, parseInt(match[0], 10), field, park];
+  return [1, 0, field, ""];
 }
 
 function compareByField(a, b) {
   const ka = fieldSortKey(a.field);
   const kb = fieldSortKey(b.field);
   if (ka[0] !== kb[0]) return ka[0] - kb[0];
+  if (ka[3] !== kb[3]) return ka[3].localeCompare(kb[3]);
   if (ka[1] !== kb[1]) return ka[1] - kb[1];
   return ka[2].localeCompare(kb[2]);
 }

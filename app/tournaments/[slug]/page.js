@@ -8,8 +8,11 @@ import {
   formatDateRange,
   formatFee,
   isRealPoster,
+  hasPublishedBracket,
   isGroupName,
 } from "@/lib/data";
+import { tournamentVenues } from "@/lib/venues";
+import { tournamentZoneLabel } from "@/lib/zone";
 import { isRegistrationOpen } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
@@ -101,7 +104,7 @@ export default async function TournamentDetailPage({ params }) {
   // No event poster yet → not a public lobby (still in DB / greyed on list).
   // Finished events with results can stay viewable even if poster was a schedule.
   const finishedEarly = isTournamentFinished(tournament);
-  if (!isRealPoster(tournament) && !finishedEarly) {
+  if (!isRealPoster(tournament) && !finishedEarly && !hasPublishedBracket(tournament)) {
     return (
       <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
         <h1 className="t-title">{tournament.name}</h1>
@@ -167,10 +170,13 @@ export default async function TournamentDetailPage({ params }) {
 
   const contacts = Array.isArray(tournament.contacts) ? tournament.contacts : [];
 
+  // Two parks (tournaments.venues) → each park is its own directions link.
+  const venues = tournamentVenues(tournament);
   const directionsHref = `https://maps.google.com/?q=${encodeURIComponent(
     `${tournament.venue_name}, ${tournament.venue_address ?? ""}`
   )}`;
   const dateRange = formatDateRange(tournament.start_date, tournament.end_date);
+  const zoneLabel = tournamentZoneLabel(tournament);
 
   const numberRows = buildNumberRows(tournament);
   const divisionNotesLines = splitSentences(tournament.division_notes);
@@ -207,7 +213,29 @@ export default async function TournamentDetailPage({ params }) {
             dates put the tournament in your calendar. The separate
             Directions door below is gone — this IS it. */}
         <p className="t-meta mt-1">
-          {tournament.venue_name && (
+          {venues.length > 0 ? (
+            <>
+              {venues.map((v, i) => (
+                <Fragment key={v.name}>
+                  {i > 0 && (
+                    <span aria-hidden="true" className="px-1 text-afa-muted">
+                      ·
+                    </span>
+                  )}
+                  <a
+                    href={v.map_url}
+                    title={v.address ?? undefined}
+                    className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2"
+                  >
+                    {v.name}
+                  </a>
+                </Fragment>
+              ))}
+              <span aria-hidden="true" className="px-2 text-afa-muted">
+                |
+              </span>
+            </>
+          ) : tournament.venue_name && (
             <>
               <a href={directionsHref} className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2">
                 {tournament.venue_name}
@@ -221,6 +249,9 @@ export default async function TournamentDetailPage({ params }) {
             {dateRange}
           </a>
         </p>
+        {/* Played away from league time (Mesquite is Pacific): say so once,
+            here, and every game time on the site carries the same label. */}
+        {zoneLabel && <p className="t-meta mt-1">Game times are {zoneLabel}</p>}
         {tournament.is_placeholder && (
           <p className="text-sm text-afa-ink/60 mt-1">
             Shown for reference — not a confirmed date.

@@ -1,8 +1,9 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LEAGUE_TZ } from "@/lib/bracket/tree";
+import { LEAGUE_TZ, formatFieldTime } from "@/lib/bracket/tree";
 
 // Ordered by TIME then FIELD (dispatch-brief-21), not by pool. The director
 // standing at the complex thinks "what just finished on Field 6," not
@@ -37,31 +38,27 @@ function compareByField(a, b) {
 // toLocaleTimeString calls) — that helper returns field+time combined for
 // the bracket tree; this group heading needs the time alone, so it's
 // derived here rather than string-splitting that helper's output.
-function timeLabel(scheduledTime) {
+function timeLabel(scheduledTime, timeZone = LEAGUE_TZ) {
   if (!scheduledTime) return null;
-  const d = new Date(scheduledTime);
-  return (
-    d.toLocaleDateString("en-US", { weekday: "short", timeZone: LEAGUE_TZ }) +
-    " " +
-    d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ })
-  );
+  // Same text as formatFieldTime; "Thu 2:00 PM PST" away from league time.
+  return formatFieldTime({ scheduled_time: scheduledTime }, timeZone);
 }
 
 // Row-level time (dispatch-brief-25): hour only, no weekday — the
 // time-group heading above already carries the weekday, this is just
 // enough for a fast glance without tracing back up to it.
-function shortTimeLabel(scheduledTime) {
+function shortTimeLabel(scheduledTime, timeZone = LEAGUE_TZ) {
   if (!scheduledTime) return null;
   const d = new Date(scheduledTime);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: LEAGUE_TZ });
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone });
 }
 
 // Split "11:00 PM" into its own two lines (dispatch-brief-25 grid
 // correction) — meta is the column that SHRINKS, so its widest line
 // should be "11:00" (5 chars), not "11:00 PM" (8) — every extra pixel
 // meta doesn't need goes to a team name instead.
-function shortTimeParts(scheduledTime) {
-  const label = shortTimeLabel(scheduledTime);
+function shortTimeParts(scheduledTime, timeZone = LEAGUE_TZ) {
+  const label = shortTimeLabel(scheduledTime, timeZone);
   if (!label) return null;
   const [hm, ampm] = label.split(" ");
   return { hm, ampm };
@@ -76,7 +73,7 @@ function fieldAbbrev(field) {
   return m ? `F${m[0]}` : field;
 }
 
-function groupByTime(games) {
+function groupByTime(games, timeZone = LEAGUE_TZ) {
   const byTime = new Map();
   for (const g of games) {
     const key = g.scheduled_time || null;
@@ -86,7 +83,7 @@ function groupByTime(games) {
   return [...byTime.entries()]
     .map(([time, groupGames]) => ({
       time,
-      heading: time ? timeLabel(time) : "Time TBD",
+      heading: time ? timeLabel(time, timeZone) : "Time TBD",
       games: [...groupGames].sort(compareByField),
     }))
     .sort((a, b) => {
@@ -105,6 +102,7 @@ function groupByTime(games) {
 // above, because a wrong score has to be fixable at a ballpark at
 // midnight.
 export default function PoolPlayManager({ divisionId, poolGames, readOnly = false }) {
+  const timeZone = useTimeZone();
   const [selectedTeam, setSelectedTeam] = useState("");
 
   if (!poolGames || poolGames.length === 0) return null;
@@ -113,7 +111,7 @@ export default function PoolPlayManager({ divisionId, poolGames, readOnly = fals
     (a, b) => a.localeCompare(b)
   );
 
-  const groups = groupByTime(poolGames)
+  const groups = groupByTime(poolGames, timeZone)
     .map((group) => ({
       ...group,
       games: selectedTeam
@@ -183,6 +181,7 @@ export default function PoolPlayManager({ divisionId, poolGames, readOnly = fals
 }
 
 function PoolGameRow({ game, readOnly = false }) {
+  const timeZone = useTimeZone();
   const router = useRouter();
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
@@ -246,7 +245,7 @@ function PoolGameRow({ game, readOnly = false }) {
         <div className="whitespace-nowrap text-[11px] leading-tight text-afa-muted">
           <div>{fieldAbbrev(game.field)}</div>
           {(() => {
-            const parts = shortTimeParts(game.scheduled_time);
+            const parts = shortTimeParts(game.scheduled_time, timeZone);
             return parts ? (
               <>
                 <div>{parts.hm}</div>

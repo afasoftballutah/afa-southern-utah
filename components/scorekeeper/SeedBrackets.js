@@ -1,5 +1,6 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
@@ -226,6 +227,7 @@ function PoolCard({ letter, pool, order, slotBySeedRef, swappedSeedRefs, propose
  * event that rarely comes.
  */
 function PoolGameRow({ game, readOnly, onSaved }) {
+  const timeZone = useTimeZone();
   const final = game.status === "final";
   const [s1, setS1] = useState(final ? String(game.team1_score) : "");
   const [s2, setS2] = useState(final ? String(game.team2_score) : "");
@@ -285,7 +287,7 @@ function PoolGameRow({ game, readOnly, onSaved }) {
       <div className="text-[10px] font-medium leading-tight text-afa-muted">
         <b className="font-bold text-afa-ink/50">{fieldAbbrev(game.field)}</b>
         <br />
-        {formatLeagueShortTime(game.scheduled_time)}
+        {formatLeagueShortTime(game.scheduled_time, "TBD", timeZone)}
       </div>
       <div className={`overflow-hidden rounded-[10px] border bg-white transition ${dirty ? "border-afa-navy/45 ring-[3px] ring-afa-navy/10" : "border-afa-navy/15"} divide-y divide-afa-navy/[0.07]`}>
         {side(game.team1_name, s1, setS1, w1)}
@@ -357,6 +359,7 @@ const TIER_CLASS = {
 };
 
 export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [], readOnly = false }) {
+  const timeZone = useTimeZone();
   const router = useRouter();
   const [result, setResult] = useState(null);
   const [orders, setOrders] = useState({}); // { [poolLetter]: [teamName,...] }
@@ -674,7 +677,7 @@ export default function SeedBrackets({ divisionId, tournamentSlug, poolGames = [
             label="Time"
             value={filter.time}
             options={timeOptions}
-            format={formatLeagueShortTime}
+            format={(iso) => formatLeagueShortTime(iso, "TBD", timeZone)}
             onPick={(v) => setFilter((f) => ({ ...f, time: v }))}
           />
         </div>

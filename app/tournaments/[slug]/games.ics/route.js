@@ -1,5 +1,9 @@
 import { getTournamentBasicsBySlug, getTournamentSchedule } from "@/lib/data";
 import { compactFeedLabel } from "@/lib/quickscores";
+import { venueForField } from "@/lib/venues";
+import { icsTimestamp } from "@/lib/ics-time";
+import { formatFieldTime } from "@/lib/bracket/tree";
+import { isAwayZone, tournamentTimeZone } from "@/lib/zone";
 
 // A SUBSCRIBABLE game-by-game feed (JD, 2026-07-25: "quickscores has a
 // subscribe link"). QuickScores' own copy makes the case better than we
@@ -26,9 +30,7 @@ function icsEscape(text) {
     .replace(/\n/g, "\\n");
 }
 
-function icsTimestamp(date) {
-  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
+// icsTimestamp: UTC "…Z", lib/ics-time.js (shared with its test).
 
 // RFC 5545 caps a content line at 75 octets and folds the rest onto
 // continuation lines beginning with a single space. Team names are short,
@@ -85,6 +87,10 @@ export async function GET(request, { params }) {
   const venue = [tournament.venue_name, tournament.venue_address].filter(Boolean).join(", ");
   const dtstamp = icsTimestamp(new Date());
   const calName = team ? `${team} — ${tournament.name}` : tournament.name;
+  // DTSTART stays UTC (correct anywhere). A tournament away from league
+  // time also names its zone and says the local start in the details.
+  const timeZone = tournamentTimeZone(tournament);
+  const away = isAwayZone(timeZone);
 
   const vevents = games.flatMap((g) => {
     const start = new Date(g.scheduledTime);
@@ -94,9 +100,14 @@ export async function GET(request, { params }) {
     const vs = g.isFinal
       ? `${t1} ${g.score1}–${g.score2} ${t2}`
       : `${t1} vs ${t2}`;
-    const where = [g.field, venue].filter(Boolean).join(", ");
+    // Two-park tournament: the game's own park, not the tournament's city.
+    const park = venueForField(tournament, g.field);
+    const where = [g.field, park ? [park.name, park.address].filter(Boolean).join(", ") : venue]
+      .filter(Boolean)
+      .join(", ");
     const detail = [
       `${g.divisionName} · ${g.label}`,
+      away ? formatFieldTime({ scheduled_time: g.scheduledTime }, timeZone) : null,
       // Only name an opponent that exists. "vs Winner of Game 5" is
       // honest on a bracket sheet and useless in a calendar alert.
       team && isRealTeam(g.team1 === team ? g.team2 : g.team1)
@@ -137,6 +148,7 @@ export async function GET(request, { params }) {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     fold(`X-WR-CALNAME:${icsEscape(calName)}`),
+    away ? `X-WR-TIMEZONE:${timeZone}` : null,
     // Both spellings: the standard one and the Apple/Outlook one. Scores
     // land during a tournament, so an hourly re-read is the right cadence.
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
@@ -144,7 +156,9 @@ export async function GET(request, { params }) {
     ...vevents,
     "END:VCALENDAR",
     "",
-  ].join("\r\n");
+  ]
+    .filter((line) => line !== null)
+    .join("\r\n");
 
   return new Response(ics, {
     status: 200,

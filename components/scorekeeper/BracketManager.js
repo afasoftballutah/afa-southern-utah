@@ -1,5 +1,6 @@
 "use client";
 
+import { useTimeZone } from "@/components/TimeZoneContext";
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlacementsUpload from "./PlacementsUpload";
@@ -273,12 +274,13 @@ function parseSeat(value, games) {
 }
 
 function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged }) {
+  const timeZone = useTimeZone();
   const [expanded, setExpanded] = useState(false);
   const [team1, setTeam1] = useState(() => seatKey(game, "1"));
   const [team2, setTeam2] = useState(() => seatKey(game, "2"));
   const [round, setRound] = useState(String(game.round ?? ""));
   const [field, setField] = useState(game.field || "");
-  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay));
+  const [time, setTime] = useState(formatGameWhenInput(game.scheduled_time, playDay, timeZone));
   const [score1, setScore1] = useState(game.team1_score ?? "");
   const [score2, setScore2] = useState(game.team2_score ?? "");
   const [busy, setBusy] = useState(false);
@@ -332,7 +334,7 @@ function GameRow({ game, games = [], teamNames, draft, playDay = null, onChanged
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           field: field || null,
-          scheduledTime: parseGameWhenInput(time, playDay)?.toISOString() ?? null,
+          scheduledTime: parseGameWhenInput(time, playDay, timeZone)?.toISOString() ?? null,
         }),
       });
       const json = await res.json();

@@ -35,6 +35,17 @@ export default function RootLayout({ children }) {
       className={`h-full ${displayFace.variable} ${bodyFace.variable}`}
     >
       <body className="min-h-full flex flex-col antialiased">
+        {/* Review copy only (scratch data, never prod): NEXT_PUBLIC_REVIEW_COPY=1
+            at build time. Off by default; nothing sets it in this repo. */}
+        {process.env.NEXT_PUBLIC_REVIEW_COPY === "1" ? (
+          <div
+            role="status"
+            className="print:hidden"
+            style={{ background: "#fde68a", color: "#78350f", fontSize: "12px", lineHeight: "1.4", padding: "3px 8px", textAlign: "center", fontWeight: 600 }}
+          >
+            Review copy, test data
+          </div>
+        ) : null}
         {/* Site shell — look lives in globals.css (.site-*). */}
         <header className="site-header print:hidden">
           <div className="site-header__inner">

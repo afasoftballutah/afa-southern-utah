@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
 import { formatFieldTime } from "@/lib/bracket/tree";
+import { tournamentTimeZone } from "@/lib/zone";
 import ScheduleBrowser from "@/components/ScheduleBrowser";
 
 export const revalidate = 30;
@@ -44,9 +45,11 @@ export default async function SchedulePage({ params }) {
   // keeps using the same Mountain-time helper this page has always used
   // (lib/bracket/tree.js) — no new date code on the client. Pass no
   // `field` key so it returns just the weekday/time half.
+  // In the tournament's own zone ("Thu 2:00 PM PST" for Mesquite).
+  const timeZone = tournamentTimeZone(tournament);
   const rows = rawRows.map((row) => ({
     ...row,
-    timeLabel: formatFieldTime({ scheduled_time: row.scheduledTime }),
+    timeLabel: formatFieldTime({ scheduled_time: row.scheduledTime }, timeZone),
   }));
 
   // Find my team (dispatch-brief-19) — the schedule page spans every

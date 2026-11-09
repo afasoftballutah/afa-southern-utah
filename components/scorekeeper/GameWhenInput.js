@@ -9,6 +9,8 @@
 
 import { useState } from "react";
 import { defaultGameWhenInput } from "@/lib/league-time";
+import { zoneLabel } from "@/lib/zone";
+import { useTimeZone } from "@/components/TimeZoneContext";
 
 export default function GameWhenInput({
   playDay = null,
@@ -17,7 +19,10 @@ export default function GameWhenInput({
   className = "w-full border border-afa-navy/30 rounded px-2 py-2 text-sm",
   label = null,
 }) {
-  const seed = defaultGameWhenInput(playDay);
+  const timeZone = useTimeZone();
+  const seed = defaultGameWhenInput(playDay, timeZone);
+  // Away from league time the picker is in the tournament's zone; say so.
+  const zone = zoneLabel(playDay ? `${playDay}T20:00:00Z` : new Date(), timeZone);
   const [open, setOpen] = useState(false);
   const shown = value || (open ? seed : "");
 
@@ -50,11 +55,19 @@ export default function GameWhenInput({
       aria-label={label || (playDay ? "Time" : "Date and time")}
     />
   );
-  if (!label) return input;
+  const field = zone ? (
+    <span className="flex min-w-0 items-center gap-1">
+      {input}
+      <span className="t-meta shrink-0">{zone}</span>
+    </span>
+  ) : (
+    input
+  );
+  if (!label) return field;
   return (
     <label className="block min-w-0">
       <span className="t-label block mb-1">{playDay ? "Time" : "Date and time"}</span>
-      {input}
+      {field}
     </label>
   );
 }

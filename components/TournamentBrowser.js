@@ -7,6 +7,7 @@ import {
   formatDateRange,
   formatFee,
   isRealPoster,
+  hasPublishedBracket,
   isGroupName,
   schedulePosterForRegion,
   REGION_LABEL,
@@ -95,9 +96,10 @@ export default function TournamentBrowser({ groups }) {
   // seed rows with no game data.
   const isPast = (t) => t.status === "complete" || t.finished === true;
 
-  // Public upcoming = has a real event poster. Others stay listed but
-  // greyed (not linked / not registerable) until a flyer is posted.
-  const isPublic = (t) => isRealPoster(t);
+  // Public upcoming = has a real event poster, or a bracket on the site.
+  // Others stay listed but greyed (not linked / not registerable) until a
+  // flyer is posted.
+  const isPublic = (t) => isRealPoster(t) || hasPublishedBracket(t);
 
   const upcomingPublicByRegion = scopedGroups
     .map((g) => ({
@@ -344,7 +346,8 @@ function TournamentRowCard({ t, showRegionChip }) {
     t.region_raw === "southern_utah" ||
     t.slug === "2026-coed-fredonia" ||
     (t.region_raw == null && t.region === "southern_utah");
-  const linked = homeBase && isRealPoster(t);
+  // A bracket this site carries links from any region (AFA World Series).
+  const linked = (homeBase && isRealPoster(t)) || hasPublishedBracket(t);
   const row = <TournamentRow t={t} linked={linked} showRegionChip={showRegionChip} />;
   if (linked) {
     return (

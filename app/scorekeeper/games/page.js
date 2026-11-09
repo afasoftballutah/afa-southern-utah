@@ -5,6 +5,8 @@ import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import ScorekeeperBoard from "@/components/scorekeeper/ScorekeeperBoard";
 import TournamentPickList from "@/components/scorekeeper/TournamentPickList";
+import { TimeZoneProvider } from "@/components/TimeZoneContext";
+import { tournamentTimeZone } from "@/lib/zone";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scores — Scorekeeper" };
@@ -24,7 +26,7 @@ async function loadTournaments() {
   const { data } = await supabase
     .from("tournaments")
     .select(
-      `id, name, start_date, end_date, is_placeholder,
+      `*,
        divisions(
          id, name, display_name, sort_order, parent_division_id,
          games(${GAME_SELECT}),
@@ -91,11 +93,13 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
       }
       back="/scorekeeper"
     >
-      <ScorekeeperBoard
-        tournamentName={selected.name}
-        divisions={divisions}
-        leftCount={selected.left}
-      />
+      <TimeZoneProvider timeZone={tournamentTimeZone(selected)}>
+        <ScorekeeperBoard
+          tournamentName={selected.name}
+          divisions={divisions}
+          leftCount={selected.left}
+        />
+      </TimeZoneProvider>
     </DirectorShell>
   );
 }
