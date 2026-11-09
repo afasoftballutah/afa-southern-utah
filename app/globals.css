@@ -1021,6 +1021,25 @@ a.register-division-col__card--header {
 .div-seat-mark--coed {
   background: #4c2482;
 }
+/* Find my team: the result's division, big enough to read at a glance,
+   and the row says where a tap goes. */
+.div-seat-mark--lg {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8125rem;
+}
+.team-search-hit {
+  min-height: 3.5rem;
+}
+.team-search-hit:focus-visible {
+  outline: 2px solid var(--afa-navy);
+  outline-offset: 2px;
+}
+.team-search-hit__go {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--afa-navy);
+  white-space: nowrap;
+}
 .reg-team-row--womens {
   border: 1px solid color-mix(in srgb, var(--afa-navy) 28%, transparent);
   background: color-mix(in srgb, var(--afa-navy) 6%, #fff);
