@@ -4,7 +4,7 @@ import {
   getSeasonListByRegion,
   withArchiveSummaries,
   formatFee,
-  isRealPoster,
+  isPublicEvent,
   REGION_ORDER,
   canonicalRegion,
 } from "@/lib/data";
@@ -107,7 +107,7 @@ export default async function Home() {
     }
 
     upcomingByRegion[region] = list
-      .filter((t) => isUpcomingByDate(t) && isRealPoster(t))
+      .filter((t) => isUpcomingByDate(t) && isPublicEvent(t))
       .slice()
       .sort((a, b) => {
         const da = String(a.start_date ?? "");
