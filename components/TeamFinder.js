@@ -7,6 +7,7 @@ import { teamSlug } from "@/lib/teams";
 import Chip from "@/components/ui/Chip";
 import FeedAwareName from "@/components/ui/FeedAwareName";
 import { readMe, writeMe } from "@/lib/me";
+import { teamFeedHref } from "@/lib/team-feed";
 
 // The bracket a team finished in, tinted as itself — the same three
 // metallics the seed chips use, so "Gold" reads as Gold wherever it
@@ -334,7 +335,7 @@ export default function TeamFinder({
           {slug && !isOut && !isChampion && (
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
-                href={`${host ? `webcal://${host}` : ""}/tournaments/${slug}/games.ics?team=${encodeURIComponent(selected)}`}
+                href={teamFeedHref({ host, slug, team: selected, divisionId: currentId })}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
               >
                 Subscribe to these games
