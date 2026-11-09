@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import { tournamentVenues } from "@/lib/venues";
 import { tournamentZoneLabel } from "@/lib/zone";
+import { parseRuleLink } from "@/lib/rule-link";
 import { isRegistrationOpen, isPastTournament } from "@/lib/tournament-state";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
@@ -369,9 +370,23 @@ export default async function TournamentDetailPage({ params }) {
                 Tournament rules
               </h3>
               <div className="t-body space-y-1">
-                {specialRulesLines.map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
+                {specialRulesLines.map((line, i) => {
+                  const link = parseRuleLink(line);
+                  return link ? (
+                    <p key={i}>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-afa-navy underline decoration-afa-navy/30 underline-offset-2"
+                      >
+                        {link.label}
+                      </a>
+                    </p>
+                  ) : (
+                    <p key={i}>{line}</p>
+                  );
+                })}
               </div>
             </>
           )}
