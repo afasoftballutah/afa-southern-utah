@@ -1582,6 +1582,19 @@ export async function POST(request) {
       });
     }
 
+    // ---- Undo pool play made by mistake (director only) --------------
+    // Deletes every pool game in the division, but only while none has a
+    // score. Checked here, and again in the delete itself, so a score that
+    // lands between the check and the delete stops it.
+    case "removePoolPlay": {
+      if (!(await requireDirectorSession())) {
+        return Response.json({ error: "Director only" }, { status: 403 });
+      }
+      const { removePoolPlay } = await import("@/lib/pool-removal");
+      const { status, body: out } = await removePoolPlay(supabase, body.divisionId);
+      return Response.json(out, { status });
+    }
+
     // ---- Player suspensions (director only, mid-tournament OK) -------
     case "createSuspension": {
       if (!(await requireDirectorSession())) {

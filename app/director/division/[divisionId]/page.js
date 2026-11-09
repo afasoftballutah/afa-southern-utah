@@ -9,6 +9,8 @@ import { stillToPlayIn } from "@/lib/tournament-state";
 import PinPad from "@/components/scorekeeper/PinPad";
 import BracketManager from "@/components/scorekeeper/BracketManager";
 import CreatePoolRoundRobin from "@/components/scorekeeper/CreatePoolRoundRobin";
+import RemovePoolPlay from "@/components/scorekeeper/RemovePoolPlay";
+import { canRemovePoolPlay } from "@/lib/pool-removal";
 import HandGames from "@/components/scorekeeper/HandGames";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
@@ -188,6 +190,9 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
     data.poolGames.length === 0 &&
     data.teamNames.length >= 2;
 
+  // Undo for pool play made by mistake: only while no pool game has a score.
+  const canRemovePool = canRemovePoolPlay(data.poolGames);
+
   const openPool = stillToPlayIn(data.poolGames);
   const openBracket = stillToPlayIn(data.games);
   const playDay = knownPlayDay(data.division);
@@ -225,6 +230,12 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
         <CreatePoolRoundRobin
           divisionId={divisionId}
           teamCount={data.teamNames.length}
+        />
+      )}
+      {canRemovePool && (
+        <RemovePoolPlay
+          divisionId={divisionId}
+          gameCount={data.poolGames.length}
         />
       )}
       {data.poolGames.length > 0 && (
