@@ -115,6 +115,28 @@ test("nothing in the app polls: no timers or subscriptions in the timeline, tick
   }
 });
 
+test("iPhone: the game card is a sheet fixed to the screen, not inside the scrolling day card", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  // The card must leave .tl-scroll: iOS Safari pins position:fixed children of an overflow scroller to it.
+  const details = src.slice(src.indexOf("function Details("), src.indexOf("function FlowArrows("));
+  assert.match(details, /return createPortal\(/, "Details renders through a portal");
+  assert.match(details, /<\/div>,\s*document\.body,\s*\);/, "portal target is <body>");
+  // Phones by width, and touch phones held sideways.
+  const q = src.match(/PHONE_SHEET_QUERY = "([^"]+)"/)?.[1] ?? "";
+  assert.match(q, /\(max-width: 639px\)/);
+  assert.match(q, /\(pointer: coarse\)/);
+  assert.match(src, /matchMedia\(PHONE_SHEET_QUERY\)/);
+  // No legacy touch-scrolling layer on the day lane; sheet clears Safari's toolbar and scrolls itself.
+  const lane = css.match(/\.tl-scroll \{[^}]*\}/)?.[0] ?? "";
+  assert.ok(lane && !/-webkit-overflow-scrolling/.test(lane), ".tl-scroll has no -webkit-overflow-scrolling");
+  const sheet = css.match(/\.tl-pop\.is-sheet \{[^}]*\}/)?.[0] ?? "";
+  assert.match(sheet, /bottom: 0/);
+  assert.match(sheet, /safe-area-inset-bottom/);
+  assert.match(sheet, /max-height: 85dvh/);
+  assert.match(css, /\.tl-pop \{[^}]*position: fixed/);
+});
+
 test("ticker item: division + game, both sides with scores, winner marked", () => {
   const it = tickerItem({ id: "x", divisionName: "Women's D", label: "G1", team1: "Legacy", team2: "Laced Up", score1: 12, score2: 9 });
   assert.equal(it.head, "Women's D G1");
