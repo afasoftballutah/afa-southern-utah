@@ -8,7 +8,6 @@ import {
   divisionLegendGroups,
   divisionTone,
   flowWords,
-  nextShort,
   hourLabel,
   sideLabel,
   spelledSide,
@@ -24,22 +23,39 @@ import {
 
 const HOUR_PX = 92;
 
-// Championship mark (JD, 2026-11-09: "a star instead of dot"). Decorative;
-// the pill's aria-label already says "Championship" / "If-necessary game".
+// Championship mark (JD, 2026-11-09: "star can be faint in the background
+// behind all the numbers"). One large, faint gold star behind the pill's
+// content; decorative — the aria-label already says "Championship".
 function Star({ className }) {
   return (
-    <svg className={className} viewBox="0 0 20 20" width="10" height="10" aria-hidden="true" focusable="false">
-      <path
-        d="M10 1.6l2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"
-        fill="#d4a72c"
-        stroke="#fff"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        paintOrder="stroke"
-      />
+    <svg className={className} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path d="M10 1.2l2.7 5.5 6 .9-4.35 4.25 1.03 6L10 15l-5.38 2.85 1.03-6L1.3 7.6l6-.9z" fill="currentColor" />
     </svg>
   );
 }
+
+// A bottom corner: a finishing place sits in a small chip so it reads as
+// final ("5th", "2nd", 🏆); a next game is plain "→22"; the first final
+// carries both ("2nd" chip + "/35").
+function Corner({ pos, x, gold }) {
+  if (!x) return null;
+  const chip = x.place ? (
+    <span className={`tl-place-chip${gold ? " is-gold" : ""}${x.place === "🏆" ? " is-trophy" : ""}`}>{x.place}</span>
+  ) : null;
+  // Next to a place chip the game is just "/35" — "/→35" on both sides of
+  // the first final ran the two corners into each other at phone width.
+  const next = x.next ? (x.place ? `/${x.next}` : `→${x.next}`) : null;
+  const plain = !x.place && !x.next ? x.short : null;
+  if (!chip && !next && !plain) return null;
+  return (
+    <span className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
+      {chip}
+      {next}
+      {plain}
+    </span>
+  );
+}
+
 const PILL_GAP = 4;
 
 
@@ -52,12 +68,11 @@ function Pill({ game, open, onToggle, pillRef }) {
   const side = game.bracketSide ?? null;
   const flow = game.flow ?? null;
   const number = /^G\d+$/.test(game.label ?? "") ? game.label.slice(1) : (game.label ?? "Game");
-  const corners = [
+  const top = [
     ["tl", flow?.from?.[0]?.short ?? null],
     ["tr", flow?.from?.[1]?.short ?? null],
-    ["bl", nextShort(flow?.loser)],
-    ["br", nextShort(flow?.winner)],
   ];
+  const champ = side === "final" || side === "if";
   const words = flowWords(flow);
   return (
     <button
@@ -75,17 +90,17 @@ function Pill({ game, open, onToggle, pillRef }) {
       }${place ? `, a team finished ${place}` : ""}${words ? `. ${words}` : ""}`}
       onClick={(e) => onToggle(game.id, e.currentTarget)}
     >
-      <span className="tl-pill__num">
-        {number}
-        {side === "final" || side === "if" ? <Star className="tl-star" /> : null}
-      </span>
-      {corners.map(([pos, text]) =>
+      {champ ? <Star className="tl-bgstar" /> : null}
+      <span className="tl-pill__num">{number}</span>
+      {top.map(([pos, text]) =>
         text ? (
           <span key={pos} className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
             {text}
           </span>
         ) : null
       )}
+      <Corner pos="bl" x={flow?.loser} gold={champ} />
+      <Corner pos="br" x={flow?.winner} gold={champ} />
     </button>
   );
 }
@@ -250,10 +265,10 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
         <li className="tl-key__winners"><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
         <li className="tl-key__losers"><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
         <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-star" /></span>Final
+          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Final
         </li>
         <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-star" /></span>If necessary
+          <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>If necessary
         </li>
         <li className="tl-key__corners">Corners: ↖↗ from (W5 = winner of game 5) · ↙ loser to · ↘ winner to</li>
       </ul>

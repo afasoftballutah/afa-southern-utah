@@ -83,10 +83,10 @@ function rng(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) & 0x10000) !== 0;
 }
 
-test("labels: 1st 2nd 3rd 4th 11th 12th 13th 21st 22nd, T- for a shared place", () => {
+test("labels: 1st 2nd 3rd 4th 11th 12th 13th 21st 22nd; a shared place has no T- prefix", () => {
   assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 101].map(ordinal),
     ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st"]);
-  assert.equal(placeLabel(5, true), "T-5th");
+  assert.equal(placeLabel(5, true), "5th");
   assert.equal(placeLabel(3), "3rd");
 });
 
@@ -103,17 +103,18 @@ const WREC = [
   [15, "final", null, null, 14, "winner", 14, "loser"],
 ];
 
-test("three_gg_hybrid (Women's Rec): every outcome places 2nd, 3rd, 4th, T-5th, T-5th, 7th on the right games", () => {
+test("three_gg_hybrid (Women's Rec): every outcome places 2nd, 3rd, 4th, 5th (tied), 5th (tied), 7th on the right games", () => {
   const base = build(WREC);
   for (let bits = 0; bits < 1 << 15; bits += bits % 7 === 0 ? 1 : 3) {
     const games = clone(base);
     let i = 0;
     const out = run(games, "three_gg_hybrid", () => Boolean(bits & (1 << i++)));
-    assert.deepEqual(labels(out), ["2nd", "3rd", "4th", "7th", "T-5th", "T-5th"], `outcome ${bits}`);
+    assert.deepEqual(labels(out), ["2nd", "3rd", "4th", "5th", "5th", "7th"], `outcome ${bits}`);
     assert.equal(out.get("g13").label, "3rd");
     assert.equal(out.get("g12").label, "4th");
-    assert.equal(out.get("g9").label, "T-5th");
-    assert.equal(out.get("g10").label, "T-5th");
+    assert.equal(out.get("g9").label, "5th");
+    assert.equal(out.get("g9").tied, true);
+    assert.equal(out.get("g10").label, "5th");
     assert.equal(out.get("g8").label, "7th");
     assertConsistent(out, championOf(games), 7);
   }
@@ -159,14 +160,14 @@ test("double_elim, if-game played: no placing on G6, the G7 loser is 2nd", () =>
   assertConsistent(out, championOf(games), 4);
 });
 
-test("single elimination (8 teams): QF losers T-5th, SF losers T-3rd, final loser 2nd", () => {
+test("single elimination (8 teams): QF losers 5th (tied), SF losers 3rd (tied), final loser 2nd", () => {
   const games = build([
     [1, "winners", "A", "B"], [2, "winners", "C", "D"], [3, "winners", "E", "F"], [4, "winners", "G", "H"],
     [5, "winners", null, null, 1, "winner", 2, "winner"], [6, "winners", null, null, 3, "winner", 4, "winner"],
     [7, "winners", null, null, 5, "winner", 6, "winner"],
   ]);
   const out = run(games, null, rng(7));
-  assert.deepEqual(labels(out), ["2nd", "T-3rd", "T-3rd", "T-5th", "T-5th", "T-5th", "T-5th"]);
+  assert.deepEqual(labels(out), ["2nd", "3rd", "3rd", "5th", "5th", "5th", "5th"]);
   assertConsistent(out, championOf(games), 8);
 });
 

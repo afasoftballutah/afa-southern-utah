@@ -44,9 +44,9 @@ test("Women's Rec (three_gg_hybrid): feeders, places and the final", () => {
 });
 
 test("Men's E, Women's D, Women's E: a couple of games each", () => {
-  assert.deepEqual(corners(division("Men's E"), 22), ["L20", "W15", "T-17th", "35"]);
+  assert.deepEqual(corners(division("Men's E"), 22), ["L20", "W15", "17th", "35"]);
   assert.deepEqual(corners(division("Men's E"), 49), ["W46", "W48", "2nd/50", "🏆/50"]);
-  assert.deepEqual(corners(division("Women's D"), 11), ["W9", "L8", "T-5th", "14"]);
+  assert.deepEqual(corners(division("Women's D"), 11), ["W9", "L8", "5th", "14"]);
   assert.deepEqual(corners(division("Women's E"), 3), ["W1", "", "5", "9"]);
 });
 
@@ -95,11 +95,23 @@ test("an unsupported format shows links but never invents a place or 'out'", () 
 
 test("corner and sheet wording", () => {
   assert.equal(nextShort({ short: "22" }), "→22");
-  assert.equal(nextShort({ short: "T-5th" }), "T-5th");
+  assert.equal(nextShort({ short: "5th" }), "5th");
   assert.equal(nextShort(null), null);
   assert.equal(
     flowWords({ winner: { words: "Winner → Game 22" }, loser: { words: "Loser → Game 19" } }),
     "Winner → Game 22 · Loser → Game 19"
   );
   assert.equal(flowWords(null), null);
+});
+
+test("places carry no T- and are marked as places; the final's corners carry place and next game", () => {
+  const g = division("Men's D");
+  const flow = gameFlow(g, "three_gg_hybrid");
+  const byN = (n) => flow.get(g.find((x) => x.round === n).id);
+  assert.deepEqual([byN(29).loser.place, byN(29).loser.next], ["5th", undefined]);
+  assert.match(byN(29).loser.words, /tied for 5th/);
+  assert.deepEqual([byN(34).loser.place, byN(34).loser.next], ["2nd", "35"]);
+  assert.deepEqual([byN(34).winner.place, byN(34).winner.next], ["🏆", "35"]);
+  assert.deepEqual([byN(9).loser.place, byN(9).loser.next], [undefined, "19"]);
+  for (const f of flow.values()) for (const x of [f.loser, f.winner]) assert.ok(!/T-/.test(x?.short ?? ""));
 });
