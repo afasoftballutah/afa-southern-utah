@@ -34,16 +34,13 @@ function Star({ className }) {
   );
 }
 
-// A bottom corner: a finishing place sits in a small chip so it reads as
-// final ("5th", "2nd", 🏆); a next game is plain "→22"; the first final
-// carries both ("2nd" chip + "/35").
+// A bottom corner: a finishing place is bold italic so it reads as final
+// ("5th", "2nd", 🏆); a next game is plain "→22".
 function Corner({ pos, x, gold }) {
   if (!x) return null;
   const chip = x.place ? (
-    <span className={`tl-place-chip${gold ? " is-gold" : ""}`}>{x.place}</span>
+    <span className={`tl-corner-place${gold ? " is-gold" : ""}`}>{x.place}</span>
   ) : null;
-  // Next to a place chip the game is just "/35" — "/→35" on both sides of
-  // the first final ran the two corners into each other at phone width.
   const next = x.next ? (x.place ? `/${x.next}` : `→${x.next}`) : null;
   const plain = !x.place && !x.next ? x.short : null;
   if (!chip && !next && !plain) return null;

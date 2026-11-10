@@ -3516,7 +3516,7 @@ button:not(.pill) {
   padding-right: 0.75rem;
 }
 @media (min-width: 640px) { .tl-grid { --tl-label-w: 7rem; } }
-.tl-row { display: flex; height: 3.375rem; }
+.tl-row { display: flex; height: 3.25rem; }
 .tl-row--axis { height: 1.75rem; }
 .tl-field {
   position: sticky; left: 0; z-index: 2; flex: 0 0 var(--tl-label-w); min-width: 0; overflow: hidden;
@@ -3537,7 +3537,7 @@ button:not(.pill) {
   font-size: 0.6875rem; font-weight: 500; color: var(--tl-label); white-space: nowrap;
 }
 button.tl-pill {
-  position: absolute; top: 0.25rem; height: 2.875rem; min-height: 0;
+  position: absolute; top: 0.25rem; height: 2.75rem; min-height: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 0.625rem; background: var(--tone-bg); color: var(--tone-ink);
   font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums;
@@ -3578,13 +3578,10 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-corner--bl { bottom: 0.1875rem; left: 0.25rem; }
 .tl-corner--br { bottom: 0.1875rem; right: 0.25rem; }
 .tl-corner { display: inline-flex; align-items: center; gap: 0.1rem; z-index: 1; }
-/* A finishing place reads as final: a tiny rounded chip. */
-.tl-place-chip {
-  display: inline-block; padding: 0.03125rem 0.1875rem; border-radius: 0.25rem; line-height: 1;
-  border: 1px solid color-mix(in srgb, var(--tone-solid) 45%, transparent);
-}
-.tl-place-chip.is-gold { border-color: #d4a72c; color: #8a6a10; }
-.tl-corner:has(.tl-place-chip) { gap: 0.0625rem; }
+/* A finishing place reads as final: bold italic, no box (JD, 2026-11-09:
+   "get rid of the little rectangle. just bold italix when final"). */
+.tl-corner-place { font-weight: 700; font-style: italic; }
+.tl-corner-place.is-gold { color: #8a6a10; }
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
 .tl-pill.tl-side-losers.is-final .tl-corner { color: color-mix(in srgb, var(--tone-ink) 62%, transparent); }
 .tl-key__corners { flex-basis: 100%; font-size: 0.6875rem; }

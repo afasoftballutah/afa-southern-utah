@@ -1,6 +1,8 @@
 // Schedule Timeline view, the refresh rule, and the score ticker.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
@@ -105,7 +107,7 @@ test("refresh rule: only on coming back after more than a minute hidden", () => 
 });
 
 test("nothing in the app polls: no timers or subscriptions in the timeline, ticker, or refresh", async () => {
-  const { readFileSync } = await import("node:fs");
+
   for (const f of ["components/ScheduleTimeline.js", "components/ScoreTicker.js", "components/RefreshOnReturn.js", "components/TournamentTicker.js"]) {
     const src = readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
     assert.ok(!/setInterval|setTimeout|\.channel\(|subscribe\(/.test(src), `${f} must not poll or subscribe`);
@@ -140,4 +142,14 @@ test("legend groups by gender so Men's / Women's is written once", () => {
   ]);
   assert.equal(groups[1].items[2].tone, "womens-rec");
   assert.equal(groups[1].items[2].name, "Women's Rec");
+});
+
+test("finishing places in the corners are bold italic text, not boxed; next games stay plain", () => {
+  const src = readFileSync(path.join(import.meta.dirname, "..", "components", "ScheduleTimeline.js"), "utf8");
+  const css = readFileSync(path.join(import.meta.dirname, "..", "app", "globals.css"), "utf8");
+  assert.ok(!src.includes("tl-place-chip") && !css.includes("tl-place-chip"));
+  const rule = /\.tl-corner-place \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(rule, /font-weight: 700/);
+  assert.match(rule, /font-style: italic/);
+  assert.doesNotMatch(rule, /border/);
 });
