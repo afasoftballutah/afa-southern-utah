@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { teamSlug } from "@/lib/teams";
@@ -8,6 +8,16 @@ import Chip from "@/components/ui/Chip";
 import FeedAwareName from "@/components/ui/FeedAwareName";
 import { readMe, writeMe } from "@/lib/me";
 import { teamFeedHref } from "@/lib/team-feed";
+import { readMyRegistrations } from "@/lib/my-registrations";
+import { sameRegistrationName } from "@/lib/register-key";
+import { playsIn } from "@/lib/team-games";
+import {
+  groupTeamOptions,
+  readStoredPick,
+  resolveTeamPick,
+  teamOptions,
+  writeStoredPick,
+} from "@/lib/team-pick";
 
 // The bracket a team finished in, tinted as itself — the same three
 // metallics the seed chips use, so "Gold" reads as Gold wherever it
@@ -41,12 +51,21 @@ export default function TeamFinder({
   teamStatus = {},
   slug,
   onSelectedChange,
+  // { name, divisionId } of the pick — a team is its name IN a division
+  // (lib/team-pick.js), so two teams called Fallen are two choices.
+  onPickChange,
   compact = false,
   // The schedule's timeline lights the team's games itself, so the list
   // under the picker would only repeat them and push the timeline down.
   showGames = true,
 }) {
-  const [selected, setSelected] = useState("");
+  // Teams arrive as names (one division's page) or as { name, divisionId,
+  // divisionName } (the schedule, which spans divisions).
+  const options = useMemo(() => teamOptions(teams, currentId), [teams, currentId]);
+  const groups = useMemo(() => groupTeamOptions(options), [options]);
+  const [selectedKey, setSelectedKey] = useState("");
+  const pick = options.find((o) => o.key === selectedKey) ?? null;
+  const selected = pick?.name ?? "";
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
   // downloading a frozen copy, and it needs an absolute host — which only
   // exists after mount. Until then the link is the plain https path,
@@ -54,63 +73,45 @@ export default function TeamFinder({
   const [host, setHost] = useState(null);
   useEffect(() => setHost(window.location.host), []);
 
-  // Restore the remembered pick on mount. If it no longer names a real
-  // team (roster change, wrong division), clear the stale key instead of
-  // rendering a dead selection.
+  // Restore the remembered pick on mount. An older pick is a bare name;
+  // when two teams share it, the division this device registered in
+  // decides, and otherwise nothing is picked (resolveTeamPick). A pick from
+  // another division's page is left in storage, not cleared: it is still
+  // this device's team, just not one on this page.
   useEffect(() => {
-    let remembered = null;
-    try {
-      remembered = window.localStorage.getItem(storageKey);
-    } catch {
-      remembered = null;
-    }
-
+    const slugOf = String(storageKey ?? "").replace(/^afa-team-/, "");
+    const hints = (name) =>
+      readMyRegistrations()
+        .filter((r) => r.tournamentSlug === slugOf && sameRegistrationName(r.teamName, name))
+        .map((r) => r.divisionId)
+        .filter(Boolean);
+    const stored = readStoredPick(storageKey);
     // Fall back to who this device belongs to. A per-tournament pick still
     // wins — someone can guest for another team this weekend without losing
     // the team they actually play for (lib/me.js).
-    if (!remembered) {
-      const me = readMe();
-      if (me?.teamName && teams.includes(me.teamName)) {
-        setSelected(me.teamName);
-        onSelectedChange?.(me.teamName);
-      }
-      return;
-    }
-
-    if (teams.includes(remembered)) {
-      setSelected(remembered);
-      onSelectedChange?.(remembered);
-    } else {
-      try {
-        window.localStorage.removeItem(storageKey);
-      } catch {
-        // ignore — best-effort cleanup only
-      }
-    }
+    const me = stored ? null : readMe();
+    const want = stored ?? (me?.teamName ? { name: me.teamName, divisionId: me.divisionId ?? null } : null);
+    const found = want ? resolveTeamPick(want, options, hints(want.name)) : null;
+    if (!found) return;
+    setSelectedKey(found.key);
+    onSelectedChange?.(found.name);
+    onPickChange?.({ name: found.name, divisionId: found.divisionId ?? null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  }, [storageKey, options]);
 
-  function remember(value) {
+  function remember(o) {
     // Picking a team also says who this device belongs to, so the next
     // tournament leads with them without another pick.
-    writeMe(value ? { teamName: value, source: "picked" } : null);
-    try {
-      if (value) {
-        window.localStorage.setItem(storageKey, value);
-      } else {
-        window.localStorage.removeItem(storageKey);
-      }
-    } catch {
-      // localStorage can throw in private-browsing/quota edge cases —
-      // the picker still works for the session, it just won't persist.
-    }
+    writeMe(o ? { teamName: o.name, divisionId: o.divisionId ?? undefined, source: "picked" } : null);
+    writeStoredPick(storageKey, o ? { name: o.name, divisionId: o.divisionId } : null);
   }
 
   function handleChange(e) {
-    const value = e.target.value;
-    setSelected(value);
-    remember(value);
-    onSelectedChange?.(value);
+    const o = options.find((x) => x.key === e.target.value) ?? null;
+    setSelectedKey(o?.key ?? "");
+    remember(o);
+    onSelectedChange?.(o?.name ?? "");
+    onPickChange?.(o ? { name: o.name, divisionId: o.divisionId ?? null } : null);
   }
 
   // Newest first (JD, 2026-07-26). During a tournament the game you just
@@ -118,7 +119,7 @@ export default function TeamFinder({
   // history, and history goes underneath.
   const teamGames = selected
     ? games
-        .filter((g) => g.team1 === selected || g.team2 === selected)
+        .filter((g) => playsIn(g, pick))
         .sort((a, b) => String(b.when ?? "").localeCompare(String(a.when ?? "")))
     : [];
   const pool = teamGames.find((g) => g.pool)?.pool ?? null;
@@ -184,7 +185,7 @@ export default function TeamFinder({
           </span>
           <select
             aria-label="Find your team"
-            value={selected}
+            value={selectedKey}
             onChange={handleChange}
             // A <select> has a minimum intrinsic height — 44px against this
             // span's 28 — so without appearance-none it spilled 16px below
@@ -192,11 +193,25 @@ export default function TeamFinder({
             className="absolute inset-0 h-full min-h-0 w-full cursor-pointer appearance-none border-0 p-0 opacity-0"
           >
             <option value="">Find your team</option>
-            {teams.map((team) => (
-              <option key={team} value={team}>
-                {team}
-              </option>
-            ))}
+            {/* Grouped by division when the list spans several, so two
+                teams with one name sit under their own divisions. */}
+            {groups.map((g) =>
+              g.label ? (
+                <optgroup key={g.label} label={g.label}>
+                  {g.options.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                g.options.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.name}
+                  </option>
+                ))
+              )
+            )}
           </select>
         </span>
 
@@ -345,7 +360,7 @@ export default function TeamFinder({
           {slug && !isOut && !isChampion && (
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
-                href={teamFeedHref({ host, slug, team: selected, divisionId: currentId })}
+                href={teamFeedHref({ host, slug, team: selected, divisionId: pick?.divisionId ?? currentId })}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-afa-navy/25 bg-white px-4 text-sm font-bold text-afa-navy hover:border-afa-navy/60"
               >
                 Subscribe to these games

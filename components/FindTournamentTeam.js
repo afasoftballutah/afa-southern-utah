@@ -10,6 +10,7 @@ import {
   rememberRegistration,
 } from "@/lib/my-registrations";
 import { writeMe } from "@/lib/me";
+import { writeStoredPick } from "@/lib/team-pick";
 import { isPlaceholderManager, sameManager, sameRegistrationName } from "@/lib/register-key";
 import { clubDivisionIds } from "@/lib/tournament-teams";
 import { searchTournamentTeams, teamBracketHref, teamSearchKey } from "@/lib/team-search";
@@ -188,12 +189,10 @@ export default function FindTournamentTeam({
         });
     onTeam?.(t.name);
     onMineDivisions?.(ids);
-    writeMe({ teamName: t.name, source: "picked" });
-    try {
-      window.localStorage.setItem(`afa-team-${slug}`, t.name);
-    } catch {
-      /* private browsing */
-    }
+    writeMe({ teamName: t.name, divisionId: t.divisionId ?? undefined, source: "picked" });
+    // The team IN its division, so the schedule and bracket light this
+    // Fallen and not another one (lib/team-pick.js).
+    writeStoredPick(`afa-team-${slug}`, { name: t.name, divisionId: t.divisionId ?? null });
     if (leaving) return;
     setQuery("");
     onPanel?.(null);
