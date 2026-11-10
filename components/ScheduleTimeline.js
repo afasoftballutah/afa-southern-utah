@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "next/link";
 import {
   buildTimeline,
-  divisionLegend,
+  divisionLegendGroups,
   divisionTone,
   hourLabel,
   sideLabel,
@@ -137,7 +137,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
 
 export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug }) {
   const { days, unplaced } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
-  const legend = useMemo(() => divisionLegend(rows), [rows]);
+  const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);
   const [anchor, setAnchor] = useState(null);
   const [sheet, setSheet] = useState(false);
@@ -185,14 +185,20 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
 
   return (
     <div className="tl">
-      <ul className="tl-legend" aria-label="Divisions">
-        {legend.map((d) => (
-          <li key={d.name}>
-            <span className={`tl-swatch tl-tone-${d.tone}`} aria-hidden="true" />
-            {d.name}
-          </li>
+      <div className="tl-legend" role="list" aria-label="Divisions">
+        {legend.map((g, gi) => (
+          <div key={g.group ?? `other-${gi}`} className="tl-legend__group" role="listitem">
+            {g.group ? <span className="tl-legend__group-name">{g.group}</span> : null}
+            <ul className="tl-legend__items">
+              {g.items.map((d) => (
+                <li key={d.name} className={`tl-legend__chip tl-tone-${d.tone}`} aria-label={d.name}>
+                  {d.short}
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
 
       {days.map((day) => (
         <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
@@ -208,7 +214,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
                 <div className="tl-field tl-field--corner">{zoneShort}</div>
                 <div className="tl-track tl-track--axis">
                   {day.hours.map((h, i) => (
-                    <span key={h} className="tl-hour" style={{ left: i * HOUR_PX }}>
+                    <span key={h} className="tl-hour" style={{ left: i * HOUR_PX, width: HOUR_PX }}>
                       {hourLabel(h)}
                     </span>
                   ))}

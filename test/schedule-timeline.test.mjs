@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
-  divisionTone, divisionLegend, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
+  divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
@@ -126,4 +126,18 @@ test("details spell out the game a side waits on", () => {
   assert.equal(spelledSide("L-G12"), "Loser of G12");
   assert.equal(spelledSide("Legacy"), "Legacy");
   assert.equal(spelledSide("TBD"), "TBD");
+});
+
+test("legend groups by gender so Men's / Women's is written once", () => {
+  const groups = divisionLegendGroups([
+    { divisionName: "Women's Rec" }, { divisionName: "Men's E" }, { divisionName: "Women's D" },
+    { divisionName: "Men's D" }, { divisionName: "Women's E" }, { divisionName: "Gold" },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.group, g.items.map((d) => d.short)]), [
+    ["Men's", ["D", "E"]],
+    ["Women's", ["D", "E", "Rec"]],
+    [null, ["Gold"]],
+  ]);
+  assert.equal(groups[1].items[2].tone, "womens-rec");
+  assert.equal(groups[1].items[2].name, "Women's Rec");
 });
