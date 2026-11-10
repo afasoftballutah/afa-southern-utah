@@ -1,0 +1,1657 @@
+{
+ "note": "Layout of the 2026 AFA World Series timeline (read from the schedule, ids anonymised): day index, field row, minutes from the day's first hour, and where each game's winner and loser go.",
+ "games": [
+  {
+   "id": "g1",
+   "label": "G1",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g2",
+   "label": "G4",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g3",
+   "label": "G7",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g4",
+   "label": "G10",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g5",
+   "label": "G13",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g6",
+   "label": "G16",
+   "division": "Men's D",
+   "day": 0,
+   "row": 0,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g7",
+   "label": "G2",
+   "division": "Men's D",
+   "day": 0,
+   "row": 1,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g8",
+   "label": "G5",
+   "division": "Men's D",
+   "day": 0,
+   "row": 1,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g9",
+   "label": "G8",
+   "division": "Men's D",
+   "day": 0,
+   "row": 1,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g10",
+   "label": "G11",
+   "division": "Men's D",
+   "day": 0,
+   "row": 1,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g11",
+   "label": "G14",
+   "division": "Men's D",
+   "day": 0,
+   "row": 1,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g12",
+   "label": "G3",
+   "division": "Men's D",
+   "day": 0,
+   "row": 2,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g13",
+   "label": "G6",
+   "division": "Men's D",
+   "day": 0,
+   "row": 2,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g14",
+   "label": "G9",
+   "division": "Men's D",
+   "day": 0,
+   "row": 2,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g15",
+   "label": "G12",
+   "division": "Men's D",
+   "day": 0,
+   "row": 2,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g16",
+   "label": "G15",
+   "division": "Men's D",
+   "day": 0,
+   "row": 2,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g17",
+   "label": "G1",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g18",
+   "label": "G4",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g19",
+   "label": "G9",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g20",
+   "label": "G12",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g21",
+   "label": "G8",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g22",
+   "label": "G16",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g23",
+   "label": "G19",
+   "division": "Men's E",
+   "day": 0,
+   "row": 3,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g24",
+   "label": "G2",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g25",
+   "label": "G5",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g26",
+   "label": "G10",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g27",
+   "label": "G13",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g28",
+   "label": "G15",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g29",
+   "label": "G17",
+   "division": "Men's E",
+   "day": 0,
+   "row": 4,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g30",
+   "label": "G3",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g31",
+   "label": "G6",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g32",
+   "label": "G7",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g33",
+   "label": "G11",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g34",
+   "label": "G14",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g35",
+   "label": "G18",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g36",
+   "label": "G20",
+   "division": "Men's E",
+   "day": 0,
+   "row": 5,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g37",
+   "label": "G22",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g38",
+   "label": "G24",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g39",
+   "label": "G28",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g40",
+   "label": "G30",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g41",
+   "label": "G35",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g42",
+   "label": "G39",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g43",
+   "label": "G42",
+   "division": "Men's E",
+   "day": 1,
+   "row": 0,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g44",
+   "label": "G1",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 0,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g45",
+   "label": "G2",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 0,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g46",
+   "label": "G4",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 0,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g47",
+   "label": "G6",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 0,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g48",
+   "label": "G23",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g49",
+   "label": "G25",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g50",
+   "label": "G29",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g51",
+   "label": "G31",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g52",
+   "label": "G34",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g53",
+   "label": "G38",
+   "division": "Men's E",
+   "day": 1,
+   "row": 1,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g54",
+   "label": "G1",
+   "division": "Women's E",
+   "day": 1,
+   "row": 1,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g55",
+   "label": "G3",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 1,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g56",
+   "label": "G5",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 1,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g57",
+   "label": "G7",
+   "division": "Women's Rec",
+   "day": 1,
+   "row": 1,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g58",
+   "label": "G21",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g59",
+   "label": "G26",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g60",
+   "label": "G27",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g61",
+   "label": "G32",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g62",
+   "label": "G33",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g63",
+   "label": "G37",
+   "division": "Men's E",
+   "day": 1,
+   "row": 2,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g64",
+   "label": "G2",
+   "division": "Women's E",
+   "day": 1,
+   "row": 2,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g65",
+   "label": "G3",
+   "division": "Women's E",
+   "day": 1,
+   "row": 2,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g66",
+   "label": "G4",
+   "division": "Women's E",
+   "day": 1,
+   "row": 2,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g67",
+   "label": "G5",
+   "division": "Women's E",
+   "day": 1,
+   "row": 2,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g68",
+   "label": "G6",
+   "division": "Women's E",
+   "day": 1,
+   "row": 2,
+   "offset": 720,
+   "length": 60
+  },
+  {
+   "id": "g69",
+   "label": "G20",
+   "division": "Men's D",
+   "day": 1,
+   "row": 3,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g70",
+   "label": "G21",
+   "division": "Men's D",
+   "day": 1,
+   "row": 3,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g71",
+   "label": "G25",
+   "division": "Men's D",
+   "day": 1,
+   "row": 3,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g72",
+   "label": "G27",
+   "division": "Men's D",
+   "day": 1,
+   "row": 3,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g73",
+   "label": "G29",
+   "division": "Men's D",
+   "day": 1,
+   "row": 3,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g74",
+   "label": "G40",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g75",
+   "label": "G41",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g76",
+   "label": "G44",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g77",
+   "label": "G47",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g78",
+   "label": "G48",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g79",
+   "label": "G49",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g80",
+   "label": "G50",
+   "division": "Men's E",
+   "day": 1,
+   "row": 3,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g81",
+   "label": "G19",
+   "division": "Men's D",
+   "day": 1,
+   "row": 4,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g82",
+   "label": "G22",
+   "division": "Men's D",
+   "day": 1,
+   "row": 4,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g83",
+   "label": "G23",
+   "division": "Men's D",
+   "day": 1,
+   "row": 4,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g84",
+   "label": "G28",
+   "division": "Men's D",
+   "day": 1,
+   "row": 4,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g85",
+   "label": "G30",
+   "division": "Men's D",
+   "day": 1,
+   "row": 4,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g86",
+   "label": "G36",
+   "division": "Men's E",
+   "day": 1,
+   "row": 4,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g87",
+   "label": "G43",
+   "division": "Men's E",
+   "day": 1,
+   "row": 4,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g88",
+   "label": "G45",
+   "division": "Men's E",
+   "day": 1,
+   "row": 4,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g89",
+   "label": "G46",
+   "division": "Men's E",
+   "day": 1,
+   "row": 4,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g90",
+   "label": "G1",
+   "division": "Women's D",
+   "day": 1,
+   "row": 4,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g91",
+   "label": "G3",
+   "division": "Women's D",
+   "day": 1,
+   "row": 4,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g92",
+   "label": "G5",
+   "division": "Women's D",
+   "day": 1,
+   "row": 4,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g93",
+   "label": "G7",
+   "division": "Women's D",
+   "day": 1,
+   "row": 4,
+   "offset": 720,
+   "length": 60
+  },
+  {
+   "id": "g94",
+   "label": "G18",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g95",
+   "label": "G17",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g96",
+   "label": "G24",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g97",
+   "label": "G26",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g98",
+   "label": "G31",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g99",
+   "label": "G32",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g100",
+   "label": "G33",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g101",
+   "label": "G34",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g102",
+   "label": "G35",
+   "division": "Men's D",
+   "day": 1,
+   "row": 5,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g103",
+   "label": "G2",
+   "division": "Women's D",
+   "day": 1,
+   "row": 5,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g104",
+   "label": "G4",
+   "division": "Women's D",
+   "day": 1,
+   "row": 5,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g105",
+   "label": "G6",
+   "division": "Women's D",
+   "day": 1,
+   "row": 5,
+   "offset": 660,
+   "length": 60
+  },
+  {
+   "id": "g106",
+   "label": "G8",
+   "division": "Women's D",
+   "day": 1,
+   "row": 5,
+   "offset": 720,
+   "length": 60
+  },
+  {
+   "id": "g107",
+   "label": "G7",
+   "division": "Women's E",
+   "day": 2,
+   "row": 0,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g108",
+   "label": "G10",
+   "division": "Women's E",
+   "day": 2,
+   "row": 0,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g109",
+   "label": "G8",
+   "division": "Women's E",
+   "day": 2,
+   "row": 1,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g110",
+   "label": "G9",
+   "division": "Women's E",
+   "day": 2,
+   "row": 1,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g111",
+   "label": "G13",
+   "division": "Women's D",
+   "day": 2,
+   "row": 2,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g112",
+   "label": "G9",
+   "division": "Women's D",
+   "day": 2,
+   "row": 3,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g113",
+   "label": "G10",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 3,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g114",
+   "label": "G11",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 3,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g115",
+   "label": "G11",
+   "division": "Women's E",
+   "day": 2,
+   "row": 3,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g116",
+   "label": "G12",
+   "division": "Women's E",
+   "day": 2,
+   "row": 3,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g117",
+   "label": "G13",
+   "division": "Women's E",
+   "day": 2,
+   "row": 3,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g118",
+   "label": "G8",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g119",
+   "label": "G9",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g120",
+   "label": "G12",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g121",
+   "label": "G13",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g122",
+   "label": "G14",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g123",
+   "label": "G15",
+   "division": "Women's Rec",
+   "day": 2,
+   "row": 4,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g124",
+   "label": "G10",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g125",
+   "label": "G11",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g126",
+   "label": "G12",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g127",
+   "label": "G14",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g128",
+   "label": "G15",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g129",
+   "label": "G16",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g130",
+   "label": "G17",
+   "division": "Women's D",
+   "day": 2,
+   "row": 5,
+   "offset": 360,
+   "length": 60
+  }
+ ],
+ "dest": {
+  "g64": {
+   "winner": "g66",
+   "loser": "g67"
+  },
+  "g107": {
+   "winner": "g108",
+   "loser": null
+  },
+  "g54": {
+   "winner": "g65",
+   "loser": "g68"
+  },
+  "g108": {
+   "winner": "g115",
+   "loser": null
+  },
+  "g65": {
+   "winner": "g110",
+   "loser": "g67"
+  },
+  "g67": {
+   "winner": "g107",
+   "loser": "g109"
+  },
+  "g68": {
+   "winner": "g109",
+   "loser": "g107"
+  },
+  "g115": {
+   "winner": "g116",
+   "loser": null
+  },
+  "g66": {
+   "winner": "g110",
+   "loser": "g68"
+  },
+  "g110": {
+   "winner": "g116",
+   "loser": "g115"
+  },
+  "g109": {
+   "winner": "g108",
+   "loser": null
+  },
+  "g17": {
+   "winner": "g19",
+   "loser": "g35"
+  },
+  "g24": {
+   "winner": "g26",
+   "loser": "g36"
+  },
+  "g30": {
+   "winner": "g33",
+   "loser": "g23"
+  },
+  "g18": {
+   "winner": "g20",
+   "loser": "g28"
+  },
+  "g25": {
+   "winner": "g27",
+   "loser": "g22"
+  },
+  "g31": {
+   "winner": "g34",
+   "loser": "g29"
+  },
+  "g32": {
+   "winner": "g39",
+   "loser": "g28"
+  },
+  "g21": {
+   "winner": "g51",
+   "loser": "g36"
+  },
+  "g19": {
+   "winner": "g39",
+   "loser": "g22"
+  },
+  "g26": {
+   "winner": "g50",
+   "loser": "g29"
+  },
+  "g33": {
+   "winner": "g50",
+   "loser": "g58"
+  },
+  "g20": {
+   "winner": "g40",
+   "loser": "g35"
+  },
+  "g27": {
+   "winner": "g40",
+   "loser": "g58"
+  },
+  "g34": {
+   "winner": "g51",
+   "loser": "g23"
+  },
+  "g28": {
+   "winner": "g37",
+   "loser": "g60"
+  },
+  "g22": {
+   "winner": "g48",
+   "loser": "g59"
+  },
+  "g29": {
+   "winner": "g38",
+   "loser": "g49"
+  },
+  "g35": {
+   "winner": "g49",
+   "loser": "g38"
+  },
+  "g23": {
+   "winner": "g59",
+   "loser": "g48"
+  },
+  "g36": {
+   "winner": "g60",
+   "loser": "g37"
+  },
+  "g58": {
+   "winner": "g52",
+   "loser": "g61"
+  },
+  "g37": {
+   "winner": "g41",
+   "loser": null
+  },
+  "g48": {
+   "winner": "g41",
+   "loser": null
+  },
+  "g38": {
+   "winner": "g52",
+   "loser": null
+  },
+  "g49": {
+   "winner": "g62",
+   "loser": null
+  },
+  "g59": {
+   "winner": "g62",
+   "loser": null
+  },
+  "g60": {
+   "winner": "g61",
+   "loser": null
+  },
+  "g39": {
+   "winner": "g74",
+   "loser": "g53"
+  },
+  "g50": {
+   "winner": "g74",
+   "loser": "g63"
+  },
+  "g40": {
+   "winner": "g75",
+   "loser": "g42"
+  },
+  "g51": {
+   "winner": "g75",
+   "loser": "g86"
+  },
+  "g61": {
+   "winner": "g86",
+   "loser": null
+  },
+  "g62": {
+   "winner": "g63",
+   "loser": null
+  },
+  "g52": {
+   "winner": "g53",
+   "loser": null
+  },
+  "g41": {
+   "winner": "g42",
+   "loser": null
+  },
+  "g86": {
+   "winner": "g87",
+   "loser": null
+  },
+  "g63": {
+   "winner": "g87",
+   "loser": null
+  },
+  "g53": {
+   "winner": "g43",
+   "loser": null
+  },
+  "g42": {
+   "winner": "g43",
+   "loser": null
+  },
+  "g74": {
+   "winner": "g89",
+   "loser": "g76"
+  },
+  "g75": {
+   "winner": "g89",
+   "loser": "g88"
+  },
+  "g43": {
+   "winner": "g76",
+   "loser": null
+  },
+  "g87": {
+   "winner": "g88",
+   "loser": null
+  },
+  "g76": {
+   "winner": "g77",
+   "loser": null
+  },
+  "g88": {
+   "winner": "g77",
+   "loser": null
+  },
+  "g89": {
+   "winner": "g79",
+   "loser": "g78"
+  },
+  "g77": {
+   "winner": "g78",
+   "loser": null
+  },
+  "g78": {
+   "winner": "g79",
+   "loser": null
+  },
+  "g3": {
+   "winner": "g6",
+   "loser": "g15"
+  },
+  "g14": {
+   "winner": "g69",
+   "loser": "g81"
+  },
+  "g4": {
+   "winner": "g81",
+   "loser": "g69"
+  },
+  "g10": {
+   "winner": "g94",
+   "loser": "g95"
+  },
+  "g15": {
+   "winner": "g95",
+   "loser": "g94"
+  },
+  "g5": {
+   "winner": "g71",
+   "loser": "g96"
+  },
+  "g9": {
+   "winner": "g6",
+   "loser": "g15"
+  },
+  "g11": {
+   "winner": "g71",
+   "loser": "g83"
+  },
+  "g16": {
+   "winner": "g97",
+   "loser": "g82"
+  },
+  "g1": {
+   "winner": "g5",
+   "loser": "g14"
+  },
+  "g7": {
+   "winner": "g5",
+   "loser": "g14"
+  },
+  "g12": {
+   "winner": "g11",
+   "loser": "g4"
+  },
+  "g2": {
+   "winner": "g11",
+   "loser": "g4"
+  },
+  "g8": {
+   "winner": "g16",
+   "loser": "g10"
+  },
+  "g13": {
+   "winner": "g16",
+   "loser": "g10"
+  },
+  "g6": {
+   "winner": "g97",
+   "loser": "g70"
+  },
+  "g95": {
+   "winner": "g96",
+   "loser": null
+  },
+  "g94": {
+   "winner": "g83",
+   "loser": null
+  },
+  "g81": {
+   "winner": "g82",
+   "loser": null
+  },
+  "g69": {
+   "winner": "g70",
+   "loser": null
+  },
+  "g70": {
+   "winner": "g72",
+   "loser": null
+  },
+  "g82": {
+   "winner": "g72",
+   "loser": null
+  },
+  "g83": {
+   "winner": "g84",
+   "loser": null
+  },
+  "g96": {
+   "winner": "g84",
+   "loser": null
+  },
+  "g71": {
+   "winner": "g98",
+   "loser": "g73"
+  },
+  "g97": {
+   "winner": "g98",
+   "loser": "g85"
+  },
+  "g72": {
+   "winner": "g73",
+   "loser": null
+  },
+  "g84": {
+   "winner": "g85",
+   "loser": null
+  },
+  "g73": {
+   "winner": "g99",
+   "loser": null
+  },
+  "g85": {
+   "winner": "g99",
+   "loser": null
+  },
+  "g98": {
+   "winner": "g101",
+   "loser": "g100"
+  },
+  "g99": {
+   "winner": "g100",
+   "loser": null
+  },
+  "g100": {
+   "winner": "g101",
+   "loser": null
+  },
+  "g44": {
+   "winner": "g46",
+   "loser": "g47"
+  },
+  "g45": {
+   "winner": "g56",
+   "loser": "g47"
+  },
+  "g55": {
+   "winner": "g56",
+   "loser": "g57"
+  },
+  "g46": {
+   "winner": "g114",
+   "loser": "g57"
+  },
+  "g56": {
+   "winner": "g114",
+   "loser": "g118"
+  },
+  "g47": {
+   "winner": "g113",
+   "loser": "g118"
+  },
+  "g57": {
+   "winner": "g119",
+   "loser": "g113"
+  },
+  "g118": {
+   "winner": "g119",
+   "loser": null
+  },
+  "g119": {
+   "winner": "g120",
+   "loser": null
+  },
+  "g113": {
+   "winner": "g120",
+   "loser": null
+  },
+  "g114": {
+   "winner": "g122",
+   "loser": "g121"
+  },
+  "g120": {
+   "winner": "g121",
+   "loser": null
+  },
+  "g121": {
+   "winner": "g122",
+   "loser": null
+  },
+  "g92": {
+   "winner": "g112",
+   "loser": "g124"
+  },
+  "g105": {
+   "winner": "g124",
+   "loser": "g112"
+  },
+  "g90": {
+   "winner": "g93",
+   "loser": "g92"
+  },
+  "g103": {
+   "winner": "g93",
+   "loser": "g92"
+  },
+  "g91": {
+   "winner": "g106",
+   "loser": "g105"
+  },
+  "g104": {
+   "winner": "g106",
+   "loser": "g105"
+  },
+  "g93": {
+   "winner": "g111",
+   "loser": "g126"
+  },
+  "g106": {
+   "winner": "g111",
+   "loser": "g125"
+  },
+  "g112": {
+   "winner": "g125",
+   "loser": null
+  },
+  "g124": {
+   "winner": "g126",
+   "loser": null
+  },
+  "g125": {
+   "winner": "g127",
+   "loser": null
+  },
+  "g126": {
+   "winner": "g127",
+   "loser": null
+  },
+  "g111": {
+   "winner": "g129",
+   "loser": "g128"
+  },
+  "g127": {
+   "winner": "g128",
+   "loser": null
+  },
+  "g128": {
+   "winner": "g129",
+   "loser": null
+  }
+ }
+}

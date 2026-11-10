@@ -3,6 +3,7 @@
 import { SIDE_LABELS } from "@/lib/bracket/side";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { planArrows } from "@/lib/flow-arrows";
 import Link from "next/link";
 import {
   buildTimeline,
@@ -318,18 +319,6 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
 // it is.
 const ARROW = { winner: "#4ade80", loser: "#f87171" };
 
-function edgePoint(r, toward, pad = 3) {
-  const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
-  const dx = toward.x - cx;
-  const dy = toward.y - cy;
-  if (!dx && !dy) return { x: cx, y: cy };
-  const sx = dx ? (r.width / 2 + pad) / Math.abs(dx) : Infinity;
-  const sy = dy ? (r.height / 2 + pad) / Math.abs(dy) : Infinity;
-  const k = Math.min(sx, sy);
-  return { x: cx + dx * k, y: cy + dy * k };
-}
-
 // Where the segment a→b leaves the box (a is inside it).
 function exitPoint(a, b, box) {
   let t = 1;
@@ -340,16 +329,6 @@ function exitPoint(a, b, box) {
   if (dy > 0) t = Math.min(t, (box.bottom - a.y) / dy);
   if (dy < 0) t = Math.min(t, (box.top - a.y) / dy);
   return { x: a.x + dx * Math.max(0, t), y: a.y + dy * Math.max(0, t) };
-}
-
-function arrowPath(from, to, bend) {
-  const mx = (from.x + to.x) / 2;
-  const my = (from.y + to.y) / 2;
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const k = Math.min(44, len * 0.32) * bend;
-  return `M${from.x.toFixed(1)},${from.y.toFixed(1)} Q${(mx - (dy / len) * k).toFixed(1)},${(my + (dx / len) * k).toFixed(1)} ${to.x.toFixed(1)},${to.y.toFixed(1)}`;
 }
 
 // On open, bring the game and where it leads into view: slide the lane so a
@@ -422,50 +401,67 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
       };
       const fr = fromEl.getBoundingClientRect();
       const pill = (id) => (id ? document.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null);
-      const winnerEl = pill(winnerId);
-      const loserEl = pill(loserId);
-      const out = [];
-      const inBox = (q) => q.x >= box.left - 1 && q.x <= box.right + 1 && q.y >= box.top - 1 && q.y <= box.bottom + 1;
-      for (const [role, el, side] of [["winner", winnerEl, -1], ["loser", loserEl, 1]]) {
-        if (!el) continue;
+      const rect = (el) => {
         const r = el.getBoundingClientRect();
-        const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        const edge = edgePoint(fr, c);
-        const dx = c.x - edge.x;
-        const dy = c.y - edge.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const u = { x: dx / len, y: dy / len };
-        // The two arrows leave a little apart, winner on the right-hand
-        // side of travel and loser on the left, like the pill's corners.
-        const start = { x: edge.x - u.y * 6 * side, y: edge.y + u.x * 6 * side };
-        const end = edgePoint(r, start, 4);
-        if (el.closest(".tl-scroll") === scroller && inBox(end)) {
-          if (Math.hypot(end.x - start.x, end.y - start.y) < 8) continue;
-          out.push({ role, d: arrowPath(start, end, side) });
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      };
+      const inBox = (r) => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1;
+      const wanted = [];
+      const destEls = [];
+      for (const [role, id] of [["winner", winnerId], ["loser", loserId]]) {
+        const el = pill(id);
+        if (!el) continue;
+        destEls.push(el);
+        const r = rect(el);
+        if (el.closest(".tl-scroll") === scroller && inBox(r)) {
+          wanted.push({ role, to: r });
           continue;
         }
         // Off this panel (another day, scrolled away, or under the sheet):
         // a short arrow pointing that way, named, and the pill itself ringed.
-        const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
-        const reach = Math.min(46, Math.hypot(far.x - start.x, far.y - start.y));
-        if (reach < 14) continue;
-        const tip = { x: start.x + u.x * reach, y: start.y + u.y * reach };
+        wanted.push({
+          role,
+          toward: { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
+          alt: { x: box.right + 400, y: (fr.top + fr.bottom) / 2 },
+          reach: (start, u) => {
+            const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
+            return Math.min(46, Math.hypot(far.x - start.x, far.y - start.y));
+          },
+        });
+      }
+      // Keep clear of the other pills in view, so a line never runs through one.
+      const obstacles = [];
+      for (const el of scroller.querySelectorAll(".tl-pill")) {
+        if (el === fromEl || destEls.includes(el)) continue;
+        const r = rect(el);
+        if (r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) continue;
+        obstacles.push(r);
+      }
+      // Each arrow gets its own anchors, chosen so the two never cross.
+      const planned = planArrows({ from: rect(fromEl), arrows: wanted, obstacles, box });
+      const out = [];
+      for (const a of planned) {
+        if (a.kind === "curve") {
+          if (Math.hypot(a.end.x - a.start.x, a.end.y - a.start.y) < 8) continue;
+          out.push({ role: a.role, d: a.d });
+          continue;
+        }
+        const { tip, u } = a;
+        // Name on the side away from the other arrow, so they never overlap.
+        const other = planned.find((b) => b !== a);
+        const otherY = other ? other.pts.reduce((sum, q) => sum + q.y, 0) / other.pts.length : null;
+        const side = otherY == null ? (a.role === "winner" ? -1 : 1) : otherY < tip.y ? 1 : -1;
         const across = Math.abs(u.x) >= Math.abs(u.y);
-        const label = labels?.[role] ?? null;
+        const label = labels?.[a.role] ?? null;
         const at = across
-          ? { x: tip.x - u.x * 4, y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "end" : "start" }
+          ? { x: a.start.x + (u.x > 0 ? 2 : -2), y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "start" : "end" }
           : { x: tip.x + (side < 0 ? 7 : -7), y: tip.y + u.y * 4 + 4, anchor: side < 0 ? "start" : "end" };
         // Keep the name on screen: flip it to the other side of the stub
         // when it would run past the panel edge.
         const w = (label?.length ?? 0) * 6.5;
         if (at.anchor === "start" && at.x + w > box.right) at.anchor = "end";
         else if (at.anchor === "end" && at.x - w < box.left) at.anchor = "start";
-        out.push({
-          role,
-          d: `M${start.x.toFixed(1)},${start.y.toFixed(1)} L${tip.x.toFixed(1)},${tip.y.toFixed(1)}`,
-          label,
-          at,
-        });
+        out.push({ role: a.role, d: a.d, label, at });
       }
       // Two names side by side would print over each other: lift the loser's.
       const span = (q) => {
