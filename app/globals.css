@@ -3516,7 +3516,7 @@ button:not(.pill) {
   padding-right: 0.75rem;
 }
 @media (min-width: 640px) { .tl-grid { --tl-label-w: 7rem; } }
-.tl-row { display: flex; height: 2.875rem; }
+.tl-row { display: flex; height: 3.25rem; }
 .tl-row--axis { height: 1.75rem; }
 .tl-field {
   position: sticky; left: 0; z-index: 2; flex: 0 0 var(--tl-label-w); min-width: 0; overflow: hidden;
@@ -3537,14 +3537,14 @@ button:not(.pill) {
   font-size: 0.6875rem; font-weight: 500; color: var(--tl-label); white-space: nowrap;
 }
 button.tl-pill {
-  position: absolute; top: 0.375rem; height: 2.125rem; min-height: 0;
+  position: absolute; top: 0.25rem; height: 2.75rem; min-height: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 0.625rem; background: var(--tone-bg); color: var(--tone-ink);
   font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums;
   transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
   cursor: pointer;
 }
-.tl-pill::after { content: ""; position: absolute; inset: -0.375rem 0; } /* full-row tap target */
+.tl-pill::after { content: ""; position: absolute; inset: -0.25rem 0; } /* full-row tap target */
 .tl-pill:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-solid) 45%, transparent); }
 .tl-pill:focus-visible { outline: 2px solid var(--tone-solid); outline-offset: 2px; }
 .tl-pill.is-final { background: var(--tone-solid); color: #fff; }
@@ -3560,7 +3560,23 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-pill.tl-side-if { border-style: dashed; }
 .tl-pill.tl-side-final { border-color: #c99a1e; }
 .tl-pill.tl-side-losers.is-final { background: var(--tone-bg); color: var(--tone-ink); }
-.tl-star { position: absolute; top: 0.125rem; right: 0.2rem; width: 0.625rem; height: 0.625rem; pointer-events: none; }
+/* Number in the middle, star tucked beside it so the corners stay free. */
+.tl-pill__num { display: inline-flex; align-items: center; gap: 0.15rem; line-height: 1; }
+.tl-star { width: 0.625rem; height: 0.625rem; flex: none; pointer-events: none; }
+/* Corners (lib/bracket/flow.js): feeders on top, loser ↙ / winner ↘ below. */
+.tl-corner {
+  position: absolute; font-size: 0.5625rem; line-height: 1; font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap;
+  color: color-mix(in srgb, var(--tone-ink) 62%, transparent); pointer-events: none;
+}
+.tl-corner--tl { top: 0.25rem; left: 0.35rem; }
+.tl-corner--tr { top: 0.25rem; right: 0.35rem; }
+.tl-corner--bl { bottom: 0.25rem; left: 0.35rem; }
+.tl-corner--br { bottom: 0.25rem; right: 0.35rem; }
+.tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
+.tl-pill.tl-side-losers.is-final .tl-corner { color: color-mix(in srgb, var(--tone-ink) 62%, transparent); }
+.tl-key__corners { flex-basis: 100%; font-size: 0.6875rem; }
+.tl-pop__flow { font-size: 0.8125rem; color: var(--tl-ink); padding: 0.1rem 0 0.6rem; }
 /* Winners bold, losers regular (JD, 2026-11-09); finals stay bold. */
 button.tl-pill.tl-side-winners, button.tl-pill.tl-side-final, button.tl-pill.tl-side-if { font-weight: 700; }
 button.tl-pill.tl-side-losers { font-weight: 450; }
@@ -3578,7 +3594,7 @@ button.tl-pill.tl-side-losers { font-weight: 450; }
 .tl-key__swatch--losers { background: #fff; border: 1px solid var(--k); }
 .tl-key__swatch--final { background: #e5e5ea; border: 1px solid #c99a1e; }
 .tl-key__swatch--if { background: #fff; border: 1px dashed var(--k); }
-.tl-key__swatch .tl-star { top: -0.3rem; right: -0.3rem; }
+.tl-key__swatch .tl-star { position: absolute; top: -0.3rem; right: -0.3rem; }
 .tl-key__winners { font-weight: 700; color: var(--tl-ink); }
 .tl-key__losers { font-weight: 400; }
 .tl-key__final { font-weight: 600; }

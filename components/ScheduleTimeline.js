@@ -7,6 +7,8 @@ import {
   buildTimeline,
   divisionLegendGroups,
   divisionTone,
+  flowWords,
+  nextShort,
   hourLabel,
   sideLabel,
   spelledSide,
@@ -20,7 +22,7 @@ import {
 // Esc or a tap anywhere else closes it. A data refresh keeps it open —
 // the open game is remembered by id, not by position.
 
-const HOUR_PX = 76;
+const HOUR_PX = 92;
 
 // Championship mark (JD, 2026-11-09: "a star instead of dot"). Decorative;
 // the pill's aria-label already says "Championship" / "If-necessary game".
@@ -40,11 +42,23 @@ function Star({ className }) {
 }
 const PILL_GAP = 4;
 
+
+
+
 function Pill({ game, open, onToggle, pillRef }) {
   const tone = divisionTone(game.divisionName);
   const final = game.isFinal || game.status === "final";
   const place = game.team1Place || game.team2Place;
   const side = game.bracketSide ?? null;
+  const flow = game.flow ?? null;
+  const number = /^G\d+$/.test(game.label ?? "") ? game.label.slice(1) : (game.label ?? "Game");
+  const corners = [
+    ["tl", flow?.from?.[0]?.short ?? null],
+    ["tr", flow?.from?.[1]?.short ?? null],
+    ["bl", nextShort(flow?.loser)],
+    ["br", nextShort(flow?.winner)],
+  ];
+  const words = flowWords(flow);
   return (
     <button
       type="button"
@@ -58,11 +72,20 @@ function Pill({ game, open, onToggle, pillRef }) {
       aria-controls={open ? `tl-pop-${game.id}` : undefined}
       aria-label={`${game.divisionName} ${game.label ?? ""}${side ? `, ${SIDE_LABELS[side]}` : ""}, ${game.timeLabel ?? ""}, ${game.fieldName}${
         final ? ", final" : ""
-      }${place ? `, a team finished ${place}` : ""}`}
+      }${place ? `, a team finished ${place}` : ""}${words ? `. ${words}` : ""}`}
       onClick={(e) => onToggle(game.id, e.currentTarget)}
     >
-      {game.label ?? "Game"}
-      {side === "final" || side === "if" ? <Star className="tl-star" /> : null}
+      <span className="tl-pill__num">
+        {number}
+        {side === "final" || side === "if" ? <Star className="tl-star" /> : null}
+      </span>
+      {corners.map(([pos, text]) =>
+        text ? (
+          <span key={pos} className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
+            {text}
+          </span>
+        ) : null
+      )}
     </button>
   );
 }
@@ -139,6 +162,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
           </li>
         ))}
       </ul>
+      {flowWords(game.flow) ? <p className="tl-pop__flow">{flowWords(game.flow)}</p> : null}
       <dl className="tl-pop__meta">
         <div>
           <dt>Time</dt>
@@ -231,6 +255,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
         <li className="tl-key__final">
           <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-star" /></span>If necessary
         </li>
+        <li className="tl-key__corners">Corners: ↖↗ from (W5 = winner of game 5) · ↙ loser to · ↘ winner to</li>
       </ul>
 
       {days.map((day) => (
