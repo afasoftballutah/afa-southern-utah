@@ -7,7 +7,7 @@ import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
-import { gameTitle, bracketPill, matchupSide, nextStep, pillScore } from "@/lib/schedule-timeline";
+import { gameTitle, bracketPill, matchupSide, nextStep, pillScore, gameNumberIndex, gameIdByTitle, flowTargets } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
 
@@ -156,6 +156,40 @@ test("finished pill shows its score, winner's runs first; nothing until final wi
   assert.match(css, /\.tl-pill\.tl-side-losers\.is-final,\s*\.tl-pill\.tl-side-if\.is-final \{ background: var\(--tone-solid\); color: #fff; \}/);
   assert.match(css, /\.tl-pill\.tl-side-losers\.is-final \{ box-shadow: inset 0 0 0 2px/);
   assert.ok(!/\.tl-pill\.tl-side-losers\.is-final \{ background: var\(--tone-bg\)/.test(css), "finished losers are not pale");
+});
+
+test("card game links: \"Game 17\" resolves to that game in the same division only", () => {
+  const rows = [
+    { id: "d5", divisionId: "D", label: "G5" },
+    { id: "d17", divisionId: "D", label: "G17" },
+    { id: "e17", divisionId: "E", label: "G17" },
+    { id: "p", divisionId: "D", label: "Pool A" },
+  ];
+  const idx = gameNumberIndex(rows);
+  assert.equal(gameIdByTitle(idx, "D", "Game 17"), "d17");
+  assert.equal(gameIdByTitle(idx, "E", "Game 17"), "e17");
+  assert.equal(gameIdByTitle(idx, "D", "Game 99"), null);
+  assert.equal(gameIdByTitle(idx, "D", "TBD"), null);
+  // flowTargets still reads through the same index
+  const t = flowTargets([{ ...rows[0], flow: { winner: { next: 17 }, loser: null } }, rows[1]]);
+  assert.equal(t.get("d5").winner, "d17");
+});
+
+test("card game links: feeders, destinations and If Game are links; team names are not", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  assert.match(src, /aria-label=\{`Open \$\{title\}`\}/);
+  assert.match(src, /<span className="tl-board__from">\{r\.from\}<\/span> <GameLink title=\{r\.game\}/);
+  assert.match(src, /<GameLink title=\{step\.next\}/);
+  assert.match(src, /If <GameLink title=\{`Game \$\{ifGame\}`\}/);
+  assert.match(src, /<span className="tl-board__team">\{r\.team\}<\/span>/, "real team names stay plain text");
+  // opening a linked game goes through the same reveal as tapping its pill
+  const open = src.slice(src.indexOf("const openGame = (id) =>"), src.indexOf("const openGame = (id) =>") + 400);
+  assert.match(open, /scrollIntoView/);
+  assert.match(open, /setOpenId\(id\)/);
+  assert.match(open, /reveal\(el, targets\.get\(id\)\)/);
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.tl-link \{[^}]*cursor: pointer/);
+  assert.match(css, /\.tl-link:focus-visible/);
 });
 
 test("ticker item: division + game, both sides with scores, winner marked", () => {

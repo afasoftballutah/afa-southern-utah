@@ -3696,6 +3696,14 @@ button.tl-pop__close {
 .tl-board__team { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .tl-board__row.is-won .tl-board__team { font-weight: 700; }
 .tl-board__from { font-size: 0.75rem; font-weight: 400; color: var(--tl-label); }
+/* "Game 17" on the card opens that game: quiet until hovered or focused. */
+.tl-link {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 0.2em; text-decoration-thickness: 1px; border-radius: 0.25rem;
+}
+.tl-link:hover { color: #1d4ed8; text-decoration-color: currentColor; }
+.tl-link:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .tl-board__out { flex: none; font-size: 0.75rem; color: var(--tl-label); }
 .tl-board__score { flex: none; min-width: 1.5rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tl-next { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
