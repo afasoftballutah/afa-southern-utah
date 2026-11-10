@@ -3564,6 +3564,14 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 /* Number in the middle; on the championship and if-necessary game a large
    faint gold star sits behind everything (JD, 2026-11-09). */
 .tl-pill__num { position: relative; line-height: 1; }
+/* A finished game shows its result in the middle, winner's runs first
+   ("12–8"); the game number moves up to the top centre, between the
+   "from" corners, and the corners stay put. */
+.tl-pill__score { font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; top: 0.125rem; }
+.tl-pill__gno {
+  position: absolute; top: 0.1875rem; left: 50%; transform: translateX(-50%);
+  font-size: 0.6875rem; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 1;
+}
 .tl-bgstar {
   position: absolute; left: 50%; top: 50%; width: 2.375rem; height: 2.375rem;
   transform: translate(-50%, -50%); color: #d4a72c; opacity: 0.2; pointer-events: none;
@@ -3586,6 +3594,8 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-corner-place.is-cup { font-style: normal; } /* "dont italicize the cup" */
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
 .tl-pill.tl-side-losers.is-final .tl-corner { color: color-mix(in srgb, var(--tone-ink) 62%, transparent); }
+/* Gold place on a solid (finished) pill: light gold so it reads. */
+.tl-pill.is-final:not(.tl-side-losers) .tl-corner-place.is-gold { color: #fde68a; }
 .tl-key__corners { flex-basis: 100%; font-size: 0.6875rem; }
 /* Winners bold, losers regular (JD, 2026-11-09); finals stay bold. */
 button.tl-pill.tl-side-winners, button.tl-pill.tl-side-final, button.tl-pill.tl-side-if { font-weight: 700; }
