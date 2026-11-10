@@ -24,7 +24,8 @@ import {
   usesPaperGameNumbers,
 } from "@/lib/bracket/for-drawn-bracket";
 import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
-import { teamSlug } from "@/lib/teams";
+import { teamPageHref } from "@/lib/team-page";
+import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { shortField } from "@/lib/venues";
 
 export const revalidate = 30;
@@ -91,7 +92,7 @@ function PoolGameRow({ game, timeZone }) {
 // them, in the same grammar as the scorekeeper's screen. Two cards stacked
 // per pool read as two unrelated things, and PCT restates W-L in a
 // two-game pool while stealing the width the names needed.
-function PoolPlaySection({ poolGames, timeZone }) {
+function PoolPlaySection({ poolGames, timeZone, teamPageHrefs = null }) {
   if (!poolGames || poolGames.length === 0) return null;
 
   const byPool = {};
@@ -150,7 +151,7 @@ function PoolPlaySection({ poolGames, timeZone }) {
                     </span>
                     <span className="min-w-0 text-[15px] font-semibold leading-tight [overflow-wrap:anywhere]">
                       <Link
-                        href={`/teams/${teamSlug(t.team)}`}
+                        href={teamPageHref(t.team, { divisionId: games[0]?.division_id, hrefMap: teamPageHrefs })}
                         className="team-name text-afa-navy hover:underline"
                       >
                         {t.team}
@@ -224,7 +225,7 @@ function eventTitle(tournamentName, divisionName) {
 // The podium wears its medals; fourth and below wear their number.
 const PODIUM = { 1: "\u{1F3C6}", 2: "\u{1F948}", 3: "\u{1F949}" };
 
-function StandingsPanel({ name, rows }) {
+function StandingsPanel({ name, rows, divisionId, teamPageHrefs = null }) {
   if (rows.length === 0) return null;
   const settled = rows.filter((r) => r.finish).length;
   return (
@@ -251,7 +252,7 @@ function StandingsPanel({ name, rows }) {
             className="grid min-h-11 grid-cols-[minmax(0,1fr)_46px_52px] items-center gap-x-2 border-b border-afa-navy/[0.07] py-1.5 text-sm last:border-0"
           >
             <Link
-              href={`/teams/${teamSlug(t.team)}`}
+              href={teamPageHref(t.team, { divisionId, hrefMap: teamPageHrefs })}
               className="team-name min-w-0 truncate font-semibold text-afa-navy hover:underline"
               title={t.team}
             >
@@ -388,7 +389,10 @@ export default async function DivisionPage({ params }) {
   for (const g of stagePoolGames) {
     for (const n of [g.team1_name, g.team2_name]) if (n && !poolByTeam[n]) poolByTeam[n] = g.pool;
   }
-  const teamStatus = await getTeamStatus(tournament.id);
+  const [teamStatus, teamPageHrefs] = await Promise.all([
+    getTeamStatus(tournament.id),
+    getTeamPageHrefMap(),
+  ]);
 
   // The bracket children's own games, so this page can draw them inline
   // rather than sending a team one more click away. Only fetched when
@@ -596,6 +600,7 @@ export default async function DivisionPage({ params }) {
           poolByTeam={poolByTeam}
           teamStatus={teamStatus}
           slug={slug}
+          teamPageHrefs={teamPageHrefs}
           bracketLive={
             bracketLive ||
             bracketGames.some(
@@ -604,7 +609,7 @@ export default async function DivisionPage({ params }) {
                 (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
             )
           }
-          poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} timeZone={timeZone} /> : null}
+          poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} timeZone={timeZone} teamPageHrefs={teamPageHrefs} /> : null}
           standingsPanes={Object.fromEntries(
             Object.entries(playableStageGames)
               .filter(([, list]) => list.length > 0)
@@ -614,6 +619,8 @@ export default async function DivisionPage({ params }) {
                   key={id}
                   name={stages.find((st) => st.id === id)?.display_name ?? ""}
                   rows={bracketStandings(list, teamStatus)}
+                  divisionId={id}
+                  teamPageHrefs={teamPageHrefs}
                 />,
               ])
           )}

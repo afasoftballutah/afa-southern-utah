@@ -217,6 +217,7 @@ export default function ScheduleBrowser({
   timeZone = null,
   zoneShort = "",
   slug = null,
+  teamPageHrefs = null,
 }) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
@@ -252,6 +253,7 @@ export default function ScheduleBrowser({
           onPickChange={setTeam}
           showGames={view !== "timeline"}
           compact
+          teamPageHrefs={teamPageHrefs}
         />
       )}
 
