@@ -3,7 +3,7 @@
 import { SIDE_LABELS } from "@/lib/bracket/side";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { planArrows } from "@/lib/flow-arrows";
+import { planArrows, visiblePart, aimAt, placeLabel } from "@/lib/flow-arrows";
 import Link from "next/link";
 import {
   buildTimeline,
@@ -17,6 +17,8 @@ import {
   bracketPill,
   flowTargets,
   pillScore,
+  gameNumberIndex,
+  gameIdByTitle,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { placeClear, unionRect } from "@/lib/popover-place";
@@ -127,7 +129,20 @@ function CloseIcon() {
   );
 }
 
-function NextValue({ step }) {
+// "Game 17" on the card: a quiet link that opens that game, same as tapping
+// its pill (JD, 2026-11-09: "can we make these games clickable on cards").
+// Plain text when the game isn't on this schedule.
+function GameLink({ title, go }) {
+  const id = go?.idOf(title) ?? null;
+  if (!id) return <>{title}</>;
+  return (
+    <button type="button" className="tl-link" aria-label={`Open ${title}`} onClick={() => go.open(id)}>
+      {title}
+    </button>
+  );
+}
+
+function NextValue({ step, go }) {
   if (!step) return <span className="tl-next__value is-muted">—</span>;
   if (step.champion) return <span className="tl-next__value tl-cup" aria-label="Champion">🏆</span>;
   if (step.out) {
@@ -138,7 +153,13 @@ function NextValue({ step }) {
     );
   }
   if (step.place) return <span className="tl-next__value"><span className="tl-corner-place">{step.place}</span></span>;
-  if (step.next) return <span className="tl-next__value"><span aria-hidden="true" className="tl-next__arrow">→</span> {step.next}</span>;
+  if (step.next) {
+    return (
+      <span className="tl-next__value">
+        <span aria-hidden="true" className="tl-next__arrow">→</span> <GameLink title={step.next} go={go} />
+      </span>
+    );
+  }
   return <span className="tl-next__value">{step.text}</span>;
 }
 
@@ -146,7 +167,7 @@ function NextValue({ step }) {
 // division, W/L (or ★ Final), Game N; the matchup scoreboard; where the
 // loser (left) and winner (right) go, like the pill's bottom corners; time
 // and field; the bracket link. Same card as a popover and a phone sheet.
-function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
+function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null }) {
   const ref = useRef(null);
   const scrolled = useRef(false);
   const [pos, setPos] = useState(null);
@@ -251,7 +272,7 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
                 <span className="tl-board__team">{r.team}</span>
               ) : r.game ? (
                 <span className="tl-board__team is-pending">
-                  <span className="tl-board__from">{r.from}</span> {r.game}
+                  <span className="tl-board__from">{r.from}</span> <GameLink title={r.game} go={go} />
                 </span>
               ) : (
                 <span className="tl-board__team is-pending">{r.pending}</span>
@@ -272,14 +293,18 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
           <dl className="tl-next">
             <div>
               <dt>Loser</dt>
-              <dd><NextValue step={loserStep} /></dd>
+              <dd><NextValue step={loserStep} go={go} /></dd>
             </div>
             <div className="tl-next__right">
               <dt>Winner</dt>
-              <dd><NextValue step={winnerStep} /></dd>
+              <dd><NextValue step={winnerStep} go={go} /></dd>
             </div>
           </dl>
-          {ifGame ? <p className="tl-next__rule" title={rule ?? undefined}>{`If Game ${ifGame}`}</p> : null}
+          {ifGame ? (
+            <p className="tl-next__rule" title={rule ?? undefined}>
+              If <GameLink title={`Game ${ifGame}`} go={go} />
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -405,7 +430,6 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
         const r = el.getBoundingClientRect();
         return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
       };
-      const inBox = (r) => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1;
       const wanted = [];
       const destEls = [];
       for (const [role, id] of [["winner", winnerId], ["loser", loserId]]) {
@@ -413,15 +437,18 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
         if (!el) continue;
         destEls.push(el);
         const r = rect(el);
-        if (el.closest(".tl-scroll") === scroller && inBox(r)) {
-          wanted.push({ role, to: r });
+        // At least partly in view on this panel: the real curve, to the part
+        // that shows.
+        const seen = el.closest(".tl-scroll") === scroller ? visiblePart(r, box) : null;
+        if (seen) {
+          wanted.push({ role, to: seen });
           continue;
         }
         // Off this panel (another day, scrolled away, or under the sheet):
         // a short arrow pointing that way, named, and the pill itself ringed.
         wanted.push({
           role,
-          toward: { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
+          toward: el.closest(".tl-scroll") === scroller ? aimAt(r, box) : { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
           alt: { x: box.right + 400, y: (fr.top + fr.bottom) / 2 },
           reach: (start, u) => {
             const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
@@ -446,21 +473,12 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
           out.push({ role: a.role, d: a.d });
           continue;
         }
-        const { tip, u } = a;
-        // Name on the side away from the other arrow, so they never overlap.
-        const other = planned.find((b) => b !== a);
-        const otherY = other ? other.pts.reduce((sum, q) => sum + q.y, 0) / other.pts.length : null;
-        const side = otherY == null ? (a.role === "winner" ? -1 : 1) : otherY < tip.y ? 1 : -1;
-        const across = Math.abs(u.x) >= Math.abs(u.y);
         const label = labels?.[a.role] ?? null;
-        const at = across
-          ? { x: a.start.x + (u.x > 0 ? 2 : -2), y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "start" : "end" }
-          : { x: tip.x + (side < 0 ? 7 : -7), y: tip.y + u.y * 4 + 4, anchor: side < 0 ? "start" : "end" };
-        // Keep the name on screen: flip it to the other side of the stub
-        // when it would run past the panel edge.
-        const w = (label?.length ?? 0) * 6.5;
-        if (at.anchor === "start" && at.x + w > box.right) at.anchor = "end";
-        else if (at.anchor === "end" && at.x - w < box.left) at.anchor = "start";
+        // Beside the stub, clear of every pill's number and the other arrow.
+        const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl)];
+        const at = label
+          ? placeLabel(label, a, { pills: pillsInView, avoid: planned.filter((b) => b !== a).map((b) => b.pts), box })
+          : null;
         out.push({ role: a.role, d: a.d, label, at });
       }
       // Two names side by side would print over each other: lift the loser's.
@@ -606,6 +624,19 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     if (opening) reveal(el, targets.get(id));
   };
 
+  // Follow a "Game 17" on the open card: bring its pill (on whatever day)
+  // into view and open it, exactly as if it had been tapped.
+  const byNumber = useMemo(() => gameNumberIndex(rows), [rows]);
+  const openGame = (id) => {
+    const el = pills.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", inline: "center" });
+    el.focus({ preventScroll: true });
+    setAnchor(el);
+    setOpenId(id);
+    reveal(el, targets.get(id));
+  };
+
   return (
     <div className="tl">
       <div className="tl-legend" role="list" aria-label="Divisions">
@@ -682,6 +713,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                             anchor={anchor}
                             avoid={[dest?.winner, dest?.loser].filter(Boolean).join(" ")}
                             onClose={() => close(true)}
+                            go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
                           />
                         ) : null}
                       </span>

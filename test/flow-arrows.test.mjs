@@ -91,3 +91,42 @@ test("every World Series game: the two drawn arrows never cross", () => {
   }
   assert.ok(pairs >= 60, `checked ${pairs} pairs`);
 });
+
+test("partly visible destination gets the real curve to the part that shows; fully off gets an aimed stub", async () => {
+  const { visiblePart, aimAt, placeLabel } = await import("@/lib/flow-arrows");
+  // phone: lane shows only ~2.6 hours; Game 11 is half in view at the right edge, Game 15 fully off
+  const view = { left: 0, top: 0, right: 92 * 2.6, bottom: 52 * 6 };
+  const from = pill(1, 0);
+  const g11 = pill(1, 2);
+  const g15 = pill(2, 3);
+  const seen = visiblePart(g11, view);
+  assert.ok(seen && seen.right === view.right && seen.left === g11.left);
+  assert.equal(visiblePart(g15, view), null);
+  const aim = aimAt(g15, view);
+  assert.ok(aim.x === view.right && aim.y === (g15.top + g15.bottom) / 2, "aims at the right edge, on Game 15's row");
+  const out = planArrows({ from, arrows: [{ role: "loser", to: seen }, { role: "winner", toward: aim, reach: 46 }], obstacles: [pill(0, 0), pill(0, 1), pill(1, 1), pill(2, 0), pill(2, 1)], box: view });
+  assert.equal(out[0].kind, "curve");
+  assert.equal(out[1].kind, "stub");
+  assert.ok(out[1].u.x > 0.6 && out[1].u.y > 0, "stub points right and down, toward Game 15");
+  assert.ok(out[1].start.y > out[0].start.y, "the lower destination's arrow leaves lower");
+  noCross(out);
+  // the stub's name never sits on a pill's number
+  const pills = [pill(0, 0), pill(0, 1), pill(1, 1), pill(2, 0), pill(2, 1), from, seen];
+  const at = placeLabel("Game 15", out[1], { pills, avoid: [out[0].pts], box: view });
+  const w = 7 * 6.5;
+  const left = at.anchor === "end" ? at.x - w : at.x;
+  for (const p of pills) {
+    const cx = (p.left + p.right) / 2, cy = (p.top + p.bottom) / 2;
+    const ov = Math.min(left + w, cx + 14) > Math.max(left, cx - 14) && Math.min(at.y + 2, cy + 9) > Math.max(at.y - 9, cy - 9);
+    assert.ok(!ov, "label covers a pill number");
+  }
+});
+
+test("next-door destination on the same row: a low hop, no loop", () => {
+  const from = pill(5, 1);
+  const out = planArrows({ from, arrows: [{ role: "winner", to: pill(5, 2) }], obstacles: [pill(4, 1), pill(4, 2), pill(4, 3)], box });
+  const ys = out[0].pts.map((p) => p.y);
+  const xs = out[0].pts.map((p) => p.x);
+  assert.ok(Math.min(...ys) > from.top - 24, "stays low");
+  assert.ok(Math.max(...xs) < pill(5, 2).right - 8, "doesn't wrap round to the far side");
+});
