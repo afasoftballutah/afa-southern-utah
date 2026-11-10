@@ -42,6 +42,9 @@ export default function TeamFinder({
   slug,
   onSelectedChange,
   compact = false,
+  // The schedule's timeline lights the team's games itself, so the list
+  // under the picker would only repeat them and push the timeline down.
+  showGames = true,
 }) {
   const [selected, setSelected] = useState("");
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
@@ -156,12 +159,6 @@ export default function TeamFinder({
     // and one label doing one job twice.
     <Card className={compact ? "p-0 team-finder--compact" : "p-0"}>
       <div className={`flex flex-nowrap items-center gap-2 ${compact ? "min-h-11 px-3 py-0" : "px-4 py-3"}`}>
-        {compact ? (
-          <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-afa-ink/40">
-            <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path d="M13 13l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        ) : null}
         {/* The name is TEXT, with a real <select> laid invisibly over it.
             A native select sizes itself to its widest option, which would
             have parked the caret a dozen characters past a short team
@@ -248,7 +245,7 @@ export default function TeamFinder({
         )}
       </div>
 
-      {selected && (
+      {selected && showGames && (
         <div className="border-t border-afa-navy/10 px-4 py-3">
           {(isOut || isChampion) && (
             <p className="mb-2 text-sm text-afa-ink/70">No more games scheduled.</p>

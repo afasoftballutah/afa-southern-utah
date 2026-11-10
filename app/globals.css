@@ -3591,6 +3591,28 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 button.tl-pill.tl-side-winners, button.tl-pill.tl-side-final, button.tl-pill.tl-side-if { font-weight: 700; }
 button.tl-pill.tl-side-losers { font-weight: 450; }
 .tl-pill.is-open { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tone-solid); }
+/* A followed team (JD, 2026-11-09): their games stay bright, the rest step
+   back; their NEXT game wears a soft neon-lime glow. Opening a game fades
+   everything but it and where it leads, like the bracket's focus view:
+   the winner's next game ringed light green, the loser's light red, with
+   arrows (.tl-arrows) from the open game to each. */
+button.tl-pill { transition: transform 120ms ease, box-shadow 160ms ease, background-color 120ms ease, opacity 200ms ease; }
+.tl-pill.is-back { opacity: 0.38; }
+.tl-pill.is-dim { opacity: 0.22; }
+.tl-pill.is-next { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #a3e635, 0 0 14px 3px rgb(190 242 100 / 0.75); }
+.tl-pill.is-next.is-open { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tone-solid), 0 0 14px 4px rgb(190 242 100 / 0.75); }
+.tl-pill.is-dest-win { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #86efac; }
+.tl-pill.is-dest-lose { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #fca5a5; }
+.tl-arrows { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 55; pointer-events: none; overflow: visible; }
+.tl-arrow { fill: none; stroke-width: 2.25; stroke-linecap: round; }
+.tl-arrow--winner { stroke: #4ade80; }
+.tl-arrow--loser { stroke: #f87171; }
+.tl-arrow__halo { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; opacity: 0.9; }
+.tl-arrow__label {
+  font: 700 10px/1 var(--tl-font); paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round;
+}
+.tl-arrow__label--winner { fill: #15803d; }
+.tl-arrow__label--loser { fill: #b91c1c; }
 .tl-key {
   display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: -0.375rem;
   font-size: 0.75rem; color: var(--tl-label);

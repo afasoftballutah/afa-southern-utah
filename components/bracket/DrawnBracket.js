@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Matchup from "@/components/ui/Matchup";
 import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
+import { teamNextGame } from "@/lib/team-games";
 import { useDrops } from "@/components/bracket/DropsContext";
 import { useFocusRound } from "@/components/bracket/FocusRoundContext";
 import { mootIfRounds } from "@/lib/bracket/if-game";
@@ -1033,7 +1034,6 @@ export default function DrawnBracket({
     const rounds = new Set();
     const won = new Set();
     const lost = new Set();
-    let next = null;
     for (const { round, game } of layout.cells) {
       const isOne = norm(game.team1_name) === target;
       const isTwo = norm(game.team2_name) === target;
@@ -1049,10 +1049,19 @@ export default function DrawnBracket({
         }
         continue;
       }
-      const when = game.scheduled_time ? new Date(game.scheduled_time).getTime() : Infinity;
-      if (!next || when < next.when) next = { round, when };
     }
-    return { rounds, won, lost, next: next?.round ?? null };
+    // The same "next game" the schedule timeline uses (lib/team-games.js).
+    const next = teamNextGame(
+      layout.cells.map(({ round, game }) => ({
+        id: round,
+        team1: game.team1_name,
+        team2: game.team2_name,
+        final: game.status === "final",
+        when: game.scheduled_time ?? null,
+      })),
+      team
+    );
+    return { rounds, won, lost, next };
   }, [team, layout.cells]);
 
   // The segments that trace their run (JD, 2026-07-26: "can we actually
