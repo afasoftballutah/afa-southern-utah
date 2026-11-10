@@ -1,5 +1,6 @@
 "use client";
 
+import { SIDE_LABELS } from "@/lib/bracket/side";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -26,18 +27,19 @@ function Pill({ game, open, onToggle, pillRef }) {
   const tone = divisionTone(game.divisionName);
   const final = game.isFinal || game.status === "final";
   const place = game.team1Place || game.team2Place;
+  const side = game.bracketSide ?? null;
   return (
     <button
       type="button"
       ref={pillRef}
-      className={`tl-pill tl-tone-${tone}${final ? " is-final" : ""}${open ? " is-open" : ""}`}
+      className={`tl-pill tl-tone-${tone}${side ? ` tl-side-${side}` : ""}${final ? " is-final" : ""}${open ? " is-open" : ""}`}
       style={{
         left: (game.offset / 60) * HOUR_PX + PILL_GAP,
         width: (game.length / 60) * HOUR_PX - PILL_GAP * 2,
       }}
       aria-expanded={open}
       aria-controls={open ? `tl-pop-${game.id}` : undefined}
-      aria-label={`${game.divisionName} ${game.label ?? ""}, ${game.timeLabel ?? ""}, ${game.fieldName}${
+      aria-label={`${game.divisionName} ${game.label ?? ""}${side ? `, ${SIDE_LABELS[side]}` : ""}, ${game.timeLabel ?? ""}, ${game.fieldName}${
         final ? ", final" : ""
       }${place ? `, a team finished ${place}` : ""}`}
       onClick={(e) => onToggle(game.id, e.currentTarget)}
@@ -102,6 +104,9 @@ function Details({ game, slug, sheet, anchor, onClose }) {
       <div className="tl-pop__head">
         <span className={`tl-chip tl-tone-${tone}`}>{game.divisionName}</span>
         <span className="tl-pop__game">{game.label}</span>
+        {game.bracketSide && game.bracketSide !== "pool" ? (
+          <span className={`tl-pop__side tl-pop__side--${game.bracketSide}`}>{SIDE_LABELS[game.bracketSide]}</span>
+        ) : null}
         <span className={`tl-pop__status${final ? " is-final" : ""}`}>{statusLabel(game)}</span>
         <button type="button" className="tl-pop__close" aria-label="Close" onClick={onClose}>
           ×
@@ -199,6 +204,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
           </div>
         ))}
       </div>
+      <ul className="tl-key" aria-label="Pill styles">
+        <li><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
+        <li><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
+        <li><span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true" />Final</li>
+        <li><span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true" />If necessary</li>
+      </ul>
 
       {days.map((day) => (
         <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>

@@ -82,20 +82,17 @@ export default async function SchedulePage({ params }) {
   const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <RefreshOnReturn />
       <TournamentTicker divisionIds={divisionIds} />
-      <Link
-        href={`/tournaments/${slug}`}
-        className="text-sm text-afa-navy underline min-h-11 inline-flex items-center"
-      >
-        ← {tournament.name}
-      </Link>
-
-      <div className="text-center">
-        <h1 className="t-title">Schedule</h1>
-        <p className="text-sm text-afa-ink/70 mt-1">{tournament.name}</p>
-      </div>
+      {/* One compact header (JD, 2026-11-09: "the top has a lot of wasted
+          space"): the tournament is the back link, the page name sits under it. */}
+      <header className="sched-head">
+        <Link href={`/tournaments/${slug}`} className="sched-head__back">
+          <span aria-hidden="true">‹</span> {tournament.name}
+        </Link>
+        <h1 className="sched-head__title">Schedule</h1>
+      </header>
 
       {rows.length === 0 ? (
         <p className="text-sm text-afa-ink/70">No schedule posted yet — check back.</p>

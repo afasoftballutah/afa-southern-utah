@@ -240,38 +240,27 @@ export default function ScheduleBrowser({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {finderTeams && finderTeams.length > 0 && (
-        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} />
+        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} compact />
       )}
 
-      <div className="flex items-center gap-3 text-sm">
-        <button
-          type="button"
-          onClick={() => choose("field")}
-          className={`font-semibold ${view === "field" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
-        >
+      <div className="sched-seg seg" role="group" aria-label="Schedule view">
+        <button type="button" onClick={() => choose("field")} aria-pressed={view === "field"} className={view === "field" ? "is-on" : undefined}>
           By field
         </button>
-        <span className="text-afa-ink/30">|</span>
-        <button
-          type="button"
-          onClick={() => choose("time")}
-          className={`font-semibold ${view === "time" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
-        >
+        <button type="button" onClick={() => choose("time")} aria-pressed={view === "time"} className={view === "time" ? "is-on" : undefined}>
           By time
         </button>
         {timeZone ? (
-          <>
-            <span className="text-afa-ink/30">|</span>
-            <button
-              type="button"
-              onClick={() => choose("timeline")}
-              className={`font-semibold ${view === "timeline" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
-            >
-              Timeline
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => choose("timeline")}
+            aria-pressed={view === "timeline"}
+            className={view === "timeline" ? "is-on" : undefined}
+          >
+            Timeline
+          </button>
         ) : null}
       </div>
 
