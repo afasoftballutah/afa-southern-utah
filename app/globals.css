@@ -3560,10 +3560,24 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-pill.tl-side-if { background: #fff; color: var(--tone-ink); }
 .tl-pill.tl-side-if { border-style: dashed; }
 .tl-pill.tl-side-final { border-color: #c99a1e; }
-.tl-pill.tl-side-losers.is-final { background: var(--tone-bg); color: var(--tone-ink); }
+/* Finished reads the same in every bracket: solid division colour, white
+   text (JD, 2026-11-09: upcoming winners vs finished losers looked alike).
+   A finished losers game keeps a thin white inner ring and its regular-weight
+   number; winners stay bold, no ring. */
+.tl-pill.tl-side-losers.is-final,
+.tl-pill.tl-side-if.is-final { background: var(--tone-solid); color: #fff; }
+.tl-pill.tl-side-losers.is-final { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75); }
 /* Number in the middle; on the championship and if-necessary game a large
    faint gold star sits behind everything (JD, 2026-11-09). */
 .tl-pill__num { position: relative; line-height: 1; }
+/* A finished game shows its result in the middle, winner's runs first
+   ("12–8"); the game number moves up to the top centre, between the
+   "from" corners, and the corners stay put. */
+.tl-pill__score { font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; top: 0.125rem; }
+.tl-pill__gno {
+  position: absolute; top: 0.1875rem; left: 50%; transform: translateX(-50%);
+  font-size: 0.6875rem; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 1;
+}
 .tl-bgstar {
   position: absolute; left: 50%; top: 50%; width: 2.375rem; height: 2.375rem;
   transform: translate(-50%, -50%); color: #d4a72c; opacity: 0.2; pointer-events: none;
@@ -3585,7 +3599,8 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-corner-place.is-gold { color: #8a6a10; }
 .tl-corner-place.is-cup { font-style: normal; } /* "dont italicize the cup" */
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
-.tl-pill.tl-side-losers.is-final .tl-corner { color: color-mix(in srgb, var(--tone-ink) 62%, transparent); }
+/* Gold place on a solid (finished) pill: light gold so it reads. */
+.tl-pill.is-final .tl-corner-place.is-gold { color: #fde68a; }
 .tl-key__corners { flex-basis: 100%; font-size: 0.6875rem; }
 /* Winners bold, losers regular (JD, 2026-11-09); finals stay bold. */
 button.tl-pill.tl-side-winners, button.tl-pill.tl-side-final, button.tl-pill.tl-side-if { font-weight: 700; }
@@ -3603,6 +3618,10 @@ button.tl-pill { transition: transform 120ms ease, box-shadow 160ms ease, backgr
 .tl-pill.is-next.is-open { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tone-solid), 0 0 14px 4px rgb(190 242 100 / 0.75); }
 .tl-pill.is-dest-win { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #86efac; }
 .tl-pill.is-dest-lose { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #fca5a5; }
+.tl-pill.tl-side-losers.is-final:hover { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), inset 0 0 0 3px color-mix(in srgb, var(--tone-solid) 45%, transparent); }
+.tl-pill.tl-side-losers.is-final.is-open { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), 0 0 0 2px #fff, 0 0 0 4px var(--tone-solid); }
+.tl-pill.tl-side-losers.is-final.is-dest-win { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), 0 0 0 2px #fff, 0 0 0 4px #86efac; }
+.tl-pill.tl-side-losers.is-final.is-dest-lose { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), 0 0 0 2px #fff, 0 0 0 4px #fca5a5; }
 .tl-arrows { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 55; pointer-events: none; overflow: visible; }
 .tl-arrow { fill: none; stroke-width: 2.25; stroke-linecap: round; }
 .tl-arrow--winner { stroke: #4ade80; }
@@ -3625,6 +3644,10 @@ button.tl-pill { transition: transform 120ms ease, box-shadow 160ms ease, backgr
 .tl-key__swatch--winners { background: #e5e5ea; border: 1px solid var(--k); }
 .tl-key__swatch--losers { background: #fff; border: 1px solid var(--k); }
 .tl-key__swatch--final { background: #e5e5ea; border: 1px solid #c99a1e; }
+.tl-key__swatch--done { background: var(--k); border: 1px solid var(--k); }
+.tl-key__swatch--done-losers { background: var(--k); border: 1px solid var(--k); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.75); }
+.tl-key__done { font-weight: 600; color: var(--tl-ink); }
+.tl-key__done .tl-key__swatch + .tl-key__swatch { margin-left: -0.15rem; }
 .tl-key__swatch--if { background: #fff; border: 1px dashed var(--k); }
 .tl-key__swatch .tl-bgstar { width: 0.75rem; height: 0.75rem; opacity: 0.45; }
 .tl-key__winners { font-weight: 700; color: var(--tl-ink); }

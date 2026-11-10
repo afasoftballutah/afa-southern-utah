@@ -15,6 +15,7 @@ import {
   nextStep,
   bracketPill,
   flowTargets,
+  pillScore,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { placeClear, unionRect } from "@/lib/popover-place";
@@ -76,6 +77,8 @@ function Pill({ game, open, onToggle, pillRef, mark }) {
   ];
   const champ = side === "final" || side === "if";
   const words = flowWords(flow);
+  const result = final ? pillScore(game) : null;
+  const winnerName = result ? game[result.winner] : null;
   return (
     <button
       type="button"
@@ -89,12 +92,19 @@ function Pill({ game, open, onToggle, pillRef, mark }) {
       aria-expanded={open}
       aria-controls={open ? `tl-pop-${game.id}` : undefined}
       aria-label={`${game.divisionName} ${game.label ?? ""}${side ? `, ${SIDE_LABELS[side]}` : ""}, ${game.timeLabel ?? ""}, ${game.fieldName}${
-        final ? ", final" : ""
+        final ? (result ? `, final ${result.text}${winnerName ? `, ${winnerName} won` : ""}` : ", final") : ""
       }${place ? `, a team finished ${place}` : ""}${words ? `. ${words}` : ""}`}
       onClick={(e) => onToggle(game.id, e.currentTarget)}
     >
       {champ ? <Star className="tl-bgstar" /> : null}
-      <span className="tl-pill__num">{number}</span>
+      {result ? (
+        <>
+          <span className="tl-pill__gno">{number}</span>
+          <span className="tl-pill__num tl-pill__score">{result.text}</span>
+        </>
+      ) : (
+        <span className="tl-pill__num">{number}</span>
+      )}
       {top.map(([pos, text]) =>
         text ? (
           <span key={pos} className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
@@ -619,8 +629,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       <ul className="tl-key" aria-label="Pill styles">
         <li className="tl-key__winners"><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
         <li className="tl-key__losers"><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
+        <li className="tl-key__done">
+          <span className="tl-key__swatch tl-key__swatch--done" aria-hidden="true" />
+          <span className="tl-key__swatch tl-key__swatch--done-losers" aria-hidden="true" />Final
+        </li>
         <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Final
+          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Championship
         </li>
         <li className="tl-key__final">
           <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>If necessary

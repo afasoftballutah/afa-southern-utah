@@ -7,7 +7,7 @@ import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
-import { gameTitle, bracketPill, matchupSide, nextStep } from "@/lib/schedule-timeline";
+import { gameTitle, bracketPill, matchupSide, nextStep, pillScore } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
 
@@ -135,6 +135,27 @@ test("iPhone: the game card is a sheet fixed to the screen, not inside the scrol
   assert.match(sheet, /safe-area-inset-bottom/);
   assert.match(sheet, /max-height: 85dvh/);
   assert.match(css, /\.tl-pop \{[^}]*position: fixed/);
+});
+
+test("finished pill shows its score, winner's runs first; nothing until final with both scores", () => {
+  assert.deepEqual(pillScore({ isFinal: true, score1: 12, score2: 8, winnerSlot: "team1" }), { text: "12\u20138", winner: "team1" });
+  assert.deepEqual(pillScore({ status: "final", score1: 9, score2: 14, winnerSlot: "team2" }), { text: "14\u20139", winner: "team2" });
+  // winner_slot missing: from the score
+  assert.deepEqual(pillScore({ isFinal: true, score1: 3, score2: 10 }), { text: "10\u20133", winner: "team2" });
+  assert.equal(pillScore({ isFinal: false, score1: 5, score2: 4 }), null);
+  assert.equal(pillScore({ isFinal: true, score1: 5, score2: null }), null);
+  assert.equal(pillScore({ isFinal: true, score1: 0, score2: 0 }), null);
+  assert.deepEqual(pillScore({ isFinal: true, score1: 0, score2: 7, winnerSlot: "team2" }), { text: "7\u20130", winner: "team2" });
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  assert.match(src, /tl-pill__score/, "pill renders the score");
+  assert.match(src, /tl-pill__gno/, "game number stays on the pill");
+  const data = readFileSync(new URL("../lib/data.js", import.meta.url), "utf8");
+  assert.match(data, /winnerSlot: g\.winner_slot/, "schedule rows carry winner_slot");
+  // Finished reads the same in both brackets: solid fill; losers keep a white inner ring.
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.tl-pill\.tl-side-losers\.is-final,\s*\.tl-pill\.tl-side-if\.is-final \{ background: var\(--tone-solid\); color: #fff; \}/);
+  assert.match(css, /\.tl-pill\.tl-side-losers\.is-final \{ box-shadow: inset 0 0 0 2px/);
+  assert.ok(!/\.tl-pill\.tl-side-losers\.is-final \{ background: var\(--tone-bg\)/.test(css), "finished losers are not pale");
 });
 
 test("ticker item: division + game, both sides with scores, winner marked", () => {
