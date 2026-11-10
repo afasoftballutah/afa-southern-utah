@@ -346,8 +346,21 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, wh
 // view it ends on the pill; otherwise (scrolled off sideways, under the
 // phone sheet, or on another day) it ends at the panel's edge pointing that
 // way, and the destination pill itself is ringed in the same colour wherever
-// it is.
+// it is. Where the teams came from is drawn the same way but dotted, into
+// the open game's left or top side (JD, 2026-11-09): green from a game the
+// team won, red from one it lost; a seeded team has no feeder and no arrow.
 const ARROW = { winner: "#4ade80", loser: "#f87171" };
+// The thinner dotted line needs a touch more colour to read on white.
+const ARROW_DOTTED = { winner: "#22c55e", loser: "#ef4444" };
+// One arrowhead family (JD, 2026-11-09: "make the dotted lines and arrowheads
+// sleeker"): a slim swept tip, fixed size in screen px (not scaled by the
+// stroke), the same on phone and desktop; the dotted line's tip is a smaller
+// copy of the solid one's.
+const HEAD_PATH = "M0,1.6 L10,5 L0,8.4 L2.6,5 z";
+const HEADS = [
+  ...Object.entries(ARROW).map(([role, color]) => ({ id: `tl-head-${role}`, color, size: 10 })),
+  ...Object.entries(ARROW_DOTTED).map(([role, color]) => ({ id: `tl-head-${role}-dotted`, color, size: 7 })),
+];
 
 // Where the segment a→b leaves the box (a is inside it).
 function exitPoint(a, b, box) {
@@ -364,7 +377,7 @@ function exitPoint(a, b, box) {
 // On open, bring the game and where it leads into view: slide the lane so a
 // next game on the same day fits beside it, and on a phone lift the page so
 // the pill sits clear of the sheet.
-function reveal(el, dest) {
+function reveal(el, dest, feeders = []) {
   requestAnimationFrame(() => {
     const scroller = el.closest(".tl-scroll");
     if (scroller) {
@@ -376,10 +389,21 @@ function reveal(el, dest) {
         const d = id ? scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
         if (d) right = Math.max(right, d.getBoundingClientRect().right);
       }
+      // Where the teams came from (earlier, so to the left): in view too
+      // when everything fits; otherwise the game and where it leads win.
+      let left = fr.left;
+      for (const f of feeders) {
+        const d = scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(f.id))}"]`);
+        if (d) left = Math.min(left, d.getBoundingClientRect().left);
+      }
       const minLeft = sr.left + fieldW + 8;
       let dx = 0;
       if (right > sr.right - 8) dx = right - (sr.right - 8);
-      if (fr.left - dx < minLeft) dx = fr.left - minLeft;
+      if (left - dx < minLeft && right - (left - minLeft) <= sr.right - 8) dx = left - minLeft;
+      // Feeders that don't fit still need room for their short stubs on
+      // the open game's left.
+      const stubRoom = feeders.length && left - dx < minLeft ? 64 : 0;
+      if (fr.left - dx < minLeft + stubRoom) dx = fr.left - minLeft - stubRoom;
       if (dx) scroller.scrollBy({ left: dx, behavior: "smooth" });
     }
     // On a phone: lift the page so the game AND its same-day destinations
@@ -410,7 +434,7 @@ function reveal(el, dest) {
   });
 }
 
-function FlowArrows({ fromEl, winnerId, loserId, labels }) {
+function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
   const [paths, setPaths] = useState([]);
   useLayoutEffect(() => {
     if (!fromEl) return undefined;
@@ -437,7 +461,11 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
       };
       const wanted = [];
       const destEls = [];
-      for (const [role, id] of [["winner", winnerId], ["loser", loserId]]) {
+      const ends = [
+        ...[["winner", winnerId], ["loser", loserId]].map(([role, id]) => ({ role, id, dir: "out", key: `out-${role}` })),
+        ...feeders.map((f, i) => ({ role: f.role, id: f.id, dir: "in", key: `in-${i}` })),
+      ];
+      for (const { role, id, dir, key } of ends) {
         const el = pill(id);
         if (!el) continue;
         destEls.push(el);
@@ -446,15 +474,17 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
         // that shows.
         const seen = el.closest(".tl-scroll") === scroller ? visiblePart(r, box) : null;
         if (seen) {
-          wanted.push({ role, to: seen });
+          wanted.push({ role, dir, key, to: seen });
           continue;
         }
         // Off this panel (another day, scrolled away, or under the sheet):
         // a short arrow pointing that way, named, and the pill itself ringed.
         wanted.push({
           role,
+          dir,
+          key,
           toward: el.closest(".tl-scroll") === scroller ? aimAt(r, box) : { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
-          alt: { x: box.right + 400, y: (fr.top + fr.bottom) / 2 },
+          alt: dir === "in" ? null : { x: box.right + 400, y: (fr.top + fr.bottom) / 2 },
           reach: (start, u) => {
             const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
             return Math.min(46, Math.hypot(far.x - start.x, far.y - start.y));
@@ -471,22 +501,31 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
       }
       // Each arrow gets its own anchors, chosen so the two never cross.
       const planned = planArrows({ from: rect(fromEl), arrows: wanted, obstacles, box });
+      // The hour labels along the top: a stub's name must not print over one.
+      const hourText = [...scroller.querySelectorAll(".tl-hour")].map((h) => {
+        const rg = document.createRange();
+        rg.selectNodeContents(h);
+        return rect(rg);
+      });
       const out = [];
-      for (const a of planned) {
+      planned.forEach((a, i) => {
+        const { key } = a;
+        const dotted = a.dir === "in";
         if (a.kind === "curve") {
-          if (Math.hypot(a.end.x - a.start.x, a.end.y - a.start.y) < 8) continue;
-          out.push({ role: a.role, d: a.d });
-          continue;
+          if (Math.hypot(a.end.x - a.start.x, a.end.y - a.start.y) < 8) return;
+          out.push({ key, role: a.role, dotted, d: a.d });
+          return;
         }
-        const label = labels?.[a.role] ?? null;
-        // Beside the stub, clear of every pill's number and the other arrow.
-        const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl)];
+        const label = dotted ? labels?.from?.[key] ?? null : labels?.[a.role] ?? null;
+        // Beside the stub, clear of every pill's number and every arrow (its own too).
+        const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl), ...hourText];
+        const stub = dotted ? { start: a.base, tip: a.tip, u: a.u } : a;
         const at = label
-          ? placeLabel(label, a, { pills: pillsInView, avoid: planned.filter((b) => b !== a).map((b) => b.pts), box })
+          ? placeLabel(label, stub, { pills: pillsInView, avoid: planned.map((b) => (b === a ? b.pts.slice(1, -1) : b.pts)), box })
           : null;
-        out.push({ role: a.role, d: a.d, label, at });
-      }
-      // Two names side by side would print over each other: lift the loser's.
+        out.push({ key, role: a.role, dotted, d: a.d, label, at });
+      });
+      // Two names side by side would print over each other: lift one.
       const span = (q) => {
         const w = q.label.length * 6.5;
         const x0 = q.at.anchor === "end" ? q.at.x - w : q.at.anchor === "middle" ? q.at.x - w / 2 : q.at.x;
@@ -494,11 +533,22 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
       };
       const named = out.filter((q) => q.label);
       for (const q of named) if (q.at.y > box.bottom) q.at = { ...q.at, y: box.bottom };
-      if (named.length === 2) {
-        const [a, b] = named.map(span);
-        if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 + 2 && b.y0 < a.y1 + 2) {
-          const loser = named.find((q) => q.role === "loser");
-          loser.at = { ...loser.at, y: Math.min(a.y0, b.y0) - 3 };
+      // Up or down, whichever keeps it nearer its own arrow's tip.
+      const tipOf = (q) => {
+        const m = /L(-?[\d.]+),(-?[\d.]+)$/.exec(q.d) ?? /^M(-?[\d.]+),(-?[\d.]+)/.exec(q.d);
+        return m ? { x: +m[1], y: +m[2] } : q.at;
+      };
+      for (let i = 0; i < named.length; i++) {
+        for (let j = 0; j < i; j++) {
+          const a = span(named[j]);
+          const b = span(named[i]);
+          if (!(a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 + 2 && b.y0 < a.y1 + 2)) continue;
+          const tip = named[i].dotted ? /^M(-?[\d.]+),(-?[\d.]+)/.exec(named[i].d) : null;
+          const t = tip ? { x: +tip[1], y: +tip[2] } : tipOf(named[i]);
+          const up = Math.min(a.y0, b.y0) - 3;
+          const down = Math.max(a.y1, b.y1) + 13;
+          const useUp = down > box.bottom || Math.abs(up - 4 - t.y) <= Math.abs(down - 4 - t.y);
+          named[i].at = { ...named[i].at, y: useUp ? up : down };
         }
       }
       setPaths(out);
@@ -518,21 +568,31 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("transitionend", schedule, true);
     };
-  }, [fromEl, winnerId, loserId, labels]);
+  }, [fromEl, winnerId, loserId, feeders, labels]);
   if (!paths.length) return null;
   return (
     <svg className="tl-arrows" aria-hidden="true" focusable="false">
       <defs>
-        {Object.entries(ARROW).map(([role, color]) => (
-          <marker key={role} id={`tl-head-${role}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill={color} />
+        {HEADS.map((h) => (
+          <marker
+            key={h.id}
+            id={h.id}
+            viewBox="0 0 10 10"
+            refX="8.5"
+            refY="5"
+            markerWidth={h.size}
+            markerHeight={h.size}
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+          >
+            <path d={HEAD_PATH} fill={h.color} />
           </marker>
         ))}
       </defs>
       {paths.map((p) => (
-        <g key={p.role}>
-          <path d={p.d} className="tl-arrow__halo" />
-          <path d={p.d} className={`tl-arrow tl-arrow--${p.role}`} markerEnd={`url(#tl-head-${p.role})`} />
+        <g key={p.key}>
+          <path d={p.d} className={`tl-arrow__halo${p.dotted ? " tl-arrow__halo--dotted" : ""}`} />
+          <path d={p.d} className={`tl-arrow tl-arrow--${p.role}${p.dotted ? " tl-arrow--dotted" : ""}`} markerEnd={`url(#tl-head-${p.role}${p.dotted ? "-dotted" : ""})`} />
           {p.label ? (
             <text x={p.at.x} y={p.at.y} textAnchor={p.at.anchor} className={`tl-arrow__label tl-arrow__label--${p.role}`}>
               {p.label}
@@ -562,30 +622,57 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   const nextId = useMemo(() => teamNextGame(teamRows, team), [teamRows, team]);
   const targets = useMemo(() => flowTargets(rows), [rows]);
   const dest = openId ? targets.get(openId) ?? null : null;
+  // Where the open game's teams came from: every game whose winner or loser
+  // plays here (both slots can come from one game, e.g. the if-game).
+  const feedersOf = useCallback(
+    (id) => {
+      const out = [];
+      if (!id) return out;
+      for (const [src, t] of targets) {
+        if (t.winner === id) out.push({ id: src, role: "winner" });
+        if (t.loser === id) out.push({ id: src, role: "loser" });
+      }
+      return out;
+    },
+    [targets]
+  );
+  const feeders = useMemo(() => feedersOf(openId), [feedersOf, openId]);
   // "Game 25 · Fri" for an arrow that has to stop at the panel's edge.
   const arrowLabels = useMemo(() => {
-    if (!openId || !dest) return null;
+    if (!openId || (!dest && !feeders.length)) return null;
     const byId = new Map(rows.map((r) => [r.id, r]));
     const day = (r) => (r?.timeLabel ?? "").split(" ")[0];
-    const from = byId.get(openId);
+    const open = byId.get(openId);
     const say = (id) => {
       const r = id ? byId.get(id) : null;
       if (!r) return null;
       const d = day(r);
-      return `${gameTitle(r.label)}${d && d !== day(from) ? ` · ${d}` : ""}`;
+      return `${gameTitle(r.label)}${d && d !== day(open) ? ` · ${d}` : ""}`;
     };
-    return { winner: say(dest.winner), loser: say(dest.loser) };
-  }, [openId, dest, rows]);
+    // "from Game 25" (with the day when it was another day) on a dotted stub.
+    const from = Object.fromEntries(feeders.map((f, i) => [`in-${i}`, say(f.id) ? `from ${say(f.id)}` : null]));
+    return { winner: say(dest?.winner), loser: say(dest?.loser), from };
+  }, [openId, dest, feeders, rows]);
   const markOf = (id) => {
     const out = [];
     if (openId) {
+      const src = feeders.find((f) => f.id === id);
       if (id === dest?.winner) out.push("is-dest-win");
       else if (id === dest?.loser) out.push("is-dest-lose");
+      else if (src) out.push(feeders.some((f) => f.id === id && f.role === "winner") ? "is-src-win" : "is-src-lose");
       else if (id !== openId) out.push("is-dim");
     } else if (team && mine.size > 0 && !mine.has(id)) out.push("is-back");
     if (id === nextId) out.push("is-next");
     return out.join(" ");
   };
+
+  // Phone sheet open: room under the page, so a game on the last day's lower
+  // rows can still be lifted clear of the sheet (the page ran out of scroll).
+  useEffect(() => {
+    if (!openId || !sheet) return undefined;
+    document.body.classList.add("tl-sheet-open");
+    return () => document.body.classList.remove("tl-sheet-open");
+  }, [openId, sheet]);
 
   useEffect(() => {
     const mq = window.matchMedia(PHONE_SHEET_QUERY);
@@ -626,7 +713,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     setAnchor(el);
     const opening = openId !== id;
     setOpenId(opening ? id : null);
-    if (opening) reveal(el, targets.get(id));
+    if (opening) reveal(el, targets.get(id), feedersOf(id));
   };
 
   // Follow a "Game 17" on the open card: bring its pill (on whatever day)
@@ -647,7 +734,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     el.focus({ preventScroll: true });
     setAnchor(el);
     setOpenId(id);
-    reveal(el, targets.get(id));
+    reveal(el, targets.get(id), feedersOf(id));
   };
 
   return (
@@ -724,7 +811,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                             slug={slug}
                             sheet={sheet}
                             anchor={anchor}
-                            avoid={[dest?.winner, dest?.loser].filter(Boolean).join(" ")}
+                            avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
                             onClose={() => close(true)}
                             go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
                             where={whereNext(g)}
@@ -740,7 +827,9 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
         </section>
       ))}
 
-      {openId && anchor ? <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} labels={arrowLabels} /> : null}
+      {openId && anchor ? (
+        <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} feeders={feeders} labels={arrowLabels} />
+      ) : null}
 
       {unplaced.length > 0 ? (
         <p className="t-meta">

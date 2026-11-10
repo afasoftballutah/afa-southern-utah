@@ -1,5 +1,5 @@
 {
- "note": "Layout of the 2026 AFA World Series timeline (read from the schedule, ids anonymised): day index, field row, minutes from the day's first hour, and where each game's winner and loser go.",
+ "note": "Layout of the 2026 AFA World Series timeline (read from the schedule, ids anonymised): day index, field row, minutes from the day's first hour, and where each game's winner and loser go. Where a game's teams came from is the reverse of dest.",
  "games": [
   {
    "id": "g1",
@@ -975,6 +975,15 @@
   },
   {
    "id": "g109",
+   "label": "G4",
+   "division": "Coed D",
+   "day": 2,
+   "row": 0,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g110",
    "label": "G8",
    "division": "Women's E",
    "day": 2,
@@ -983,7 +992,7 @@
    "length": 60
   },
   {
-   "id": "g110",
+   "id": "g111",
    "label": "G9",
    "division": "Women's E",
    "day": 2,
@@ -992,7 +1001,16 @@
    "length": 60
   },
   {
-   "id": "g111",
+   "id": "g112",
+   "label": "G5",
+   "division": "Coed D",
+   "day": 2,
+   "row": 1,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g113",
    "label": "G13",
    "division": "Women's D",
    "day": 2,
@@ -1001,7 +1019,16 @@
    "length": 60
   },
   {
-   "id": "g112",
+   "id": "g114",
+   "label": "G6",
+   "division": "Coed D",
+   "day": 2,
+   "row": 2,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g115",
    "label": "G9",
    "division": "Women's D",
    "day": 2,
@@ -1010,7 +1037,7 @@
    "length": 60
   },
   {
-   "id": "g113",
+   "id": "g116",
    "label": "G10",
    "division": "Women's Rec",
    "day": 2,
@@ -1019,7 +1046,7 @@
    "length": 60
   },
   {
-   "id": "g114",
+   "id": "g117",
    "label": "G11",
    "division": "Women's Rec",
    "day": 2,
@@ -1028,7 +1055,7 @@
    "length": 60
   },
   {
-   "id": "g115",
+   "id": "g118",
    "label": "G11",
    "division": "Women's E",
    "day": 2,
@@ -1037,7 +1064,7 @@
    "length": 60
   },
   {
-   "id": "g116",
+   "id": "g119",
    "label": "G12",
    "division": "Women's E",
    "day": 2,
@@ -1046,7 +1073,7 @@
    "length": 60
   },
   {
-   "id": "g117",
+   "id": "g120",
    "label": "G13",
    "division": "Women's E",
    "day": 2,
@@ -1055,7 +1082,43 @@
    "length": 60
   },
   {
-   "id": "g118",
+   "id": "g121",
+   "label": "G1",
+   "division": "Coed D",
+   "day": 2,
+   "row": 3,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g122",
+   "label": "G9",
+   "division": "Coed D",
+   "day": 2,
+   "row": 3,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g123",
+   "label": "G12",
+   "division": "Coed D",
+   "day": 2,
+   "row": 3,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g124",
+   "label": "G14",
+   "division": "Coed D",
+   "day": 2,
+   "row": 3,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g125",
    "label": "G8",
    "division": "Women's Rec",
    "day": 2,
@@ -1064,7 +1127,7 @@
    "length": 60
   },
   {
-   "id": "g119",
+   "id": "g126",
    "label": "G9",
    "division": "Women's Rec",
    "day": 2,
@@ -1073,7 +1136,7 @@
    "length": 60
   },
   {
-   "id": "g120",
+   "id": "g127",
    "label": "G12",
    "division": "Women's Rec",
    "day": 2,
@@ -1082,7 +1145,7 @@
    "length": 60
   },
   {
-   "id": "g121",
+   "id": "g128",
    "label": "G13",
    "division": "Women's Rec",
    "day": 2,
@@ -1091,7 +1154,7 @@
    "length": 60
   },
   {
-   "id": "g122",
+   "id": "g129",
    "label": "G14",
    "division": "Women's Rec",
    "day": 2,
@@ -1100,7 +1163,7 @@
    "length": 60
   },
   {
-   "id": "g123",
+   "id": "g130",
    "label": "G15",
    "division": "Women's Rec",
    "day": 2,
@@ -1109,7 +1172,43 @@
    "length": 60
   },
   {
-   "id": "g124",
+   "id": "g131",
+   "label": "G2",
+   "division": "Coed D",
+   "day": 2,
+   "row": 4,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g132",
+   "label": "G10",
+   "division": "Coed D",
+   "day": 2,
+   "row": 4,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g133",
+   "label": "G11",
+   "division": "Coed D",
+   "day": 2,
+   "row": 4,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g134",
+   "label": "G13",
+   "division": "Coed D",
+   "day": 2,
+   "row": 4,
+   "offset": 600,
+   "length": 60
+  },
+  {
+   "id": "g135",
    "label": "G10",
    "division": "Women's D",
    "day": 2,
@@ -1118,7 +1217,7 @@
    "length": 60
   },
   {
-   "id": "g125",
+   "id": "g136",
    "label": "G11",
    "division": "Women's D",
    "day": 2,
@@ -1127,7 +1226,7 @@
    "length": 60
   },
   {
-   "id": "g126",
+   "id": "g137",
    "label": "G12",
    "division": "Women's D",
    "day": 2,
@@ -1136,7 +1235,7 @@
    "length": 60
   },
   {
-   "id": "g127",
+   "id": "g138",
    "label": "G14",
    "division": "Women's D",
    "day": 2,
@@ -1145,7 +1244,7 @@
    "length": 60
   },
   {
-   "id": "g128",
+   "id": "g139",
    "label": "G15",
    "division": "Women's D",
    "day": 2,
@@ -1154,7 +1253,7 @@
    "length": 60
   },
   {
-   "id": "g129",
+   "id": "g140",
    "label": "G16",
    "division": "Women's D",
    "day": 2,
@@ -1163,79 +1262,351 @@
    "length": 60
   },
   {
-   "id": "g130",
+   "id": "g141",
    "label": "G17",
    "division": "Women's D",
    "day": 2,
    "row": 5,
    "offset": 360,
    "length": 60
+  },
+  {
+   "id": "g142",
+   "label": "G3",
+   "division": "Coed D",
+   "day": 2,
+   "row": 5,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g143",
+   "label": "G7",
+   "division": "Coed D",
+   "day": 2,
+   "row": 5,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g144",
+   "label": "G8",
+   "division": "Coed D",
+   "day": 2,
+   "row": 5,
+   "offset": 540,
+   "length": 60
+  },
+  {
+   "id": "g145",
+   "label": "G15",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g146",
+   "label": "G21",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g147",
+   "label": "G25",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g148",
+   "label": "G27",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g149",
+   "label": "G29",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g150",
+   "label": "G32",
+   "division": "Coed D",
+   "day": 3,
+   "row": 0,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g151",
+   "label": "G16",
+   "division": "Coed D",
+   "day": 3,
+   "row": 1,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g152",
+   "label": "G23",
+   "division": "Coed D",
+   "day": 3,
+   "row": 1,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g153",
+   "label": "G26",
+   "division": "Coed D",
+   "day": 3,
+   "row": 1,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g154",
+   "label": "G17",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g155",
+   "label": "G22",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 60,
+   "length": 60
+  },
+  {
+   "id": "g156",
+   "label": "G24",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 120,
+   "length": 60
+  },
+  {
+   "id": "g157",
+   "label": "G28",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 180,
+   "length": 60
+  },
+  {
+   "id": "g158",
+   "label": "G30",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 240,
+   "length": 60
+  },
+  {
+   "id": "g159",
+   "label": "G31",
+   "division": "Coed D",
+   "day": 3,
+   "row": 2,
+   "offset": 300,
+   "length": 60
+  },
+  {
+   "id": "g160",
+   "label": "G18",
+   "division": "Coed D",
+   "day": 3,
+   "row": 3,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g161",
+   "label": "G33",
+   "division": "Coed D",
+   "day": 3,
+   "row": 3,
+   "offset": 360,
+   "length": 60
+  },
+  {
+   "id": "g162",
+   "label": "G34",
+   "division": "Coed D",
+   "day": 3,
+   "row": 3,
+   "offset": 420,
+   "length": 60
+  },
+  {
+   "id": "g163",
+   "label": "G35",
+   "division": "Coed D",
+   "day": 3,
+   "row": 3,
+   "offset": 480,
+   "length": 60
+  },
+  {
+   "id": "g164",
+   "label": "G19",
+   "division": "Coed D",
+   "day": 3,
+   "row": 4,
+   "offset": 0,
+   "length": 60
+  },
+  {
+   "id": "g165",
+   "label": "G20",
+   "division": "Coed D",
+   "day": 3,
+   "row": 5,
+   "offset": 0,
+   "length": 60
   }
  ],
  "dest": {
-  "g64": {
-   "winner": "g66",
-   "loser": "g67"
+  "g1": {
+   "winner": "g5",
+   "loser": "g14"
   },
-  "g107": {
-   "winner": "g108",
-   "loser": null
+  "g2": {
+   "winner": "g11",
+   "loser": "g4"
   },
-  "g54": {
-   "winner": "g65",
-   "loser": "g68"
+  "g3": {
+   "winner": "g6",
+   "loser": "g15"
   },
-  "g108": {
-   "winner": "g115",
-   "loser": null
+  "g4": {
+   "winner": "g81",
+   "loser": "g69"
   },
-  "g65": {
-   "winner": "g110",
-   "loser": "g67"
+  "g5": {
+   "winner": "g71",
+   "loser": "g96"
   },
-  "g67": {
-   "winner": "g107",
-   "loser": "g109"
+  "g6": {
+   "winner": "g97",
+   "loser": "g70"
   },
-  "g68": {
-   "winner": "g109",
-   "loser": "g107"
+  "g7": {
+   "winner": "g5",
+   "loser": "g14"
   },
-  "g115": {
-   "winner": "g116",
-   "loser": null
+  "g8": {
+   "winner": "g16",
+   "loser": "g10"
   },
-  "g66": {
-   "winner": "g110",
-   "loser": "g68"
+  "g9": {
+   "winner": "g6",
+   "loser": "g15"
   },
-  "g110": {
-   "winner": "g116",
-   "loser": "g115"
+  "g10": {
+   "winner": "g94",
+   "loser": "g95"
   },
-  "g109": {
-   "winner": "g108",
-   "loser": null
+  "g11": {
+   "winner": "g71",
+   "loser": "g83"
+  },
+  "g12": {
+   "winner": "g11",
+   "loser": "g4"
+  },
+  "g13": {
+   "winner": "g16",
+   "loser": "g10"
+  },
+  "g14": {
+   "winner": "g69",
+   "loser": "g81"
+  },
+  "g15": {
+   "winner": "g95",
+   "loser": "g94"
+  },
+  "g16": {
+   "winner": "g97",
+   "loser": "g82"
   },
   "g17": {
    "winner": "g19",
    "loser": "g35"
   },
-  "g24": {
-   "winner": "g26",
-   "loser": "g36"
-  },
-  "g30": {
-   "winner": "g33",
-   "loser": "g23"
-  },
   "g18": {
    "winner": "g20",
    "loser": "g28"
   },
+  "g19": {
+   "winner": "g39",
+   "loser": "g22"
+  },
+  "g20": {
+   "winner": "g40",
+   "loser": "g35"
+  },
+  "g21": {
+   "winner": "g51",
+   "loser": "g36"
+  },
+  "g22": {
+   "winner": "g48",
+   "loser": "g59"
+  },
+  "g23": {
+   "winner": "g59",
+   "loser": "g48"
+  },
+  "g24": {
+   "winner": "g26",
+   "loser": "g36"
+  },
   "g25": {
    "winner": "g27",
    "loser": "g22"
+  },
+  "g26": {
+   "winner": "g50",
+   "loser": "g29"
+  },
+  "g27": {
+   "winner": "g40",
+   "loser": "g58"
+  },
+  "g28": {
+   "winner": "g37",
+   "loser": "g60"
+  },
+  "g29": {
+   "winner": "g38",
+   "loser": "g49"
+  },
+  "g30": {
+   "winner": "g33",
+   "loser": "g23"
   },
   "g31": {
    "winner": "g34",
@@ -1245,67 +1616,23 @@
    "winner": "g39",
    "loser": "g28"
   },
-  "g21": {
-   "winner": "g51",
-   "loser": "g36"
-  },
-  "g19": {
-   "winner": "g39",
-   "loser": "g22"
-  },
-  "g26": {
-   "winner": "g50",
-   "loser": "g29"
-  },
   "g33": {
    "winner": "g50",
-   "loser": "g58"
-  },
-  "g20": {
-   "winner": "g40",
-   "loser": "g35"
-  },
-  "g27": {
-   "winner": "g40",
    "loser": "g58"
   },
   "g34": {
    "winner": "g51",
    "loser": "g23"
   },
-  "g28": {
-   "winner": "g37",
-   "loser": "g60"
-  },
-  "g22": {
-   "winner": "g48",
-   "loser": "g59"
-  },
-  "g29": {
-   "winner": "g38",
-   "loser": "g49"
-  },
   "g35": {
    "winner": "g49",
    "loser": "g38"
-  },
-  "g23": {
-   "winner": "g59",
-   "loser": "g48"
   },
   "g36": {
    "winner": "g60",
    "loser": "g37"
   },
-  "g58": {
-   "winner": "g52",
-   "loser": "g61"
-  },
   "g37": {
-   "winner": "g41",
-   "loser": null
-  },
-  "g48": {
    "winner": "g41",
    "loser": null
   },
@@ -1313,9 +1640,85 @@
    "winner": "g52",
    "loser": null
   },
+  "g39": {
+   "winner": "g74",
+   "loser": "g53"
+  },
+  "g40": {
+   "winner": "g75",
+   "loser": "g42"
+  },
+  "g41": {
+   "winner": "g42",
+   "loser": null
+  },
+  "g42": {
+   "winner": "g43",
+   "loser": null
+  },
+  "g43": {
+   "winner": "g76",
+   "loser": null
+  },
+  "g44": {
+   "winner": "g46",
+   "loser": "g47"
+  },
+  "g45": {
+   "winner": "g56",
+   "loser": "g47"
+  },
+  "g46": {
+   "winner": "g117",
+   "loser": "g57"
+  },
+  "g47": {
+   "winner": "g116",
+   "loser": "g125"
+  },
+  "g48": {
+   "winner": "g41",
+   "loser": null
+  },
   "g49": {
    "winner": "g62",
    "loser": null
+  },
+  "g50": {
+   "winner": "g74",
+   "loser": "g63"
+  },
+  "g51": {
+   "winner": "g75",
+   "loser": "g86"
+  },
+  "g52": {
+   "winner": "g53",
+   "loser": null
+  },
+  "g53": {
+   "winner": "g43",
+   "loser": null
+  },
+  "g54": {
+   "winner": "g65",
+   "loser": "g68"
+  },
+  "g55": {
+   "winner": "g56",
+   "loser": "g57"
+  },
+  "g56": {
+   "winner": "g117",
+   "loser": "g125"
+  },
+  "g57": {
+   "winner": "g126",
+   "loser": "g116"
+  },
+  "g58": {
+   "winner": "g52",
+   "loser": "g61"
   },
   "g59": {
    "winner": "g62",
@@ -1325,22 +1728,6 @@
    "winner": "g61",
    "loser": null
   },
-  "g39": {
-   "winner": "g74",
-   "loser": "g53"
-  },
-  "g50": {
-   "winner": "g74",
-   "loser": "g63"
-  },
-  "g40": {
-   "winner": "g75",
-   "loser": "g42"
-  },
-  "g51": {
-   "winner": "g75",
-   "loser": "g86"
-  },
   "g61": {
    "winner": "g86",
    "loser": null
@@ -1349,28 +1736,48 @@
    "winner": "g63",
    "loser": null
   },
-  "g52": {
-   "winner": "g53",
-   "loser": null
-  },
-  "g41": {
-   "winner": "g42",
-   "loser": null
-  },
-  "g86": {
-   "winner": "g87",
-   "loser": null
-  },
   "g63": {
    "winner": "g87",
    "loser": null
   },
-  "g53": {
-   "winner": "g43",
+  "g64": {
+   "winner": "g66",
+   "loser": "g67"
+  },
+  "g65": {
+   "winner": "g111",
+   "loser": "g67"
+  },
+  "g66": {
+   "winner": "g111",
+   "loser": "g68"
+  },
+  "g67": {
+   "winner": "g107",
+   "loser": "g110"
+  },
+  "g68": {
+   "winner": "g110",
+   "loser": "g107"
+  },
+  "g69": {
+   "winner": "g70",
    "loser": null
   },
-  "g42": {
-   "winner": "g43",
+  "g70": {
+   "winner": "g72",
+   "loser": null
+  },
+  "g71": {
+   "winner": "g98",
+   "loser": "g73"
+  },
+  "g72": {
+   "winner": "g73",
+   "loser": null
+  },
+  "g73": {
+   "winner": "g99",
    "loser": null
   },
   "g74": {
@@ -1381,25 +1788,9 @@
    "winner": "g89",
    "loser": "g88"
   },
-  "g43": {
-   "winner": "g76",
-   "loser": null
-  },
-  "g87": {
-   "winner": "g88",
-   "loser": null
-  },
   "g76": {
    "winner": "g77",
    "loser": null
-  },
-  "g88": {
-   "winner": "g77",
-   "loser": null
-  },
-  "g89": {
-   "winner": "g79",
-   "loser": "g78"
   },
   "g77": {
    "winner": "g78",
@@ -1409,88 +1800,8 @@
    "winner": "g79",
    "loser": null
   },
-  "g3": {
-   "winner": "g6",
-   "loser": "g15"
-  },
-  "g14": {
-   "winner": "g69",
-   "loser": "g81"
-  },
-  "g4": {
-   "winner": "g81",
-   "loser": "g69"
-  },
-  "g10": {
-   "winner": "g94",
-   "loser": "g95"
-  },
-  "g15": {
-   "winner": "g95",
-   "loser": "g94"
-  },
-  "g5": {
-   "winner": "g71",
-   "loser": "g96"
-  },
-  "g9": {
-   "winner": "g6",
-   "loser": "g15"
-  },
-  "g11": {
-   "winner": "g71",
-   "loser": "g83"
-  },
-  "g16": {
-   "winner": "g97",
-   "loser": "g82"
-  },
-  "g1": {
-   "winner": "g5",
-   "loser": "g14"
-  },
-  "g7": {
-   "winner": "g5",
-   "loser": "g14"
-  },
-  "g12": {
-   "winner": "g11",
-   "loser": "g4"
-  },
-  "g2": {
-   "winner": "g11",
-   "loser": "g4"
-  },
-  "g8": {
-   "winner": "g16",
-   "loser": "g10"
-  },
-  "g13": {
-   "winner": "g16",
-   "loser": "g10"
-  },
-  "g6": {
-   "winner": "g97",
-   "loser": "g70"
-  },
-  "g95": {
-   "winner": "g96",
-   "loser": null
-  },
-  "g94": {
-   "winner": "g83",
-   "loser": null
-  },
   "g81": {
    "winner": "g82",
-   "loser": null
-  },
-  "g69": {
-   "winner": "g70",
-   "loser": null
-  },
-  "g70": {
-   "winner": "g72",
    "loser": null
   },
   "g82": {
@@ -1501,33 +1812,61 @@
    "winner": "g84",
    "loser": null
   },
-  "g96": {
-   "winner": "g84",
-   "loser": null
-  },
-  "g71": {
-   "winner": "g98",
-   "loser": "g73"
-  },
-  "g97": {
-   "winner": "g98",
-   "loser": "g85"
-  },
-  "g72": {
-   "winner": "g73",
-   "loser": null
-  },
   "g84": {
    "winner": "g85",
-   "loser": null
-  },
-  "g73": {
-   "winner": "g99",
    "loser": null
   },
   "g85": {
    "winner": "g99",
    "loser": null
+  },
+  "g86": {
+   "winner": "g87",
+   "loser": null
+  },
+  "g87": {
+   "winner": "g88",
+   "loser": null
+  },
+  "g88": {
+   "winner": "g77",
+   "loser": null
+  },
+  "g89": {
+   "winner": "g79",
+   "loser": "g78"
+  },
+  "g90": {
+   "winner": "g93",
+   "loser": "g92"
+  },
+  "g91": {
+   "winner": "g106",
+   "loser": "g105"
+  },
+  "g92": {
+   "winner": "g115",
+   "loser": "g135"
+  },
+  "g93": {
+   "winner": "g113",
+   "loser": "g137"
+  },
+  "g94": {
+   "winner": "g83",
+   "loser": null
+  },
+  "g95": {
+   "winner": "g96",
+   "loser": null
+  },
+  "g96": {
+   "winner": "g84",
+   "loser": null
+  },
+  "g97": {
+   "winner": "g98",
+   "loser": "g85"
   },
   "g98": {
    "winner": "g101",
@@ -1541,109 +1880,93 @@
    "winner": "g101",
    "loser": null
   },
-  "g44": {
-   "winner": "g46",
-   "loser": "g47"
-  },
-  "g45": {
-   "winner": "g56",
-   "loser": "g47"
-  },
-  "g55": {
-   "winner": "g56",
-   "loser": "g57"
-  },
-  "g46": {
-   "winner": "g114",
-   "loser": "g57"
-  },
-  "g56": {
-   "winner": "g114",
-   "loser": "g118"
-  },
-  "g47": {
-   "winner": "g113",
-   "loser": "g118"
-  },
-  "g57": {
-   "winner": "g119",
-   "loser": "g113"
-  },
-  "g118": {
-   "winner": "g119",
-   "loser": null
-  },
-  "g119": {
-   "winner": "g120",
-   "loser": null
-  },
-  "g113": {
-   "winner": "g120",
-   "loser": null
-  },
-  "g114": {
-   "winner": "g122",
-   "loser": "g121"
-  },
-  "g120": {
-   "winner": "g121",
-   "loser": null
-  },
-  "g121": {
-   "winner": "g122",
-   "loser": null
-  },
-  "g92": {
-   "winner": "g112",
-   "loser": "g124"
-  },
-  "g105": {
-   "winner": "g124",
-   "loser": "g112"
-  },
-  "g90": {
-   "winner": "g93",
-   "loser": "g92"
-  },
   "g103": {
    "winner": "g93",
    "loser": "g92"
-  },
-  "g91": {
-   "winner": "g106",
-   "loser": "g105"
   },
   "g104": {
    "winner": "g106",
    "loser": "g105"
   },
-  "g93": {
-   "winner": "g111",
-   "loser": "g126"
+  "g105": {
+   "winner": "g135",
+   "loser": "g115"
   },
   "g106": {
-   "winner": "g111",
-   "loser": "g125"
+   "winner": "g113",
+   "loser": "g136"
+  },
+  "g107": {
+   "winner": "g108",
+   "loser": null
+  },
+  "g108": {
+   "winner": "g118",
+   "loser": null
+  },
+  "g109": {
+   "winner": "g160",
+   "loser": "g124"
+  },
+  "g110": {
+   "winner": "g108",
+   "loser": null
+  },
+  "g111": {
+   "winner": "g119",
+   "loser": "g118"
   },
   "g112": {
-   "winner": "g125",
+   "winner": "g160",
+   "loser": "g124"
+  },
+  "g113": {
+   "winner": "g140",
+   "loser": "g139"
+  },
+  "g114": {
+   "winner": "g164",
+   "loser": "g145"
+  },
+  "g115": {
+   "winner": "g136",
+   "loser": null
+  },
+  "g116": {
+   "winner": "g127",
+   "loser": null
+  },
+  "g117": {
+   "winner": "g129",
+   "loser": "g128"
+  },
+  "g118": {
+   "winner": "g119",
+   "loser": null
+  },
+  "g121": {
+   "winner": "g122",
+   "loser": "g133"
+  },
+  "g122": {
+   "winner": "g154",
+   "loser": "g123"
+  },
+  "g123": {
+   "winner": "g151",
    "loser": null
   },
   "g124": {
-   "winner": "g126",
+   "winner": "g156",
    "loser": null
   },
   "g125": {
-   "winner": "g127",
+   "winner": "g126",
    "loser": null
   },
   "g126": {
    "winner": "g127",
    "loser": null
-  },
-  "g111": {
-   "winner": "g129",
-   "loser": "g128"
   },
   "g127": {
    "winner": "g128",
@@ -1652,6 +1975,130 @@
   "g128": {
    "winner": "g129",
    "loser": null
+  },
+  "g131": {
+   "winner": "g132",
+   "loser": "g123"
+  },
+  "g132": {
+   "winner": "g164",
+   "loser": "g133"
+  },
+  "g133": {
+   "winner": "g145",
+   "loser": null
+  },
+  "g134": {
+   "winner": "g155",
+   "loser": null
+  },
+  "g135": {
+   "winner": "g137",
+   "loser": null
+  },
+  "g136": {
+   "winner": "g138",
+   "loser": null
+  },
+  "g137": {
+   "winner": "g138",
+   "loser": null
+  },
+  "g138": {
+   "winner": "g139",
+   "loser": null
+  },
+  "g139": {
+   "winner": "g140",
+   "loser": null
+  },
+  "g142": {
+   "winner": "g154",
+   "loser": "g151"
+  },
+  "g143": {
+   "winner": "g165",
+   "loser": "g134"
+  },
+  "g144": {
+   "winner": "g165",
+   "loser": "g134"
+  },
+  "g145": {
+   "winner": "g146",
+   "loser": null
+  },
+  "g146": {
+   "winner": "g148",
+   "loser": null
+  },
+  "g147": {
+   "winner": "g150",
+   "loser": "g158"
+  },
+  "g148": {
+   "winner": "g149",
+   "loser": null
+  },
+  "g149": {
+   "winner": "g159",
+   "loser": null
+  },
+  "g150": {
+   "winner": "g162",
+   "loser": "g161"
+  },
+  "g151": {
+   "winner": "g152",
+   "loser": null
+  },
+  "g152": {
+   "winner": "g157",
+   "loser": null
+  },
+  "g153": {
+   "winner": "g150",
+   "loser": "g149"
+  },
+  "g154": {
+   "winner": "g147",
+   "loser": "g146"
+  },
+  "g155": {
+   "winner": "g148",
+   "loser": null
+  },
+  "g156": {
+   "winner": "g157",
+   "loser": null
+  },
+  "g157": {
+   "winner": "g158",
+   "loser": null
+  },
+  "g158": {
+   "winner": "g159",
+   "loser": null
+  },
+  "g159": {
+   "winner": "g161",
+   "loser": null
+  },
+  "g160": {
+   "winner": "g147",
+   "loser": "g155"
+  },
+  "g161": {
+   "winner": "g162",
+   "loser": null
+  },
+  "g164": {
+   "winner": "g153",
+   "loser": "g152"
+  },
+  "g165": {
+   "winner": "g153",
+   "loser": "g156"
   }
  }
 }
