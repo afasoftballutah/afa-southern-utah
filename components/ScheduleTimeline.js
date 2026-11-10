@@ -16,6 +16,7 @@ import {
   flowTargets,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
+import { placeClear, unionRect } from "@/lib/popover-place";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
 // day's hours across the top, one panel per day. Each game is a small pill
@@ -133,8 +134,9 @@ function NextValue({ step }) {
 // division, W/L (or ★ Final), Game N; the matchup scoreboard; where the
 // loser (left) and winner (right) go, like the pill's bottom corners; time
 // and field; the bracket link. Same card as a popover and a phone sheet.
-function Details({ game, slug, sheet, anchor, onClose }) {
+function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
   const ref = useRef(null);
+  const scrolled = useRef(false);
   const [pos, setPos] = useState(null);
   const tone = divisionTone(game.divisionName);
   const final = game.isFinal || game.status === "final";
@@ -159,16 +161,36 @@ function Details({ game, slug, sheet, anchor, onClose }) {
   // there while the page or a lane scrolls.
   const place = useCallback(() => {
     if (sheet || !anchor || !ref.current) return;
+    // Clear of the open game, its destinations and the arrows between them
+    // (JD, 2026-11-09: "dont want this to happen, where the line is
+    // blocked"). An arrow to a pill on screen runs inside the box holding
+    // both pills, bowing out up to ~22px; an arrow to a pill off the panel
+    // is a short labelled stub beside the open game (FlowArrows).
     const a = anchor.getBoundingClientRect();
-    const w = ref.current.offsetWidth;
-    const h = ref.current.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let left = Math.min(Math.max(12, a.left + a.width / 2 - w / 2), vw - w - 12);
-    let top = a.bottom + 8;
-    if (top + h > vh - 12) top = Math.max(12, a.top - h - 8);
-    setPos({ left, top });
-  }, [sheet, anchor]);
+    const scroller = anchor.closest(".tl-scroll");
+    const sr = scroller?.getBoundingClientRect() ?? null;
+    const rects = [a];
+    for (const id of avoid ? avoid.split(" ") : []) {
+      const el = document.querySelector(`.tl-pill[data-game-id="${CSS.escape(id)}"]`);
+      const r = el?.getBoundingClientRect();
+      const onPanel = r && sr && el.closest(".tl-scroll") === scroller && r.left >= sr.left && r.right <= sr.right && r.bottom > 0 && r.top < window.innerHeight;
+      if (onPanel) rects.push(r);
+      else rects.push({ left: a.left - 100, right: a.right + 100, top: a.top - 64, bottom: a.bottom + 64 });
+    }
+    const keep = unionRect(rects, 26);
+    const spot = placeClear(
+      { w: ref.current.offsetWidth, h: ref.current.offsetHeight },
+      keep,
+      a,
+      { w: window.innerWidth, h: window.innerHeight }
+    );
+    // No clear spot in this window: scroll the page once so there is one.
+    if (!spot.clear && spot.scroll && !scrolled.current) {
+      scrolled.current = true;
+      window.scrollBy({ top: spot.scroll, behavior: "smooth" });
+    }
+    setPos({ left: spot.left, top: spot.top });
+  }, [sheet, anchor, avoid]);
 
   useLayoutEffect(() => {
     place();
@@ -335,12 +357,30 @@ function reveal(el, dest) {
       if (fr.left - dx < minLeft) dx = fr.left - minLeft;
       if (dx) scroller.scrollBy({ left: dx, behavior: "smooth" });
     }
+    // On a phone: lift the page so the game AND its same-day destinations
+    // sit above the sheet, arrows and rings in view. If they cannot all fit,
+    // the game sits a little under halfway and an arrow to a destination
+    // under the sheet becomes the short labelled one.
     const sheet = document.querySelector(".tl-pop.is-sheet");
     if (sheet) {
       const top = sheet.getBoundingClientRect().top;
       const fr = el.getBoundingClientRect();
-      const want = Math.max(16, top * 0.45 - fr.height / 2);
-      if (fr.top < 16 || fr.bottom > top - 16) window.scrollBy({ top: fr.top - want, behavior: "smooth" });
+      const scroller = el.closest(".tl-scroll");
+      const group = [fr];
+      for (const id of [dest?.winner, dest?.loser]) {
+        const d = id && scroller ? scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
+        if (d) group.push(d.getBoundingClientRect());
+      }
+      const u = unionRect(group, 24);
+      const room = top - 16;
+      let dy = 0;
+      if (u.bottom - u.top <= room - 16) {
+        if (u.top < 16 || u.bottom > room) dy = u.top - Math.max(16, (room - (u.bottom - u.top)) / 2);
+      } else {
+        const want = Math.max(16, top * 0.45 - fr.height / 2);
+        if (fr.top < 16 || fr.bottom > top - 16) dy = fr.top - want;
+      }
+      if (dy) window.scrollBy({ top: dy, behavior: "smooth" });
     }
   });
 }
@@ -599,6 +639,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                             slug={slug}
                             sheet={sheet}
                             anchor={anchor}
+                            avoid={[dest?.winner, dest?.loser].filter(Boolean).join(" ")}
                             onClose={() => close(true)}
                           />
                         ) : null}
