@@ -186,7 +186,7 @@ test("card game links: feeders, destinations and If Game are links; team names a
   const open = src.slice(src.indexOf("const openGame = (id) =>"), src.indexOf("const openGame = (id) =>") + 400);
   assert.match(open, /scrollIntoView/);
   assert.match(open, /setOpenId\(id\)/);
-  assert.match(open, /reveal\(el, targets\.get\(id\)\)/);
+  assert.match(open, /reveal\(el, targets\.get\(id\), feedersOf\(id\)\)/);
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(css, /\.tl-link \{[^}]*cursor: pointer/);
   assert.match(css, /\.tl-link:focus-visible/);
@@ -298,4 +298,17 @@ test("Coed D has its own tone, not a second purple next to Women's Rec", () => {
   const worlds = ["mens-d", "mens-e", "womens-d", "womens-e", "womens-rec", "coed-d"].map(solid);
   assert.equal(new Set(worlds).size, 6);
   assert.equal(solid("coed-d"), "#db2777");
+});
+
+test("open game: dotted arrows and dotted rings for where the teams came from, green won / red lost", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(src, /if \(t\.winner === id\) out\.push\(\{ id: src, role: "winner" \}\)/);
+  assert.match(src, /if \(t\.loser === id\) out\.push\(\{ id: src, role: "loser" \}\)/);
+  assert.match(src, /tl-arrow--dotted/);
+  assert.match(src, /`from \$\{say\(f\.id\)\}`/);
+  assert.match(src, /"is-src-win" : "is-src-lose"/);
+  assert.match(css, /\.tl-arrow--dotted \{[^}]*stroke-dasharray/);
+  assert.match(css, /\.tl-pill\.is-src-win \{[^}]*dotted #22c55e/);
+  assert.match(css, /\.tl-pill\.is-src-lose \{[^}]*dotted #ef4444/);
 });

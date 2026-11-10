@@ -130,3 +130,85 @@ test("next-door destination on the same row: a low hop, no loop", () => {
   assert.ok(Math.min(...ys) > from.top - 24, "stays low");
   assert.ok(Math.max(...xs) < pill(5, 2).right - 8, "doesn't wrap round to the far side");
 });
+
+// Where the teams came from (JD, 2026-11-09: "show in dotted same colors
+// (green wins red losses) where the teams came from"): up to four arrows.
+const L = () => JSON.parse(readFileSync(new URL("./fixtures/worlds-2026-timeline-layout.json", import.meta.url), "utf8"));
+function feedersIn(layout, id) {
+  const out = [];
+  for (const [src, d] of Object.entries(layout.dest)) {
+    if (d.winner === id) out.push({ id: src, role: "winner" });
+    if (d.loser === id) out.push({ id: src, role: "loser" });
+  }
+  return out;
+}
+const onLeftOrTop = (p, r) => (Math.abs(p.x - r.left) <= 6 && p.y >= r.top - 6 && p.y <= r.bottom + 6) || (Math.abs(p.y - r.top) <= 6 && p.x >= r.left - 6 && p.x <= r.right + 6);
+
+function planAll(layout, g) {
+  const byId = new Map(layout.games.map((x) => [x.id, x]));
+  const sameDay = layout.games.filter((x) => x.day === g.day);
+  const panel = { left: 0, top: 0, right: Math.max(...sameDay.map((x) => gridPillRect(x).right)) + 8, bottom: 6 * 52 };
+  const arrows = [];
+  const d = layout.dest[g.id] ?? {};
+  for (const role of ["winner", "loser"]) {
+    const t = byId.get(d[role]);
+    if (!t) continue;
+    const r = gridPillRect(t);
+    arrows.push(t.day === g.day ? { role, to: r, id: t.id } : { role, toward: { x: (r.left + r.right) / 2, y: panel.bottom + 200 + r.top }, reach: 46 });
+  }
+  for (const f of feedersIn(layout, g.id)) {
+    const t = byId.get(f.id);
+    const r = gridPillRect(t);
+    // An earlier day sits above this panel.
+    arrows.push(t.day === g.day ? { role: f.role, dir: "in", to: r, id: t.id } : { role: f.role, dir: "in", toward: { x: (r.left + r.right) / 2, y: -200 - (6 * 52 - r.top) }, reach: 46 });
+  }
+  const obstacles = sameDay.filter((x) => x.id !== g.id && !arrows.some((a) => a.id === x.id)).map((x) => gridPillRect(x));
+  return { arrows, out: planArrows({ from: gridPillRect(g), arrows, obstacles, box: panel }) };
+}
+
+test("every World Series game: in and out arrows (up to 4) never cross, each has its own ends, incoming land on the left or top", () => {
+  const layout = L();
+  let fours = 0;
+  let checked = 0;
+  for (const g of layout.games) {
+    const { arrows, out } = planAll(layout, g);
+    const name = `${g.division} ${g.label}`;
+    assert.equal(out.length, arrows.length, `${name}: every arrow drawn`);
+    if (arrows.length === 4) fours++;
+    const from = gridPillRect(g);
+    for (let i = 0; i < out.length; i++) {
+      if (out[i].dir === "in") assert.ok(onLeftOrTop(out[i].end, from), `${name}: incoming arrow lands on the left or top`);
+      for (let j = 0; j < i; j++) {
+        checked++;
+        assert.ok(!polylinesCross(out[i].pts, out[j].pts), `${name}: ${out[i].dir} ${out[i].role} crosses ${out[j].dir} ${out[j].role}`);
+        for (const p of [out[i].start, out[i].end]) for (const q of [out[j].start, out[j].end]) assert.ok(Math.hypot(p.x - q.x, p.y - q.y) >= 10, `${name}: two arrows share an end`);
+      }
+    }
+  }
+  assert.ok(fours >= 40, `games with four arrows: ${fours}`);
+  assert.ok(checked >= 400, `pairs checked: ${checked}`);
+});
+
+test("Coed D: G32 has two green feeders, G33 one red and one green, G21 red from G17 and green from G15; a seeded first-round game has none", () => {
+  const layout = L();
+  const coed = (n) => layout.games.find((g) => g.division === "Coed D" && g.label === `G${n}`);
+  const roles = (n) => feedersIn(layout, coed(n).id).map((f) => `${f.role === "winner" ? "W" : "L"}${layout.games.find((g) => g.id === f.id).label.slice(1)}`).sort();
+  assert.deepEqual(roles(32), ["W25", "W26"]);
+  assert.deepEqual(roles(33), ["L32", "W31"]);
+  assert.deepEqual(roles(21), ["L17", "W15"]);
+  assert.deepEqual(roles(1), []);
+  const { out } = planAll(layout, coed(32));
+  assert.deepEqual(out.filter((a) => a.dir === "in").map((a) => a.role), ["winner", "winner"]);
+});
+
+test("an off-screen feeder gets a short stub pointing into the open game's left or top side", () => {
+  const from = pill(2, 3);
+  const out = planArrows({ from, arrows: [{ role: "winner", dir: "in", toward: { x: from.left + 20, y: -300 }, reach: 46 }, { role: "loser", dir: "in", to: pill(2, 1) }, { role: "winner", to: pill(3, 5) }], box });
+  assert.equal(out.length, 3);
+  const stub = out[0];
+  assert.equal(stub.kind, "stub");
+  assert.ok(stub.u.y < 0, "the stub reaches up toward the earlier day");
+  assert.ok(onLeftOrTop(stub.end, from), "head on the open pill's left or top");
+  assert.ok(Math.hypot(stub.end.x - stub.base.x, stub.end.y - stub.base.y) < 0.01, "drawn into the pill");
+  for (let i = 0; i < 3; i++) for (let j = 0; j < i; j++) assert.ok(!polylinesCross(out[i].pts, out[j].pts));
+});
