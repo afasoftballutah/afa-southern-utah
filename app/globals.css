@@ -3473,7 +3473,9 @@ button:not(.pill) {
   font-family: var(--tl-font);
 }
 /* Worlds divisions (JD, 2026-11-09): Men's D red, Men's E blue, Women's D
-   orange, Women's E green, Women's Rec purple. White on --tone-solid >= 4.5:1. */
+   orange, Women's E green, Women's Rec purple, Coed D pink (it shares the
+   Saturday Pioneer fields with Women's Rec, so not a second purple).
+   White on --tone-solid >= 4.5:1. */
 .tl-tone-mens-d { --tone-bg: #fde3e3; --tone-ink: #a51c1c; --tone-solid: #dc2626; }
 .tl-tone-mens-e { --tone-bg: #dde8ff; --tone-ink: #1c3f9e; --tone-solid: #2563eb; }
 .tl-tone-mens-open { --tone-bg: #fde2ea; --tone-ink: #9d174d; --tone-solid: #db2777; }
@@ -3481,7 +3483,7 @@ button:not(.pill) {
 .tl-tone-womens-d { --tone-bg: #ffe9d5; --tone-ink: #9a3c06; --tone-solid: #c2410c; }
 .tl-tone-womens-e { --tone-bg: #d8f3e0; --tone-ink: #14642f; --tone-solid: #15803d; }
 .tl-tone-womens-rec { --tone-bg: #ebe4ff; --tone-ink: #5626b0; --tone-solid: #7c3aed; }
-.tl-tone-coed-d { --tone-bg: #f0e1fb; --tone-ink: #6b21a8; --tone-solid: #9333ea; }
+.tl-tone-coed-d { --tone-bg: #fce7f3; --tone-ink: #9d174d; --tone-solid: #db2777; }
 .tl-tone-coed-e { --tone-bg: #f9e0f4; --tone-ink: #86198f; --tone-solid: #c026d3; }
 .tl-tone-coed-open { --tone-bg: #e9e2fb; --tone-ink: #5b21b6; --tone-solid: #7c3aed; }
 .tl-tone-coed-rec { --tone-bg: #f3e8ff; --tone-ink: #6b21a8; --tone-solid: #a855f7; }
