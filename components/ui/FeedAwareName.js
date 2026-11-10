@@ -1,18 +1,11 @@
-import { compactFeedLabel } from "@/lib/quickscores";
+import { slotLabel, NO_SOURCE } from "@/lib/slot-label";
 
 /**
- * Team slot in a list. On a phone, "Winner of Game 1" is too long (and
- * team-name CSS uppercases it into WINNER OF GAME 1). Compact to W-G1 /
- * L-G1 below `sm`; keep the words on desktop.
+ * Team slot in a list: the team, or "Winner G9" / "Loser G3" while it
+ * waits on that game (from a "Winner of Game 9" name or the slot's source
+ * link, passed as `from`), or the fallback ("TBD") only when nothing feeds
+ * it. One short form on phone and desktop (JD, 2026-11-09) — lib/slot-label.js.
  */
-export default function FeedAwareName({ name, fallback = "TBD" }) {
-  if (!name) return fallback;
-  const compact = compactFeedLabel(name);
-  if (compact === name) return name;
-  return (
-    <>
-      <span className="sm:hidden">{compact}</span>
-      <span className="hidden sm:inline">{name}</span>
-    </>
-  );
+export default function FeedAwareName({ name, from, fallback = NO_SOURCE }) {
+  return slotLabel(name, from, fallback);
 }

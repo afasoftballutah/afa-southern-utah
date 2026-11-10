@@ -16,6 +16,8 @@ export default function Matchup({
   caption,
   team1,
   team2,
+  team1From,
+  team2From,
   score1,
   score2,
   isFinal,
@@ -43,7 +45,7 @@ export default function Matchup({
       <div className={`divide-y divide-afa-navy/10${caption ? " mt-2" : ""}`}>
         <div className="flex items-center justify-between gap-2 py-1.5">
           <span className={`team-name text-sm min-w-0 truncate ${team1Highlighted ? "font-semibold" : "font-normal"}`}>
-            <FeedAwareName name={team1} />
+            <FeedAwareName name={team1} from={team1From} />
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team1Won ? "font-semibold" : ""}`}>
             {isFinal ? score1 : ""}
@@ -51,7 +53,7 @@ export default function Matchup({
         </div>
         <div className="flex items-center justify-between gap-2 py-1.5">
           <span className={`team-name text-sm min-w-0 truncate ${team2Highlighted ? "font-semibold" : "font-normal"}`}>
-            <FeedAwareName name={team2} />
+            <FeedAwareName name={team2} from={team2From} />
           </span>
           <span className={`w-8 text-right text-sm tabular-nums shrink-0 ${team2Won ? "font-semibold" : ""}`}>
             {isFinal ? score2 : ""}

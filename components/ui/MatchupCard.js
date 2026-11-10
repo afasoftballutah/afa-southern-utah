@@ -14,6 +14,7 @@
 // exist outside the drawing. This is the same recipe with plain props.
 
 import FeedAwareName from "@/components/ui/FeedAwareName";
+import { isWaitingSlot } from "@/lib/slot-label";
 
 const GROUND = {
   Gold: "#fbf6e6",
@@ -31,7 +32,7 @@ const CAPTION = {
 // 🏆 champion · 🥈 runner-up (finals only)
 const MEDAL = { gold: "\u{1F3C6}", silver: "\u{1F948}" };
 
-function Pill({ name, seed, score, won, waiting, medal }) {
+function Pill({ name, from, seed, score, won, waiting, medal }) {
   return (
     <div
       className={[
@@ -55,7 +56,7 @@ function Pill({ name, seed, score, won, waiting, medal }) {
         style={waiting ? undefined : { fontWeight: won ? 700 : 400 }}
       >
         {seed && <span className="text-[11.5px] font-bold text-afa-muted">[{seed}] </span>}
-        <FeedAwareName name={name} />
+        <FeedAwareName name={name} from={from} />
       </span>
       {score != null && (
         <span
@@ -88,6 +89,8 @@ export default function MatchupCard({
   division,
   team1,
   team2,
+  team1From,
+  team2From,
   score1,
   score2,
   isFinal,
@@ -103,12 +106,14 @@ export default function MatchupCard({
   // Non-finals keep team1/team2 order.
   let top = {
     name: team1,
+    from: team1From,
     score: score1,
     won: won1,
     medal: won1 ? "gold" : won2 ? "silver" : null,
   };
   let bot = {
     name: team2,
+    from: team2From,
     score: score2,
     won: won2,
     medal: won2 ? "gold" : won1 ? "silver" : null,
@@ -139,18 +144,20 @@ export default function MatchupCard({
       >
         <Pill
           name={top.name}
+          from={top.from}
           seed={seedOf(top.name)}
           score={isFinal ? top.score : null}
           won={top.won}
-          waiting={!top.name}
+          waiting={isWaitingSlot(top.name)}
           medal={top.medal}
         />
         <Pill
           name={bot.name}
+          from={bot.from}
           seed={seedOf(bot.name)}
           score={isFinal ? bot.score : null}
           won={bot.won}
-          waiting={!bot.name}
+          waiting={isWaitingSlot(bot.name)}
           medal={bot.medal}
         />
       </div>

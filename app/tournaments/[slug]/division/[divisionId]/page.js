@@ -12,6 +12,7 @@ import {
 import BracketTree from "@/components/bracket/BracketTree";
 import DrawnBracket from "@/components/bracket/DrawnBracket";
 import Card from "@/components/ui/Card";
+import { sourceLabeler, sourceLabelsFor } from "@/lib/slot-label";
 import MatchupCard from "@/components/ui/MatchupCard";
 import DivisionView from "@/components/DivisionView";
 import { formatFieldTime, gameWhenShort, LEAGUE_TZ } from "@/lib/bracket/tree";
@@ -451,6 +452,8 @@ export default async function DivisionPage({ params }) {
   // does (pool: null). Provenance placeholders are filtered out of the
   // team list below; if that leaves nothing real, no picker renders.
   const ownMoot = mootIfRounds(bracketGames);
+  // An opponent still waiting on a game reads "Winner G9", not TBD.
+  const ownSource = sourceLabeler(bracketGames);
   const finderGames = [
     ...stagePoolGames.map((g) => ({
       id: g.id,
@@ -498,6 +501,7 @@ export default async function DivisionPage({ params }) {
     // children above, which is why it was still showing as "Scheduled" on
     // the champion's card.
     ...bracketGames.filter((g) => !ownMoot.has(g.round)).map((g) => ({
+      ...sourceLabelsFor(g, ownSource),
       id: g.id,
       pool: null,
       when: g.scheduled_time,

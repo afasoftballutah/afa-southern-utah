@@ -6,6 +6,7 @@ import Card from "@/components/ui/Card";
 import { teamPageHref } from "@/lib/team-page";
 import Chip from "@/components/ui/Chip";
 import FeedAwareName from "@/components/ui/FeedAwareName";
+import { isWaitingSlot, slotLabel } from "@/lib/slot-label";
 import { readMe, writeMe } from "@/lib/me";
 import { teamFeedHref } from "@/lib/team-feed";
 import { readMyRegistrations } from "@/lib/my-registrations";
@@ -282,6 +283,7 @@ export default function TeamFinder({
                   ((g.team1 === selected && g.score1 > g.score2) ||
                     (g.team2 === selected && g.score2 > g.score1));
                 const opponent = g.team1 === selected ? g.team2 : g.team1;
+                const opponentFrom = g.team1 === selected ? g.team2From : g.team1From;
                 const mine = g.team1 === selected ? g.score1 : g.score2;
                 const theirs = g.team1 === selected ? g.score2 : g.score1;
                 return (
@@ -296,8 +298,18 @@ export default function TeamFinder({
                         not need. "vs" was a word's worth of that, and on a
                         phone it was the difference between one line and
                         two (JD, 2026-07-26). */}
-                    <span className="team-name min-w-0 truncate font-semibold" title={opponent}>
-                      <FeedAwareName name={opponent} />
+                    {/* Not playing anyone yet: "Winner G9" in the waiting-slot
+                        style (italic, muted, normal case) so it fits a phone
+                        row the uppercase bold team-name style cut off. */}
+                    <span
+                      className={
+                        isWaitingSlot(opponent)
+                          ? "min-w-0 truncate text-xs italic text-afa-muted"
+                          : "team-name min-w-0 truncate font-semibold"
+                      }
+                      title={slotLabel(opponent, opponentFrom)}
+                    >
+                      <FeedAwareName name={opponent} from={opponentFrom} />
                     </span>
                     <span className="whitespace-nowrap text-right text-xs text-afa-muted">
                       {g.whenShort?.time}

@@ -71,7 +71,8 @@ test("two games on one field less than an hour apart are reported", () => {
 
 test("hour and clock labels", () => {
   assert.deepEqual([0, 8, 12, 13, 23].map(hourLabel), ["12 AM", "8 AM", "12 PM", "1 PM", "11 PM"]);
-  assert.equal(clockLabel(14 * 60), "2:00 PM");
+  assert.equal(clockLabel(14 * 60), "2 PM");
+  assert.equal(clockLabel(14 * 60 + 30), "2:30 PM");
 });
 
 test("division colours by gender and level; legend Men's, Women's, Coed", () => {

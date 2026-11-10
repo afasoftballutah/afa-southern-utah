@@ -44,7 +44,7 @@ test("terms view is facts, not empty fields", () => {
     registration_closes: "2026-08-15",
   });
   assert.equal(lines.name, "Labor Day Classic");
-  assert.equal(lines.when, "Sat, Aug 22 – Sun, Aug 23 · first pitch 8:00 AM");
+  assert.equal(lines.when, "Sat, Aug 22 – Sun, Aug 23 · first pitch 8 AM");
   assert.match(lines.venue, /Canyons/);
   assert.equal(lines.money, "$300 entry · $100 deposit · $10 ump · 3GG");
   assert.equal(lines.closes, "Closes August 15, 2026");
