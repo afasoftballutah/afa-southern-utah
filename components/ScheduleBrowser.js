@@ -224,8 +224,9 @@ export default function ScheduleBrowser({
     explicitView ??
     (storedView === "time" || (storedView === "timeline" && timeZone) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
-  // The picked team, shared with the timeline so it can light their games.
-  const [team, setTeam] = useState("");
+  // The picked team — { name, divisionId }, never a bare name — shared with
+  // the timeline so it lights that one team's games.
+  const [team, setTeam] = useState(null);
 
   function choose(next) {
     setExplicitView(next);
@@ -248,7 +249,7 @@ export default function ScheduleBrowser({
           teams={finderTeams}
           games={finderGames}
           storageKey={storageKey}
-          onSelectedChange={setTeam}
+          onPickChange={setTeam}
           showGames={view !== "timeline"}
           compact
         />

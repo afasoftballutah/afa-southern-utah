@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { divisionLevelLabel } from "@/lib/division-layout";
 import { readMe, writeMe } from "@/lib/me";
+import { writeStoredPick } from "@/lib/team-pick";
 
 function cardHref({ slug, divisionId, mode, externalRegisterUrl }) {
   if (mode === "register") {
@@ -94,12 +95,10 @@ export default function TournamentDivisionNav({
   function pick(value) {
     setTeam(value);
     try {
-      if (value) {
-        window.localStorage.setItem(`afa-team-${slug}`, value);
-        writeMe({ teamName: value, source: "picked" });
-      } else {
-        window.localStorage.removeItem(`afa-team-${slug}`);
-      }
+      // A name-only pick (this list does not say the division); the
+      // schedule and bracket resolve it (lib/team-pick.js).
+      writeStoredPick(`afa-team-${slug}`, value ? { name: value } : null);
+      if (value) writeMe({ teamName: value, source: "picked" });
     } catch {
       /* private browsing */
     }

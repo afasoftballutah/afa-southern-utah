@@ -62,11 +62,25 @@ export default async function SchedulePage({ params }) {
   // stacked on top of it. `pool` carries the division name instead of a
   // pool letter — this page spans divisions, so the division is the useful
   // chip label, not the pool.
-  const finderTeams = [
-    ...new Set(rows.flatMap((r) => [r.team1, r.team2]).filter(isRealTeamName)),
-  ].sort((a, b) => a.localeCompare(b));
+  // One entry per team IN its division (JD, 2026-11-09: "cant have both
+  // fallens get highlighted") — the same identity as the tournament page's
+  // Find my team (lib/team-search.js): Fallen in Men's D and Fallen in
+  // Men's E are two teams, listed under their own divisions.
+  const finderTeams = [];
+  const seenTeams = new Set();
+  for (const r of rows) {
+    for (const name of [r.team1, r.team2]) {
+      if (!isRealTeamName(name)) continue;
+      const key = `${name}\u0000${r.divisionId ?? ""}`;
+      if (seenTeams.has(key)) continue;
+      seenTeams.add(key);
+      finderTeams.push({ name, divisionId: r.divisionId ?? null, divisionName: r.divisionName ?? null });
+    }
+  }
+  finderTeams.sort((a, b) => a.name.localeCompare(b.name) || String(a.divisionName).localeCompare(String(b.divisionName)));
   const finderGames = rows.map((row) => ({
     id: row.id,
+    divisionId: row.divisionId ?? null,
     pool: row.divisionName,
     caption: [row.timeLabel, row.field].filter(Boolean).join(" · "),
     team1: row.team1,

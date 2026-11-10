@@ -447,7 +447,7 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
   );
 }
 
-export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = "" }) {
+export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null }) {
   const { days, unplaced } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);

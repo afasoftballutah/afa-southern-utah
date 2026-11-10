@@ -5,6 +5,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
 import { withZone } from "@/lib/zone";
+import { writeStoredPick } from "@/lib/team-pick";
 import { useTimeZone } from "@/components/TimeZoneContext";
 
 // The door into a team's own tournament, and — once they have picked one
@@ -53,8 +54,7 @@ export default function MyTeamCard({ slug, summaries = {}, fallbackHref }) {
   function pick(value) {
     setTeam(value);
     try {
-      if (value) window.localStorage.setItem(`afa-team-${slug}`, value);
-      else window.localStorage.removeItem(`afa-team-${slug}`);
+      writeStoredPick(`afa-team-${slug}`, value ? { name: value } : null);
     } catch {
       // still works for this visit, it just will not be remembered
     }
