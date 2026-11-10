@@ -291,3 +291,11 @@ test("opened pill what's next: Game N, Out · place, 2nd, champion", () => {
   assert.deepEqual(nextStep({ short: "pool" }, "loser"), { text: "Survivor pool" });
   assert.equal(nextStep(null, "loser"), null);
 });
+
+test("Coed D has its own tone, not a second purple next to Women's Rec", () => {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const solid = (k) => new RegExp(`\\.tl-tone-${k} \\{[^}]*--tone-solid: (#[0-9a-f]{6})`).exec(css)?.[1];
+  const worlds = ["mens-d", "mens-e", "womens-d", "womens-e", "womens-rec", "coed-d"].map(solid);
+  assert.equal(new Set(worlds).size, 6);
+  assert.equal(solid("coed-d"), "#db2777");
+});
