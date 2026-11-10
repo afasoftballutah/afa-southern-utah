@@ -146,6 +146,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
     };
   });
   const rule = game.flow?.rule ?? null;
+  const ifGame = game.flow?.ifGame ?? null;
   const winnerStep = nextStep(game.flow?.winner, "winner");
   const loserStep = nextStep(game.flow?.loser, "loser");
   const title = gameTitle(game.label);
@@ -225,7 +226,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
         </ol>
       </section>
 
-      {rule || winnerStep || loserStep ? (
+      {ifGame || winnerStep || loserStep ? (
         <section className="tl-sec tl-sec--tight" aria-label="Where the teams go">
           <dl className="tl-next">
             <div>
@@ -237,7 +238,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
               <dd><NextValue step={winnerStep} /></dd>
             </div>
           </dl>
-          {rule ? <p className="tl-next__rule">{rule}</p> : null}
+          {ifGame ? <p className="tl-next__rule" title={rule ?? undefined}>{`If Game ${ifGame}`}</p> : null}
         </section>
       ) : null}
 
