@@ -40,7 +40,7 @@ function Star({ className }) {
 function Corner({ pos, x, gold }) {
   if (!x) return null;
   const chip = x.place ? (
-    <span className={`tl-place-chip${gold ? " is-gold" : ""}${x.place === "🏆" ? " is-trophy" : ""}`}>{x.place}</span>
+    <span className={`tl-place-chip${gold ? " is-gold" : ""}`}>{x.place}</span>
   ) : null;
   // Next to a place chip the game is just "/35" — "/→35" on both sides of
   // the first final ran the two corners into each other at phone width.

@@ -30,7 +30,7 @@ test("Men's D: first round has no feeders; later games show W#/L# and next games
 
 test("Men's D final and if-necessary game follow the if-game rule", () => {
   const g = division("Men's D");
-  assert.deepEqual(corners(g, 34), ["W31", "W33", "2nd/35", "🏆/35"]);
+  assert.deepEqual(corners(g, 34), ["W31", "W33", "2nd", "🏆"]);
   assert.deepEqual(corners(g, 35), ["W34", "L34", "2nd", "🏆"]);
 });
 
@@ -40,12 +40,12 @@ test("Women's Rec (three_gg_hybrid): feeders, places and the final", () => {
   assert.deepEqual(corners(g, 4), ["W1", "", "7", "11"]); // team2 entered by name, no feeder
   assert.deepEqual(corners(g, 8), ["L5", "L6", "7th", "9"]);
   assert.deepEqual(corners(g, 12), ["W10", "W9", "4th", "13"]);
-  assert.deepEqual(corners(g, 14), ["W11", "W13", "2nd/15", "🏆/15"]);
+  assert.deepEqual(corners(g, 14), ["W11", "W13", "2nd", "🏆"]);
 });
 
 test("Men's E, Women's D, Women's E: a couple of games each", () => {
   assert.deepEqual(corners(division("Men's E"), 22), ["L20", "W15", "17th", "35"]);
-  assert.deepEqual(corners(division("Men's E"), 49), ["W46", "W48", "2nd/50", "🏆/50"]);
+  assert.deepEqual(corners(division("Men's E"), 49), ["W46", "W48", "2nd", "🏆"]);
   assert.deepEqual(corners(division("Women's D"), 11), ["W9", "L8", "5th", "14"]);
   assert.deepEqual(corners(division("Women's E"), 3), ["W1", "", "5", "9"]);
 });
@@ -104,14 +104,27 @@ test("corner and sheet wording", () => {
   assert.equal(flowWords(null), null);
 });
 
-test("places carry no T- and are marked as places; the final's corners carry place and next game", () => {
+test("places carry no T- and are marked as places; the first final's corners are 2nd / 🏆 and its details carry the if-game rule", () => {
   const g = division("Men's D");
   const flow = gameFlow(g, "three_gg_hybrid");
   const byN = (n) => flow.get(g.find((x) => x.round === n).id);
   assert.deepEqual([byN(29).loser.place, byN(29).loser.next], ["5th", undefined]);
   assert.match(byN(29).loser.words, /tied for 5th/);
-  assert.deepEqual([byN(34).loser.place, byN(34).loser.next], ["2nd", "35"]);
-  assert.deepEqual([byN(34).winner.place, byN(34).winner.next], ["🏆", "35"]);
+  assert.deepEqual([byN(34).loser.place, byN(34).loser.next], ["2nd", undefined]);
+  assert.deepEqual([byN(34).winner.place, byN(34).winner.next], ["🏆", undefined]);
+  assert.equal(
+    flowWords(byN(34)),
+    "If the winners-bracket team wins, they're champions. If they lose, both teams play again in Game 35."
+  );
+  assert.equal(byN(35).rule, null);
   assert.deepEqual([byN(9).loser.place, byN(9).loser.next], [undefined, "19"]);
   for (const f of flow.values()) for (const x of [f.loser, f.winner]) assert.ok(!/T-/.test(x?.short ?? ""));
+});
+
+test("the if-game rule names each division's real if-game", () => {
+  for (const [name, first, ifN] of [["Men's E", 49, 50], ["Women's D", 16, 17], ["Women's E", 12, 13], ["Women's Rec", 14, 15]]) {
+    const g = division(name);
+    const f = gameFlow(g, "three_gg_hybrid").get(g.find((x) => x.round === first).id);
+    assert.match(f.rule, new RegExp(`play again in Game ${ifN}\\.$`), name);
+  }
 });

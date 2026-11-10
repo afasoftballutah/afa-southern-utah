@@ -3584,7 +3584,6 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
   border: 1px solid color-mix(in srgb, var(--tone-solid) 45%, transparent);
 }
 .tl-place-chip.is-gold { border-color: #d4a72c; color: #8a6a10; }
-.tl-place-chip.is-trophy { font-size: 0.4375rem; padding: 0.09rem 0.15rem; }
 .tl-corner:has(.tl-place-chip) { gap: 0.0625rem; }
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
 .tl-pill.tl-side-losers.is-final .tl-corner { color: color-mix(in srgb, var(--tone-ink) 62%, transparent); }
