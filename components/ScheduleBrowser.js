@@ -224,6 +224,8 @@ export default function ScheduleBrowser({
     explicitView ??
     (storedView === "time" || (storedView === "timeline" && timeZone) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
+  // The picked team, shared with the timeline so it can light their games.
+  const [team, setTeam] = useState("");
 
   function choose(next) {
     setExplicitView(next);
@@ -242,7 +244,14 @@ export default function ScheduleBrowser({
   return (
     <div className="space-y-3">
       {finderTeams && finderTeams.length > 0 && (
-        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} compact />
+        <TeamFinder
+          teams={finderTeams}
+          games={finderGames}
+          storageKey={storageKey}
+          onSelectedChange={setTeam}
+          showGames={view !== "timeline"}
+          compact
+        />
       )}
 
       <div className="sched-seg seg" role="group" aria-label="Schedule view">
@@ -265,7 +274,7 @@ export default function ScheduleBrowser({
       </div>
 
       {view === "timeline" ? (
-        <ScheduleTimeline rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} />
+        <ScheduleTimeline rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} team={team} />
       ) : view === "field" ? (
         <ByFieldView rows={rows} expandedFields={expandedFields} onToggleField={toggleField} />
       ) : (

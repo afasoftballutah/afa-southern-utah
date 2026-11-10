@@ -13,7 +13,9 @@ import {
   matchupSide,
   nextStep,
   bracketPill,
+  flowTargets,
 } from "@/lib/schedule-timeline";
+import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
 // day's hours across the top, one panel per day. Each game is a small pill
@@ -59,7 +61,7 @@ const PILL_GAP = 4;
 
 
 
-function Pill({ game, open, onToggle, pillRef }) {
+function Pill({ game, open, onToggle, pillRef, mark }) {
   const tone = divisionTone(game.divisionName);
   const final = game.isFinal || game.status === "final";
   const place = game.team1Place || game.team2Place;
@@ -76,7 +78,8 @@ function Pill({ game, open, onToggle, pillRef }) {
     <button
       type="button"
       ref={pillRef}
-      className={`tl-pill tl-tone-${tone}${side ? ` tl-side-${side}` : ""}${final ? " is-final" : ""}${open ? " is-open" : ""}`}
+      data-game-id={game.id}
+      className={`tl-pill tl-tone-${tone}${side ? ` tl-side-${side}` : ""}${final ? " is-final" : ""}${open ? " is-open" : ""}${mark ? ` ${mark}` : ""}`}
       style={{
         left: (game.offset / 60) * HOUR_PX + PILL_GAP,
         width: (game.length / 60) * HOUR_PX - PILL_GAP * 2,
@@ -266,13 +269,223 @@ function Details({ game, slug, sheet, anchor, onClose }) {
   );
 }
 
-export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug }) {
+// Where the open game's winner (green) and loser (red) go, drawn as two
+// arrows over the timeline like the bracket's focus view (JD, 2026-11-09).
+// The layer is fixed to the window and redrawn on every scroll, so it
+// follows the lane's sideways scroll and the page's. An arrow stays inside
+// the open game's own day panel: when the next game is on that panel and in
+// view it ends on the pill; otherwise (scrolled off sideways, under the
+// phone sheet, or on another day) it ends at the panel's edge pointing that
+// way, and the destination pill itself is ringed in the same colour wherever
+// it is.
+const ARROW = { winner: "#4ade80", loser: "#f87171" };
+
+function edgePoint(r, toward, pad = 3) {
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  const dx = toward.x - cx;
+  const dy = toward.y - cy;
+  if (!dx && !dy) return { x: cx, y: cy };
+  const sx = dx ? (r.width / 2 + pad) / Math.abs(dx) : Infinity;
+  const sy = dy ? (r.height / 2 + pad) / Math.abs(dy) : Infinity;
+  const k = Math.min(sx, sy);
+  return { x: cx + dx * k, y: cy + dy * k };
+}
+
+// Where the segment a→b leaves the box (a is inside it).
+function exitPoint(a, b, box) {
+  let t = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (dx > 0) t = Math.min(t, (box.right - a.x) / dx);
+  if (dx < 0) t = Math.min(t, (box.left - a.x) / dx);
+  if (dy > 0) t = Math.min(t, (box.bottom - a.y) / dy);
+  if (dy < 0) t = Math.min(t, (box.top - a.y) / dy);
+  return { x: a.x + dx * Math.max(0, t), y: a.y + dy * Math.max(0, t) };
+}
+
+function arrowPath(from, to, bend) {
+  const mx = (from.x + to.x) / 2;
+  const my = (from.y + to.y) / 2;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const k = Math.min(44, len * 0.32) * bend;
+  return `M${from.x.toFixed(1)},${from.y.toFixed(1)} Q${(mx - (dy / len) * k).toFixed(1)},${(my + (dx / len) * k).toFixed(1)} ${to.x.toFixed(1)},${to.y.toFixed(1)}`;
+}
+
+// On open, bring the game and where it leads into view: slide the lane so a
+// next game on the same day fits beside it, and on a phone lift the page so
+// the pill sits clear of the sheet.
+function reveal(el, dest) {
+  requestAnimationFrame(() => {
+    const scroller = el.closest(".tl-scroll");
+    if (scroller) {
+      const sr = scroller.getBoundingClientRect();
+      const fieldW = scroller.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0;
+      const fr = el.getBoundingClientRect();
+      let right = fr.right;
+      for (const id of [dest?.winner, dest?.loser]) {
+        const d = id ? scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
+        if (d) right = Math.max(right, d.getBoundingClientRect().right);
+      }
+      const minLeft = sr.left + fieldW + 8;
+      let dx = 0;
+      if (right > sr.right - 8) dx = right - (sr.right - 8);
+      if (fr.left - dx < minLeft) dx = fr.left - minLeft;
+      if (dx) scroller.scrollBy({ left: dx, behavior: "smooth" });
+    }
+    const sheet = document.querySelector(".tl-pop.is-sheet");
+    if (sheet) {
+      const top = sheet.getBoundingClientRect().top;
+      const fr = el.getBoundingClientRect();
+      const want = Math.max(16, top * 0.45 - fr.height / 2);
+      if (fr.top < 16 || fr.bottom > top - 16) window.scrollBy({ top: fr.top - want, behavior: "smooth" });
+    }
+  });
+}
+
+function FlowArrows({ fromEl, winnerId, loserId, labels }) {
+  const [paths, setPaths] = useState([]);
+  useLayoutEffect(() => {
+    if (!fromEl) return undefined;
+    let frame = 0;
+    const draw = () => {
+      frame = 0;
+      const scroller = fromEl.closest(".tl-scroll");
+      if (!scroller) return setPaths([]);
+      const sr = scroller.getBoundingClientRect();
+      const fieldW = scroller.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0;
+      const sheet = document.querySelector(".tl-pop.is-sheet");
+      const floor = sheet ? sheet.getBoundingClientRect().top : window.innerHeight;
+      const box = {
+        left: Math.max(sr.left + fieldW, 0) + 6,
+        right: Math.min(sr.right, window.innerWidth) - 6,
+        top: Math.max(sr.top, 0) + 6,
+        bottom: Math.min(sr.bottom, floor) - 6,
+      };
+      const fr = fromEl.getBoundingClientRect();
+      const pill = (id) => (id ? document.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null);
+      const winnerEl = pill(winnerId);
+      const loserEl = pill(loserId);
+      const out = [];
+      const inBox = (q) => q.x >= box.left - 1 && q.x <= box.right + 1 && q.y >= box.top - 1 && q.y <= box.bottom + 1;
+      for (const [role, el, side] of [["winner", winnerEl, -1], ["loser", loserEl, 1]]) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        const edge = edgePoint(fr, c);
+        const dx = c.x - edge.x;
+        const dy = c.y - edge.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const u = { x: dx / len, y: dy / len };
+        // The two arrows leave a little apart, winner on the right-hand
+        // side of travel and loser on the left, like the pill's corners.
+        const start = { x: edge.x - u.y * 6 * side, y: edge.y + u.x * 6 * side };
+        const end = edgePoint(r, start, 4);
+        if (el.closest(".tl-scroll") === scroller && inBox(end)) {
+          if (Math.hypot(end.x - start.x, end.y - start.y) < 8) continue;
+          out.push({ role, d: arrowPath(start, end, side) });
+          continue;
+        }
+        // Off this panel (another day, scrolled away, or under the sheet):
+        // a short arrow pointing that way, named, and the pill itself ringed.
+        const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
+        const reach = Math.min(46, Math.hypot(far.x - start.x, far.y - start.y));
+        if (reach < 14) continue;
+        const tip = { x: start.x + u.x * reach, y: start.y + u.y * reach };
+        const across = Math.abs(u.x) >= Math.abs(u.y);
+        out.push({
+          role,
+          d: `M${start.x.toFixed(1)},${start.y.toFixed(1)} L${tip.x.toFixed(1)},${tip.y.toFixed(1)}`,
+          label: labels?.[role] ?? null,
+          at: across
+            ? { x: tip.x - u.x * 4, y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "end" : "start" }
+            : { x: tip.x + (side < 0 ? 7 : -7), y: tip.y + u.y * 4 + 4, anchor: side < 0 ? "start" : "end" },
+        });
+      }
+      setPaths(out);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    // Redraw once the sheet and the pills finish moving (no timers: the
+    // timeline never polls).
+    window.addEventListener("transitionend", schedule, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("transitionend", schedule, true);
+    };
+  }, [fromEl, winnerId, loserId, labels]);
+  if (!paths.length) return null;
+  return (
+    <svg className="tl-arrows" aria-hidden="true" focusable="false">
+      <defs>
+        {Object.entries(ARROW).map(([role, color]) => (
+          <marker key={role} id={`tl-head-${role}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill={color} />
+          </marker>
+        ))}
+      </defs>
+      {paths.map((p) => (
+        <g key={p.role}>
+          <path d={p.d} className="tl-arrow__halo" />
+          <path d={p.d} className={`tl-arrow tl-arrow--${p.role}`} markerEnd={`url(#tl-head-${p.role})`} />
+          {p.label ? (
+            <text x={p.at.x} y={p.at.y} textAnchor={p.at.anchor} className={`tl-arrow__label tl-arrow__label--${p.role}`}>
+              {p.label}
+            </text>
+          ) : null}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = "" }) {
   const { days, unplaced } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);
   const [anchor, setAnchor] = useState(null);
   const [sheet, setSheet] = useState(false);
   const pills = useRef(new Map());
+  // The followed team (the picker above): their games stay bright, the rest
+  // step back, and their NEXT game gets a lime glow — "next" means the same
+  // thing as on the bracket (lib/team-games.js).
+  const teamRows = useMemo(() => fromScheduleRows(rows), [rows]);
+  const mine = useMemo(() => teamGameIds(teamRows, team), [teamRows, team]);
+  const nextId = useMemo(() => teamNextGame(teamRows, team), [teamRows, team]);
+  const targets = useMemo(() => flowTargets(rows), [rows]);
+  const dest = openId ? targets.get(openId) ?? null : null;
+  // "Game 25 · Fri" for an arrow that has to stop at the panel's edge.
+  const arrowLabels = useMemo(() => {
+    if (!openId || !dest) return null;
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const day = (r) => (r?.timeLabel ?? "").split(" ")[0];
+    const from = byId.get(openId);
+    const say = (id) => {
+      const r = id ? byId.get(id) : null;
+      if (!r) return null;
+      const d = day(r);
+      return `${gameTitle(r.label)}${d && d !== day(from) ? ` · ${d}` : ""}`;
+    };
+    return { winner: say(dest.winner), loser: say(dest.loser) };
+  }, [openId, dest, rows]);
+  const markOf = (id) => {
+    const out = [];
+    if (openId) {
+      if (id === dest?.winner) out.push("is-dest-win");
+      else if (id === dest?.loser) out.push("is-dest-lose");
+      else if (id !== openId) out.push("is-dim");
+    } else if (team && mine.size > 0 && !mine.has(id)) out.push("is-back");
+    if (id === nextId) out.push("is-next");
+    return out.join(" ");
+  };
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -311,7 +524,9 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
 
   const toggle = (id, el) => {
     setAnchor(el);
-    setOpenId((cur) => (cur === id ? null : id));
+    const opening = openId !== id;
+    setOpenId(opening ? id : null);
+    if (opening) reveal(el, targets.get(id));
   };
 
   return (
@@ -370,6 +585,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
                       <span key={g.id} className="tl-slot">
                         <Pill
                           game={g}
+                          mark={markOf(g.id)}
                           open={openId === g.id}
                           onToggle={toggle}
                           pillRef={(el) => {
@@ -395,6 +611,8 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
           </div>
         </section>
       ))}
+
+      {openId && anchor ? <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} labels={arrowLabels} /> : null}
 
       {unplaced.length > 0 ? (
         <p className="t-meta">
