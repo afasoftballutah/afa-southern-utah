@@ -104,3 +104,82 @@ test("schedule page finder: a waiting opponent reads Winner G2 with its day, tim
   assert.equal(g.when, "2026-11-15T01:00:00Z");
   assert.match(src("app/tournaments/[slug]/schedule/page.js"), /scheduleFinderGames\(rows, timeZone\)/);
 });
+
+// JD's rule on the bracket drawings too (2026-11-10): an empty slot reads
+// "Winner G5" / "Loser G3" — not the paper shorthand [W5] / [L3] / W5, an
+// em-dash, or TBD — wherever a source game is known.
+test("bracket drawings: paper shorthand becomes Winner G / Loser G words", async () => {
+  const { paperFeedWords } = await import("../lib/slot-label.js");
+  assert.equal(paperFeedWords("W5"), "Winner G5");
+  assert.equal(paperFeedWords("L12"), "Loser G12");
+  for (const keep of ["Oddballs", "—", "awaiting team", "W-G9", "Loser of Game 2"]) {
+    assert.equal(paperFeedWords(keep), keep);
+  }
+});
+
+const eng = (id, side, round, slot, extra = {}) => ({
+  id, bracket_side: side, round, slot, status: "pending", is_bye: false,
+  team1_name: null, team2_name: null, team1_source_game_id: null, team2_source_game_id: null,
+  team1_source_result: null, team2_source_result: null, ...extra,
+});
+const feed = (s1, r1, s2, r2) => ({
+  team1_source_game_id: s1, team1_source_result: r1, team2_source_game_id: s2, team2_source_result: r2,
+});
+// Engine double-elim: `round` is the structure round (two games share
+// round 1), so the printed numbers come from the tree: w1 G1, w2 G2, w3 G3,
+// l1 G4, l2 G5, f1 G6. The losers' first game is G4, not "G1".
+const engine = [
+  eng("w1", "winners", 1, 1, { team1_name: "A", team2_name: "B" }),
+  eng("w2", "winners", 1, 2, { team1_name: "C", team2_name: "D" }),
+  eng("w3", "winners", 2, 1, feed("w1", "winner", "w2", "winner")),
+  eng("l1", "losers", 1, 1, feed("w1", "loser", "w2", "loser")),
+  eng("l2", "losers", 2, 1, feed("l1", "winner", "w3", "loser")),
+  eng("f1", "final", 1, 1, feed("w3", "winner", "l2", "winner")),
+];
+
+test("tree and list view: slotWords names the printed game (engine bracket)", async () => {
+  const { assignGameNumbers, slotWords } = await import("../lib/bracket/tree.js");
+  const nums = assignGameNumbers(engine);
+  const byId = new Map(engine.map((g) => [g.id, g]));
+  const words = (id, side) => slotWords(byId.get(id), side, nums, byId).text;
+  assert.equal(words("l1", "team1"), "Loser G1");
+  assert.equal(words("l2", "team1"), "Winner G4");
+  assert.equal(words("l2", "team2"), "Loser G3");
+  assert.equal(words("f1", "team2"), "Winner G5");
+  assert.equal(words("w1", "team1"), "A"); // real names untouched
+  const unfed = eng("x", "winners", 3, 1);
+  assert.equal(slotWords(unfed, "team1", nums, byId).text, "—"); // nothing feeds it
+});
+
+test("scorekeeper tables: feedSlotLabeler uses printed numbers for both bracket kinds", async () => {
+  const { feedSlotLabeler } = await import("../lib/bracket/for-drawn-bracket.js");
+  const engineLabel = feedSlotLabeler(engine);
+  assert.equal(engineLabel("l1", "winner"), "Winner G4");
+  assert.equal(engineLabel("w3", "loser"), "Loser G3");
+  assert.equal(engineLabel("missing", "winner"), null);
+  assert.equal(engineLabel(null, "winner"), null);
+  // Hand-built / 3GG: `round` is already the paper number (Worlds Coed Rec).
+  const paper = [
+    eng("g1", "winners", 1, 1, { team1_name: "One Hit Wonders", team2_name: "Fallen Angels" }),
+    eng("g4", "winners", 4, 1, { team1_name: "Band of Randoms" }),
+    eng("g6", "losers", 6, 1, feed("g1", "loser", "g4", "loser")),
+  ];
+  const paperLabel = feedSlotLabeler(paper);
+  assert.equal(paperLabel("g1", "loser"), "Loser G1");
+  assert.equal(paperLabel("g4", "loser"), "Loser G4");
+});
+
+test("every bracket surface uses the shared words, not [L5] / W5 / em-dash / TBD", () => {
+  const matchup = src("components/bracket/BracketMatchup.js");
+  assert.match(matchup, /label: feedLabel\(feedNum\[1\]\.toLowerCase\(\), feedNum\[2\]\)/);
+  assert.doesNotMatch(matchup, /tag: `\$\{kind\}\$\{feedNum\[2\]\}`/);
+  const canvas = src("components/bracket/TreeCanvas.js");
+  assert.doesNotMatch(canvas, /slotDisplay\(/);
+  assert.match(canvas, /slotWords\(game, "team1"/);
+  assert.match(canvas, /`Loser G\$\{paperNum\} → survivor pool`/);
+  assert.match(src("components/bracket/ListView.js"), /slotWords\(g, side, numberByGameId, gamesById\)/);
+  const table = src("components/scorekeeper/ScoreTable.js");
+  assert.match(table, /feedSlotLabeler\(list\)/);
+  assert.doesNotMatch(table, /team[12]_name \|\| "TBD"/);
+  assert.match(src("app/director/division/[divisionId]/page.js"), /umpireFrom\(g\.team1_source_game_id/);
+});

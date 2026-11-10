@@ -14,6 +14,8 @@
 // Changing any one of those numbers means changing all of them together
 // and re-verifying every endpoint.
 
+import { feedLabel } from "@/lib/slot-label";
+
 export const BOX_H = 92;
 export const SIDE_Y = [27, 65];
 
@@ -148,9 +150,10 @@ export default function BracketMatchup({
     }
 
     if (feedNum) {
-      // "Winner of Game 5" / materializeFeedPlaceholders → compact W5 / L5.
-      const kind = feedNum[1] === "Loser" ? "L" : "W";
-      return { label: null, tag: `${kind}${feedNum[2]}`, waiting: true };
+      // "Winner of Game 5" / materializeFeedPlaceholders → "Winner G5",
+      // the same words as the schedule and timeline (lib/slot-label.js;
+      // JD: empty slots read Winner GX / Loser GY, never [W5] / [L5]).
+      return { label: feedLabel(feedNum[1].toLowerCase(), feedNum[2]), tag: null, waiting: true };
     }
     // source_game_id alone is not enough to paint a paper number here —
     // DrawnBracket.materializeFeedPlaceholders fills the name first.

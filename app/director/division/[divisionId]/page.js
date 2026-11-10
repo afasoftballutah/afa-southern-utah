@@ -15,6 +15,8 @@ import HandGames from "@/components/scorekeeper/HandGames";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
 import ScoreTable from "@/components/scorekeeper/ScoreTable";
+import { feedSlotLabeler } from "@/lib/bracket/for-drawn-bracket";
+import { slotLabel } from "@/lib/slot-label";
 import { knownPlayDay } from "@/lib/league-time";
 import { tournamentTimeZone } from "@/lib/zone";
 import { TimeZoneProvider } from "@/components/TimeZoneContext";
@@ -195,6 +197,8 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
 
   const openPool = stillToPlayIn(data.poolGames);
   const openBracket = stillToPlayIn(data.games);
+  // An open bracket slot names the game it waits on ("Winner G9").
+  const umpireFrom = feedSlotLabeler(data.games);
   const playDay = knownPlayDay(data.division);
   // Times read and typed in the tournament's zone (Mesquite: Pacific).
   const timeZone = tournamentTimeZone(data.division.tournaments);
@@ -335,8 +339,8 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
                   umpires={data.umpires}
                   umpire1Id={g.umpire1_id}
                   umpire2Id={g.umpire2_id}
-                  team1={g.team1_name}
-                  team2={g.team2_name}
+                  team1={slotLabel(g.team1_name, umpireFrom(g.team1_source_game_id, g.team1_source_result), null)}
+                  team2={slotLabel(g.team2_name, umpireFrom(g.team2_source_game_id, g.team2_source_result), null)}
                   meta={g.round != null ? `#${g.round}` : null}
                 />
               ))}
