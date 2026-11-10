@@ -412,12 +412,14 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
     schedule();
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
-    const t = setTimeout(draw, 350); // after the sheet and any smooth scroll settle
+    // Redraw once the sheet and the pills finish moving (no timers: the
+    // timeline never polls).
+    window.addEventListener("transitionend", schedule, true);
     return () => {
       cancelAnimationFrame(frame);
-      clearTimeout(t);
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
+      window.removeEventListener("transitionend", schedule, true);
     };
   }, [fromEl, winnerId, loserId, labels]);
   if (!paths.length) return null;
