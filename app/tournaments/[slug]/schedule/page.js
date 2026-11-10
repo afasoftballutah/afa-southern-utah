@@ -5,6 +5,7 @@ import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import { tournamentTimeZone, zoneLabel } from "@/lib/zone";
 import ScheduleBrowser from "@/components/ScheduleBrowser";
+import { scheduleFinderGames } from "@/lib/schedule-finder";
 import TournamentTicker from "@/components/TournamentTicker";
 import RefreshOnReturn from "@/components/RefreshOnReturn";
 
@@ -82,17 +83,7 @@ export default async function SchedulePage({ params }) {
     }
   }
   finderTeams.sort((a, b) => a.name.localeCompare(b.name) || String(a.divisionName).localeCompare(String(b.divisionName)));
-  const finderGames = rows.map((row) => ({
-    id: row.id,
-    divisionId: row.divisionId ?? null,
-    pool: row.divisionName,
-    caption: [row.timeLabel, row.field].filter(Boolean).join(" · "),
-    team1: row.team1,
-    team2: row.team2,
-    score1: row.score1,
-    score2: row.score2,
-    isFinal: row.isFinal,
-  }));
+  const finderGames = scheduleFinderGames(rows, timeZone);
 
   // The timeline's hour axis is labelled with the zone ("PST"); league
   // time (Mountain) carries no label anywhere, so neither does this.
