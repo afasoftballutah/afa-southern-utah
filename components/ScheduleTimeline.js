@@ -350,6 +350,17 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, wh
 // the open game's left or top side (JD, 2026-11-09): green from a game the
 // team won, red from one it lost; a seeded team has no feeder and no arrow.
 const ARROW = { winner: "#4ade80", loser: "#f87171" };
+// The thinner dotted line needs a touch more colour to read on white.
+const ARROW_DOTTED = { winner: "#22c55e", loser: "#ef4444" };
+// One arrowhead family (JD, 2026-11-09: "make the dotted lines and arrowheads
+// sleeker"): a slim swept tip, fixed size in screen px (not scaled by the
+// stroke), the same on phone and desktop; the dotted line's tip is a smaller
+// copy of the solid one's.
+const HEAD_PATH = "M0,1.6 L10,5 L0,8.4 L2.6,5 z";
+const HEADS = [
+  ...Object.entries(ARROW).map(([role, color]) => ({ id: `tl-head-${role}`, color, size: 10 })),
+  ...Object.entries(ARROW_DOTTED).map(([role, color]) => ({ id: `tl-head-${role}-dotted`, color, size: 7 })),
+];
 
 // Where the segment a→b leaves the box (a is inside it).
 function exitPoint(a, b, box) {
@@ -506,11 +517,11 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
           return;
         }
         const label = dotted ? labels?.from?.[key] ?? null : labels?.[a.role] ?? null;
-        // Beside the stub, clear of every pill's number and the other arrows.
+        // Beside the stub, clear of every pill's number and every arrow (its own too).
         const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl), ...hourText];
         const stub = dotted ? { start: a.base, tip: a.tip, u: a.u } : a;
         const at = label
-          ? placeLabel(label, stub, { pills: pillsInView, avoid: planned.filter((b, j) => j !== i).map((b) => b.pts), box })
+          ? placeLabel(label, stub, { pills: pillsInView, avoid: planned.map((b) => (b === a ? b.pts.slice(1, -1) : b.pts)), box })
           : null;
         out.push({ key, role: a.role, dotted, d: a.d, label, at });
       });
@@ -562,16 +573,26 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
   return (
     <svg className="tl-arrows" aria-hidden="true" focusable="false">
       <defs>
-        {Object.entries(ARROW).map(([role, color]) => (
-          <marker key={role} id={`tl-head-${role}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill={color} />
+        {HEADS.map((h) => (
+          <marker
+            key={h.id}
+            id={h.id}
+            viewBox="0 0 10 10"
+            refX="8.5"
+            refY="5"
+            markerWidth={h.size}
+            markerHeight={h.size}
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+          >
+            <path d={HEAD_PATH} fill={h.color} />
           </marker>
         ))}
       </defs>
       {paths.map((p) => (
         <g key={p.key}>
           <path d={p.d} className={`tl-arrow__halo${p.dotted ? " tl-arrow__halo--dotted" : ""}`} />
-          <path d={p.d} className={`tl-arrow tl-arrow--${p.role}${p.dotted ? " tl-arrow--dotted" : ""}`} markerEnd={`url(#tl-head-${p.role})`} />
+          <path d={p.d} className={`tl-arrow tl-arrow--${p.role}${p.dotted ? " tl-arrow--dotted" : ""}`} markerEnd={`url(#tl-head-${p.role}${p.dotted ? "-dotted" : ""})`} />
           {p.label ? (
             <text x={p.at.x} y={p.at.y} textAnchor={p.at.anchor} className={`tl-arrow__label tl-arrow__label--${p.role}`}>
               {p.label}
