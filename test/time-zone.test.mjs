@@ -26,7 +26,7 @@ const PACIFIC = "America/Los_Angeles";
 const G1 = { scheduled_time: "2026-11-12T22:00:00Z", field: "Hunter F1", round: 1 };
 
 test("a 2 PM Pacific game renders 2 PM PST", () => {
-  assert.equal(formatFieldTime(G1, PACIFIC), "Thu 2:00 PM PST · Hunter F1");
+  assert.equal(formatFieldTime(G1, PACIFIC), "Thu 2 PM PST · Hunter F1");
   assert.deepEqual(gameWhenShort(G1.scheduled_time, PACIFIC), { day: "Thu", time: "2 PM PST" });
   assert.equal(compactGameCaption(G1, PACIFIC), "G1 · THU 2P PST · Hunter F1");
   assert.equal(formatLeagueShortTime(G1.scheduled_time, "", PACIFIC), "Thu 2p PST");
@@ -36,12 +36,12 @@ test("a 2 PM Pacific game renders 2 PM PST", () => {
 test("a Denver tournament renders exactly as before (no label)", () => {
   // Same instants the league has always shown; byte-for-byte the old strings.
   const july = { scheduled_time: "2026-07-15T01:00:00Z", field: "Field 2", round: 3 };
-  assert.equal(formatFieldTime(july), "Tue 7:00 PM · Field 2");
-  assert.equal(formatFieldTime(july, LEAGUE_TZ), "Tue 7:00 PM · Field 2");
-  assert.equal(formatFieldTime(july, null), "Tue 7:00 PM · Field 2");
+  assert.equal(formatFieldTime(july), "Tue 7 PM · Field 2");
+  assert.equal(formatFieldTime(july, LEAGUE_TZ), "Tue 7 PM · Field 2");
+  assert.equal(formatFieldTime(july, null), "Tue 7 PM · Field 2");
   assert.deepEqual(gameWhenShort(july.scheduled_time), { day: "Tue", time: "7 PM" });
   assert.equal(formatLeagueShortTime(july.scheduled_time), "Tue 7p");
-  assert.equal(formatFieldTime(G1, tournamentTimeZone({ timezone: null })), "Thu 3:00 PM · Hunter F1");
+  assert.equal(formatFieldTime(G1, tournamentTimeZone({ timezone: null })), "Thu 3 PM · Hunter F1");
   assert.equal(zoneLabel(july.scheduled_time, LEAGUE_TZ), "");
   assert.equal(tournamentZoneLabel({ start_date: "2026-07-10" }), "");
 });

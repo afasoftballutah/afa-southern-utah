@@ -4,6 +4,7 @@ import { useTimeZone } from "@/components/TimeZoneContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEAGUE_TZ, formatFieldTime } from "@/lib/bracket/tree";
+import { clockTime } from "@/lib/zone";
 
 // Ordered by TIME then FIELD (dispatch-brief-21), not by pool. The director
 // standing at the complex thinks "what just finished on Field 6," not
@@ -49,8 +50,7 @@ function timeLabel(scheduledTime, timeZone = LEAGUE_TZ) {
 // enough for a fast glance without tracing back up to it.
 function shortTimeLabel(scheduledTime, timeZone = LEAGUE_TZ) {
   if (!scheduledTime) return null;
-  const d = new Date(scheduledTime);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone });
+  return clockTime(scheduledTime, timeZone);
 }
 
 // Split "11:00 PM" into its own two lines (dispatch-brief-25 grid

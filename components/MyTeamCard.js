@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { LEAGUE_TZ } from "@/lib/bracket/tree";
-import { withZone } from "@/lib/zone";
+import { withZone, clockTime } from "@/lib/zone";
 import { writeStoredPick } from "@/lib/team-pick";
 import { useTimeZone } from "@/components/TimeZoneContext";
 
@@ -27,16 +27,8 @@ const TIER = {
 // every other screen.
 function whenLabel(iso, timeZone = LEAGUE_TZ) {
   if (!iso) return "time to come";
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone,
-  }).formatToParts(new Date(iso));
-  const get = (t) => parts.find((x) => x.type === t)?.value ?? "";
-  const min = get("minute");
-  return withZone(`${get("weekday")} ${get("hour")}${min !== "00" ? ":" + min : ""} ${get("dayPeriod")}`, iso, timeZone);
+  const day = new Date(iso).toLocaleDateString("en-US", { weekday: "short", timeZone });
+  return withZone(`${day} ${clockTime(iso, timeZone)}`, iso, timeZone);
 }
 
 export default function MyTeamCard({ slug, summaries = {}, fallbackHref }) {
