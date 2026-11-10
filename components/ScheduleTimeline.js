@@ -296,18 +296,18 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, wh
             <div>
               <dt>Loser</dt>
               <dd><NextValue step={loserStep} go={go} /></dd>
-              {loserStep?.next && where?.loser ? <dd className="tl-next__where">{where.loser}</dd> : null}
+              {loserStep?.next && where?.loser ? <dd className="tl-next__where tl-next__where--loser">{`(${where.loser})`}</dd> : null}
             </div>
             <div className="tl-next__right">
               <dt>Winner</dt>
               <dd><NextValue step={winnerStep} go={go} /></dd>
-              {winnerStep?.next && where?.winner ? <dd className="tl-next__where">{where.winner}</dd> : null}
+              {winnerStep?.next && where?.winner ? <dd className="tl-next__where tl-next__where--winner">{`(${where.winner})`}</dd> : null}
             </div>
           </dl>
           {ifGame ? (
             <p className="tl-next__rule" title={rule ?? undefined}>
               If <GameLink title={`Game ${ifGame}`} go={go} />
-              {where?.ifGame ? <span className="tl-next__where">{` \u00b7 ${where.ifGame}`}</span> : null}
+              {where?.ifGame ? <span className="tl-next__where">{` (${where.ifGame})`}</span> : null}
             </p>
           ) : null}
         </section>

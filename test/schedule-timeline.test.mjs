@@ -211,6 +211,13 @@ test("next-game line: day, time without zone, full field name; nothing without b
   assert.match(src, /loserStep\?\.next && where\?\.loser/, "loser line only for a real next game (not Out)");
   assert.match(src, /winnerStep\?\.next && where\?\.winner/);
   assert.match(src, /where\?\.ifGame/);
+  // in brackets, red under the loser and green under the winner, like the arrows
+  assert.match(src, /tl-next__where--loser">\{`\(\$\{where\.loser\}\)`\}/);
+  assert.match(src, /tl-next__where--winner">\{`\(\$\{where\.winner\}\)`\}/);
+  assert.match(src, /\{` \(\$\{where\.ifGame\}\)`\}/);
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.tl-next dd\.tl-next__where--loser \{ color: #dc2626; \}/);
+  assert.match(css, /\.tl-next dd\.tl-next__where--winner \{ color: #15803d; \}/);
   assert.match(src, /<dd>\{compactTime\(game\.timeLabel\)\}<\/dd>/, "card Time row drops :00");
 });
 
