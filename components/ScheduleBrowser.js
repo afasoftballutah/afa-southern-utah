@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
+import ScheduleTimeline from "@/components/ScheduleTimeline";
 
 // By field | By time toggle (dispatch-brief-16) — same localStorage-via-
 // useSyncExternalStore pattern as the Tournaments page toggle
@@ -208,10 +209,20 @@ function ByTimeView({ rows }) {
  * thing on it. `storageKey` is tournament-scoped so a pick here shares
  * memory with the division page's own TeamFinder.
  */
-export default function ScheduleBrowser({ rows, finderTeams, finderGames, storageKey }) {
+export default function ScheduleBrowser({
+  rows,
+  finderTeams,
+  finderGames,
+  storageKey,
+  timeZone = null,
+  zoneShort = "",
+  slug = null,
+}) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
-  const view = explicitView ?? (storedView === "time" ? "time" : "field");
+  const view =
+    explicitView ??
+    (storedView === "time" || (storedView === "timeline" && timeZone) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
 
   function choose(next) {
@@ -229,30 +240,33 @@ export default function ScheduleBrowser({ rows, finderTeams, finderGames, storag
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {finderTeams && finderTeams.length > 0 && (
-        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} />
+        <TeamFinder teams={finderTeams} games={finderGames} storageKey={storageKey} compact />
       )}
 
-      <div className="flex items-center gap-3 text-sm">
-        <button
-          type="button"
-          onClick={() => choose("field")}
-          className={`font-semibold ${view === "field" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
-        >
+      <div className="sched-seg seg" role="group" aria-label="Schedule view">
+        <button type="button" onClick={() => choose("field")} aria-pressed={view === "field"} className={view === "field" ? "is-on" : undefined}>
           By field
         </button>
-        <span className="text-afa-ink/30">|</span>
-        <button
-          type="button"
-          onClick={() => choose("time")}
-          className={`font-semibold ${view === "time" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
-        >
+        <button type="button" onClick={() => choose("time")} aria-pressed={view === "time"} className={view === "time" ? "is-on" : undefined}>
           By time
         </button>
+        {timeZone ? (
+          <button
+            type="button"
+            onClick={() => choose("timeline")}
+            aria-pressed={view === "timeline"}
+            className={view === "timeline" ? "is-on" : undefined}
+          >
+            Timeline
+          </button>
+        ) : null}
       </div>
 
-      {view === "field" ? (
+      {view === "timeline" ? (
+        <ScheduleTimeline rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} />
+      ) : view === "field" ? (
         <ByFieldView rows={rows} expandedFields={expandedFields} onToggleField={toggleField} />
       ) : (
         <ByTimeView rows={rows} />

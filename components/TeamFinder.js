@@ -41,6 +41,7 @@ export default function TeamFinder({
   teamStatus = {},
   slug,
   onSelectedChange,
+  compact = false,
 }) {
   const [selected, setSelected] = useState("");
   // webcal:// is what makes a calendar client SUBSCRIBE instead of
@@ -153,15 +154,27 @@ export default function TeamFinder({
     // The picker IS the card's header (JD, 2026-07-26). A dropdown above a
     // card whose first line repeated the same team name was one control
     // and one label doing one job twice.
-    <Card className="p-0">
-      <div className="flex flex-nowrap items-center gap-2 px-4 py-3">
+    <Card className={compact ? "p-0 team-finder--compact" : "p-0"}>
+      <div className={`flex flex-nowrap items-center gap-2 ${compact ? "min-h-11 px-3 py-0" : "px-4 py-3"}`}>
+        {compact ? (
+          <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-afa-ink/40">
+            <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M13 13l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        ) : null}
         {/* The name is TEXT, with a real <select> laid invisibly over it.
             A native select sizes itself to its widest option, which would
             have parked the caret a dozen characters past a short team
             name; this way the caret sits where the name ends and the
             display face renders exactly as it does anywhere else. */}
         <span className="relative flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded focus-within:ring-2 focus-within:ring-afa-navy/30">
-          <span className="team-name truncate text-lg font-semibold">
+          <span
+            className={
+              compact
+                ? `truncate text-[15px] ${selected ? "team-name font-semibold" : "text-afa-ink/50"}`
+                : "team-name truncate text-lg font-semibold"
+            }
+          >
             {selected || "Find your team"}
           </span>
           {selected && (record.w || record.l) > 0 && (

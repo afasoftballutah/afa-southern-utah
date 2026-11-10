@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
 import { formatFieldTime } from "@/lib/bracket/tree";
-import { tournamentTimeZone } from "@/lib/zone";
+import { tournamentTimeZone, zoneLabel } from "@/lib/zone";
 import ScheduleBrowser from "@/components/ScheduleBrowser";
+import TournamentTicker from "@/components/TournamentTicker";
+import RefreshOnReturn from "@/components/RefreshOnReturn";
 
 export const revalidate = 30;
 
@@ -74,19 +76,23 @@ export default async function SchedulePage({ params }) {
     isFinal: row.isFinal,
   }));
 
-  return (
-    <div className="space-y-6">
-      <Link
-        href={`/tournaments/${slug}`}
-        className="text-sm text-afa-navy underline min-h-11 inline-flex items-center"
-      >
-        ← {tournament.name}
-      </Link>
+  // The timeline's hour axis is labelled with the zone ("PST"); league
+  // time (Mountain) carries no label anywhere, so neither does this.
+  const zoneShort = rows[0]?.scheduledTime ? zoneLabel(rows[0].scheduledTime, timeZone) : "";
+  const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
 
-      <div className="text-center">
-        <h1 className="t-title">Schedule</h1>
-        <p className="text-sm text-afa-ink/70 mt-1">{tournament.name}</p>
-      </div>
+  return (
+    <div className="space-y-3">
+      <RefreshOnReturn />
+      <TournamentTicker divisionIds={divisionIds} />
+      {/* One compact header (JD, 2026-11-09: "the top has a lot of wasted
+          space"): the tournament is the back link, the page name sits under it. */}
+      <header className="sched-head">
+        <Link href={`/tournaments/${slug}`} className="sched-head__back">
+          <span aria-hidden="true">‹</span> {tournament.name}
+        </Link>
+        <h1 className="sched-head__title">Schedule</h1>
+      </header>
 
       {rows.length === 0 ? (
         <p className="text-sm text-afa-ink/70">No schedule posted yet — check back.</p>
@@ -96,6 +102,9 @@ export default async function SchedulePage({ params }) {
           finderTeams={finderTeams}
           finderGames={finderGames}
           storageKey={`afa-team-${slug}`}
+          timeZone={timeZone}
+          zoneShort={zoneShort}
+          slug={slug}
         />
       )}
     </div>
