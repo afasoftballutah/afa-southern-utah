@@ -3473,8 +3473,9 @@ button:not(.pill) {
   font-family: var(--tl-font);
 }
 /* Worlds divisions (JD, 2026-11-09): Men's D red, Men's E blue, Women's D
-   orange, Women's E green, Women's Rec purple, Coed D pink (it shares the
-   Saturday Pioneer fields with Women's Rec, so not a second purple), Coed E
+   orange, Women's E green; Women's Rec pink and Coed D purple (JD
+   2026-11-10 "switch Coed D and Womens Rec colors"; they share the Saturday
+   Pioneer fields, so never the same color), Coed E
    teal, Coed Rec brown, never the championship gold (JD 2026-11-10: the
    coeds were too close). Values
    live in lib/division-tones.js; test/division-tones.test.mjs keeps these
@@ -3485,9 +3486,9 @@ button:not(.pill) {
 .tl-tone-mens-rec { --tone-bg: #fff1c9; --tone-ink: #854d0e; --tone-solid: #ca8a04; }
 .tl-tone-womens-d { --tone-bg: #ffe9d5; --tone-ink: #9a3c06; --tone-solid: #c2410c; }
 .tl-tone-womens-e { --tone-bg: #d8f3e0; --tone-ink: #14642f; --tone-solid: #15803d; }
-.tl-tone-womens-rec { --tone-bg: #ebe4ff; --tone-ink: #5626b0; --tone-solid: #7c3aed; }
-.tl-tone-coed-d { --tone-bg: #fce7f3; --tone-ink: #9d174d; --tone-solid: #db2777; }
-.tl-tone-coed-e { --tone-bg: #d3eff1; --tone-ink: #0b525a; --tone-solid: #0f6f7a; }
+.tl-tone-womens-rec { --tone-bg: #fce7f3; --tone-ink: #9d174d; --tone-solid: #db2777; }
+.tl-tone-coed-d { --tone-bg: #ebe4ff; --tone-ink: #5626b0; --tone-solid: #7c3aed; }
+.tl-tone-coed-e { --tone-bg: #d3eff1; --tone-ink: #003f3e; --tone-solid: #005655; }
 .tl-tone-coed-open { --tone-bg: #e9e2fb; --tone-ink: #5b21b6; --tone-solid: #7c3aed; }
 .tl-tone-coed-rec { --tone-bg: #eadbd0; --tone-ink: #5a2e14; --tone-solid: #6b3a1f; }
 .tl-tone-other { --tone-bg: #e9edf2; --tone-ink: #334155; --tone-solid: #64748b; }
