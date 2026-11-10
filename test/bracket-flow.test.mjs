@@ -116,15 +116,18 @@ test("places carry no T- and are marked as places; the first final's corners are
     flowWords(byN(34)),
     "If the winners-bracket team wins, they're champions. If they lose, both teams play again in Game 35."
   );
+  assert.equal(byN(34).ifGame, "35");
   assert.equal(byN(35).rule, null);
+  assert.equal(byN(35).ifGame, null);
   assert.deepEqual([byN(9).loser.place, byN(9).loser.next], [undefined, "19"]);
   for (const f of flow.values()) for (const x of [f.loser, f.winner]) assert.ok(!/T-/.test(x?.short ?? ""));
 });
 
 test("the if-game rule names each division's real if-game", () => {
-  for (const [name, first, ifN] of [["Men's E", 49, 50], ["Women's D", 16, 17], ["Women's E", 12, 13], ["Women's Rec", 14, 15]]) {
+  for (const [name, first, ifN] of [["Men's D", 34, 35], ["Men's E", 49, 50], ["Women's D", 16, 17], ["Women's E", 12, 13], ["Women's Rec", 14, 15]]) {
     const g = division(name);
     const f = gameFlow(g, "three_gg_hybrid").get(g.find((x) => x.round === first).id);
     assert.match(f.rule, new RegExp(`play again in Game ${ifN}\\.$`), name);
+    assert.equal(f.ifGame, String(ifN), name);
   }
 });

@@ -7,6 +7,7 @@ import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
+import { gameTitle, bracketPill, matchupSide, nextStep } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
 
@@ -155,4 +156,32 @@ test("finishing places in the corners are bold italic text, not boxed; next game
   // The trophy stays upright.
   assert.match(src, /x\.place === "🏆" \? " is-cup"/);
   assert.match(/\.tl-corner-place\.is-cup \{([^}]*)\}/.exec(css)?.[1] ?? "", /font-style: normal/);
+});
+
+test("opened pill: Game N and a short bracket pill, no status word", () => {
+  assert.equal(gameTitle("G33"), "Game 33");
+  assert.equal(gameTitle("Pool A"), "Pool A");
+  assert.equal(bracketPill({ bracketSide: "losers" }).text, "L");
+  assert.equal(bracketPill({ bracketSide: "winners" }).text, "W");
+  assert.deepEqual(bracketPill({ bracketSide: "final" }), { text: "★ Final", label: "Championship", gold: true });
+  assert.equal(bracketPill({ bracketSide: "if" }).text, "★ If nec.");
+  assert.equal(bracketPill({}), null);
+});
+
+test("opened pill matchup: a known team, else the game it waits on as 'Loser of' + 'Game 31'", () => {
+  assert.deepEqual(matchupSide({ team1: "Legacy" }, 1), { team: "Legacy" });
+  const row = { team1: null, team2: null, flow: { from: [{ short: "L31", words: "Loser of Game 31" }, { short: "W32", words: "Winner of Game 32" }] } };
+  assert.deepEqual(matchupSide(row, 1), { from: "Loser of", game: "Game 31" });
+  assert.deepEqual(matchupSide(row, 2), { from: "Winner of", game: "Game 32" });
+  assert.deepEqual(matchupSide({ team1: null, team1From: "Winner of Game 3" }, 1), { from: "Winner of", game: "Game 3" });
+  assert.deepEqual(matchupSide({}, 2), { pending: "TBD" });
+});
+
+test("opened pill what's next: Game N, Out · place, 2nd, champion", () => {
+  assert.deepEqual(nextStep({ short: "34", next: "34" }, "winner"), { next: "Game 34" });
+  assert.deepEqual(nextStep({ short: "3rd", place: "3rd" }, "loser"), { out: true, place: "3rd" });
+  assert.deepEqual(nextStep({ short: "2nd", place: "2nd" }, "loser"), { place: "2nd" });
+  assert.deepEqual(nextStep({ short: "🏆", place: "🏆" }, "winner"), { champion: true });
+  assert.deepEqual(nextStep({ short: "pool" }, "loser"), { text: "Survivor pool" });
+  assert.equal(nextStep(null, "loser"), null);
 });
