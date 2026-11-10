@@ -135,70 +135,109 @@ test("unique names keep the bare slug", () => {
   assert.equal(pliggas.sharedName, false);
 });
 
-test("Fallen splits into one club per key, and /teams/fallen is the chooser", () => {
+test("Fallen pages group by name, gender and class; /teams/fallen is the chooser", () => {
   const all = identities();
   const fallen = all.filter((t) => t.nameSlug === "fallen");
-  // 6 team rows + 1 unlinked Worlds Coed D registration
-  assert.equal(fallen.length, 7);
+  assert.equal(fallen.length, 5);
   assert.ok(fallen.every((t) => t.sharedName));
 
-  const byId = Object.fromEntries(fallen.map((t) => [t.id, t]));
-  const brooksCoed = byId["aaaaaaaa-1111-4111-8111-111111111111"];
-  const heat = byId["bbbbbbbb-2222-4222-8222-222222222222"];
-  const brooksMens = byId["cccccccc-3333-4333-8333-333333333333"];
-  const tbdMens = byId["dddddddd-4444-4444-8444-444444444444"];
-  const tbdCoed = byId["eeeeeeee-5555-4555-8555-555555555555"];
-  const dotMens = byId["ffffffff-6666-4666-8666-666666666666"];
-  const worldsCoed = fallen.find((t) => t.source === "registration");
+  const bySlug = Object.fromEntries(fallen.map((t) => [t.slug, t]));
+  assert.ok(bySlug["fallen-coed-d"]);
+  assert.ok(bySlug["fallen-coed-e"]);
+  assert.ok(bySlug["fallen-mens-d"]);
+  assert.ok(bySlug["fallen-mens-e"]);
+  assert.ok(bySlug["fallen-coed"]);
 
-  assert.equal(brooksCoed.slug, "fallen-brayden-brooks-coed");
-  assert.equal(brooksMens.slug, "fallen-brayden-brooks-mens");
-  assert.equal(brooksMens.managerName, "Brayden Brooks");
-  assert.ok(heat.slug.endsWith("bbbbbbbb"));
-  assert.ok(tbdMens.slug.endsWith("dddddddd"));
-  assert.ok(tbdCoed.slug.endsWith("eeeeeeee"));
-  assert.ok(dotMens.slug.endsWith("ffffffff"));
-  assert.ok(worldsCoed);
-  assert.equal(worldsCoed.managerName, null);
-  assert.ok(tbdMens.managerName == null);
-  assert.ok(tbdCoed.managerName == null);
+  const coedD = bySlug["fallen-coed-d"];
+  assert.equal(coedD.managerName, "Brayden Brooks");
+  assert.equal(coedD.className, "D");
+  assert.equal(coedD.gender, "coed");
+  assert.equal(
+    new Set(coedD.seats.map((s) => s.tournamentSlug)).size,
+    2,
+    "T-Shirts Coed D and Worlds Coed D share one page"
+  );
+  assert.ok(coedD.aliases.includes("fallen-aaaaaaaa"));
+  assert.ok(coedD.aliases.includes("fallen-brayden-brooks-coed"));
+  // Worlds Coed D was a provisional registration page
+  assert.ok(coedD.aliases.some((a) => a.startsWith("fallen-") && a !== "fallen-coed-d"));
+
+  const mensD = bySlug["fallen-mens-d"];
+  assert.equal(mensD.managerName, "Brayden Brooks");
+  assert.deepEqual(
+    new Set(mensD.seats.map((s) => s.tournamentSlug)),
+    new Set(["2026-t-shirt-tournament", "2026-afa-world-series"])
+  );
+  assert.ok(mensD.aliases.includes("fallen-cccccccc"));
+  assert.ok(mensD.aliases.includes("fallen-brayden-brooks-mens"));
+
+  const mensE = bySlug["fallen-mens-e"];
+  assert.equal(mensE.managerName, null);
+  assert.deepEqual(
+    new Set(mensE.seats.map((s) => s.tournamentSlug)),
+    new Set(["2026-t-shirt-tournament", "2026-afa-world-series"])
+  );
+  assert.ok(mensE.aliases.includes("fallen-dddddddd"));
+  assert.ok(mensE.aliases.includes("fallen-ffffffff"));
+
+  const coedE = bySlug["fallen-coed-e"];
+  assert.equal(coedE.managerName, null);
+  assert.deepEqual(
+    coedE.seats.map((s) => s.tournamentSlug),
+    ["2026-t-shirt-tournament"]
+  );
+
+  const heat = bySlug["fallen-coed"];
+  assert.equal(heat.className, null);
+  assert.equal(heat.gender, "coed");
+  assert.deepEqual(heat.seats.map((s) => s.tournamentSlug), ["2026-coed-heat-stroker"]);
+  assert.ok(heat.aliases.includes("fallen-bbbbbbbb"));
 
   const slugs = new Set(fallen.map((t) => t.slug));
-  assert.equal(slugs.size, 7);
+  assert.equal(slugs.size, 5);
 
-  const chooser = pageForSlug("fallen", { identities: all, poolGames, bracketGames, teamStatusByTournament: {}, classNames: { [CLASS_D]: "D", [CLASS_E]: "E" } });
+  const chooser = pageForSlug("fallen", {
+    identities: all,
+    poolGames,
+    bracketGames,
+    teamStatusByTournament: {},
+    classNames: { [CLASS_D]: "D", [CLASS_E]: "E" },
+  });
   assert.equal(chooser.kind, "chooser");
-  assert.equal(chooser.options.length, 7);
-  assert.ok(chooser.options.every((o) => o.href.startsWith("/teams/fallen-")));
+  assert.equal(chooser.options.length, 5);
+  assert.deepEqual(
+    chooser.options.map((o) => o.slug).sort(),
+    ["fallen-coed", "fallen-coed-d", "fallen-coed-e", "fallen-mens-d", "fallen-mens-e"]
+  );
 });
 
-test("Tbd rows and no-manager rows are not merged", () => {
+test("a no-class Coed team stays on its own page, not Coed D", () => {
   const fallen = identities().filter((t) => t.nameSlug === "fallen");
-  const unmanaged = fallen.filter((t) => !t.managerName);
-  // Heat (no manager), two Tbd, punctuation ".", Worlds Coed D unlinked
-  assert.equal(unmanaged.length, 5);
-  const ids = new Set(unmanaged.map((t) => t.id));
-  assert.equal(ids.size, 5);
+  const heat = fallen.find((t) => t.slug === "fallen-coed");
+  const coedD = fallen.find((t) => t.slug === "fallen-coed-d");
+  assert.ok(heat && coedD);
+  assert.notEqual(heat.id, coedD.id);
+  assert.ok(!heat.seats.some((s) => s.divisionName === "Coed D"));
+  assert.ok(!coedD.seats.some((s) => s.tournamentSlug === "2026-coed-heat-stroker"));
 });
 
-test("each Fallen club only gets its own games, including a pool-parent family", () => {
+test("each Fallen page only gets its own games, including a pool-parent family", () => {
   const all = identities();
-  const byId = Object.fromEntries(all.map((t) => [t.id, t]));
-  const heat = byId["bbbbbbbb-2222-4222-8222-222222222222"];
+  const heat = all.find((t) => t.slug === "fallen-coed");
   const { pool, bracket } = gamesForIdentity(heat, poolGames, bracketGames);
   assert.deepEqual(pool.map((g) => g.id), ["p1"]);
   assert.deepEqual(bracket.map((g) => g.id), ["b-heat-fallen"]);
 
-  const brooksMens = byId["cccccccc-3333-4333-8333-333333333333"];
-  const mens = gamesForIdentity(brooksMens, poolGames, bracketGames);
+  const mensD = all.find((t) => t.slug === "fallen-mens-d");
+  const mens = gamesForIdentity(mensD, poolGames, bracketGames);
   assert.deepEqual(mens.pool.map((g) => g.id), []);
   assert.deepEqual(new Set(mens.bracket.map((g) => g.id)), new Set(["b-shirt-mens-d", "b-worlds-mens-d"]));
 
-  const worldsCoed = all.find((t) => t.source === "registration" && t.nameSlug === "fallen");
-  const wc = gamesForIdentity(worldsCoed, poolGames, bracketGames);
-  assert.deepEqual(wc.bracket.map((g) => g.id), ["b-worlds-coed-d"]);
+  const coedD = all.find((t) => t.slug === "fallen-coed-d");
+  const cd = gamesForIdentity(coedD, poolGames, bracketGames);
+  assert.deepEqual(new Set(cd.bracket.map((g) => g.id)), new Set(["b-shirt-coed-d", "b-worlds-coed-d"]));
 
-  const page = pageForSlug("fallen-brayden-brooks-mens", {
+  const page = pageForSlug("fallen-mens-d", {
     identities: all,
     poolGames,
     bracketGames,
@@ -206,20 +245,45 @@ test("each Fallen club only gets its own games, including a pool-parent family",
     classNames: { [CLASS_D]: "D", [CLASS_E]: "E" },
   });
   assert.equal(page.kind, "team");
+  assert.equal(page.slug, "fallen-mens-d");
   assert.equal(page.managerName, "Brayden Brooks");
   assert.equal(page.tournamentCount, 2);
   const gameIds = page.identities[0].tournaments.flatMap((c) => c.games.map((g) => g.id));
   assert.deepEqual(new Set(gameIds), new Set(["b-shirt-mens-d", "b-worlds-mens-d"]));
 });
 
-test("short-key aliases still resolve to the same club", () => {
+test("old short-id and manager slugs alias to the new readable page", () => {
   const all = identities();
-  const ident = all.find((t) => t.id === "aaaaaaaa-1111-4111-8111-111111111111");
-  assert.ok(ident.aliases.includes("fallen-aaaaaaaa"));
-  const viaAlias = pageForSlug("fallen-aaaaaaaa", { identities: all, poolGames, bracketGames, teamStatusByTournament: {}, classNames: {} });
-  const viaCanon = pageForSlug(ident.slug, { identities: all, poolGames, bracketGames, teamStatusByTournament: {}, classNames: {} });
-  assert.equal(viaAlias.kind, "team");
-  assert.equal(viaAlias.slug, viaCanon.slug);
+  const viaOldManager = pageForSlug("fallen-brayden-brooks-coed", {
+    identities: all,
+    poolGames,
+    bracketGames,
+    teamStatusByTournament: {},
+    classNames: { [CLASS_D]: "D" },
+  });
+  const viaShort = pageForSlug("fallen-aaaaaaaa", {
+    identities: all,
+    poolGames,
+    bracketGames,
+    teamStatusByTournament: {},
+    classNames: { [CLASS_D]: "D" },
+  });
+  const viaCanon = pageForSlug("fallen-coed-d", {
+    identities: all,
+    poolGames,
+    bracketGames,
+    teamStatusByTournament: {},
+    classNames: { [CLASS_D]: "D" },
+  });
+  assert.equal(viaOldManager.kind, "team");
+  assert.equal(viaOldManager.slug, "fallen-coed-d");
+  assert.equal(viaShort.slug, "fallen-coed-d");
+  assert.equal(viaCanon.slug, "fallen-coed-d");
+  const gameIds = new Set(
+    viaOldManager.identities[0].tournaments.flatMap((c) => c.games.map((g) => g.id))
+  );
+  assert.ok(gameIds.has("b-shirt-coed-d"));
+  assert.ok(gameIds.has("b-worlds-coed-d"));
 });
 
 test("links from a division go to that club, not the chooser", () => {
@@ -227,16 +291,24 @@ test("links from a division go to that club, not the chooser", () => {
   const hrefMap = buildHrefMap(all, divisions);
   assert.equal(
     teamPageHref("Fallen", { divisionId: "div-shirt-mens-d", hrefMap }),
-    "/teams/fallen-brayden-brooks-mens"
+    "/teams/fallen-mens-d"
+  );
+  assert.equal(
+    teamPageHref("Fallen", { divisionId: "div-worlds-mens-e", hrefMap }),
+    "/teams/fallen-mens-e"
   );
   assert.equal(
     teamPageHref("Fallen", { divisionId: "div-heat-silver", hrefMap }),
-    "/teams/fallen-bbbbbbbb"
+    "/teams/fallen-coed"
   );
   // Pool parent is in the same family as the Silver registration.
   assert.equal(
     teamPageHref("Fallen", { divisionId: heatParent, hrefMap }),
-    "/teams/fallen-bbbbbbbb"
+    "/teams/fallen-coed"
+  );
+  assert.equal(
+    teamPageHref("Fallen", { divisionId: "div-worlds-coed-d", hrefMap }),
+    "/teams/fallen-coed-d"
   );
   // Name only, shared: the chooser.
   assert.equal(teamPageHref("Fallen", { hrefMap }), "/teams/fallen");
@@ -267,12 +339,14 @@ test("a unique team page payload is unchanged in shape", () => {
   assert.ok(!games.includes("p1"), "must not pick up Fallen's pool game");
 });
 
-test("assignPageSlugs: one manager, unique, keeps manager slug", () => {
+test("assignPageSlugs uses gender and class, not the manager", () => {
   const rows = [
-    { id: "11111111-1111-4111-8111-111111111111", name: "Gloveworks", managerName: "Raylee Perry", gender: "womens" },
-    { id: "22222222-2222-4222-8222-222222222222", name: "Gloveworks", managerName: null, gender: "coed" },
+    { id: "11111111-1111-4111-8111-111111111111", name: "Gloveworks", managerName: "Raylee Perry", gender: "womens", className: "Rec" },
+    { id: "22222222-2222-4222-8222-222222222222", name: "Gloveworks", managerName: null, gender: "coed", className: "E" },
   ];
   assignPageSlugs(rows);
-  assert.equal(rows[0].slug, "gloveworks-raylee-perry");
-  assert.equal(rows[1].slug, "gloveworks-22222222");
+  assert.equal(rows[0].slug, "gloveworks-womens-rec");
+  assert.equal(rows[1].slug, "gloveworks-coed-e");
+  assert.ok(rows[0].aliases.includes("gloveworks-raylee-perry-womens"));
+  assert.ok(rows[0].aliases.includes("gloveworks-11111111"));
 });

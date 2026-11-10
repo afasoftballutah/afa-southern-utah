@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getTeamPageBySlug } from "@/lib/team-page-data";
 import { formatDateRange } from "@/lib/data";
@@ -54,6 +54,12 @@ export default async function TeamPage({ params }) {
   const { slug } = await params;
   const page = await getTeamPageBySlug(slug);
   if (!page) notFound();
+
+  // Old manager / short-id slugs from the first version of this work
+  // resolve to the same club; send them on to the readable URL.
+  if (page.kind === "team" && page.slug && page.slug !== slug) {
+    redirect(`/teams/${page.slug}`);
+  }
 
   if (page.kind === "chooser") {
     return <ChooserPage page={page} />;
