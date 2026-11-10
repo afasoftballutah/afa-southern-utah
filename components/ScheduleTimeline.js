@@ -39,7 +39,7 @@ function Star({ className }) {
 function Corner({ pos, x, gold }) {
   if (!x) return null;
   const chip = x.place ? (
-    <span className={`tl-corner-place${gold ? " is-gold" : ""}`}>{x.place}</span>
+    <span className={`tl-corner-place${gold ? " is-gold" : ""}${x.place === "🏆" ? " is-cup" : ""}`}>{x.place}</span>
   ) : null;
   const next = x.next ? (x.place ? `/${x.next}` : `→${x.next}`) : null;
   const plain = !x.place && !x.next ? x.short : null;

@@ -152,4 +152,7 @@ test("finishing places in the corners are bold italic text, not boxed; next game
   assert.match(rule, /font-weight: 700/);
   assert.match(rule, /font-style: italic/);
   assert.doesNotMatch(rule, /border/);
+  // The trophy stays upright.
+  assert.match(src, /x\.place === "🏆" \? " is-cup"/);
+  assert.match(/\.tl-corner-place\.is-cup \{([^}]*)\}/.exec(css)?.[1] ?? "", /font-style: normal/);
 });
