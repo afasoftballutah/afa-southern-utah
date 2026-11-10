@@ -12,7 +12,7 @@ import {
   gameTitle,
   matchupSide,
   nextStep,
-  sheetSubtitle,
+  bracketPill,
 } from "@/lib/schedule-timeline";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
@@ -113,7 +113,7 @@ function CloseIcon() {
 
 function NextValue({ step }) {
   if (!step) return <span className="tl-next__value is-muted">—</span>;
-  if (step.champion) return <span className="tl-next__value">Champion <span className="tl-cup">🏆</span></span>;
+  if (step.champion) return <span className="tl-next__value tl-cup" aria-label="Champion">🏆</span>;
   if (step.out) {
     return (
       <span className="tl-next__value">
@@ -121,15 +121,15 @@ function NextValue({ step }) {
       </span>
     );
   }
-  if (step.place) return <span className="tl-next__value"><span className="tl-corner-place">{step.place}</span> place</span>;
+  if (step.place) return <span className="tl-next__value"><span className="tl-corner-place">{step.place}</span></span>;
   if (step.next) return <span className="tl-next__value"><span aria-hidden="true" className="tl-next__arrow">→</span> {step.next}</span>;
   return <span className="tl-next__value">{step.text}</span>;
 }
 
-// The opened pill, top to bottom (JD, 2026-11-09: "really that whole card
-// is not organized"): 1 header — division, Game N, bracket · status;
-// 2 matchup — two scoreboard rows; 3 what's next; 4 time and field;
-// 5 the bracket link. Same card as a popover and a phone sheet.
+// The opened pill, top to bottom (JD, 2026-11-09): one row of pills —
+// division, W/L (or ★ Final), Game N; the matchup scoreboard; where the
+// loser (left) and winner (right) go, like the pill's bottom corners; time
+// and field; the bracket link. Same card as a popover and a phone sheet.
 function Details({ game, slug, sheet, anchor, onClose }) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
@@ -149,6 +149,7 @@ function Details({ game, slug, sheet, anchor, onClose }) {
   const winnerStep = nextStep(game.flow?.winner, "winner");
   const loserStep = nextStep(game.flow?.loser, "loser");
   const title = gameTitle(game.label);
+  const side = bracketPill(game);
 
   // Beside the pill on a wide screen, clamped inside the window; kept
   // there while the page or a lane scrolls.
@@ -185,13 +186,15 @@ function Details({ game, slug, sheet, anchor, onClose }) {
       className={`tl-pop tl-tone-${tone}${sheet ? " is-sheet" : ""}`}
       style={sheet ? undefined : pos ? { left: pos.left, top: pos.top } : { visibility: "hidden" }}
     >
-      <header className="tl-sec tl-pop__head">
-        <div className="tl-pop__heading">
+      <header className="tl-pop__head">
+        <div className="tl-pop__pills">
           <span className="tl-tag">{game.divisionName}</span>
-          <h3 className="tl-pop__title">{title}</h3>
-          <p className={`tl-pop__sub${game.bracketSide === "final" || game.bracketSide === "if" ? " is-gold" : ""}`}>
-            {sheetSubtitle(game)}
-          </p>
+          {side ? (
+            <span className={`tl-tag tl-tag--side${side.gold ? " is-gold" : ""}`} title={side.label} aria-label={side.label}>
+              {side.text}
+            </span>
+          ) : null}
+          <span className="tl-tag tl-tag--game">{title}</span>
         </div>
         <button type="button" className="tl-pop__close" aria-label="Close" onClick={onClose}>
           <CloseIcon />
@@ -223,33 +226,28 @@ function Details({ game, slug, sheet, anchor, onClose }) {
       </section>
 
       {rule || winnerStep || loserStep ? (
-        <section className="tl-sec" aria-label="What's next">
-          <h4 className="tl-sec__label">What&rsquo;s next</h4>
-          {rule ? (
-            <p className="tl-next__rule">{rule}</p>
-          ) : (
-            <dl className="tl-next">
-              <div>
-                <dt>Winner</dt>
-                <dd><NextValue step={winnerStep} /></dd>
-              </div>
-              <div>
-                <dt>Loser</dt>
-                <dd><NextValue step={loserStep} /></dd>
-              </div>
-            </dl>
-          )}
+        <section className="tl-sec tl-sec--tight" aria-label="Where the teams go">
+          <dl className="tl-next">
+            <div>
+              <dt>Loser</dt>
+              <dd><NextValue step={loserStep} /></dd>
+            </div>
+            <div className="tl-next__right">
+              <dt>Winner</dt>
+              <dd><NextValue step={winnerStep} /></dd>
+            </div>
+          </dl>
+          {rule ? <p className="tl-next__rule">{rule}</p> : null}
         </section>
       ) : null}
 
-      <section className="tl-sec" aria-label="Time and field">
-        <h4 className="tl-sec__label">When &amp; where</h4>
+      <section className="tl-sec tl-sec--tight" aria-label="Time and field">
         <dl className="tl-next">
           <div>
             <dt>Time</dt>
             <dd>{game.timeLabel}</dd>
           </div>
-          <div>
+          <div className="tl-next__right">
             <dt>Field</dt>
             <dd>{game.fieldName}</dd>
           </div>

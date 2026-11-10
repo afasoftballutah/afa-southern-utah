@@ -7,7 +7,7 @@ import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
-import { gameTitle, sheetSubtitle, matchupSide, nextStep } from "@/lib/schedule-timeline";
+import { gameTitle, bracketPill, matchupSide, nextStep } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
 
@@ -158,12 +158,14 @@ test("finishing places in the corners are bold italic text, not boxed; next game
   assert.match(/\.tl-corner-place\.is-cup \{([^}]*)\}/.exec(css)?.[1] ?? "", /font-style: normal/);
 });
 
-test("opened pill: Game N title and a bracket · status subtitle", () => {
+test("opened pill: Game N and a short bracket pill, no status word", () => {
   assert.equal(gameTitle("G33"), "Game 33");
   assert.equal(gameTitle("Pool A"), "Pool A");
-  assert.equal(sheetSubtitle({ bracketSide: "losers", status: "pending" }), "Losers bracket · Scheduled");
-  assert.equal(sheetSubtitle({ bracketSide: "final", status: "final", isFinal: true }), "Championship · Final");
-  assert.equal(sheetSubtitle({ bracketSide: "if" }), "If necessary · Scheduled");
+  assert.equal(bracketPill({ bracketSide: "losers" }).text, "L");
+  assert.equal(bracketPill({ bracketSide: "winners" }).text, "W");
+  assert.deepEqual(bracketPill({ bracketSide: "final" }), { text: "★ Final", label: "Championship", gold: true });
+  assert.equal(bracketPill({ bracketSide: "if" }).text, "★ If nec.");
+  assert.equal(bracketPill({}), null);
 });
 
 test("opened pill matchup: a known team, else the game it waits on as 'Loser of' + 'Game 31'", () => {
