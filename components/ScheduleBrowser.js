@@ -110,6 +110,8 @@ function GameRow({ row, mode }) {
       caption={caption}
       team1={row.team1}
       team2={row.team2}
+      team1From={row.team1From}
+      team2From={row.team2From}
       score1={row.score1}
       score2={row.score2}
       isFinal={row.isFinal}

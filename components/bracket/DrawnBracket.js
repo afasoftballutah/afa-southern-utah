@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Matchup from "@/components/ui/Matchup";
+import { sourceLabeler, sourceLabelsFor } from "@/lib/slot-label";
 import BracketMatchup from "@/components/bracket/BracketMatchup";
 import { useHighlightTeam } from "@/components/bracket/HighlightTeamContext";
 import { teamNextGame } from "@/lib/team-games";
@@ -875,6 +876,8 @@ function OutcomeTag({ children, color }) {
 // same as the schedule and pool pages.
 function FallbackList({ games }) {
   const timeZone = useTimeZone();
+  // An empty slot reads "Winner G9" from its source game, not TBD.
+  const labelSource = sourceLabeler(games);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {(games ?? []).map((g) => (
@@ -883,6 +886,7 @@ function FallbackList({ games }) {
           caption={fullCaption(g, timeZone)}
           team1={g.team1_name}
           team2={g.team2_name}
+          {...sourceLabelsFor(g, labelSource)}
           score1={g.team1_score}
           score2={g.team2_score}
           isFinal={g.status === "final"}

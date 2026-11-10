@@ -215,6 +215,8 @@ function TournamentCard({ card }) {
                 division={g.divisionName}
                 team1={g.team1}
                 team2={g.team2}
+                team1From={g.team1From}
+                team2From={g.team2From}
                 score1={g.score1}
                 score2={g.score2}
                 isFinal={g.isFinal}
