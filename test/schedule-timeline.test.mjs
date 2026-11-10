@@ -311,4 +311,7 @@ test("open game: dotted arrows and dotted rings for where the teams came from, g
   assert.match(css, /\.tl-arrow--dotted \{[^}]*stroke-dasharray/);
   assert.match(css, /\.tl-pill\.is-src-win \{[^}]*dotted #22c55e/);
   assert.match(css, /\.tl-pill\.is-src-lose \{[^}]*dotted #ef4444/);
+  // phone: room under the page so a last-day game can be lifted clear of the sheet
+  assert.match(src, /classList\.add\("tl-sheet-open"\)/);
+  assert.match(css, /body\.tl-sheet-open \{ padding-bottom: 70vh; \}/);
 });

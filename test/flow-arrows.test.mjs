@@ -212,3 +212,13 @@ test("an off-screen feeder gets a short stub pointing into the open game's left 
   assert.ok(Math.hypot(stub.end.x - stub.base.x, stub.end.y - stub.base.y) < 0.01, "drawn into the pill");
   for (let i = 0; i < 3; i++) for (let j = 0; j < i; j++) assert.ok(!polylinesCross(out[i].pts, out[j].pts));
 });
+
+test("open game at the lane's left edge: an off-screen feeder still gets a stub, slanting into the top", () => {
+  const view = { left: 0, top: 0, right: 92 * 3, bottom: 52 * 6 };
+  const from = { left: 4, top: 52 + 4, right: 88, bottom: 52 + 48 }; // no room on the left
+  const out = planArrows({ from, arrows: [{ role: "winner", dir: "in", toward: { x: 0, y: 78 }, reach: (s, u) => Math.min(46, u.x < 0 ? (s.x - view.left) / -u.x : 46, u.y < 0 ? (s.y - view.top) / -u.y : 46) }], box: view });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].kind, "stub");
+  assert.ok(Math.abs(out[0].end.y - (from.top - 3)) < 0.01, "lands on the top side");
+  assert.ok(out[0].u.y < 0 && out[0].u.x < 0, "comes in from up and to the left, toward the feeder");
+});

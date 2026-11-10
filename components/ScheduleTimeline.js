@@ -389,7 +389,10 @@ function reveal(el, dest, feeders = []) {
       let dx = 0;
       if (right > sr.right - 8) dx = right - (sr.right - 8);
       if (left - dx < minLeft && right - (left - minLeft) <= sr.right - 8) dx = left - minLeft;
-      if (fr.left - dx < minLeft) dx = fr.left - minLeft;
+      // Feeders that don't fit still need room for their short stubs on
+      // the open game's left.
+      const stubRoom = feeders.length && left - dx < minLeft ? 64 : 0;
+      if (fr.left - dx < minLeft + stubRoom) dx = fr.left - minLeft - stubRoom;
       if (dx) scroller.scrollBy({ left: dx, behavior: "smooth" });
     }
     // On a phone: lift the page so the game AND its same-day destinations
@@ -487,6 +490,12 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
       }
       // Each arrow gets its own anchors, chosen so the two never cross.
       const planned = planArrows({ from: rect(fromEl), arrows: wanted, obstacles, box });
+      // The hour labels along the top: a stub's name must not print over one.
+      const hourText = [...scroller.querySelectorAll(".tl-hour")].map((h) => {
+        const rg = document.createRange();
+        rg.selectNodeContents(h);
+        return rect(rg);
+      });
       const out = [];
       planned.forEach((a, i) => {
         const { key } = a;
@@ -498,7 +507,7 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
         }
         const label = dotted ? labels?.from?.[key] ?? null : labels?.[a.role] ?? null;
         // Beside the stub, clear of every pill's number and the other arrows.
-        const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl)];
+        const pillsInView = [...obstacles, ...destEls.map(rect), rect(fromEl), ...hourText];
         const stub = dotted ? { start: a.base, tip: a.tip, u: a.u } : a;
         const at = label
           ? placeLabel(label, stub, { pills: pillsInView, avoid: planned.filter((b, j) => j !== i).map((b) => b.pts), box })
@@ -513,11 +522,22 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
       };
       const named = out.filter((q) => q.label);
       for (const q of named) if (q.at.y > box.bottom) q.at = { ...q.at, y: box.bottom };
+      // Up or down, whichever keeps it nearer its own arrow's tip.
+      const tipOf = (q) => {
+        const m = /L(-?[\d.]+),(-?[\d.]+)$/.exec(q.d) ?? /^M(-?[\d.]+),(-?[\d.]+)/.exec(q.d);
+        return m ? { x: +m[1], y: +m[2] } : q.at;
+      };
       for (let i = 0; i < named.length; i++) {
         for (let j = 0; j < i; j++) {
           const a = span(named[j]);
           const b = span(named[i]);
-          if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 + 2 && b.y0 < a.y1 + 2) named[i].at = { ...named[i].at, y: Math.min(a.y0, b.y0) - 3 };
+          if (!(a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 + 2 && b.y0 < a.y1 + 2)) continue;
+          const tip = named[i].dotted ? /^M(-?[\d.]+),(-?[\d.]+)/.exec(named[i].d) : null;
+          const t = tip ? { x: +tip[1], y: +tip[2] } : tipOf(named[i]);
+          const up = Math.min(a.y0, b.y0) - 3;
+          const down = Math.max(a.y1, b.y1) + 13;
+          const useUp = down > box.bottom || Math.abs(up - 4 - t.y) <= Math.abs(down - 4 - t.y);
+          named[i].at = { ...named[i].at, y: useUp ? up : down };
         }
       }
       setPaths(out);
@@ -624,6 +644,14 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     if (id === nextId) out.push("is-next");
     return out.join(" ");
   };
+
+  // Phone sheet open: room under the page, so a game on the last day's lower
+  // rows can still be lifted clear of the sheet (the page ran out of scroll).
+  useEffect(() => {
+    if (!openId || !sheet) return undefined;
+    document.body.classList.add("tl-sheet-open");
+    return () => document.body.classList.remove("tl-sheet-open");
+  }, [openId, sheet]);
 
   useEffect(() => {
     const mq = window.matchMedia(PHONE_SHEET_QUERY);
