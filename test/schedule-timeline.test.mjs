@@ -7,7 +7,7 @@ import {
   buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
-import { gameTitle, bracketPill, matchupSide, nextStep, pillScore, gameNumberIndex, gameIdByTitle, flowTargets } from "@/lib/schedule-timeline";
+import { gameTitle, bracketPill, matchupSide, nextStep, pillScore, gameNumberIndex, gameIdByTitle, flowTargets, compactTime, whereWhen } from "@/lib/schedule-timeline";
 import { shouldRefreshOnReturn, RETURN_REFRESH_AFTER_MS } from "@/lib/refresh-on-return";
 import { tickerItem } from "@/lib/score-ticker";
 
@@ -190,6 +190,35 @@ test("card game links: feeders, destinations and If Game are links; team names a
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(css, /\.tl-link \{[^}]*cursor: pointer/);
   assert.match(css, /\.tl-link:focus-visible/);
+});
+
+test("times drop :00 on the hour, keep other minutes", () => {
+  assert.equal(compactTime("Thu 4:00 PM PST"), "Thu 4 PM PST");
+  assert.equal(compactTime("Fri 10:00 AM"), "Fri 10 AM");
+  assert.equal(compactTime("Thu 4:30 PM PST"), "Thu 4:30 PM PST");
+  assert.equal(compactTime("Sat 12:05 PM"), "Sat 12:05 PM");
+  assert.equal(compactTime(null), null);
+});
+
+test("next-game line: day, time without zone, full field name; nothing without both", () => {
+  assert.equal(whereWhen({ timeLabel: "Thu 4:00 PM PST", field: "H3" }), "Thu 4 PM \u00b7 Hunter F3");
+  assert.equal(whereWhen({ timeLabel: "Fri 9:30 AM PST", field: "P-F1" }), "Fri 9:30 AM \u00b7 Pioneer F1");
+  assert.equal(whereWhen({ timeLabel: "Sat 1:00 PM", field: "P2" }), "Sat 1 PM \u00b7 Pioneer F2");
+  assert.equal(whereWhen({ timeLabel: null, field: "H1" }), null);
+  assert.equal(whereWhen({ timeLabel: "Thu 4:00 PM PST", field: null }), null);
+  assert.equal(whereWhen(undefined), null);
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  assert.match(src, /loserStep\?\.next && where\?\.loser/, "loser line only for a real next game (not Out)");
+  assert.match(src, /winnerStep\?\.next && where\?\.winner/);
+  assert.match(src, /where\?\.ifGame/);
+  // in brackets, red under the loser and green under the winner, like the arrows
+  assert.match(src, /tl-next__where--loser">\{`\(\$\{where\.loser\}\)`\}/);
+  assert.match(src, /tl-next__where--winner">\{`\(\$\{where\.winner\}\)`\}/);
+  assert.match(src, /\{` \(\$\{where\.ifGame\}\)`\}/);
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.tl-next dd\.tl-next__where--loser \{ color: #dc2626; \}/);
+  assert.match(css, /\.tl-next dd\.tl-next__where--winner \{ color: #15803d; \}/);
+  assert.match(src, /<dd>\{compactTime\(game\.timeLabel\)\}<\/dd>/, "card Time row drops :00");
 });
 
 test("ticker item: division + game, both sides with scores, winner marked", () => {

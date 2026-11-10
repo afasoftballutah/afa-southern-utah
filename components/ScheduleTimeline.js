@@ -19,6 +19,8 @@ import {
   pillScore,
   gameNumberIndex,
   gameIdByTitle,
+  compactTime,
+  whereWhen,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { placeClear, unionRect } from "@/lib/popover-place";
@@ -167,7 +169,7 @@ function NextValue({ step, go }) {
 // division, W/L (or ★ Final), Game N; the matchup scoreboard; where the
 // loser (left) and winner (right) go, like the pill's bottom corners; time
 // and field; the bracket link. Same card as a popover and a phone sheet.
-function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null }) {
+function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, where = null }) {
   const ref = useRef(null);
   const scrolled = useRef(false);
   const [pos, setPos] = useState(null);
@@ -294,15 +296,18 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null }) 
             <div>
               <dt>Loser</dt>
               <dd><NextValue step={loserStep} go={go} /></dd>
+              {loserStep?.next && where?.loser ? <dd className="tl-next__where tl-next__where--loser">{`(${where.loser})`}</dd> : null}
             </div>
             <div className="tl-next__right">
               <dt>Winner</dt>
               <dd><NextValue step={winnerStep} go={go} /></dd>
+              {winnerStep?.next && where?.winner ? <dd className="tl-next__where tl-next__where--winner">{`(${where.winner})`}</dd> : null}
             </div>
           </dl>
           {ifGame ? (
             <p className="tl-next__rule" title={rule ?? undefined}>
               If <GameLink title={`Game ${ifGame}`} go={go} />
+              {where?.ifGame ? <span className="tl-next__where">{` (${where.ifGame})`}</span> : null}
             </p>
           ) : null}
         </section>
@@ -312,7 +317,7 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null }) 
         <dl className="tl-next">
           <div>
             <dt>Time</dt>
-            <dd>{game.timeLabel}</dd>
+            <dd>{compactTime(game.timeLabel)}</dd>
           </div>
           <div className="tl-next__right">
             <dt>Field</dt>
@@ -627,6 +632,14 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   // Follow a "Game 17" on the open card: bring its pill (on whatever day)
   // into view and open it, exactly as if it had been tapped.
   const byNumber = useMemo(() => gameNumberIndex(rows), [rows]);
+  // Day, time and field of where the open game's teams play next.
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
+  const whereNext = (g) => {
+    const t = targets.get(g.id);
+    const at = (id) => (id ? whereWhen(rowById.get(id)) : null);
+    const ifId = g.flow?.ifGame ? gameIdByTitle(byNumber, g.divisionId, g.flow.ifGame) : null;
+    return { winner: at(t?.winner), loser: at(t?.loser), ifGame: at(ifId) };
+  };
   const openGame = (id) => {
     const el = pills.current.get(id);
     if (!el) return;
@@ -714,6 +727,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                             avoid={[dest?.winner, dest?.loser].filter(Boolean).join(" ")}
                             onClose={() => close(true)}
                             go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
+                            where={whereNext(g)}
                           />
                         ) : null}
                       </span>
