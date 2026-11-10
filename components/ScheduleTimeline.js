@@ -21,6 +21,23 @@ import {
 // the open game is remembered by id, not by position.
 
 const HOUR_PX = 76;
+
+// Championship mark (JD, 2026-11-09: "a star instead of dot"). Decorative;
+// the pill's aria-label already says "Championship" / "If-necessary game".
+function Star({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" width="10" height="10" aria-hidden="true" focusable="false">
+      <path
+        d="M10 1.6l2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"
+        fill="#d4a72c"
+        stroke="#fff"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        paintOrder="stroke"
+      />
+    </svg>
+  );
+}
 const PILL_GAP = 4;
 
 function Pill({ game, open, onToggle, pillRef }) {
@@ -45,6 +62,7 @@ function Pill({ game, open, onToggle, pillRef }) {
       onClick={(e) => onToggle(game.id, e.currentTarget)}
     >
       {game.label ?? "Game"}
+      {side === "final" || side === "if" ? <Star className="tl-star" /> : null}
     </button>
   );
 }
@@ -205,10 +223,14 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug 
         ))}
       </div>
       <ul className="tl-key" aria-label="Pill styles">
-        <li><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
-        <li><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
-        <li><span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true" />Final</li>
-        <li><span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true" />If necessary</li>
+        <li className="tl-key__winners"><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
+        <li className="tl-key__losers"><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
+        <li className="tl-key__final">
+          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-star" /></span>Final
+        </li>
+        <li className="tl-key__final">
+          <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-star" /></span>If necessary
+        </li>
       </ul>
 
       {days.map((day) => (
