@@ -89,3 +89,18 @@ test("timeline: TBD only with no source; a fed slot names its game", () => {
   assert.deepEqual(sideLabel({}, 1), { text: "TBD", known: false });
   assert.deepEqual(matchupSide({ team1From: "Loser of Game 2" }, 1), { from: "Loser of", game: "Game 2" });
 });
+
+test("schedule page finder: a waiting opponent reads Winner G2 with its day, time and field (Coed E Oddballs)", async () => {
+  const { scheduleFinderGames } = await import("../lib/schedule-finder.js");
+  const [g] = scheduleFinderGames(
+    [{ id: "g6", divisionId: "coed-e", divisionName: "Coed E", scheduledTime: "2026-11-15T01:00:00Z",
+       field: "Hunter F2", team1: null, team2: "Oddballs", team1From: "Winner of Game 2", team2From: null,
+       timeLabel: "Sat 5 PM PST", isFinal: false }],
+    "America/Los_Angeles"
+  );
+  assert.equal(slotLabel(g.team1, g.team1From), "Winner G2");
+  assert.deepEqual(g.whenShort, { day: "Sat", time: "5 PM PST" });
+  assert.equal(g.field, "Hunter F2");
+  assert.equal(g.when, "2026-11-15T01:00:00Z");
+  assert.match(src("app/tournaments/[slug]/schedule/page.js"), /scheduleFinderGames\(rows, timeZone\)/);
+});
