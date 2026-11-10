@@ -7,6 +7,8 @@ import DirectorTable from "./DirectorTable";
 import ConfirmDialog from "./ConfirmDialog";
 import { LEAGUE_TZ, formatFieldTime } from "@/lib/bracket/tree";
 import { mootIfRounds } from "@/lib/bracket/if-game";
+import { feedSlotLabeler } from "@/lib/bracket/for-drawn-bracket";
+import { slotLabel } from "@/lib/slot-label";
 
 // Every game in a division, one line each.
 //
@@ -90,6 +92,11 @@ export default function ScoreTable({
   // game anybody is waiting to play, and offering two score boxes for it says
   // otherwise (JD, 2026-07-28: "thats an if game that never was needed").
   const moot = kind === "bracket" ? mootIfRounds(list) : new Set();
+  // An empty bracket slot names the game it waits on ("Winner G9"), the
+  // same words the public schedule uses; TBD only when nothing feeds it.
+  const fromLabel = kind === "bracket" ? feedSlotLabeler(list) : () => null;
+  const slotOf = (g, side) =>
+    slotLabel(g[`${side}_name`], fromLabel(g[`${side}_source_game_id`], g[`${side}_source_result`]));
 
   const rows = list.map((g) => {
     const final = g.status === "final";
@@ -124,10 +131,10 @@ export default function ScoreTable({
         when: timeLabel(g.scheduled_time, timeZone),
         field: fieldLabel(g.field),
         team1: (
-          <span className={won1 ? "font-semibold text-afa-navy" : ""}>{g.team1_name || "TBD"}</span>
+          <span className={won1 ? "font-semibold text-afa-navy" : ""}>{slotOf(g, "team1")}</span>
         ),
         team2: (
-          <span className={won2 ? "font-semibold text-afa-navy" : ""}>{g.team2_name || "TBD"}</span>
+          <span className={won2 ? "font-semibold text-afa-navy" : ""}>{slotOf(g, "team2")}</span>
         ),
         score: notNeeded ? (
           <span className="t-meta">not needed</span>

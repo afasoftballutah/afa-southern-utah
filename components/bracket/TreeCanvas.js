@@ -9,7 +9,7 @@ import {
   computeChampion,
   isGf2Dashed,
   assignGameNumbers,
-  slotDisplay,
+  slotWords,
   formatFieldTime,
 } from "@/lib/bracket/tree";
 import { loserAlwaysZeroTwo, alwaysZeroTwoLoserNumbers } from "@/lib/bracket/lives";
@@ -121,8 +121,8 @@ function MatchCell({
     const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
     pills = <TeamPill {...common} text={name} weightClass="font-bold" score={null} won={false} />;
   } else {
-    const t1 = slotDisplay(game, "team1", numberByGameId, gamesById);
-    const t2 = slotDisplay(game, "team2", numberByGameId, gamesById);
+    const t1 = slotWords(game, "team1", numberByGameId, gamesById);
+    const t2 = slotWords(game, "team2", numberByGameId, gamesById);
     const w1 = game.winner_slot === "team1";
     const w2 = game.winner_slot === "team2";
     pills = (
@@ -135,7 +135,7 @@ function MatchCell({
 
   const poolLabel =
     loserToPool && paperNum != null
-      ? `L${paperNum} → survivor pool`
+      ? `Loser G${paperNum} → survivor pool`
       : loserToPool
         ? "Loser → survivor pool"
         : null;
@@ -147,7 +147,7 @@ function MatchCell({
       title={
         game.is_bye
           ? undefined
-          : `${slotDisplay(game, "team1", numberByGameId, gamesById).text} vs ${slotDisplay(game, "team2", numberByGameId, gamesById).text}${
+          : `${slotWords(game, "team1", numberByGameId, gamesById).text} vs ${slotWords(game, "team2", numberByGameId, gamesById).text}${
               poolLabel ? ` · ${poolLabel}` : ""
             }`
       }
@@ -573,7 +573,7 @@ export default function TreeCanvas({
           <span className="font-bold text-afa-navy">Survivor pool</span>
           <span className="text-afa-ink/60"> — loser is always 0–2 (any field size): </span>
           <span className="font-semibold tabular-nums text-afa-navy">
-            {poolFeederNums.map((n) => `L${n}`).join(", ")}
+            {poolFeederNums.map((n) => `Loser G${n}`).join(", ")}
           </span>
           <span className="text-afa-ink/60">
             {" "}

@@ -1,4 +1,4 @@
-import { splitSides, isGf2Dashed, slotText } from "@/lib/bracket/tree";
+import { splitSides, isGf2Dashed, assignGameNumbers, slotWords } from "@/lib/bracket/tree";
 import FeedAwareName from "@/components/ui/FeedAwareName";
 
 const SIDE_LABELS = { winners: "Winners", losers: "Losers", final: "Final" };
@@ -14,6 +14,11 @@ function roundLabel(_side, round) {
  * buttons. Stays the phone default per spec. */
 export default function ListView({ games }) {
   const { winners, losers, final } = splitSides(games);
+  // Same paper numbers and words as the tree beside it: an empty slot reads
+  // "Winner G5" / "Loser G3", not an em-dash.
+  const numberByGameId = assignGameNumbers(games ?? []);
+  const gamesById = new Map((games ?? []).map((g) => [g.id, g]));
+  const slot = (g, side) => slotWords(g, side, numberByGameId, gamesById).text;
   const sides = [
     { name: "winners", rounds: winners },
     { name: "losers", rounds: losers },
@@ -32,7 +37,7 @@ export default function ListView({ games }) {
                   <p className="text-xs font-semibold text-afa-ink/50 mt-2 mb-1">{roundLabel(side.name, round)}</p>
                   <div className="space-y-1.5">
                     {roundGames.map((g) => (
-                      <GameLine key={g.id} game={g} dashed={side.name === "final" && round === 2 && isGf2Dashed(final[0])} />
+                      <GameLine key={g.id} game={g} slot={slot} dashed={side.name === "final" && round === 2 && isGf2Dashed(final[0])} />
                     ))}
                   </div>
                 </div>
@@ -48,14 +53,14 @@ function groupFinal(finalGames) {
   return finalGames.map((g) => ({ round: g.round, games: [g] }));
 }
 
-function GameLine({ game, dashed }) {
+function GameLine({ game, slot, dashed }) {
   const pending = game.status === "pending";
   if (game.is_bye) {
     const name = game.winner_slot ? game[`${game.winner_slot}_name`] : game.team1_name || game.team2_name;
     return <p className="text-sm font-bold text-afa-ink">{name} — bye</p>;
   }
-  const t1 = slotText(game.team1_name, game.team1_is_open_entry);
-  const t2 = slotText(game.team2_name, game.team2_is_open_entry);
+  const t1 = slot(game, "team1");
+  const t2 = slot(game, "team2");
   return (
     <p className={`text-sm ${dashed ? "border border-dashed border-afa-navy/40 rounded px-2 py-1 inline-block" : ""}`}>
       <span className={game.winner_slot === "team1" ? "font-bold" : ""}>
