@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
+import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { formatFieldTime } from "@/lib/bracket/tree";
 import { tournamentTimeZone, zoneLabel } from "@/lib/zone";
 import ScheduleBrowser from "@/components/ScheduleBrowser";
@@ -39,7 +40,10 @@ export default async function SchedulePage({ params }) {
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
-  const rawRows = await getTournamentSchedule(slug);
+  const [rawRows, teamPageHrefs] = await Promise.all([
+    getTournamentSchedule(slug),
+    getTeamPageHrefMap(),
+  ]);
   // Server hands the client caption PARTS, not a pre-built string
   // (dispatch-brief-16) — ScheduleBrowser composes the right caption per
   // view (By field drops the field name since it's the row heading; By
@@ -119,6 +123,7 @@ export default async function SchedulePage({ params }) {
           timeZone={timeZone}
           zoneShort={zoneShort}
           slug={slug}
+          teamPageHrefs={teamPageHrefs}
         />
       )}
     </div>

@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getTeamPageBySlug, formatDateRange } from "@/lib/data";
+import { getTeamPageBySlug } from "@/lib/team-page-data";
+import { formatDateRange } from "@/lib/data";
 import { LEAGUE_TZ, gameWhenShort } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
 import MatchupCard from "@/components/ui/MatchupCard";
 import { shortField } from "@/lib/venues";
+import { identityLabel } from "@/lib/teams";
 
 export const revalidate = 30;
 
@@ -16,10 +18,36 @@ function whenParts(scheduledTime, timeZone) {
 
 const fieldShort = (f) => shortField(f);
 
+function seatSummary(seats) {
+  const labels = [];
+  const seen = new Set();
+  for (const s of seats ?? []) {
+    const label = s.divisionName || identityLabel(s.gender, s.className);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
+}
+
+function tournamentNames(seats) {
+  const names = [];
+  const seen = new Set();
+  for (const s of seats ?? []) {
+    const key = s.tournamentId || s.tournamentName;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (s.tournamentName) names.push(s.tournamentName);
+  }
+  return names;
+}
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const page = await getTeamPageBySlug(slug);
-  return { title: page ? `${page.name} — AFA Southern Utah` : "Team" };
+  if (!page) return { title: "Team" };
+  if (page.kind === "chooser") return { title: `${page.name} teams — AFA Southern Utah` };
+  return { title: `${page.name} — AFA Southern Utah` };
 }
 
 export default async function TeamPage({ params }) {
@@ -27,8 +55,52 @@ export default async function TeamPage({ params }) {
   const page = await getTeamPageBySlug(slug);
   if (!page) notFound();
 
-  const multi = page.identities.length > 1;
+  if (page.kind === "chooser") {
+    return <ChooserPage page={page} />;
+  }
 
+  const subtitle = [
+    page.label,
+    page.managerName,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <div className="mx-auto max-w-lg space-y-6">
+      <div>
+        <p className="t-meta">
+          {page.sharedName ? (
+            <Link href={`/teams/${page.nameSlug}`} className="btn-transient">
+              ← All {page.name} teams
+            </Link>
+          ) : (
+            <Link href="/tournaments" className="btn-transient">
+              ← Tournaments
+            </Link>
+          )}
+        </p>
+        <h1 className="team-name mt-1 text-3xl font-bold uppercase tracking-wide text-afa-navy">
+          {page.name}
+        </h1>
+        {page.sharedName && subtitle && <p className="t-body mt-1">{subtitle}</p>}
+        <p className="t-body mt-1">
+          {page.tournamentCount} {page.tournamentCount === 1 ? "tournament" : "tournaments"}
+          {" \u00b7 "}
+          {page.totalW}&ndash;{page.totalL}
+        </p>
+      </div>
+
+      {page.identities.map((identity) => (
+        <section key={identity.key ?? identity.label ?? "one"} className="space-y-3">
+          {identity.tournaments.map((card) => (
+            <TournamentCard key={card.tournament?.id ?? card.stage} card={card} />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function ChooserPage({ page }) {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
@@ -40,36 +112,41 @@ export default async function TeamPage({ params }) {
         <h1 className="team-name mt-1 text-3xl font-bold uppercase tracking-wide text-afa-navy">
           {page.name}
         </h1>
-        {!multi && (
-          <p className="t-body mt-1">
-            {page.tournamentCount} {page.tournamentCount === 1 ? "tournament" : "tournaments"}
-            {" \u00b7 "}
-            {page.totalW}&ndash;{page.totalL}
-          </p>
-        )}
+        <p className="t-body mt-1">
+          {page.options.length} teams share this name. Pick one.
+        </p>
       </div>
 
-      {page.identities.map((identity) => (
-        <section key={identity.key ?? identity.label ?? "one"} className="space-y-3">
-          {multi && (
-            <div>
-              <h2 className="t-heading">
-                {identity.label ?? "Team"}
-              </h2>
-              <p className="t-body">
-                {identity.tournaments.length}{" "}
-                {identity.tournaments.length === 1 ? "tournament" : "tournaments"}
-                {" \u00b7 "}
-                {identity.totalW}&ndash;{identity.totalL}
-              </p>
-            </div>
-          )}
-
-          {identity.tournaments.map((card) => (
-            <TournamentCard key={card.tournament?.id ?? card.stage} card={card} />
-          ))}
-        </section>
-      ))}
+      <div className="space-y-3">
+        {page.options.map((opt) => {
+          const divisions = seatSummary(opt.seats);
+          const events = tournamentNames(opt.seats);
+          const count = opt.tournamentCount;
+          return (
+            <Link
+              key={opt.id}
+              href={opt.href}
+              className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-afa-navy/40"
+            >
+              <Card className="space-y-1">
+                <p className="team-name font-display text-lg text-afa-navy">
+                  {opt.name}
+                </p>
+                <p className="t-body">
+                  {[opt.label, opt.managerName].filter(Boolean).join(" · ") || "Team"}
+                </p>
+                {divisions.length > 0 && !opt.label && (
+                  <p className="t-meta">{divisions.join(" · ")}</p>
+                )}
+                <p className="t-meta">
+                  {count} {count === 1 ? "tournament" : "tournaments"}
+                  {events.length ? ` · ${events.join(", ")}` : ""}
+                </p>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

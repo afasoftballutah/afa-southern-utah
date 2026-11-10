@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Card from "@/components/ui/Card";
-import { teamSlug } from "@/lib/teams";
+import { teamPageHref } from "@/lib/team-page";
 
 // The archive face of a finished tournament — one column per bracket, podium
 // first, photos only when a director uploaded them. Lives above the schedule,
@@ -31,7 +31,7 @@ function TeamRow({ row, href }) {
   );
 }
 
-function DivisionColumn({ column, slug }) {
+function DivisionColumn({ column, slug, teamPageHrefs = null }) {
   const standingsHref = `/tournaments/${slug}/division/${column.divisionId}`;
   return (
     <div className="min-w-0 space-y-1">
@@ -41,7 +41,7 @@ function DivisionColumn({ column, slug }) {
           <TeamRow
             key={`${row.place}-${row.team}`}
             row={row}
-            href={`/teams/${teamSlug(row.team)}`}
+            href={teamPageHref(row.team, { divisionId: column.divisionId, hrefMap: teamPageHrefs })}
           />
         ))}
       </div>
@@ -67,7 +67,7 @@ function DivisionColumn({ column, slug }) {
   );
 }
 
-export default function TournamentResults({ results = [], slug, unfinished = false, compact = false }) {
+export default function TournamentResults({ results = [], slug, unfinished = false, compact = false, teamPageHrefs = null }) {
   if (!results.length) return null;
   return (
     <Card className="space-y-4">
@@ -87,7 +87,7 @@ export default function TournamentResults({ results = [], slug, unfinished = fal
         }`}
       >
         {results.map((column) => (
-          <DivisionColumn key={column.divisionId + column.divisionName} column={column} slug={slug} />
+          <DivisionColumn key={column.divisionId + column.divisionName} column={column} slug={slug} teamPageHrefs={teamPageHrefs} />
         ))}
       </div>
     </Card>

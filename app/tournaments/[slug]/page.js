@@ -21,6 +21,7 @@ import Poster from "@/components/ui/Poster";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import TournamentResults from "@/components/TournamentResults";
+import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import TournamentRules from "@/components/TournamentRules";
 import TournamentTeamEntry from "@/components/TournamentTeamEntry";
 import { groupDivisionsByGender } from "@/lib/division-layout";
@@ -156,9 +157,10 @@ export default async function TournamentDetailPage({ params }) {
     );
   }
 
-  const [teamSummariesRaw, registeredTeams] = await Promise.all([
+  const [teamSummariesRaw, registeredTeams, teamPageHrefs] = await Promise.all([
     getTeamSummaries(tournament),
     listTournamentTeams(tournament),
+    getTeamPageHrefMap(),
   ]);
   const teamSummaries = mergeTeamSummaries(teamSummariesRaw, registeredTeams);
   const finished = isTournamentFinished(tournament);
@@ -299,6 +301,7 @@ export default async function TournamentDetailPage({ params }) {
         <TournamentResults
           results={tournamentResults}
           slug={tournament.slug}
+          teamPageHrefs={teamPageHrefs}
         />
       ) : null}
 

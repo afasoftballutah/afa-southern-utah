@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
-import { teamSlug } from "@/lib/teams";
+import { teamPageHref } from "@/lib/team-page";
 import Chip from "@/components/ui/Chip";
 import FeedAwareName from "@/components/ui/FeedAwareName";
 import { readMe, writeMe } from "@/lib/me";
@@ -58,6 +58,7 @@ export default function TeamFinder({
   // The schedule's timeline lights the team's games itself, so the list
   // under the picker would only repeat them and push the timeline down.
   showGames = true,
+  teamPageHrefs = null,
 }) {
   // Teams arrive as names (one division's page) or as { name, divisionId,
   // divisionName } (the schedule, which spans divisions).
@@ -252,7 +253,7 @@ export default function TeamFinder({
             opens the select (spec-team-pages.md step 3). */}
         {selected && (
           <Link
-            href={`/teams/${teamSlug(selected)}`}
+            href={teamPageHref(selected, { divisionId: pick?.divisionId, hrefMap: teamPageHrefs })}
             className="t-meta shrink-0 whitespace-nowrap text-afa-navy underline decoration-afa-navy/30 underline-offset-2"
           >
             Team page
