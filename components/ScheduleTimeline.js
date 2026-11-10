@@ -629,8 +629,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       <ul className="tl-key" aria-label="Pill styles">
         <li className="tl-key__winners"><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
         <li className="tl-key__losers"><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
+        <li className="tl-key__done">
+          <span className="tl-key__swatch tl-key__swatch--done" aria-hidden="true" />
+          <span className="tl-key__swatch tl-key__swatch--done-losers" aria-hidden="true" />Final
+        </li>
         <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Final
+          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Championship
         </li>
         <li className="tl-key__final">
           <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>If necessary

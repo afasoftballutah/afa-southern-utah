@@ -151,6 +151,11 @@ test("finished pill shows its score, winner's runs first; nothing until final wi
   assert.match(src, /tl-pill__gno/, "game number stays on the pill");
   const data = readFileSync(new URL("../lib/data.js", import.meta.url), "utf8");
   assert.match(data, /winnerSlot: g\.winner_slot/, "schedule rows carry winner_slot");
+  // Finished reads the same in both brackets: solid fill; losers keep a white inner ring.
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.tl-pill\.tl-side-losers\.is-final,\s*\.tl-pill\.tl-side-if\.is-final \{ background: var\(--tone-solid\); color: #fff; \}/);
+  assert.match(css, /\.tl-pill\.tl-side-losers\.is-final \{ box-shadow: inset 0 0 0 2px/);
+  assert.ok(!/\.tl-pill\.tl-side-losers\.is-final \{ background: var\(--tone-bg\)/.test(css), "finished losers are not pale");
 });
 
 test("ticker item: division + game, both sides with scores, winner marked", () => {
