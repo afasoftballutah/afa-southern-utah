@@ -2,6 +2,7 @@
 
 import { SIDE_LABELS } from "@/lib/bracket/side";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   buildTimeline,
@@ -203,7 +204,11 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
     };
   }, [place, sheet]);
 
-  return (
+  // Portal to <body>: the pill lives inside the horizontally scrolling
+  // .tl-scroll, and iOS Safari keeps a position:fixed descendant of an
+  // overflow scroller inside that scroller's box, so the "sheet" sat in the
+  // day card, flush with its borders. From <body> it is fixed to the screen.
+  return createPortal(
     <div
       ref={ref}
       id={`tl-pop-${game.id}`}
@@ -287,7 +292,8 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose }) {
           </Link>
         </footer>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -435,14 +441,36 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
         if (reach < 14) continue;
         const tip = { x: start.x + u.x * reach, y: start.y + u.y * reach };
         const across = Math.abs(u.x) >= Math.abs(u.y);
+        const label = labels?.[role] ?? null;
+        const at = across
+          ? { x: tip.x - u.x * 4, y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "end" : "start" }
+          : { x: tip.x + (side < 0 ? 7 : -7), y: tip.y + u.y * 4 + 4, anchor: side < 0 ? "start" : "end" };
+        // Keep the name on screen: flip it to the other side of the stub
+        // when it would run past the panel edge.
+        const w = (label?.length ?? 0) * 6.5;
+        if (at.anchor === "start" && at.x + w > box.right) at.anchor = "end";
+        else if (at.anchor === "end" && at.x - w < box.left) at.anchor = "start";
         out.push({
           role,
           d: `M${start.x.toFixed(1)},${start.y.toFixed(1)} L${tip.x.toFixed(1)},${tip.y.toFixed(1)}`,
-          label: labels?.[role] ?? null,
-          at: across
-            ? { x: tip.x - u.x * 4, y: tip.y + (side < 0 ? -9 : 15), anchor: u.x > 0 ? "end" : "start" }
-            : { x: tip.x + (side < 0 ? 7 : -7), y: tip.y + u.y * 4 + 4, anchor: side < 0 ? "start" : "end" },
+          label,
+          at,
         });
+      }
+      // Two names side by side would print over each other: lift the loser's.
+      const span = (q) => {
+        const w = q.label.length * 6.5;
+        const x0 = q.at.anchor === "end" ? q.at.x - w : q.at.anchor === "middle" ? q.at.x - w / 2 : q.at.x;
+        return { x0, x1: x0 + w, y0: q.at.y - 10, y1: q.at.y };
+      };
+      const named = out.filter((q) => q.label);
+      for (const q of named) if (q.at.y > box.bottom) q.at = { ...q.at, y: box.bottom };
+      if (named.length === 2) {
+        const [a, b] = named.map(span);
+        if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 + 2 && b.y0 < a.y1 + 2) {
+          const loser = named.find((q) => q.role === "loser");
+          loser.at = { ...loser.at, y: Math.min(a.y0, b.y0) - 3 };
+        }
       }
       setPaths(out);
     };
@@ -487,6 +515,9 @@ function FlowArrows({ fromEl, winnerId, loserId, labels }) {
   );
 }
 
+// Phones get the bottom sheet: narrow screens, plus touch phones held sideways.
+export const PHONE_SHEET_QUERY = "(max-width: 639px), (pointer: coarse) and (max-height: 500px)";
+
 export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null }) {
   const { days, unplaced } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
@@ -528,7 +559,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   };
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
+    const mq = window.matchMedia(PHONE_SHEET_QUERY);
     const sync = () => setSheet(mq.matches);
     sync();
     mq.addEventListener("change", sync);
