@@ -1,4 +1,6 @@
 import { Fragment } from "react";
+import TournamentTicker from "@/components/TournamentTicker";
+import RefreshOnReturn from "@/components/RefreshOnReturn";
 import { notFound } from "next/navigation";
 import {
   getTeamSummaries,
@@ -214,6 +216,8 @@ export default async function TournamentDetailPage({ params }) {
 
   return (
     <div className="space-y-6">
+      <RefreshOnReturn />
+      <TournamentTicker divisionIds={divisions.map((d) => d.id)} />
       <Poster
         posterUrl={isRealPoster(tournament) ? tournament.poster_url : null}
         name={tournament.name}

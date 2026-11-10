@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
 import { formatFieldTime } from "@/lib/bracket/tree";
-import { tournamentTimeZone } from "@/lib/zone";
+import { tournamentTimeZone, zoneLabel } from "@/lib/zone";
 import ScheduleBrowser from "@/components/ScheduleBrowser";
+import TournamentTicker from "@/components/TournamentTicker";
+import RefreshOnReturn from "@/components/RefreshOnReturn";
 
 export const revalidate = 30;
 
@@ -74,8 +76,15 @@ export default async function SchedulePage({ params }) {
     isFinal: row.isFinal,
   }));
 
+  // The timeline's hour axis is labelled with the zone ("PST"); league
+  // time (Mountain) carries no label anywhere, so neither does this.
+  const zoneShort = rows[0]?.scheduledTime ? zoneLabel(rows[0].scheduledTime, timeZone) : "";
+  const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
+
   return (
     <div className="space-y-6">
+      <RefreshOnReturn />
+      <TournamentTicker divisionIds={divisionIds} />
       <Link
         href={`/tournaments/${slug}`}
         className="text-sm text-afa-navy underline min-h-11 inline-flex items-center"
@@ -96,6 +105,9 @@ export default async function SchedulePage({ params }) {
           finderTeams={finderTeams}
           finderGames={finderGames}
           storageKey={`afa-team-${slug}`}
+          timeZone={timeZone}
+          zoneShort={zoneShort}
+          slug={slug}
         />
       )}
     </div>

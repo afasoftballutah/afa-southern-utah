@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import TournamentTicker from "@/components/TournamentTicker";
+import RefreshOnReturn from "@/components/RefreshOnReturn";
 import Link from "next/link";
 import {
   getDivisionById,
@@ -531,6 +533,8 @@ export default async function DivisionPage({ params }) {
   return (
     <TimeZoneProvider timeZone={timeZone}>
     <div className="space-y-4">
+      <RefreshOnReturn />
+      <TournamentTicker divisionIds={allDivisions.map((d) => d.id)} />
       {/* Where you are and how to get back, on ONE line (JD, 2026-07-26).
           A back link, then a centred title on its own row, cost most of a
           phone screen before anything worth reading appeared. The arrow

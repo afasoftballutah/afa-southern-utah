@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
+import ScheduleTimeline from "@/components/ScheduleTimeline";
 
 // By field | By time toggle (dispatch-brief-16) — same localStorage-via-
 // useSyncExternalStore pattern as the Tournaments page toggle
@@ -208,10 +209,20 @@ function ByTimeView({ rows }) {
  * thing on it. `storageKey` is tournament-scoped so a pick here shares
  * memory with the division page's own TeamFinder.
  */
-export default function ScheduleBrowser({ rows, finderTeams, finderGames, storageKey }) {
+export default function ScheduleBrowser({
+  rows,
+  finderTeams,
+  finderGames,
+  storageKey,
+  timeZone = null,
+  zoneShort = "",
+  slug = null,
+}) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
-  const view = explicitView ?? (storedView === "time" ? "time" : "field");
+  const view =
+    explicitView ??
+    (storedView === "time" || (storedView === "timeline" && timeZone) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
 
   function choose(next) {
@@ -250,9 +261,23 @@ export default function ScheduleBrowser({ rows, finderTeams, finderGames, storag
         >
           By time
         </button>
+        {timeZone ? (
+          <>
+            <span className="text-afa-ink/30">|</span>
+            <button
+              type="button"
+              onClick={() => choose("timeline")}
+              className={`font-semibold ${view === "timeline" ? "text-afa-navy underline" : "text-afa-ink/50"}`}
+            >
+              Timeline
+            </button>
+          </>
+        ) : null}
       </div>
 
-      {view === "field" ? (
+      {view === "timeline" ? (
+        <ScheduleTimeline rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} />
+      ) : view === "field" ? (
         <ByFieldView rows={rows} expandedFields={expandedFields} onToggleField={toggleField} />
       ) : (
         <ByTimeView rows={rows} />
