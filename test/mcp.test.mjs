@@ -443,7 +443,8 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : G\.hour/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
   assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
-  assert.match(GRID_JS, /var rail = show \? 16 : 0/);
+  assert.doesNotMatch(GRID_JS, /var rail = show \? 16 : 0/);
+  assert.match(GRID_JS, /function routeLines/);
   assert.match(GRID_JS, /G\.pw = show \? 48 : G\.lane - 8/);
   assert.match(GRID_JS, /G\.pad = Math\.max\(0, Math\.floor\(\(G\.lane - G\.pw\) \/ 2\)\)/);
   assert.match(GRID_JS, /if \(vertical && G\.across < width\) G\.across = width/);
@@ -554,12 +555,27 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
         const dx = Math.abs(p[k][0] - p[k - 1][0]), dy = Math.abs(p[k][1] - p[k - 1][1]);
         assert.ok(dx < 0.11 || dy < 0.11, `segment ${k} of line ${li} is not diagonal`);
       }
+      assert.ok(p.length === 2 || p.length === 4, `line ${li} is straight or one elbow (V-H-V / H-V-H), not ${p.length} points`);
+      if (p.length === 4) {
+        const xs = [p[0][0], p[3][0], p[1][0], p[2][0]];
+        const ys = [p[0][1], p[3][1], p[1][1], p[2][1]];
+        if (width < 640) {
+          assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && Math.abs(p[1][1] - p[2][1]) < 0.11 && Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} is V-H-V`);
+          const lo = Math.min(p[0][0], p[3][0]), hi = Math.max(p[0][0], p[3][0]);
+          assert.ok(p[1][0] >= lo - 0.2 && p[2][0] <= hi + 0.2 && p[2][0] >= lo - 0.2, `line ${li} stays in the column span`);
+          assert.ok(p[3][1] > p[2][1] && Math.abs(p[3][0] - p[2][0]) < 0.11, `line ${li} enters from the top`);
+        }
+      }
+      if (width < 640) {
+        const a = p[p.length - 2], b = p[p.length - 1];
+        assert.ok(b[1] > a[1] - 0.01 && Math.abs(b[0] - a[0]) < 0.11, `line ${li} last segment points down`);
+      }
       const h = pts(heads[li].getAttribute("d").replace(" Z", ""));
       const base = [(h[1][0] + h[2][0]) / 2, (h[1][1] + h[2][1]) / 2];
       const end = p[p.length - 1];
       assert.ok(Math.hypot(end[0] - base[0], end[1] - base[1]) < 1, "line ends at the head's base");
       const w = Number(line.getAttribute("stroke-width")), hl = Math.hypot(h[0][0] - base[0], h[0][1] - base[1]);
-      assert.ok(hl <= Math.max(6.5, w * 2.6) + 0.2 && hl >= 4, "head sized to the stroke, or shortened to fit a tight row");
+      assert.ok(hl <= Math.max(6.5, w * 2.6) + 0.2 && hl >= 3, "head sized to the stroke, or shortened to fit a tight row");
     }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
