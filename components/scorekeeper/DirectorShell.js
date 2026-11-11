@@ -25,20 +25,22 @@ export default function DirectorShell({
   printHref = null,
   children,
   action,
+  /** One tight header row: title + Print + Back, for the phone scorekeeper. */
+  compact = false,
 }) {
   const showSectionBack = Boolean(back) && back !== "/director";
 
   return (
-    <div className="space-y-3 director-desk">
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 print:block">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 min-w-0">
+    <div className={"director-desk" + (compact ? " director-desk--compact" : " space-y-3")}>
+      <div className={"flex items-center justify-between print:block " + (compact ? "flex-nowrap gap-x-2" : "flex-wrap gap-x-5 gap-y-2")}>
+        <div className={"flex items-baseline min-w-0 " + (compact ? "gap-x-2" : "flex-wrap gap-x-4 gap-y-1")}>
           <h1 className="t-title">{title}</h1>
           {count != null && (
             <span className="t-meta whitespace-nowrap">{count}</span>
           )}
           {inline}
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0 print:hidden">
+        <div className={"flex items-center shrink-0 print:hidden " + (compact ? "gap-1.5" : "flex-wrap gap-2")}>
           <span
             id={DIRECTOR_ADD_SLOT_ID}
             className="inline-flex items-center"

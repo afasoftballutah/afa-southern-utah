@@ -86,6 +86,7 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
   const zone = tournamentZoneLabel(selected);
   return (
     <DirectorShell
+      compact
       title={selected.name}
       back="/scorekeeper"
       inline={zone ? <span className="sk-zone">{zone}</span> : null}
