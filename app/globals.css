@@ -564,10 +564,18 @@ body:has(.scorekeeper-scope) {
   gap: 0.3rem;
 }
 .sk-game {
+  /* Idle tiles, arrow column, and the reserved score width (two
+     active tiles plus the gap between them). */
+  --sk-tile: 2.5rem; /* 40px */
+  --sk-spin: 1.25rem; /* 20px */
+  --sk-tile-active: calc(var(--sk-tile) + var(--sk-spin)); /* 60px */
+  --sk-score-gap: 0.125rem; /* 2px between the two tiles */
+  --sk-score-width: calc(var(--sk-tile-active) * 2 + var(--sk-score-gap));
+  --sk-name-gap: 0.375rem; /* 6px between steppers and names */
   position: relative;
   display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) auto minmax(0, 1fr);
-  column-gap: 0.2rem;
+  grid-template-columns: 4.25rem minmax(0, 1fr) var(--sk-score-width) minmax(0, 1fr);
+  column-gap: var(--sk-name-gap);
   align-items: center;
   min-height: 62px;
   padding: 0.25rem 0.4rem 0.25rem 0.25rem;
@@ -580,7 +588,9 @@ body:has(.scorekeeper-scope) {
   opacity: 0.82;
 }
 .sk-game.is-active {
-  padding-bottom: 2.15rem;
+  /* Confirm hangs under the tiles; margin, not padding, so the
+     names stay in the same place as the idle row. */
+  margin-bottom: 1.6rem;
 }
 .sk-mark {
   grid-column: 1;
@@ -657,17 +667,13 @@ body:has(.scorekeeper-scope) {
   min-width: 0;
   max-height: 2.4em;
   overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
   font-size: 0.75rem;
   line-height: 1.2;
   color: var(--afa-ink);
   overflow-wrap: normal;
   word-break: normal;
-  hyphens: auto;
+  hyphens: none;
+  text-overflow: clip;
   align-self: center;
 }
 .sk-game__team.is-won {
@@ -688,21 +694,27 @@ body:has(.scorekeeper-scope) {
   grid-column: 3;
   grid-row: 1;
   position: relative;
-  width: max-content;
+  /* Always the active width so the name columns do not shrink
+     when the steppers appear. */
+  box-sizing: border-box;
+  width: var(--sk-score-width);
+  min-width: var(--sk-score-width);
   align-self: center;
+  display: flex;
+  justify-content: center;
 }
 .sk-score {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: var(--sk-score-gap);
 }
 .sk-score__tile {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
+  width: var(--sk-tile);
   height: 2.75rem;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--afa-navy) 28%, transparent);
@@ -716,7 +728,7 @@ body:has(.scorekeeper-scope) {
   border-color: transparent;
 }
 .sk-score__tile.is-active {
-  width: 4.25rem;
+  width: var(--sk-tile-active);
   justify-content: stretch;
 }
 .sk-score__input,
@@ -745,8 +757,8 @@ body:has(.scorekeeper-scope) {
 .sk-score__tile.is-active .sk-score__input,
 .sk-score__tile.is-active .sk-score__input:focus,
 .sk-score__tile.is-active .sk-score__input:focus-visible {
-  width: 2.5rem;
-  flex: 1 1 2.5rem;
+  width: var(--sk-tile);
+  flex: 1 1 var(--sk-tile);
   text-align: center;
 }
 .sk-score__input::-webkit-outer-spin-button,
@@ -763,8 +775,8 @@ body:has(.scorekeeper-scope) {
 }
 .sk-score__spin {
   box-sizing: border-box;
-  flex: 0 0 1.5rem;
-  width: 1.5rem;
+  flex: 0 0 var(--sk-spin);
+  width: var(--sk-spin);
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -773,8 +785,8 @@ body:has(.scorekeeper-scope) {
 button.sk-score__step:not(.pill) {
   box-sizing: border-box;
   flex: 1 1 50%;
-  width: 1.5rem;
-  min-width: 1.5rem;
+  width: var(--sk-spin);
+  min-width: var(--sk-spin);
   height: auto;
   min-height: 0;
   max-height: none;
