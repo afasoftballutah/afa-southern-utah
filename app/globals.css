@@ -3497,36 +3497,40 @@ button:not(.pill) {
 .tl { display: flex; flex-direction: column; gap: 0.75rem; color: var(--tl-ink); }
 .tl-day + .tl-day { margin-top: 0.5rem; }
 /* Men / Women / Coed in small gray type, then their chips, then "?"
-   (JD, 2026-11-10: the letters looked like divisions). Groups never
-   split across lines (flex: 0 0 auto). At 390px, Coed wraps to a second
-   line; Men and Women stay on the first with the "?". */
-.tl-head { display: flex; align-items: flex-start; gap: 0.4rem; }
+   (JD, 2026-11-10: the letters looked like divisions). Tight enough to
+   stay on one line at 390px and 375px. Groups never split (flex: 0 0
+   auto); they wrap only below 360px. */
+.tl-head { display: flex; align-items: flex-start; gap: 0.25rem; }
 .tl-legend {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.55rem;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 0.35rem 0.15rem;
   flex: 1; min-width: 0;
   font-size: 0.75rem; color: var(--tl-label);
 }
-.tl-legend__group { display: inline-flex; align-items: center; gap: 0.2rem; flex: 0 0 auto; }
+@media (max-width: 359.98px) {
+  .tl-legend { flex-wrap: wrap; }
+}
+.tl-legend__group { display: inline-flex; align-items: center; gap: 0; flex: 0 0 auto; }
 .tl-legend__group-name {
   font-size: 0.625rem; font-weight: 500; color: var(--tl-label);
-  line-height: 1; margin-right: 0.35rem;
+  line-height: 1; margin-right: 6px;
 }
-.tl-legend__items { display: inline-flex; gap: 0.2rem; }
+.tl-legend__ball { flex: 0 0 auto; width: 9px; height: 9px; display: block; }
+.tl-legend__items { display: inline-flex; gap: 0.125rem; }
 .tl-legend__chip {
-  min-width: 1.4rem; padding: 0.08rem 0.35rem; border-radius: 999px; text-align: center;
+  min-width: 1.25rem; padding: 0.08rem 0.22rem; border-radius: 999px; text-align: center;
   background: var(--tone-bg); color: var(--tone-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-solid) 35%, transparent);
   font-size: 0.6875rem; font-weight: 600;
 }
 /* button:not(.pill) { min-height: 44px } is (0,1,2); beat it so the "?"
-   stays a 28px circle, with a ::after hit area for the thumb. */
+   stays a 24px circle, with a ::after hit area for the thumb. */
 button.tl-help__btn:not(.pill) {
-  position: relative; flex: 0 0 auto; width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0;
+  position: relative; flex: 0 0 auto; width: 1.5rem; height: 1.5rem; min-height: 0; padding: 0;
   display: inline-grid; place-items: center; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--tl-ink) 16%, transparent);
   background: #fff; color: var(--tl-label);
-  font-size: 0.875rem; font-weight: 650; line-height: 1; cursor: pointer;
+  font-size: 0.8125rem; font-weight: 650; line-height: 1; cursor: pointer;
 }
-button.tl-help__btn:not(.pill)::after { content: ""; position: absolute; inset: -0.5rem; }
+button.tl-help__btn:not(.pill)::after { content: ""; position: absolute; inset: -0.625rem; }
 button.tl-help__btn:not(.pill):hover, button.tl-help__btn:not(.pill)[aria-expanded="true"] {
   color: var(--tl-ink); border-color: color-mix(in srgb, var(--tl-ink) 35%, transparent);
 }

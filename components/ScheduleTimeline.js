@@ -1,7 +1,7 @@
 "use client";
 
 import { SIDE_LABELS } from "@/lib/bracket/side";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { planArrows, visiblePart, aimAt, placeLabel } from "@/lib/flow-arrows";
 import Link from "next/link";
@@ -42,6 +42,18 @@ function Star({ className }) {
   return (
     <svg className={className} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
       <path d="M10 1.2l2.7 5.5 6 .9-4.35 4.25 1.03 6L10 15l-5.38 2.85 1.03-6L1.3 7.6l6-.9z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// A tiny softball between gender groups (JD, 2026-11-10). Two curved
+// seams, drawn bold enough to read at 9px; decorative only.
+function SoftballMark() {
+  return (
+    <svg className="tl-legend__ball" viewBox="0 0 16 16" width="9" height="9" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="7.1" fill="#c9de4a" stroke="#8ea12e" strokeWidth="0.9" />
+      <path d="M3.2 4.1c3.1 1.8 3.1 6 0 7.8" fill="none" stroke="#c13b32" strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M12.8 4.1c-3.1 1.8-3.1 6 0 7.8" fill="none" stroke="#c13b32" strokeWidth="1.55" strokeLinecap="round" />
     </svg>
   );
 }
@@ -872,18 +884,21 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       <div className="tl-head">
         <div className="tl-legend" role="list" aria-label="Divisions">
           {legend.map((g, gi) => (
-            <div key={g.group ?? `other-${gi}`} className="tl-legend__group" role="listitem" aria-label={g.group ?? undefined}>
-              {g.short || g.group ? (
-                <span className="tl-legend__group-name" aria-hidden={Boolean(g.short)}>{g.short ?? g.group}</span>
-              ) : null}
-              <ul className="tl-legend__items">
-                {g.items.map((d) => (
-                  <li key={d.name} className={`tl-legend__chip tl-tone-${d.tone}`} aria-label={d.name}>
-                    {d.short}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Fragment key={g.group ?? `other-${gi}`}>
+              {gi > 0 ? <SoftballMark /> : null}
+              <div className="tl-legend__group" role="listitem" aria-label={g.group ?? undefined}>
+                {g.short || g.group ? (
+                  <span className="tl-legend__group-name" aria-hidden={Boolean(g.short)}>{g.short ?? g.group}</span>
+                ) : null}
+                <ul className="tl-legend__items">
+                  {g.items.map((d) => (
+                    <li key={d.name} className={`tl-legend__chip tl-tone-${d.tone}`} aria-label={d.name}>
+                      {d.short}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Fragment>
           ))}
         </div>
         <TimelineHelp sheet={sheet} />

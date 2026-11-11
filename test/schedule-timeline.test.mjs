@@ -273,16 +273,23 @@ test("timeline header: M/W/C chips on one line, explainers behind a help button"
   assert.match(nameRule, /font-size: 0\.625rem/, "labels smaller than the chips");
   assert.match(nameRule, /font-weight: 500/, "labels lighter than the chips");
   assert.match(nameRule, /color: var\(--tl-label\)/, "labels are gray, not chip-colored");
-  assert.match(nameRule, /margin-right: 0\.35rem/, "visible space after Men, Women, Coed");
+  assert.match(nameRule, /margin-right: 6px/, "visible space after Men, Women, Coed");
   assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "a group never splits across lines");
-  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: wrap/, "wraps by group on a narrow phone");
+  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: nowrap/, "one line at 390 / 375");
+  assert.match(css, /@media \(max-width: 359\.98px\) \{\s*\.tl-legend \{ flex-wrap: wrap; \}/, "wraps by group only under 360px");
   const groups = divisionLegendGroups([
     { divisionName: "Men's D" }, { divisionName: "Women's D" }, { divisionName: "Coed D" },
   ]);
   assert.deepEqual(groups.map((g) => g.short), ["Men", "Women", "Coed"]);
   assert.match(css, /\.tl-help\.is-sheet \{[^}]*safe-area-inset-bottom/);
   assert.match(css, /\.tl-help \{[^}]*position: fixed/);
-  assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*min-height: 0/, "help button stays a small circle");
+  assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*width: 1\.5rem; height: 1\.5rem; min-height: 0/, "help button is a 24px circle");
+  assert.match(src, /function SoftballMark/);
+  assert.match(src, /gi > 0 \? <SoftballMark \/> : null/, "a ball between groups, not at the ends");
+  assert.match(src, /className="tl-legend__ball"[^>]*aria-hidden="true"/);
+  assert.match(css, /\.tl-legend__ball \{[^}]*width: 9px/);
+
+  assert.match(css, /\.tl-legend__chip \{[^}]*font-size: 0\.6875rem/, "chip text stays 11px");
 });
 
 test("finishing places in the corners are bold italic text, not boxed; next games stay plain", () => {
