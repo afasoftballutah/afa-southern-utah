@@ -245,8 +245,8 @@ test("legend groups by gender so Men's / Women's is written once", () => {
     { divisionName: "Coed D" }, { divisionName: "Gold" },
   ]);
   assert.deepEqual(groups.map((g) => [g.group, g.short, g.items.map((d) => d.short)]), [
-    ["Men's", "M", ["D", "E"]],
-    ["Women's", "W", ["D", "E", "Rec"]],
+    ["Men's", "Men", ["D", "E"]],
+    ["Women's", "Women", ["D", "E", "Rec"]],
     ["Coed", "Coed", ["D", "Rec"]],
     [null, null, ["Gold"]],
   ]);
@@ -257,7 +257,7 @@ test("legend groups by gender so Men's / Women's is written once", () => {
 test("timeline header: M/W/C chips on one line, explainers behind a help button", () => {
   const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(src, /g\.short \?\? g\.group/, "chips show M, W, Coed");
+  assert.match(src, /g\.short \?\? g\.group/, "chips show Men, Women, Coed");
   assert.match(src, /function TimelineHelp/);
   assert.match(src, /aria-label="How to read the timeline"/);
   assert.match(src, /e\.key === "Escape"/);
@@ -269,12 +269,17 @@ test("timeline header: M/W/C chips on one line, explainers behind a help button"
   assert.ok(!src.includes("Games {team.name} could still play"), "no could-still-play annotation");
   assert.ok(!src.includes("Corners:"), "no Corners explainer on the header");
   assert.ok(!/tl-key/.test(css), "old key styles are gone");
-  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: nowrap/, "chips stay on one line");
-  assert.match(css, /\.tl-legend__group-name \{[^}]*margin-right: 0\.35rem/, "visible space after M, W, Coed");
+  const nameRule = /\.tl-legend__group-name \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(nameRule, /font-size: 0\.625rem/, "labels smaller than the chips");
+  assert.match(nameRule, /font-weight: 500/, "labels lighter than the chips");
+  assert.match(nameRule, /color: var\(--tl-label\)/, "labels are gray, not chip-colored");
+  assert.match(nameRule, /margin-right: 0\.35rem/, "visible space after Men, Women, Coed");
+  assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "a group never splits across lines");
+  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: wrap/, "wraps by group on a narrow phone");
   const groups = divisionLegendGroups([
     { divisionName: "Men's D" }, { divisionName: "Women's D" }, { divisionName: "Coed D" },
   ]);
-  assert.deepEqual(groups.map((g) => g.short), ["M", "W", "Coed"]);
+  assert.deepEqual(groups.map((g) => g.short), ["Men", "Women", "Coed"]);
   assert.match(css, /\.tl-help\.is-sheet \{[^}]*safe-area-inset-bottom/);
   assert.match(css, /\.tl-help \{[^}]*position: fixed/);
   assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*min-height: 0/, "help button stays a small circle");

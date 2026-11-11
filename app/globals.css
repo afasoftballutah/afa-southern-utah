@@ -3496,16 +3496,21 @@ button:not(.pill) {
 .path-view { min-width: 0; max-width: 100%; }
 .tl { display: flex; flex-direction: column; gap: 0.75rem; color: var(--tl-ink); }
 .tl-day + .tl-day { margin-top: 0.5rem; }
-/* One row: M/W/C chips + "?" (JD, 2026-11-10). Tight enough to stay on
-   one line at 390px; the gender word is just the letter. */
-.tl-head { display: flex; align-items: center; gap: 0.4rem; }
+/* Men / Women / Coed in small gray type, then their chips, then "?"
+   (JD, 2026-11-10: the letters looked like divisions). Groups never
+   split across lines (flex: 0 0 auto). At 390px, Coed wraps to a second
+   line; Men and Women stay on the first with the "?". */
+.tl-head { display: flex; align-items: flex-start; gap: 0.4rem; }
 .tl-legend {
-  display: flex; flex-wrap: nowrap; align-items: center; gap: 0.55rem 0.65rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.55rem;
   flex: 1; min-width: 0;
   font-size: 0.75rem; color: var(--tl-label);
 }
 .tl-legend__group { display: inline-flex; align-items: center; gap: 0.2rem; flex: 0 0 auto; }
-.tl-legend__group-name { font-weight: 600; color: var(--tl-ink); letter-spacing: 0.02em; margin-right: 0.35rem; }
+.tl-legend__group-name {
+  font-size: 0.625rem; font-weight: 500; color: var(--tl-label);
+  line-height: 1; margin-right: 0.35rem;
+}
 .tl-legend__items { display: inline-flex; gap: 0.2rem; }
 .tl-legend__chip {
   min-width: 1.4rem; padding: 0.08rem 0.35rem; border-radius: 999px; text-align: center;
