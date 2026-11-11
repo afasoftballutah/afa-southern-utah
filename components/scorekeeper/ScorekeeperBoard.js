@@ -158,7 +158,6 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
     row.game.team2_score != null &&
     row.game.team2_score > row.game.team1_score;
 
-  const mark = row.whenMark;
   return (
     <div
       ref={rowRef}
@@ -166,24 +165,30 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
       className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "") + (active ? " is-active" : "")}
     >
       <span className={`sk-mark tl-tone-${row.tone}`} title={row.divisionLabel} aria-label={gameLabel(row)}>
-        <span className="sk-mark__num">{row.number}</span>
-        <span
-          className={"sk-mark__tone" + (row.toneInkDark ? " is-dark" : "")}
-          aria-hidden="true"
-        >
-          {row.divisionAbbrev}
+        <span className={"sk-mark__pill" + (row.toneInkDark ? " is-dark" : "")}>
+          {row.divisionAbbrev ? <span className="sk-mark__div">{row.divisionAbbrev}</span> : null}
+          {row.number != null && row.number !== "" ? (
+            <span className="sk-mark__num">{row.divisionAbbrev ? " " : ""}{row.number}</span>
+          ) : null}
         </span>
-        <span className={"sk-mark__when" + (mark?.hasMinutes ? " is-split" : "")}>
-          {mark?.hasMinutes ? (
+        <span className={"sk-mark__meta" + (row.whenMark?.hasMinutes ? " is-tight" : "")}>
+          {row.whenMark ? (
             <>
-              <span className="sk-mark__day">{mark.day}</span>
-              <span className="sk-mark__clock">{mark.clock}</span>
+              <span className="sk-mark__when">
+                <span className="sk-mark__day">{row.whenMark.day}</span>
+                <span className="sk-mark__clock">{row.whenMark.clock}</span>
+              </span>
+              {row.fieldAbbrev ? (
+                <>
+                  <span className="sk-mark__dot" aria-hidden="true">·</span>
+                  <span className="sk-mark__field">{row.fieldAbbrev}</span>
+                </>
+              ) : null}
             </>
           ) : (
-            mark?.label ?? "—"
+            row.fieldAbbrev ?? "—"
           )}
         </span>
-        <span className="sk-mark__field">{row.fieldAbbrev ?? "—"}</span>
       </span>
       <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
         {row.team1Label}
@@ -210,8 +215,7 @@ function gameLabel(row) {
   const bits = [
     row.number != null ? `Game ${row.number}` : null,
     row.divisionLabel,
-    row.whenMark?.label,
-    row.fieldAbbrev ?? row.fieldName,
+    row.markLine,
   ].filter(Boolean);
   return bits.join(", ");
 }

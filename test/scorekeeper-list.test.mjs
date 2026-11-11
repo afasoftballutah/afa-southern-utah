@@ -9,6 +9,7 @@ import {
   scorekeeperWhen,
   scorekeeperWhenPill,
   scorekeeperWhenMark,
+  scorekeeperMarkLine,
   scorekeeperDivisionAbbrev,
   scorekeeperToneNeedsDarkInk,
   buildScorekeeperCatalog,
@@ -150,22 +151,27 @@ test("scorekeeperDivisionAbbrev is gender plus class, two letters", () => {
   assert.equal(scorekeeperToneNeedsDarkInk("coed-rec"), false);
 });
 
-test("scorekeeperWhenMark is 2-letter day plus the 12-hour clock, no am/pm", () => {
+test("scorekeeperWhenMark is 2-letter day, 12-hour clock with A/P, no :00", () => {
   assert.deepEqual(scorekeeperWhenMark(thu2, TZ), {
-    label: "Th2",
+    label: "Th 2P",
     day: "Th",
-    clock: "2",
+    clock: "2P",
     hasMinutes: false,
   });
   assert.deepEqual(scorekeeperWhenMark(fri930, TZ), {
-    label: "Fr9:30",
+    label: "Fr 9:30A",
     day: "Fr",
-    clock: "9:30",
+    clock: "9:30A",
     hasMinutes: true,
   });
   const thu1030 = "2026-11-12T18:30:00.000Z";
-  assert.equal(scorekeeperWhenMark(thu1030, TZ).label, "Th10:30");
+  assert.equal(scorekeeperWhenMark(thu1030, TZ).label, "Th 10:30A");
+  assert.equal(scorekeeperWhenMark(thu3, TZ).label, "Th 3P");
+  assert.ok(!String(scorekeeperWhenMark(thu2, TZ).clock).includes(":00"));
   assert.equal(scorekeeperWhenMark(null, TZ), null);
+  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu3, TZ), "H1"), "Th 3P · H1");
+  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu1030, TZ), "P2"), "Th 10:30A · P2");
+  assert.equal(scorekeeperMarkLine(null, null), "—");
 });
 
 test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1", () => {
@@ -183,7 +189,8 @@ test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1"
   assert.equal(catalog[0].fieldAbbrev, "H1");
   assert.equal(catalog[0].divisionAbbrev, "MD");
   assert.equal(catalog.find((r) => r.id === "wr49").divisionAbbrev, "WR");
-  assert.equal(catalog[0].whenMark.label, "Th2");
+  assert.equal(catalog[0].whenMark.label, "Th 2P");
+  assert.equal(catalog[0].markLine, "Th 2P · H1");
   assert.equal(catalog[1].fieldName, "Pioneer F1");
   assert.equal(catalog.find((r) => r.id === "wr55").fieldName, "Pioneer F2");
   assert.equal(catalog.find((r) => r.id === "wr49").tone, "womens-rec");
@@ -231,17 +238,24 @@ test("field storage key is per tournament", () => {
   );
 });
 
-test("ScorekeeperBoard is one list with a 4-part mark and no pills or per-division tables", () => {
+test("ScorekeeperBoard is one list with a colored mark pill and a when/field line, no per-division tables", () => {
   const board = readFileSync(new URL("../components/scorekeeper/ScorekeeperBoard.js", import.meta.url), "utf8");
   assert.match(board, /buildScorekeeperCatalog/);
   assert.match(board, /scorekeeperFieldOptions/);
   assert.match(board, /tl-tone-\$\{/);
-  assert.match(board, /sk-mark__tone/);
+  assert.match(board, /sk-mark__pill/);
   assert.match(board, /divisionAbbrev/);
+  assert.match(board, /sk-mark__div[\s\S]+sk-mark__num/);
+  assert.match(board, /sk-mark__meta/);
   assert.match(board, /sk-mark__when/);
-  assert.match(board, /fieldAbbrev/);
+  assert.match(board, /sk-mark__day/);
+  assert.match(board, /sk-mark__clock/);
+  assert.match(board, /sk-mark__dot/);
+  assert.match(board, /sk-mark__field/);
+  assert.match(board, /markLine/);
   assert.match(board, /SegmentBar/);
   assert.match(board, /scorekeeperFieldAbbrev/);
+  assert.doesNotMatch(board, /sk-mark__tone/);
   assert.doesNotMatch(board, /sk-pill/);
   assert.doesNotMatch(board, /All fields/);
   assert.doesNotMatch(board, /ScoreTable/);
