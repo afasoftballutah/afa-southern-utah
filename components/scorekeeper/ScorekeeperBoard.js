@@ -166,7 +166,12 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
     >
       <span className={`sk-mark tl-tone-${row.tone}`} title={row.divisionLabel} aria-label={gameLabel(row)}>
         <span className="sk-mark__num">{row.number}</span>
-        <span className="sk-mark__tone" aria-hidden="true" />
+        <span
+          className={"sk-mark__tone" + (row.toneInkDark ? " is-dark" : "")}
+          aria-hidden="true"
+        >
+          {row.divisionAbbrev}
+        </span>
         <span className={"sk-mark__when" + (mark?.hasMinutes ? " is-split" : "")}>
           {mark?.hasMinutes ? (
             <>

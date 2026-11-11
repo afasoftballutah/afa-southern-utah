@@ -9,6 +9,8 @@ import {
   scorekeeperWhen,
   scorekeeperWhenPill,
   scorekeeperWhenMark,
+  scorekeeperDivisionAbbrev,
+  scorekeeperToneNeedsDarkInk,
   buildScorekeeperCatalog,
   scorekeeperFieldOptions,
   scorekeeperDayOptions,
@@ -129,6 +131,25 @@ test("scorekeeperWhenPill drops :00 and leaves the zone off the pill", () => {
   assert.equal(scorekeeperWhenPill(null, TZ), "");
 });
 
+test("scorekeeperDivisionAbbrev is gender plus class, two letters", () => {
+  assert.equal(scorekeeperDivisionAbbrev("Men's D"), "MD");
+  assert.equal(scorekeeperDivisionAbbrev("Men's E"), "ME");
+  assert.equal(scorekeeperDivisionAbbrev("Men's Rec"), "MR");
+  assert.equal(scorekeeperDivisionAbbrev("Men's Open"), "MO");
+  assert.equal(scorekeeperDivisionAbbrev("Women's D"), "WD");
+  assert.equal(scorekeeperDivisionAbbrev("Women's E"), "WE");
+  assert.equal(scorekeeperDivisionAbbrev("Women's Rec"), "WR");
+  assert.equal(scorekeeperDivisionAbbrev("Coed D"), "CD");
+  assert.equal(scorekeeperDivisionAbbrev("Coed E"), "CE");
+  assert.equal(scorekeeperDivisionAbbrev("Coed Rec"), "CR");
+  assert.equal(scorekeeperDivisionAbbrev("Coed Open"), "CO");
+  assert.equal(scorekeeperDivisionAbbrev(""), null);
+  // Gold Men's Rec solid is too light for white letters.
+  assert.equal(scorekeeperToneNeedsDarkInk("mens-rec"), true);
+  assert.equal(scorekeeperToneNeedsDarkInk("mens-d"), false);
+  assert.equal(scorekeeperToneNeedsDarkInk("coed-rec"), false);
+});
+
 test("scorekeeperWhenMark is 2-letter day plus the 12-hour clock, no am/pm", () => {
   assert.deepEqual(scorekeeperWhenMark(thu2, TZ), {
     label: "Th2",
@@ -160,6 +181,8 @@ test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1"
   );
   assert.equal(catalog[0].fieldName, "Hunter F1");
   assert.equal(catalog[0].fieldAbbrev, "H1");
+  assert.equal(catalog[0].divisionAbbrev, "MD");
+  assert.equal(catalog.find((r) => r.id === "wr49").divisionAbbrev, "WR");
   assert.equal(catalog[0].whenMark.label, "Th2");
   assert.equal(catalog[1].fieldName, "Pioneer F1");
   assert.equal(catalog.find((r) => r.id === "wr55").fieldName, "Pioneer F2");
@@ -210,6 +233,7 @@ test("ScorekeeperBoard is one list with a 4-part mark and no pills or per-divisi
   assert.match(board, /scorekeeperFieldOptions/);
   assert.match(board, /tl-tone-\$\{/);
   assert.match(board, /sk-mark__tone/);
+  assert.match(board, /divisionAbbrev/);
   assert.match(board, /sk-mark__when/);
   assert.match(board, /fieldAbbrev/);
   assert.match(board, /SegmentBar/);
