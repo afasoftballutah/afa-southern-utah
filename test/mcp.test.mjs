@@ -350,7 +350,7 @@ test("get_team_path grid: the team's paths from its next game (even unscored pas
 
   const fa = t.picker.find((p) => p.name === "Fallen Angels");
   assert.equal(fa.record, "0-1");
-  assert.deepEqual(arrows(t.grid, fa.went), ["G1~>G6"], "lost G1: the solid loss arrow into G6");
+  assert.deepEqual(arrows(t.grid, fa.went), ["G1~>G6"], "lost G1: the traveled loss arrow into G6");
   assert.ok(!names(t.grid, fa.reach).includes("G3"), "winners-side games are no longer possible after the loss");
   assert.ok(JSON.stringify(sc).length < 40_000, "small enough to ride in structuredContent");
 });
@@ -461,7 +461,7 @@ function fakeDom() {
   return { document: { createElement: (t) => new Node(t), createElementNS: (ns, t) => new Node(t), createTextNode: (t) => new Text(t) } };
 }
 
-test("Path view with a team picked: only its games, the win-out route strongest, every edge a line, sticky head", async () => {
+test("Path view with a team picked: only its games, every edge a line, sticky head, traveled legs bold", async () => {
   const { c } = await client();
   const sc = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent;
   const t = sc.view.teams[0];
@@ -478,7 +478,9 @@ test("Path view with a team picked: only its games, the win-out route strongest,
     assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
     assert.equal(out.all((n) => /\bstub\b/.test(n.className)).length, 0, "every edge drawn as a line, no W→G labels");
     const thick = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none" && n.getAttribute("stroke-width") === "4");
-    assert.equal(thick.length, 2, "G3→G9 and G9→G12 drawn thick");
+    assert.equal(thick.length, 1, "only the traveled G1→G3 win is bold; the rest of the win-out stays thin");
+    const thinWin = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none" && n.getAttribute("stroke") === "var(--win)" && n.getAttribute("stroke-width") === "1.25");
+    assert.ok(thinWin.length >= 2, "undecided win-out legs are thin and light");
     // Orthogonal lines, one clean head each, the line stopping at the head's base (JD on his iPhone).
     const pts = (d) => d.replace(/^M/, "").split(" L").map((x) => x.trim().split(/\s+/).map(Number));
     const lines = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none");
@@ -514,3 +516,183 @@ test("Path view with a team picked: only its games, the win-out route strongest,
   assert.match(view, /:host \{ display: block; min-width: 0; max-width: 100%;/);
   assert.match(view, /\.pv \{ display: grid; gap: 0\.625rem; min-width: 0; width: 100%; \}/);
 });
+
+
+function recGames(patch = {}) {
+  return rec.map((g) => (patch[g.id] ? { ...g, ...patch[g.id] } : { ...g }));
+}
+
+function drawTeam(games, team, width = 390) {
+  const tnm = {
+    ...TOURNAMENT,
+    divisions: TOURNAMENT.divisions.map((d) => (d.id === "rec" ? { ...d, games } : d)),
+  };
+  const rows = scheduleRowsFromTournament(tnm);
+  const { grid, index } = fieldGrid(rows, "America/Los_Angeles", new Date("2026-11-15T19:30:00Z"), { siteUrl: "https://x", slug: tnm.slug });
+  const tr = gridTrack(rows, team, new Set(["rec"]), null, index);
+  const mine = new Set([...tr.played, ...tr.reach]);
+  const days = grid.days.filter((d) => d.games.some((g) => mine.has(g.i)));
+  const t = { grid: { ...grid, days: days.length ? days : grid.days, zone: "PST" }, picker: [{ name: team, ...tr }] };
+  const dom = fakeDom();
+  const run = new Function("document", "window", "setTimeout", `${CARD_JS}\n${SITE_SHIM}\n${GRID_JS}\nreturn { gridEl: gridEl, keyEl: keyEl };`)(dom.document, { innerWidth: width }, () => {});
+  return { tr, grid, out: run.gridEl(t, team, { clientWidth: width }) };
+}
+
+function edgeStyles(out) {
+  const box = {};
+  for (const p of out.all((n) => n.tagName === "button" && n.classList.contains("pill"))) {
+    const label = p.childNodes[0].textContent;
+    const s = p.style.cssText;
+    const num = (k) => Number((s.match(new RegExp(k + ":(-?[\\d.]+)px")) || [])[1]);
+    box[label] = { x: num("left"), y: num("top"), w: num("width"), h: num("height") };
+  }
+  const near = (pt, port) => {
+    let best, d0 = Infinity;
+    for (const [n, b] of Object.entries(box)) {
+      const q = port === "out" ? [b.x + b.w / 2, b.y + b.h] : [b.x + b.w / 2, b.y];
+      const d = Math.hypot(pt[0] - q[0], pt[1] - q[1]);
+      if (d < d0) { d0 = d; best = n; }
+    }
+    return best;
+  };
+  const pts = (d) => d.replace(/^M/, "").replace(/ Z$/, "").split(/ L/).map((x) => x.trim().split(/\s+/).map(Number));
+  const lines = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none");
+  const heads = out.all((n) => n.tagName === "path" && n.getAttribute("class") === "head");
+  const edges = {};
+  lines.forEach((line, i) => {
+    const p = pts(line.getAttribute("d"));
+    const tip = heads[i] ? pts(heads[i].getAttribute("d"))[0] : p[p.length - 1];
+    const from = near(p[0], "out");
+    const to = near(tip, "in");
+    edges[`${from}>${to}`] = {
+      width: Number(line.getAttribute("stroke-width")),
+      dash: line.getAttribute("stroke-dasharray") || "",
+      color: line.getAttribute("stroke"),
+      opacity: Number(line.getAttribute("opacity")),
+    };
+  });
+  return edges;
+}
+
+function assertLight(e, msg) {
+  assert.equal(e?.width, 1.25, msg);
+  assert.equal(e?.opacity, 0.55, msg);
+}
+
+function assertBoldWin(e, msg) {
+  assert.equal(e?.width, 4, msg);
+  assert.equal(e?.opacity, 1, msg);
+  assert.equal(e?.color, "var(--win)", msg);
+  assert.equal(e?.dash, "", msg);
+}
+
+function assertBoldLoss(e, msg) {
+  assert.equal(e?.width, 4, msg);
+  assert.equal(e?.opacity, 1, msg);
+  assert.equal(e?.color, "var(--lose)", msg);
+  assert.equal(e?.dash, "5 3", msg);
+}
+
+test("Path lines: 0 games played — every win-out leg is a thin light green line", () => {
+  const none = recGames({
+    g1: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+    g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+  });
+  const { tr, grid, out } = drawTeam(none, "One Hit Wonders");
+  assert.deepEqual(names(grid, tr.played), []);
+  assert.deepEqual(tr.went, []);
+  const e = edgeStyles(out);
+  assertLight(e["G1>G3"], "G1→G3 undecided win-out");
+  assertLight(e["G3>G9"], "G3→G9 undecided win-out");
+  assertLight(e["G9>G12"], "G9→G12 undecided win-out");
+  assert.equal(e["G1>G3"].color, "var(--win)");
+  assert.equal(e["G1>G3"].dash, "");
+  assert.ok(Object.values(e).every((x) => x.width === 1.25), "no leg is bold before a score");
+  assert.equal(e["G1~>G6"]?.dash ?? e[Object.keys(e).find((k) => k.startsWith("G1") && e[k].color === "var(--lose)")]?.dash, "5 3");
+});
+
+test("Path lines: 1 win played — only the traveled win is bold; later win-out stays light", () => {
+  const { tr, grid, out } = drawTeam(recGames(), "One Hit Wonders");
+  assert.deepEqual(names(grid, tr.played), ["G1"]);
+  assert.deepEqual(arrows(grid, tr.went), ["G1>G3"]);
+  const e = edgeStyles(out);
+  assertBoldWin(e["G1>G3"], "traveled G1→G3 win");
+  assertLight(e["G3>G9"], "future G3→G9 stays light");
+  assertLight(e["G9>G12"], "future G9→G12 stays light");
+  assert.equal(e["G3>G9"].color, "var(--win)");
+  const loss = Object.entries(e).find(([, x]) => x.color === "var(--lose)" && x.dash === "5 3");
+  assert.ok(loss, "undecided loss legs stay red dashed");
+  assert.equal(loss[1].width, 1.25);
+});
+
+test("Path lines: a win then a loss — traveled win bold green, traveled loss bold red dashed, the rest light", () => {
+  const games = recGames({
+    g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+    g3: { status: "final", team1_score: 4, team2_score: 10, winner_slot: "team2", team1_name: "One Hit Wonders", team2_name: "Only Bangers" },
+    g5: { team2_name: "One Hit Wonders" },
+  });
+  const { tr, grid, out } = drawTeam(games, "One Hit Wonders");
+  assert.deepEqual(names(grid, tr.played), ["G1", "G3"]);
+  assert.deepEqual(arrows(grid, tr.went), ["G1>G3", "G3~>G5"]);
+  const e = edgeStyles(out);
+  assertBoldWin(e["G1>G3"], "traveled win G1→G3");
+  assertBoldLoss(e["G3>G5"], "traveled loss G3→G5");
+  const future = Object.entries(e).filter(([k]) => k !== "G1>G3" && k !== "G3>G5");
+  assert.ok(future.length > 0, "future legs remain");
+  for (const [k, x] of future) {
+    assert.equal(x.width, 1.25, `${k} stays thin`);
+    assert.equal(x.opacity, 0.55, `${k} stays light`);
+  }
+});
+
+function pillNamed(out, label) {
+  return out.all((n) => n.tagName === "button" && n.classList.contains("pill") && n.childNodes[0]?.textContent === label)[0];
+}
+
+test("Path view: a picked team's scored box gets won-box or lost-box, unplayed boxes do not", () => {
+  const win = drawTeam(recGames(), "One Hit Wonders");
+  const g1 = pillNamed(win.out, "G1");
+  assert.ok(g1.classList.contains("won-box"), "G1 is a win for One Hit Wonders");
+  assert.ok(g1.classList.contains("done"));
+  assert.match(g1.textContent, /12/, "score is shown");
+  assert.ok(!g1.classList.contains("lost-box"));
+  const g3 = pillNamed(win.out, "G3");
+  assert.ok(g3 && g3.classList.contains("route") && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed win-path G3 is a light green route box, not a scored fill");
+
+  const games = recGames({
+    g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+    g3: { status: "final", team1_score: 4, team2_score: 10, winner_slot: "team2", team1_name: "One Hit Wonders", team2_name: "Only Bangers" },
+    g5: { team2_name: "One Hit Wonders" },
+  });
+  const both = drawTeam(games, "One Hit Wonders");
+  assert.ok(pillNamed(both.out, "G1").classList.contains("won-box"));
+  const lost = pillNamed(both.out, "G3");
+  assert.ok(lost.classList.contains("lost-box"), "G3 is a loss");
+  assert.ok(!lost.classList.contains("won-box"));
+  assert.match(lost.textContent, /10/, "score is shown on a loss");
+  const next = pillNamed(both.out, "G5");
+  assert.ok(next && next.classList.contains("route") && !next.classList.contains("won-box") && !next.classList.contains("lost-box"), "after a loss, the remaining win-out from G5 is still a light green win-path box");
+
+  const none = drawTeam(recGames({
+    g1: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+    g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+  }), "One Hit Wonders");
+  for (const label of ["G1", "G3", "G9", "G12"]) {
+    const p = pillNamed(none.out, label);
+    assert.ok(p.classList.contains("route"), `${label} is on the unplayed win path`);
+    assert.ok(!p.classList.contains("won-box") && !p.classList.contains("lost-box"));
+  }
+  assert.ok(pillNamed(none.out, "G12").classList.contains("final"), "the championship stays a final, now in the green family");
+  const lossBox = pillNamed(none.out, "G5") || pillNamed(none.out, "G11");
+  if (lossBox) assert.ok(!lossBox.classList.contains("route"), "a loss-path box is not given the win-path fill");
+
+  assert.match(GRID_CSS, /button\.pill\.done\.won-box, button\.pill\.won-box \{[^}]*background: var\(--win\);[^}]*color: #fff;/);
+  assert.match(GRID_CSS, /button\.pill\.done\.lost-box, button\.pill\.lost-box \{[^}]*background: var\(--lose\);[^}]*color: #fff;/);
+  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*background: color-mix\(in srgb, var\(--win\) 18%, #fff\);[^}]*color: var\(--win\)/);
+  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*border: 1px solid color-mix\(in srgb, var\(--win\) 45%, #fff\);[^}]*font-weight: 450/);
+  assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*border-color: color-mix\(in srgb, var\(--win\) 45%, #fff\)/);
+  assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*2\.5px/);
+  assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*font-weight: 800/);
+  assert.doesNotMatch(GRID_CSS, /button\.pill\.route\.final \{[^}]*#c99a1e/);
+});
+
