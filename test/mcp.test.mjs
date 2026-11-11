@@ -9,7 +9,11 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildAfaMcpServer, INSTRUCTIONS } from "@/lib/mcp/tools";
 import { scheduleRowsFromTournament } from "@/lib/data";
 import { isPublicTournament } from "@/lib/mcp/data";
-import { gameState, fieldGrid } from "@/lib/mcp/field-grid";
+import { gameState, fieldGrid, gridTrack } from "@/lib/mcp/field-grid";
+import { GRID_CSS, GRID_JS, siteGridRunner } from "@/lib/mcp/grid-view";
+import { TEAM_VIEW_HTML } from "@/lib/mcp/team-view";
+import { CARD_JS } from "@/lib/mcp/views";
+import { readFileSync } from "node:fs";
 
 const PST = (day, h) => new Date(Date.UTC(2026, 10, day, h + 8)).toISOString(); // Nov <day>, h:00 PST
 const g = (id, round, side, field, when, t1, t2, src = {}, extra = {}) => ({
@@ -397,4 +401,32 @@ test("get_schedule / get_now_next view: ui://afa/games cards by day or now/next;
   assert.deepEqual(nanswer.nowPlaying.map((g) => g.game), ["G6", "G5"], "same order as the text");
   assert.deepEqual(nanswer.upNext.map((g) => g.game), ["G7", "G8", "G10"], "same games, same order as the text");
   for (const secret of ["director@example.com", "435-555-0100", "Director Person"]) assert.ok(!JSON.stringify([r.structuredContent, nn.structuredContent]).includes(secret), secret);
+});
+
+test("site Path view: the MCP team grid's own code and track; a Schedule tab next to an unchanged Timeline", async () => {
+  // One drawing source for both: the MCP view inlines it, the site runs it.
+  assert.ok(TEAM_VIEW_HTML.includes(GRID_JS) && TEAM_VIEW_HTML.includes(GRID_CSS));
+  const run = siteGridRunner(CARD_JS);
+  assert.equal(typeof run.gridEl, "function");
+  assert.equal(typeof run.keyEl, "function");
+
+  // The site's track for a picked team is the MCP picker's track.
+  const now = new Date("2026-11-15T19:30:00Z");
+  const rows = scheduleRowsFromTournament(TOURNAMENT);
+  const { index } = fieldGrid(rows, "America/Los_Angeles", now, { siteUrl: "", slug: TOURNAMENT.slug });
+  const site = gridTrack(rows, "One Hit Wonders", new Set(["rec"]), null, index);
+  const { c } = await client();
+  const sc = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent;
+  const mcp = sc.view.teams[0].picker.find((p) => p.name === "One Hit Wonders");
+  const { name, ...mcpTrack } = mcp;
+  assert.equal(name, "One Hit Wonders");
+  assert.deepEqual(site, mcpTrack);
+
+  // The tab: "Path view" beside By field / By time / Timeline, driven by Find your team.
+  const browser = readFileSync(new URL("../components/ScheduleBrowser.js", import.meta.url), "utf8");
+  assert.match(browser, />\s*Path view\s*</);
+  assert.match(browser, />\s*Timeline\s*</);
+  assert.match(browser, /<PathView rows=\{rows\}[^>]*team=\{team\}/);
+  const view = readFileSync(new URL("../components/PathView.js", import.meta.url), "utf8");
+  assert.ok(!/setInterval|setTimeout\(\s*\w+,\s*\d{4,}/.test(view), "no polling");
 });

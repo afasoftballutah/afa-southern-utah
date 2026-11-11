@@ -89,6 +89,9 @@ export default async function SchedulePage({ params }) {
   // time (Mountain) carries no label anywhere, so neither does this.
   const zoneShort = rows[0]?.scheduledTime ? zoneLabel(rows[0].scheduledTime, timeZone) : "";
   const divisionIds = (tournament.divisions ?? []).map((d) => d.id);
+  // Path view lights a team's whole division family (a split division's
+  // stages), so it needs each division's parent.
+  const divisionTree = (tournament.divisions ?? []).map((d) => ({ id: d.id, parent_division_id: d.parent_division_id ?? null }));
 
   return (
     <div className="space-y-3">
@@ -115,6 +118,7 @@ export default async function SchedulePage({ params }) {
           zoneShort={zoneShort}
           slug={slug}
           teamPageHrefs={teamPageHrefs}
+          divisions={divisionTree}
         />
       )}
     </div>
