@@ -41,11 +41,7 @@ export default function TournamentTeamEntry({
             <h2 className="t-heading">
               {registering ? "Register" : finished ? "Results" : "Divisions"}
             </h2>
-            <p className="t-meta">
-              {registering
-                ? "Pick a division"
-                : "Open your division for the bracket and games"}
-            </p>
+            {registering ? <p className="t-meta">Pick a division</p> : null}
           </div>
           <TournamentDivisionNav
             slug={slug}
