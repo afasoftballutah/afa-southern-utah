@@ -415,3 +415,12 @@ test("timeline is vertical on phones only; desktop keeps the horizontal lanes", 
   assert.match(help, /How to read a game/);
   assert.ok(!/hours across/.test(help), "help sample does not depict the old horizontal grid");
 });
+
+test("tapping another pill must not close the open game first (JD: click 34 jumps to 26)", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  // The document pointerdown closer lives in the open-game effect (tl-pop-${openId}).
+  assert.match(
+    src,
+    /document\.getElementById\(`tl-pop-\$\{openId\}`\)[\s\S]{0,500}?e\.target\.closest\?\.\("\.tl-pill"\)/,
+  );
+});

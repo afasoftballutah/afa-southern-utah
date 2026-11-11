@@ -886,6 +886,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       const pop = document.getElementById(`tl-pop-${openId}`);
       const pill = pills.current.get(openId);
       if (pop?.contains(e.target) || pill?.contains(e.target)) return;
+      // Tapping a different game must not dismiss first: closing the
+      // sheet drops body.tl-sheet-open padding and the page jumps, so
+      // the same viewport point's click lands on a different pill
+      // (JD: "When I click on 34 it jumps to 26"). Let that pill's
+      // onClick switch the open game with the sheet still in place.
+      if (e.target.closest?.(".tl-pill")) return;
       close(false);
     };
     document.addEventListener("keydown", onKey);
