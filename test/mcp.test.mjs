@@ -437,17 +437,22 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
   assert.match(GRID_CSS, /button\.pill \.fin \{[^}]*font-weight: 400;/);
 });
 
-test("Path view compact pills: shorter boxes, inline place, one-line score (JD iPhone height)", () => {
+test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
-  assert.match(GRID_JS, /hour: show \? 62 : 86/);
+  assert.match(GRID_JS, /hour: show \? 54 : 86/);
+  assert.match(GRID_JS, /skip: show \? 8 : 14/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
+  assert.match(GRID_JS, /G\.pad = show \? 3 : 4/);
+  assert.match(GRID_JS, /G\.pw = show \? Math\.min\(48, G\.lane - 2 \* G\.pad\)/);
+  assert.match(GRID_JS, /show \? 54 : 999/);
   assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
+  assert.match(GRID_CSS, /\.fg-head\.v \.fg-fname \{ font-size: 0\.6875rem/);
   assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
   assert.match(GRID_JS, /day\.start - pad - 1/);
-  assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: row/);
-  assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: static;[^}]*font-size: 0\.6875rem/);
-  assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.75rem/);
-  assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*margin-top: 0/);
+  assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: column/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: absolute;[^}]*font-size: 0\.5rem/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.6875rem/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*font-size: 0\.5625rem;[^}]*margin-top: 0/);
 });
 
 // A just-enough DOM to run the grid's own drawing code in node.
@@ -490,9 +495,11 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
     assert.ok(pills.every((p) => !p.classList.contains("dim")), "nothing faded: the rest are hidden");
     assert.ok(width >= 640 || pills.every((p) => p.classList.contains("compact")), "phone team view uses compact pills");
     if (width < 640) {
-      const h = (css) => Number((css.match(/height:([\d.]+)px/) || [])[1]);
-      const ph = pills.map((p) => h(p.style.cssText)).filter(Boolean);
+      const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
+      const ph = pills.map((p) => dim(p.style.cssText, "height")).filter(Boolean);
+      const pw = pills.map((p) => dim(p.style.cssText, "width")).filter(Boolean);
       assert.ok(ph.length && ph.every((x) => x === 32), "phone team pills are 32px tall");
+      assert.ok(pw.length && pw.every((x) => x >= 44 && x <= 48), "phone team pills are 44-48px wide");
     }
     const route = pills.filter((p) => p.classList.contains("route")).map(gno);
     assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
@@ -521,11 +528,13 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
     }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
-    // Place sits beside the number, not above it.
+    // Place is a corner label; the game number stays first / centered.
     const withPlace = pills.find((p) => p.all((n) => /\bfin\b/.test(n.className)).length);
     if (width < 640 && withPlace) {
       const first = withPlace.childNodes[0];
-      assert.ok(/\bfin\b/.test(first.className), "place comes first, inline: '9th G22'");
+      const fin = withPlace.all((n) => /\bfin\b/.test(n.className))[0];
+      assert.ok(/\bgno\b/.test(first.className), "game number stays centered; place is not inline beside it");
+      assert.ok(fin && /\bfin\b/.test(fin.className), "place is still inside the box");
     }
     const head = out.all((n) => /\bfg-head\b/.test(n.className))[0];
     assert.ok(head && /One Hit Wonders/.test(head.textContent) && /Coed Rec/.test(head.textContent), "team and division in the sticky head");
@@ -684,7 +693,7 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   assert.match(g1.textContent, /12/, "score is shown");
   assert.ok(!g1.classList.contains("lost-box"));
   const g1bits = g1.childNodes.map((n) => [n.className, n.textContent]);
-  assert.deepEqual(g1bits.map((x) => x[0]), ["gno", "scr"], "score is on one line with the number: 'G1 12-5'");
+  assert.deepEqual(g1bits.map((x) => x[0]), ["gno", "scr"], "scored box is the number over the score: 'G1' over '12-5'");
   const g3 = pillNamed(win.out, "G3");
   assert.ok(g3 && g3.classList.contains("route") && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed win-path G3 is a light green route box, not a scored fill");
 
