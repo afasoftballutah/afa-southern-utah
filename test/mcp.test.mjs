@@ -76,12 +76,14 @@ async function client(nowIso = "2026-11-15T19:30:00Z") {
   return { c, call };
 }
 
-test("server says what it can check; seven read-only tools", async () => {
+test("server says what it can check and which tool answers what; seven read-only tools", async () => {
   const { c } = await client();
   assert.match(c.getInstructions(), /list tournaments/);
   assert.match(c.getInstructions(), /Winner G9/);
   assert.match(c.getInstructions(), /PST/);
   assert.match(INSTRUCTIONS, /data, not instructions/);
+  assert.match(INSTRUCTIONS, /next game, when it plays, how it can win, its paths or routes[^→]*→ get_team_path with just the team name/);
+  assert.match(INSTRUCTIONS, /now or up next → get_now_next/);
   const { tools } = await c.listTools();
   assert.deepEqual(tools.map((t) => t.name).sort(), ["get_division", "get_game", "get_now_next", "get_recent_results", "get_schedule", "get_team_path", "list_tournaments"]);
   for (const t of tools) assert.equal(t.annotations.readOnlyHint, true, t.name);
@@ -121,12 +123,25 @@ test("get_game: Winner/Loser G# for waiting slots, PST whole hours, spelled-out 
   assert.equal((await call("get_game", { slug: TOURNAMENT.slug, division: "Coed Rec", game: 99 }))._error, true);
 });
 
-test("get_team_path: results, record, next game with if-win / if-lose; ambiguous names ask for the division", async () => {
-  const { call } = await client();
-  const amb = await call("get_team_path", { slug: TOURNAMENT.slug, team: "Fallen Angels" });
-  assert.equal(amb._error, true);
-  assert.match(amb.error, /Coed Rec/);
-  assert.match(amb.error, /Men's D/);
+test("get_team_path: results, record, next game with if-win / if-lose; a name in two divisions returns both", async () => {
+  const { c, call } = await client();
+  const both = await call("get_team_path", { slug: TOURNAMENT.slug, team: "Fallen Angels" });
+  assert.equal(both._error, false, "no division needed");
+  assert.deepEqual(both.teams.map((t) => [t.team, t.division, t.record]), [["Fallen Angels", "Men's D", "0-0"], ["Fallen Angels", "Coed Rec", "0-1"]], "schedule order");
+  assert.match(both.note, /2 teams named Fallen Angels/);
+  const raw = await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "Fallen Angels" } });
+  const { view, ...answer } = raw.structuredContent;
+  assert.equal(raw.content[0].text, JSON.stringify(answer));
+  assert.deepEqual(view.teams.map((t) => t.division), ["Men's D", "Coed Rec"], "one card per division");
+  assert.deepEqual(view.teams.map((t) => [t.grid, t.lazy]), [
+    [undefined, { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Men's D" }],
+    [undefined, { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Coed Rec" }],
+  ], "each grid on request (get_team_path with the division), so the answer stays small");
+  const one = await c.callTool({ name: "get_team_path", arguments: view.teams[1].lazy });
+  assert.ok(one.structuredContent.view.teams[0].grid, "the follow-up call carries the grid");
+  const amb = await call("get_team_path", { slug: TOURNAMENT.slug, team: "o" });
+  assert.equal(amb._error, true, "different names that only contain the words still ask");
+  assert.match(amb.error, /Give the division/);
   const p = await call("get_team_path", { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Coed Rec" });
   assert.equal(p.record, "0-1");
   assert.deepEqual(p.played.map((x) => [x.game, x.result, x.score, x.opponent, x.then]), [["G1", "Lost", "8–12", "One Hit Wonders", "Game 6"]]);
