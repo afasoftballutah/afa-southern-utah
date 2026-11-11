@@ -904,22 +904,17 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   return (
     <div className="tl">
       <div className="tl-head" ref={headRef}>
-        <div
-          className="tl-legend"
-          role="list"
-          aria-label="Divisions"
-          style={
-            legend.length
-              ? { gridTemplateColumns: legend.map((_, i) => (i === 0 ? "minmax(0, 1fr)" : "auto minmax(0, 1fr)")).join(" ") }
-              : undefined
-          }
-        >
+        <div className="tl-legend" role="list" aria-label="Divisions">
           {legend.map((g, gi) => (
             <Fragment key={g.group ?? `other-${gi}`}>
               {gi > 0 ? (
-                <span className="tl-legend__gutter" aria-hidden="true">
-                  <SoftballMark />
-                </span>
+                <>
+                  <span className="tl-legend__gap" aria-hidden="true" />
+                  <span className="tl-legend__gutter" aria-hidden="true">
+                    <SoftballMark />
+                  </span>
+                  <span className="tl-legend__gap" aria-hidden="true" />
+                </>
               ) : null}
               <div className="tl-legend__group" role="listitem" aria-label={g.group ?? undefined}>
                 {g.short || g.group ? (
@@ -935,6 +930,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
               </div>
             </Fragment>
           ))}
+          {legend.length ? <span className="tl-legend__gap" aria-hidden="true" /> : null}
         </div>
         <TimelineHelp sheet={sheet} />
       </div>

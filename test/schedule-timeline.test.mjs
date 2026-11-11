@@ -277,7 +277,10 @@ test("timeline header: two-row Men/Women/Coed key, explainers behind a help butt
   assert.match(nameRule, /text-align: center/, "label centered over its chips");
   assert.match(css, /\.tl-legend__group \{[^}]*flex-direction: column/, "a column per group: label over chips");
   assert.match(css, /\.tl-legend__group \{[^}]*align-items: center/, "label and chips centered in the column");
-  assert.match(css, /\.tl-legend \{[^}]*display: grid/, "equal columns across the row");
+  assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "groups are content-width, not equal columns");
+  assert.match(css, /\.tl-legend__gap \{[^}]*flex: 1 1 0/, "equal flex gaps put each ball at the midpoint");
+  assert.match(css, /\.tl-legend \{[^}]*justify-content: space-between/, "spread with equal gaps across the row");
+  assert.match(css, /\.tl-head \{[^}]*justify-content: space-between/, "? at the end of the row");
   assert.match(css, /\.tl-head \{[^}]*align-items: center/, "? vertically centered on the two-row block");
   assert.match(css, /\.tl-head \{[^}]*width: 100%/, "spreads across the row, not clumped left");
   assert.match(src, /document\.querySelector\("\.sched-seg"\)/, "key width matches the tabs bar");
