@@ -437,6 +437,60 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
   assert.match(GRID_CSS, /button\.pill \.fin \{[^}]*font-weight: 400;/);
 });
 
+test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
+  assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
+  assert.match(GRID_JS, /hour: show \? 48 : 86/);
+  assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : G\.hour/);
+  assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
+  assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
+  assert.doesNotMatch(GRID_JS, /var rail = show \? 16 : 0/);
+  assert.match(GRID_JS, /function routeLines/);
+  assert.match(GRID_JS, /G\.pw = show \? 48 : G\.lane - 8/);
+  assert.match(GRID_JS, /G\.pad = Math\.max\(0, Math\.floor\(\(G\.lane - G\.pw\) \/ 2\)\)/);
+  assert.match(GRID_JS, /if \(vertical && G\.across < width\) G\.across = width/);
+  assert.match(GRID_JS, /y: t \+ Math\.floor\(\(G\.hour - G\.ph\) \/ 2\)/);
+  assert.match(GRID_JS, /u \+ Math\.floor\(\(G\.hour - 11\) \/ 2\)/);
+  assert.match(GRID_CSS, /\.fg-top \{ display: flex; align-items: center/);
+  assert.match(GRID_CSS, /text-overflow: ellipsis/);
+  assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
+  assert.match(GRID_CSS, /\.fg-head\.v \.fg-fname \{ font-size: 0\.6875rem/);
+  assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
+  assert.match(GRID_JS, /day\.start - pad - 1/);
+  assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: column/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: absolute;[^}]*font-size: 0\.5rem/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.6875rem/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*font-size: 0\.5625rem;[^}]*margin-top: 0/);
+});
+
+test("site header: tournament name in the bar, phone menu, compact Schedule title (JD 2026-11-11)", () => {
+  const layout = readFileSync(new URL("../app/layout.js", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../components/SiteHeader.js", import.meta.url), "utf8");
+  const nav = readFileSync(new URL("../components/SiteNav.js", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../app/tournaments/[slug]/schedule/page.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const mw = readFileSync(new URL("../middleware.js", import.meta.url), "utf8");
+  assert.match(layout, /<SiteHeader \/>/);
+  assert.match(mw, /x-pathname/);
+  assert.match(header, /getTournamentBasicsBySlug/);
+  assert.match(header, /AFA SlowPitch/);
+  assert.match(header, /aria-label="AFA SlowPitch home"/);
+  assert.match(header, /href=\{\`\/tournaments\/\$\{slug\}\`\}/);
+  assert.match(nav, /aria-label="Menu"/);
+  assert.match(nav, /site-nav__bars/);
+  assert.match(nav, /site-nav__dropdown/);
+  assert.match(nav, /Tournaments/);
+  assert.match(nav, /News/);
+  assert.match(nav, /Rules/);
+  assert.match(css, /@media \(min-width: 640px\) \{\s*\.site-nav__links \{ display: flex; \}/);
+  assert.match(css, /\.site-nav__links \{ display: none;/);
+  assert.match(css, /\.site-wordmark \{[^}]*text-overflow: ellipsis/);
+  assert.match(page, /className="sched-head"/);
+  assert.match(page, /className="space-y-2"/);
+  assert.doesNotMatch(page, /sched-head__back|sched-head__tourney|‹/);
+  assert.match(css, /\.sched-head__title \{[^}]*font-size: 1\.125rem/);
+  assert.match(css, /\.site-main:has\(\.sched-head\) \{ padding-top: 0\.5rem/);
+});
+
 // A just-enough DOM to run the grid's own drawing code in node.
 function fakeDom() {
   class Node {
@@ -471,10 +525,48 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
   for (const width of [390, 1280]) {
     const out = run.gridEl(t, "One Hit Wonders", { clientWidth: width });
     const pills = out.all((n) => n.tagName === "button" && n.classList.contains("pill"));
-    const shown = pills.map((p) => p.childNodes[0].textContent).filter((n) => /^G\d+$/.test(n)).sort();
+    const gno = (p) => p.all((n) => n.className === "gno")[0]?.textContent ?? p.childNodes[0].textContent;
+    const shown = pills.map(gno).filter((n) => /^G\d+$/.test(n)).sort();
     assert.deepEqual(shown, at(t.grid) && [...new Set([...me.played, ...me.reach])].map((i) => at(t.grid).get(i).n).sort(), "only the team's games are drawn");
     assert.ok(pills.every((p) => !p.classList.contains("dim")), "nothing faded: the rest are hidden");
-    const route = pills.filter((p) => p.classList.contains("route")).map((p) => p.childNodes[0].textContent);
+    assert.ok(width >= 640 || pills.every((p) => p.classList.contains("compact")), "phone team view uses compact pills");
+    if (width < 640) {
+      const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
+      const ph = pills.map((p) => dim(p.style.cssText, "height")).filter(Boolean);
+      const pw = pills.map((p) => dim(p.style.cssText, "width")).filter(Boolean);
+      assert.ok(ph.length && ph.every((x) => x === 32), "phone team pills are 32px tall");
+      assert.ok(pw.length && pw.every((x) => x === 48), "phone team pills stay 48px wide");
+      const gridBox = out.all((n) => n.className === "fg")[0];
+      const gridW = Number.parseFloat(gridBox?.style.width) || dim(gridBox?.style.cssText || "", "width");
+      assert.ok(gridW >= width - 1, "grid fills the card width: " + gridW + " vs " + width);
+      const px = (n) => Number.parseFloat(n.style.width) || dim(n.style.cssText, "width");
+      const lanes = out.all((n) => /\bfg-fname\b/.test(n.className)).map(px);
+      assert.ok(lanes.length && lanes.every((w) => w === lanes[0]), "field columns share a width");
+      const lane = lanes[0];
+      assert.ok(40 + lanes.length * lane <= gridW + 1, "columns span the card");
+      const pad = Math.floor((lane - 48) / 2);
+      for (const p of pills) {
+        const x = dim(p.style.cssText, "left");
+        assert.equal((x - 40) % lane, pad, "box is centered in its column");
+      }
+      const hours = out.all((n) => /\bfg-lab\b/.test(n.className) && /\bhour\b/.test(n.className));
+      const hourLabs = hours.map((n) => Number.parseFloat(n.style.top) || dim(n.style.cssText, "top")).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      const labOff = Math.floor((48 - 11) / 2);
+      const rowStarts = hourLabs.map((top) => top - labOff);
+      const dayGaps = [];
+      for (let i = 1; i < rowStarts.length; i++) {
+        const dlt = rowStarts[i] - rowStarts[i - 1];
+        if (dlt < 60) dayGaps.push(dlt);
+      }
+      assert.ok(dayGaps.length && dayGaps.every((d) => d === 48), "every hour row in a day is 48px, no skipped hours: " + dayGaps.join(","));
+      const mid = Math.floor((48 - 32) / 2);
+      for (const p of pills) {
+        const y = dim(p.style.cssText, "top");
+        const row = rowStarts.find((u) => y >= u && y < u + 48);
+        if (row != null) assert.equal(y, row + mid, "card is vertically centered in its hour row");
+      }
+    }
+    const route = pills.filter((p) => p.classList.contains("route")).map(gno);
     assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
     assert.equal(out.all((n) => /\bstub\b/.test(n.className)).length, 0, "every edge drawn as a line, no W→G labels");
     const thick = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none" && n.getAttribute("stroke-width") === "4");
@@ -492,17 +584,72 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
         const dx = Math.abs(p[k][0] - p[k - 1][0]), dy = Math.abs(p[k][1] - p[k - 1][1]);
         assert.ok(dx < 0.11 || dy < 0.11, `segment ${k} of line ${li} is not diagonal`);
       }
+      assert.ok(p.length === 2 || p.length === 4 || p.length === 6, `line ${li} is straight, one elbow, or a side-lane jog, not ${p.length} points`);
+      if (p.length === 4 && width < 640) {
+        assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && Math.abs(p[1][1] - p[2][1]) < 0.11 && Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} is V-H-V`);
+        const lo = Math.min(p[0][0], p[3][0]), hi = Math.max(p[0][0], p[3][0]);
+        assert.ok(p[1][0] >= lo - 0.2 && p[2][0] <= hi + 0.2 && p[2][0] >= lo - 0.2, `line ${li} stays in the column span`);
+        assert.ok(p[3][1] > p[2][1] && Math.abs(p[3][0] - p[2][0]) < 0.11, `line ${li} enters from the top`);
+      }
+      if (p.length === 6 && width < 640) {
+        assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && p[1][1] > p[0][1] - 0.01, `line ${li} exits down from the source`);
+        assert.ok(Math.abs(p[1][1] - p[2][1]) < 0.11, `line ${li} jogs sideways in the source gutter`);
+        assert.ok(Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} runs in a side lane`);
+        assert.ok(Math.abs(p[3][1] - p[4][1]) < 0.11, `line ${li} re-enters in the target gutter`);
+        assert.ok(p[5][1] > p[4][1] - 0.01 && Math.abs(p[5][0] - p[4][0]) < 0.11, `line ${li} enters from the top`);
+      }
+      if (width < 640) {
+        const a = p[p.length - 2], b = p[p.length - 1];
+        assert.ok(b[1] > a[1] - 0.01 && Math.abs(b[0] - a[0]) < 0.11, `line ${li} last segment points down`);
+      }
       const h = pts(heads[li].getAttribute("d").replace(" Z", ""));
       const base = [(h[1][0] + h[2][0]) / 2, (h[1][1] + h[2][1]) / 2];
       const end = p[p.length - 1];
       assert.ok(Math.hypot(end[0] - base[0], end[1] - base[1]) < 1, "line ends at the head's base");
       const w = Number(line.getAttribute("stroke-width")), hl = Math.hypot(h[0][0] - base[0], h[0][1] - base[1]);
-      assert.ok(Math.abs(hl - Math.max(6.5, w * 2.6)) < 0.2, "head sized to the stroke");
+      assert.ok(hl <= Math.max(6.5, w * 2.6) + 0.2 && hl >= 3, "head sized to the stroke, or shortened to fit a tight row");
+    }
+    if (width < 640) {
+      const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
+      const gridBox = out.all((n) => n.className === "fg")[0];
+      const gridW = Number.parseFloat(gridBox?.style.width) || dim(gridBox?.style.cssText || "", "width");
+      const boxR = pills.map((pill) => {
+        const css = pill.style.cssText || "";
+        return { x: dim(css, "left"), y: dim(css, "top"), w: dim(css, "width"), h: dim(css, "height"), label: gno(pill) };
+      }).filter((b) => Number.isFinite(b.x) && Number.isFinite(b.y) && b.w && b.h);
+      const hits = (a, b, box) => {
+        const x1 = a[0], y1 = a[1], x2 = b[0], y2 = b[1];
+        const bx1 = box.x + 0.6, by1 = box.y + 0.6, bx2 = box.x + box.w - 0.6, by2 = box.y + box.h - 0.6;
+        const near = (x, y) => (Math.abs(x - (box.x + box.w / 2)) < box.w / 2 + 1 && (Math.abs(y - box.y) < 2 || Math.abs(y - (box.y + box.h)) < 2));
+        if (near(x1, y1) || near(x2, y2)) return false;
+        if (Math.abs(x1 - x2) < 0.11) return x1 > bx1 && x1 < bx2 && Math.max(y1, y2) > by1 && Math.min(y1, y2) < by2;
+        if (Math.abs(y1 - y2) < 0.11) return y1 > by1 && y1 < by2 && Math.max(x1, x2) > bx1 && Math.min(x1, x2) < bx2;
+        return false;
+      };
+      for (const [li, line] of lines.entries()) {
+        const p = pts(line.getAttribute("d"));
+        for (let k = 1; k < p.length; k++) {
+          const hit = boxR.filter((box) => hits(p[k - 1], p[k], box)).map((b) => b.label);
+          assert.deepEqual(hit, [], `line ${li} segment ${k} must not pass through a box (${hit.join(", ")})`);
+        }
+        const xs = p.map((pt) => pt[0]);
+        assert.ok(Math.min(...xs) >= -0.5 && Math.max(...xs) <= gridW + 0.5, `line ${li} stays inside the card`);
+      }
     }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
+    // Place is a corner label; the game number stays first / centered.
+    const withPlace = pills.find((p) => p.all((n) => /\bfin\b/.test(n.className)).length);
+    if (width < 640 && withPlace) {
+      const first = withPlace.childNodes[0];
+      const fin = withPlace.all((n) => /\bfin\b/.test(n.className))[0];
+      assert.ok(/\bgno\b/.test(first.className), "game number stays centered; place is not inline beside it");
+      assert.ok(fin && /\bfin\b/.test(fin.className), "place is still inside the box");
+    }
     const head = out.all((n) => /\bfg-head\b/.test(n.className))[0];
     assert.ok(head && /One Hit Wonders/.test(head.textContent) && /Coed Rec/.test(head.textContent), "team and division in the sticky head");
+    assert.match(head.textContent, /Win/, "Win / Loss key sits on the team row");
+    assert.ok(head.all((n) => /\bfg-key\b/.test(n.className) && /\bfg-top\b/.test((n.parent && n.parent.className) || "")).length || head.all((n) => /\bfg-top\b/.test(n.className)).length, "team and key share the top row");
     if (width < 640) assert.match(head.textContent, /Pioneer/, "phone: field names pinned in the head");
     assert.ok(!/still possible|their finish|Played/.test(out.textContent));
   }
@@ -646,7 +793,7 @@ test("Path lines: a win then a loss — traveled win bold green, traveled loss b
 });
 
 function pillNamed(out, label) {
-  return out.all((n) => n.tagName === "button" && n.classList.contains("pill") && n.childNodes[0]?.textContent === label)[0];
+  return out.all((n) => n.tagName === "button" && n.classList.contains("pill") && (n.all((c) => c.className === "gno")[0]?.textContent === label || n.childNodes[0]?.textContent === label))[0];
 }
 
 test("Path view: a picked team's scored box gets won-box or lost-box, unplayed boxes do not", () => {
@@ -654,8 +801,11 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   const g1 = pillNamed(win.out, "G1");
   assert.ok(g1.classList.contains("won-box"), "G1 is a win for One Hit Wonders");
   assert.ok(g1.classList.contains("done"));
+  assert.ok(g1.classList.contains("compact"));
   assert.match(g1.textContent, /12/, "score is shown");
   assert.ok(!g1.classList.contains("lost-box"));
+  const g1bits = g1.childNodes.map((n) => [n.className, n.textContent]);
+  assert.deepEqual(g1bits.map((x) => x[0]), ["gno", "scr"], "scored box is the number over the score: 'G1' over '12-5'");
   const g3 = pillNamed(win.out, "G3");
   assert.ok(g3 && g3.classList.contains("route") && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed win-path G3 is a light green route box, not a scored fill");
 

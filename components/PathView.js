@@ -67,17 +67,15 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
       rootRef.current.appendChild(style);
     }
     const shadow = rootRef.current;
-    const { gridEl, keyEl } = gridRunner();
+    const { gridEl } = gridRunner();
     let vertical = null;
     function draw() {
       vertical = (host.clientWidth || window.innerWidth) < 640;
       shadow.querySelector(".pv")?.remove();
       const wrap = document.createElement("div");
       wrap.className = "pv";
-      const key = keyEl(t.grid);
-      // League (Mountain) time carries no label; Worlds says PST.
-      if (!t.grid.zone) key.lastChild?.remove();
-      wrap.appendChild(key);
+      // The key (Win / Loss / Times) sits in the grid's sticky head, on
+      // the same row as the team / division / record.
       wrap.appendChild(gridEl(t, picked, host));
       shadow.appendChild(wrap);
     }
@@ -90,6 +88,6 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
     return () => ro.disconnect();
   }, [rows, timeZone, zoneShort, slug, team, family]);
 
-  // The team line rides in the grid's sticky head; nothing else above it.
+  // The team line and the Win / Loss / Times key ride in the grid's sticky head.
   return <section className="path-view" aria-label="Path view" ref={hostRef} />;
 }

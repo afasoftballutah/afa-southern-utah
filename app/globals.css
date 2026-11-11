@@ -284,6 +284,40 @@ body {
   flex-wrap: nowrap;
   gap: 0;
 }
+/* Phone: Tournaments / News / Rules collapse into a ☰ button.
+   Desktop keeps the inline links (JD, 2026-11-11). */
+.site-nav__links { display: none; align-items: center; flex-wrap: nowrap; }
+.site-nav__menu { position: relative; flex: 0 0 auto; }
+.site-nav__toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.5rem; height: 2.5rem; margin: 0; padding: 0;
+  border: 0; background: transparent; color: #fff;
+  border-radius: 0.375rem; cursor: pointer;
+}
+.site-nav__toggle:hover,
+.site-nav__toggle[aria-expanded="true"] { background: rgba(255, 255, 255, 0.12); }
+.site-nav__bars {
+  display: flex; flex-direction: column; justify-content: space-between;
+  width: 1.15rem; height: 0.85rem;
+}
+.site-nav__bars > span { display: block; height: 2px; background: #fff; border-radius: 1px; }
+.site-nav__dropdown {
+  position: absolute; right: 0; top: calc(100% + 0.35rem);
+  min-width: 10.5rem; padding: 0.35rem 0;
+  background: #fff; color: var(--afa-navy);
+  border-radius: 0.5rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  z-index: 60;
+}
+.site-nav__dropdown-link {
+  display: block; padding: 0.65rem 1rem;
+  font-family: var(--font-body); font-size: 0.9375rem; font-weight: 600;
+  color: var(--afa-navy); text-decoration: none;
+}
+.site-nav__dropdown-link:hover { background: rgba(0, 0, 0, 0.05); }
+@media (min-width: 640px) {
+  .site-nav__links { display: flex; }
+  .site-nav__menu { display: none; }
+}
 /* Nav links — white on blue bar */
 .site-nav__link {
   display: inline-flex;
@@ -4252,18 +4286,16 @@ button.tl-pop__close {
   .score-ticker__list[aria-hidden="true"] { display: none; }
 }
 
-/* Schedule page top (JD, 2026-11-09: "the top has a lot of wasted space").
+/* Schedule page title: the tournament name is in the site header, so
+   this is just "Schedule" — slightly smaller, tight margins (JD, 2026-11-11).
    Unlayered on purpose: button:not(.pill) { min-height: 44px } is
    unlayered too and would otherwise win over .seg inside @layer. */
-.sched-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
-.sched-head__back {
-  display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.5rem;
-  font-size: 0.8125rem; font-weight: 500; color: var(--afa-navy);
-}
-.sched-head__back:hover { text-decoration: underline; }
+.site-main:has(.sched-head) { padding-top: 0.5rem; padding-bottom: 1rem; }
+.sched-head { margin: 0; }
 .sched-head__title {
+  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", var(--font-body-face), system-ui, sans-serif;
-  font-size: 1.5rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; color: #1d1d1f;
+  font-size: 1.125rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; color: #1d1d1f;
 }
 .team-finder--compact { padding: 0; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06); border-radius: 0.75rem; }
 .sched-seg { display: flex; width: 100%; }
