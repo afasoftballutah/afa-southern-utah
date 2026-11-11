@@ -23,6 +23,7 @@ import {
   whereWhen,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
+import { teamReachIds } from "@/lib/team-reach";
 import { placeClear, unionRect } from "@/lib/popover-place";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
@@ -620,6 +621,9 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   const teamRows = useMemo(() => fromScheduleRows(rows), [rows]);
   const mine = useMemo(() => teamGameIds(teamRows, team), [teamRows, team]);
   const nextId = useMemo(() => teamNextGame(teamRows, team), [teamRows, team]);
+  // Every game they could still play from there (win or lose their way in):
+  // lit with a dashed ring until their name is on it.
+  const could = useMemo(() => teamReachIds(rows, team, nextId), [rows, team, nextId]);
   const targets = useMemo(() => flowTargets(rows), [rows]);
   const dest = openId ? targets.get(openId) ?? null : null;
   // Where the open game's teams came from: every game whose winner or loser
@@ -661,7 +665,10 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       else if (id === dest?.loser) out.push("is-dest-lose");
       else if (src) out.push(feeders.some((f) => f.id === id && f.role === "winner") ? "is-src-win" : "is-src-lose");
       else if (id !== openId) out.push("is-dim");
-    } else if (team && mine.size > 0 && !mine.has(id)) out.push("is-back");
+    } else if (team && (mine.size > 0 || could.size > 0)) {
+      if (could.has(id) && !mine.has(id)) out.push("is-could");
+      else if (!mine.has(id)) out.push("is-back");
+    }
     if (id === nextId) out.push("is-next");
     return out.join(" ");
   };
@@ -766,6 +773,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
         <li className="tl-key__final">
           <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>If necessary
         </li>
+        {team && could.size > mine.size ? (
+          <li className="tl-key__could">
+            <span className="tl-key__swatch tl-key__swatch--could" aria-hidden="true" />
+            Games {team.name} could still play
+          </li>
+        ) : null}
         <li className="tl-key__corners">Corners: ↖↗ from (W5 = winner of game 5) · ↙ loser to · ↘ winner to</li>
       </ul>
 

@@ -3620,6 +3620,10 @@ button.tl-pill.tl-side-losers { font-weight: 450; }
 button.tl-pill { transition: transform 120ms ease, box-shadow 160ms ease, background-color 120ms ease, opacity 200ms ease; }
 .tl-pill.is-back { opacity: 0.38; }
 .tl-pill.is-dim { opacity: 0.22; }
+/* A game the followed team could still play (lib/team-reach.js): bright,
+   with a dashed ring in its division colour until the team's name is on it. */
+.tl-pill.is-could { outline: 1.5px dashed var(--tone-solid); outline-offset: 2px; }
+.tl-key__swatch--could { background: #fff; outline: 1.5px dashed var(--k); outline-offset: 1px; }
 .tl-pill.is-next { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #a3e635, 0 0 14px 3px rgb(190 242 100 / 0.75); }
 .tl-pill.is-next.is-open { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tone-solid), 0 0 14px 4px rgb(190 242 100 / 0.75); }
 .tl-pill.is-dest-win { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #86efac; }
