@@ -807,7 +807,7 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   const g1bits = g1.childNodes.map((n) => [n.className, n.textContent]);
   assert.deepEqual(g1bits.map((x) => x[0]), ["gno", "scr"], "scored box is the number over the score: 'G1' over '12-5'");
   const g3 = pillNamed(win.out, "G3");
-  assert.ok(g3 && g3.classList.contains("route") && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed win-path G3 is a light green route box, not a scored fill");
+  assert.ok(g3 && g3.classList.contains("route") && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed win-path G3 is a route box (green outline, no scored fill)");
 
   const games = recGames({
     g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
@@ -821,7 +821,7 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   assert.ok(!lost.classList.contains("won-box"));
   assert.match(lost.textContent, /10/, "score is shown on a loss");
   const next = pillNamed(both.out, "G5");
-  assert.ok(next && next.classList.contains("route") && !next.classList.contains("won-box") && !next.classList.contains("lost-box"), "after a loss, the remaining win-out from G5 is still a light green win-path box");
+  assert.ok(next && next.classList.contains("route") && !next.classList.contains("won-box") && !next.classList.contains("lost-box"), "after a loss, the remaining win-out from G5 is still a win-path route box");
 
   const none = drawTeam(recGames({
     g1: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
@@ -833,14 +833,18 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
     assert.ok(!p.classList.contains("won-box") && !p.classList.contains("lost-box"));
   }
   assert.ok(pillNamed(none.out, "G12").classList.contains("final"), "the championship stays a final, now in the green family");
+  const first = pillNamed(none.out, "G1");
+  assert.ok(first.classList.contains("next") && first.classList.contains("route"), "the current next game is the highlighted route box");
+  assert.ok(!pillNamed(none.out, "G3").classList.contains("next") && !pillNamed(none.out, "G12").classList.contains("next"), "later win-path boxes, including the championship, are not the current game");
   const lossBox = pillNamed(none.out, "G5") || pillNamed(none.out, "G11");
-  if (lossBox) assert.ok(!lossBox.classList.contains("route"), "a loss-path box is not given the win-path fill");
+  if (lossBox) assert.ok(!lossBox.classList.contains("route"), "a loss-path box is not given the win-path style");
 
   assert.match(GRID_CSS, /button\.pill\.done\.won-box, button\.pill\.won-box \{[^}]*background: var\(--win\);[^}]*color: #fff;/);
   assert.match(GRID_CSS, /button\.pill\.done\.lost-box, button\.pill\.lost-box \{[^}]*background: var\(--lose\);[^}]*color: #fff;/);
-  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*background: color-mix\(in srgb, var\(--win\) 18%, #fff\);[^}]*color: var\(--win\)/);
-  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*border: 1px solid color-mix\(in srgb, var\(--win\) 45%, #fff\);[^}]*font-weight: 450/);
-  assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*border-color: color-mix\(in srgb, var\(--win\) 45%, #fff\)/);
+  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*background: transparent;[^}]*color: var\(--win\)/);
+  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*border: 1px solid var\(--win\);[^}]*font-weight: 450/);
+  assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*background: transparent;[^}]*color: var\(--win\);[^}]*border-color: var\(--win\)/);
+  assert.match(GRID_CSS, /button\.pill\.route\.next \{[^}]*background: color-mix\(in srgb, var\(--win\) 18%, #fff\)/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*2\.5px/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*font-weight: 800/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route\.final \{[^}]*#c99a1e/);
