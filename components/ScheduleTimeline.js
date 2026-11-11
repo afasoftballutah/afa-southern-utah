@@ -750,6 +750,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   const [anchor, setAnchor] = useState(null);
   const [sheet, setSheet] = useState(false);
   const pills = useRef(new Map());
+  const headRef = useRef(null);
   // The followed team (the picker above): their games stay bright, the rest
   // step back, and their NEXT game gets a lime glow — "next" means the same
   // thing as on the bracket (lib/team-games.js).
@@ -824,6 +825,27 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  // Same width as the tabs bar above so the key spreads across that
+  // row on a phone and stays capped (not stretched) on desktop.
+  useLayoutEffect(() => {
+    const head = headRef.current;
+    const tabs = document.querySelector(".sched-seg");
+    if (!head) return undefined;
+    const apply = () => {
+      const w = tabs ? tabs.getBoundingClientRect().width : 0;
+      head.style.width = w > 0 ? `${Math.round(w)}px` : "";
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    if (tabs) ro.observe(tabs);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      head.style.width = "";
+    };
+  }, []);
+
   const close = useCallback(
     (refocus) => {
       if (refocus && openId) pills.current.get(openId)?.focus();
@@ -881,11 +903,24 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
 
   return (
     <div className="tl">
-      <div className="tl-head">
-        <div className="tl-legend" role="list" aria-label="Divisions">
+      <div className="tl-head" ref={headRef}>
+        <div
+          className="tl-legend"
+          role="list"
+          aria-label="Divisions"
+          style={
+            legend.length
+              ? { gridTemplateColumns: legend.map((_, i) => (i === 0 ? "minmax(0, 1fr)" : "auto minmax(0, 1fr)")).join(" ") }
+              : undefined
+          }
+        >
           {legend.map((g, gi) => (
             <Fragment key={g.group ?? `other-${gi}`}>
-              {gi > 0 ? <SoftballMark /> : null}
+              {gi > 0 ? (
+                <span className="tl-legend__gutter" aria-hidden="true">
+                  <SoftballMark />
+                </span>
+              ) : null}
               <div className="tl-legend__group" role="listitem" aria-label={g.group ?? undefined}>
                 {g.short || g.group ? (
                   <span className="tl-legend__group-name" aria-hidden={Boolean(g.short)}>{g.short ?? g.group}</span>

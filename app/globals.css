@@ -3496,23 +3496,34 @@ button:not(.pill) {
 .path-view { min-width: 0; max-width: 100%; }
 .tl { display: flex; flex-direction: column; gap: 0.75rem; color: var(--tl-ink); }
 .tl-day + .tl-day { margin-top: 0.5rem; }
-/* Men / Women / Coed in small gray type, then their chips, then "?"
-   (JD, 2026-11-10: the letters looked like divisions). Tight enough to
-   stay on one line at 390px and 375px. Groups never split (flex: 0 0
-   auto); they wrap only below 360px. */
-.tl-head { display: flex; align-items: flex-start; gap: 0.25rem; }
+/* Two-row key: one equal-width column per group (label centered over
+   its chips), softballs in the gutters on the chip row, spread to the
+   same width as the tabs bar (JD, 2026-11-10: "use the same width" /
+   "dont clump them"). The "?" sits outside the columns, vertically
+   centered on the block. */
+.tl-head {
+  display: flex; align-items: center; gap: 0.35rem;
+  width: 100%; box-sizing: border-box;
+}
 .tl-legend {
-  display: flex; flex-wrap: nowrap; align-items: center; gap: 0.35rem 0.15rem;
-  flex: 1; min-width: 0;
+  --tl-legend-label-h: 0.625rem;
+  --tl-legend-stack-gap: 0.2rem;
+  display: grid; flex: 1; min-width: 0; align-items: stretch;
   font-size: 0.75rem; color: var(--tl-label);
 }
-@media (max-width: 359.98px) {
-  .tl-legend { flex-wrap: wrap; }
+.tl-legend__group {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--tl-legend-stack-gap); min-width: 0;
 }
-.tl-legend__group { display: inline-flex; align-items: center; gap: 0; flex: 0 0 auto; }
 .tl-legend__group-name {
-  font-size: 0.625rem; font-weight: 500; color: var(--tl-label);
-  line-height: 1; margin-right: 6px;
+  font-size: var(--tl-legend-label-h); font-weight: 500; color: var(--tl-label);
+  line-height: 1; height: var(--tl-legend-label-h); text-align: center;
+}
+.tl-legend__gutter {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  align-self: stretch;
+  padding: calc(var(--tl-legend-label-h) + var(--tl-legend-stack-gap)) 0.45rem 0;
+  box-sizing: content-box;
 }
 .tl-legend__ball { flex: 0 0 auto; width: 9px; height: 9px; display: block; }
 .tl-legend__items { display: inline-flex; gap: 0.125rem; }
