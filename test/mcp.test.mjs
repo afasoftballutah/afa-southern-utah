@@ -555,16 +555,19 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
         const dx = Math.abs(p[k][0] - p[k - 1][0]), dy = Math.abs(p[k][1] - p[k - 1][1]);
         assert.ok(dx < 0.11 || dy < 0.11, `segment ${k} of line ${li} is not diagonal`);
       }
-      assert.ok(p.length === 2 || p.length === 4, `line ${li} is straight or one elbow (V-H-V / H-V-H), not ${p.length} points`);
-      if (p.length === 4) {
-        const xs = [p[0][0], p[3][0], p[1][0], p[2][0]];
-        const ys = [p[0][1], p[3][1], p[1][1], p[2][1]];
-        if (width < 640) {
-          assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && Math.abs(p[1][1] - p[2][1]) < 0.11 && Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} is V-H-V`);
-          const lo = Math.min(p[0][0], p[3][0]), hi = Math.max(p[0][0], p[3][0]);
-          assert.ok(p[1][0] >= lo - 0.2 && p[2][0] <= hi + 0.2 && p[2][0] >= lo - 0.2, `line ${li} stays in the column span`);
-          assert.ok(p[3][1] > p[2][1] && Math.abs(p[3][0] - p[2][0]) < 0.11, `line ${li} enters from the top`);
-        }
+      assert.ok(p.length === 2 || p.length === 4 || p.length === 6, `line ${li} is straight, one elbow, or a side-lane jog, not ${p.length} points`);
+      if (p.length === 4 && width < 640) {
+        assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && Math.abs(p[1][1] - p[2][1]) < 0.11 && Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} is V-H-V`);
+        const lo = Math.min(p[0][0], p[3][0]), hi = Math.max(p[0][0], p[3][0]);
+        assert.ok(p[1][0] >= lo - 0.2 && p[2][0] <= hi + 0.2 && p[2][0] >= lo - 0.2, `line ${li} stays in the column span`);
+        assert.ok(p[3][1] > p[2][1] && Math.abs(p[3][0] - p[2][0]) < 0.11, `line ${li} enters from the top`);
+      }
+      if (p.length === 6 && width < 640) {
+        assert.ok(Math.abs(p[0][0] - p[1][0]) < 0.11 && p[1][1] > p[0][1] - 0.01, `line ${li} exits down from the source`);
+        assert.ok(Math.abs(p[1][1] - p[2][1]) < 0.11, `line ${li} jogs sideways in the source gutter`);
+        assert.ok(Math.abs(p[2][0] - p[3][0]) < 0.11, `line ${li} runs in a side lane`);
+        assert.ok(Math.abs(p[3][1] - p[4][1]) < 0.11, `line ${li} re-enters in the target gutter`);
+        assert.ok(p[5][1] > p[4][1] - 0.01 && Math.abs(p[5][0] - p[4][0]) < 0.11, `line ${li} enters from the top`);
       }
       if (width < 640) {
         const a = p[p.length - 2], b = p[p.length - 1];
@@ -576,6 +579,33 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       assert.ok(Math.hypot(end[0] - base[0], end[1] - base[1]) < 1, "line ends at the head's base");
       const w = Number(line.getAttribute("stroke-width")), hl = Math.hypot(h[0][0] - base[0], h[0][1] - base[1]);
       assert.ok(hl <= Math.max(6.5, w * 2.6) + 0.2 && hl >= 3, "head sized to the stroke, or shortened to fit a tight row");
+    }
+    if (width < 640) {
+      const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
+      const gridBox = out.all((n) => n.className === "fg")[0];
+      const gridW = Number.parseFloat(gridBox?.style.width) || dim(gridBox?.style.cssText || "", "width");
+      const boxR = pills.map((pill) => {
+        const css = pill.style.cssText || "";
+        return { x: dim(css, "left"), y: dim(css, "top"), w: dim(css, "width"), h: dim(css, "height"), label: gno(pill) };
+      }).filter((b) => Number.isFinite(b.x) && Number.isFinite(b.y) && b.w && b.h);
+      const hits = (a, b, box) => {
+        const x1 = a[0], y1 = a[1], x2 = b[0], y2 = b[1];
+        const bx1 = box.x + 0.6, by1 = box.y + 0.6, bx2 = box.x + box.w - 0.6, by2 = box.y + box.h - 0.6;
+        const near = (x, y) => (Math.abs(x - (box.x + box.w / 2)) < box.w / 2 + 1 && (Math.abs(y - box.y) < 2 || Math.abs(y - (box.y + box.h)) < 2));
+        if (near(x1, y1) || near(x2, y2)) return false;
+        if (Math.abs(x1 - x2) < 0.11) return x1 > bx1 && x1 < bx2 && Math.max(y1, y2) > by1 && Math.min(y1, y2) < by2;
+        if (Math.abs(y1 - y2) < 0.11) return y1 > by1 && y1 < by2 && Math.max(x1, x2) > bx1 && Math.min(x1, x2) < bx2;
+        return false;
+      };
+      for (const [li, line] of lines.entries()) {
+        const p = pts(line.getAttribute("d"));
+        for (let k = 1; k < p.length; k++) {
+          const hit = boxR.filter((box) => hits(p[k - 1], p[k], box)).map((b) => b.label);
+          assert.deepEqual(hit, [], `line ${li} segment ${k} must not pass through a box (${hit.join(", ")})`);
+        }
+        const xs = p.map((pt) => pt[0]);
+        assert.ok(Math.min(...xs) >= -0.5 && Math.max(...xs) <= gridW + 0.5, `line ${li} stays inside the card`);
+      }
     }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
