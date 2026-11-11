@@ -206,3 +206,62 @@ test("never leaks contacts, never prints ':00' on a whole hour, never shows TBD 
   }
   assert.equal((await call("get_schedule", { slug: "2026-secret" }))._error, true, "placeholder events are not public");
 });
+
+// MCP Apps game card (piece 1, JD 2026-11-10): get_game names ui://afa/game,
+// the resource is one self-contained HTML document, the text answer is the
+// same JSON as before, and the card data is the site's card, nothing more.
+test("get_game view: ui://afa/game resource, self-contained, block-all CSP", async () => {
+  const { c } = await client();
+  const { tools } = await c.listTools();
+  const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+  assert.equal(byName.get_game._meta.ui.resourceUri, "ui://afa/game");
+  for (const t of tools) if (t.name !== "get_game") assert.equal(t._meta?.ui, undefined, `${t.name} has no view yet`);
+  const { resources } = await c.listResources();
+  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]), [["ui://afa/game", "text/html;profile=mcp-app"]]);
+  const { contents } = await c.readResource({ uri: "ui://afa/game" });
+  assert.equal(contents.length, 1);
+  const [html] = contents;
+  assert.equal(html.mimeType, "text/html;profile=mcp-app");
+  assert.equal(html._meta.ui.csp, undefined, "nothing to allow: no fetches, scripts, fonts or frames from anywhere");
+  assert.match(html.text, /^<!doctype html>/);
+  assert.match(html.text, /ui\/initialize/);
+  assert.match(html.text, /ui\/notifications\/tool-result/);
+  assert.match(html.text, /ui\/open-link/);
+  assert.doesNotMatch(html.text, /<script[^>]+src=|<link[^>]+href=|@import|url\(|fetch\(|XMLHttpRequest|innerHTML/i);
+});
+
+test("get_game view: text unchanged; card = division color, Winner/Loser G#, red/green next lines, PST, View on site", async () => {
+  const { c } = await client();
+  const call = (args) => c.callTool({ name: "get_game", arguments: { slug: TOURNAMENT.slug, division: "Coed Rec", ...args } });
+
+  const r6 = await call({ game: 6 });
+  const { card, ...answer } = r6.structuredContent;
+  assert.equal(r6.content.length, 1);
+  assert.equal(r6.content[0].text, JSON.stringify(answer), "text clients read exactly what they read before");
+  assert.deepEqual(card.tone, { bg: "#eadbd0", ink: "#5a2e14", solid: "#6b3a1f" }, "Coed Rec brown (lib/division-tones.js)");
+  assert.deepEqual(card.side, { text: "L", label: "Losers bracket", gold: false });
+  assert.equal(card.title, "Game 6");
+  assert.deepEqual(card.board.map((b) => b.team ?? `${b.from} ${b.game}`), ["Fallen Angels", "Loser G4"]);
+  assert.deepEqual(card.loser, { next: "Game 7", where: "Sun 12 PM \u00b7 Hunter F2" });
+  assert.deepEqual(card.winner, { next: "Game 8", where: "Sun 1 PM \u00b7 Hunter F2" });
+  assert.equal(card.time, "Sun 11 AM PST");
+  assert.equal(card.field, "Hunter F2");
+  assert.equal(card.url, "https://afa-southern-utah.vercel.app/tournaments/2026-afa-world-series/division/rec?game=6");
+
+  const c1 = (await call({ game: 1 })).structuredContent.card;
+  assert.deepEqual(c1.board.map((b) => [b.team, b.score, b.won]), [["One Hit Wonders", 12, true], ["Fallen Angels", 8, false]]);
+  assert.equal(c1.time, "Sat 6 PM PST");
+
+  const c12 = (await call({ game: 12 })).structuredContent.card;
+  assert.deepEqual(c12.side, { text: "\u2605 Final", label: "Championship", gold: true });
+  assert.deepEqual(c12.board.map((b) => `${b.from} ${b.game}`), ["Winner G9", "Winner G11"]);
+  assert.deepEqual([c12.winner, c12.loser], [{ champion: true }, { place: "2nd" }]);
+  assert.deepEqual(c12.ifGame, { title: "Game 13", where: "Sun 5 PM \u00b7 Pioneer F2" });
+
+  const all = JSON.stringify((await call({ game: 6 })).structuredContent);
+  for (const secret of ["director@example.com", "435-555-0100", "Director Person", "contacts"]) assert.ok(!all.includes(secret), secret);
+
+  const missing = await call({ game: 99 });
+  assert.equal(missing.isError, true);
+  assert.equal(missing.structuredContent, undefined, "an error has no card; the view shows the error text");
+});

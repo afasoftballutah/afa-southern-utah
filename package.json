@@ -11,6 +11,7 @@
     "test:bracket": "node --import ./test/register.mjs --test test/seed-order.test.mjs test/lives.test.mjs test/structure-seed.test.mjs test/pool-seed.test.mjs test/bracket.test.mjs test/elimination.test.mjs test/worlds-mens-d.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@supabase/supabase-js": "^2.109.0",
     "bcryptjs": "^3.0.3",
