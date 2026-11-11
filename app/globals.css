@@ -634,9 +634,24 @@ body:has(.scorekeeper-scope) {
   color: var(--afa-navy);
   font-variant-numeric: proportional-nums;
 }
+.sk-mark__when {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.sk-mark__dot {
+  font-size: 0.75em;
+  font-weight: 700;
+  opacity: 0.5;
+  line-height: 1;
+}
 .sk-mark__meta.is-tight {
-  /* Half hours ("Th 10:30A P2") stay on one line; keep the same 4px gaps. */
-  font-size: 0.578125rem; /* 9.25px, only this longer case */
+  /* Half hours ("Th 10:30A · P2") stay on one line in the fixed column. */
+  font-size: 0.5625rem; /* 9px, only this longer case */
+  gap: 3px;
+}
+.sk-mark__meta.is-tight .sk-mark__when {
+  gap: 4px; /* day and time stay spaced like the other rows */
 }
 .sk-game__team {
   min-width: 0;

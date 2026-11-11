@@ -169,8 +169,8 @@ test("scorekeeperWhenMark is 2-letter day, 12-hour clock with A/P, no :00", () =
   assert.equal(scorekeeperWhenMark(thu3, TZ).label, "Th 3P");
   assert.ok(!String(scorekeeperWhenMark(thu2, TZ).clock).includes(":00"));
   assert.equal(scorekeeperWhenMark(null, TZ), null);
-  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu3, TZ), "H1"), "Th 3P H1");
-  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu1030, TZ), "P2"), "Th 10:30A P2");
+  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu3, TZ), "H1"), "Th 3P · H1");
+  assert.equal(scorekeeperMarkLine(scorekeeperWhenMark(thu1030, TZ), "P2"), "Th 10:30A · P2");
   assert.equal(scorekeeperMarkLine(null, null), "—");
 });
 
@@ -190,7 +190,7 @@ test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1"
   assert.equal(catalog[0].divisionAbbrev, "MD");
   assert.equal(catalog.find((r) => r.id === "wr49").divisionAbbrev, "WR");
   assert.equal(catalog[0].whenMark.label, "Th 2P");
-  assert.equal(catalog[0].markLine, "Th 2P H1");
+  assert.equal(catalog[0].markLine, "Th 2P · H1");
   assert.equal(catalog[1].fieldName, "Pioneer F1");
   assert.equal(catalog.find((r) => r.id === "wr55").fieldName, "Pioneer F2");
   assert.equal(catalog.find((r) => r.id === "wr49").tone, "womens-rec");
@@ -245,15 +245,17 @@ test("ScorekeeperBoard is one list with a colored mark pill and a when/field lin
   assert.match(board, /tl-tone-\$\{/);
   assert.match(board, /sk-mark__pill/);
   assert.match(board, /divisionAbbrev/);
+  assert.match(board, /sk-mark__div[\s\S]+sk-mark__num/);
   assert.match(board, /sk-mark__meta/);
+  assert.match(board, /sk-mark__when/);
   assert.match(board, /sk-mark__day/);
   assert.match(board, /sk-mark__clock/);
+  assert.match(board, /sk-mark__dot/);
   assert.match(board, /sk-mark__field/);
   assert.match(board, /markLine/);
   assert.match(board, /SegmentBar/);
   assert.match(board, /scorekeeperFieldAbbrev/);
   assert.doesNotMatch(board, /sk-mark__tone/);
-  assert.doesNotMatch(board, /sk-mark__when/);
   assert.doesNotMatch(board, /sk-pill/);
   assert.doesNotMatch(board, /All fields/);
   assert.doesNotMatch(board, /ScoreTable/);

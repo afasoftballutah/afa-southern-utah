@@ -166,15 +166,24 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
     >
       <span className={`sk-mark tl-tone-${row.tone}`} title={row.divisionLabel} aria-label={gameLabel(row)}>
         <span className={"sk-mark__pill" + (row.toneInkDark ? " is-dark" : "")}>
-          <span className="sk-mark__num">{row.number}</span>
-          {row.divisionAbbrev ? <span className="sk-mark__div"> {row.divisionAbbrev}</span> : null}
+          {row.divisionAbbrev ? <span className="sk-mark__div">{row.divisionAbbrev}</span> : null}
+          {row.number != null && row.number !== "" ? (
+            <span className="sk-mark__num">{row.divisionAbbrev ? " " : ""}{row.number}</span>
+          ) : null}
         </span>
         <span className={"sk-mark__meta" + (row.whenMark?.hasMinutes ? " is-tight" : "")}>
           {row.whenMark ? (
             <>
-              <span className="sk-mark__day">{row.whenMark.day}</span>
-              <span className="sk-mark__clock">{row.whenMark.clock}</span>
-              {row.fieldAbbrev ? <span className="sk-mark__field">{row.fieldAbbrev}</span> : null}
+              <span className="sk-mark__when">
+                <span className="sk-mark__day">{row.whenMark.day}</span>
+                <span className="sk-mark__clock">{row.whenMark.clock}</span>
+              </span>
+              {row.fieldAbbrev ? (
+                <>
+                  <span className="sk-mark__dot" aria-hidden="true">·</span>
+                  <span className="sk-mark__field">{row.fieldAbbrev}</span>
+                </>
+              ) : null}
             </>
           ) : (
             row.fieldAbbrev ?? "—"
