@@ -31,6 +31,7 @@ export default function ScorekeeperBoard({
   const [fieldReady, setFieldReady] = useState(false);
   const [day, setDay] = useState(null);
   const [showScored, setShowScored] = useState(false);
+  const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
     try {
@@ -120,7 +121,9 @@ export default function ScorekeeperBoard({
             <span aria-hidden="true">{showScored ? "▾" : "▸"}</span> Scored
           </button>
           {showScored
-            ? scored.map((row) => <GameRow key={row.id} row={row} />)
+            ? scored.map((row) => (
+              <GameRow key={row.id} row={row} active={activeId === row.id} onActivate={setActiveId} />
+            ))
             : null}
         </div>
       )}
@@ -133,6 +136,8 @@ export default function ScorekeeperBoard({
               row={row}
               rowRef={open.length && i === 0 ? nextRef : undefined}
               isNext={Boolean(open.length && i === 0)}
+              active={activeId === row.id}
+              onActivate={setActiveId}
             />
           ))}
         </div>
@@ -141,7 +146,7 @@ export default function ScorekeeperBoard({
   );
 }
 
-function GameRow({ row, rowRef, isNext = false }) {
+function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
   const router = useRouter();
   const won1 =
     row.scored &&
@@ -157,7 +162,7 @@ function GameRow({ row, rowRef, isNext = false }) {
     <div
       ref={rowRef}
       id={isNext ? "sk-next" : undefined}
-      className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "")}
+      className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "") + (active ? " is-active" : "")}
     >
       <span className={`sk-mark tl-tone-${row.tone}`} title={row.divisionLabel} aria-label={gameLabel(row)}>
         <span className="sk-mark__num">{row.number}</span>
@@ -183,6 +188,8 @@ function GameRow({ row, rowRef, isNext = false }) {
           kind={row.kind}
           team1Name={row.team1Label}
           team2Name={row.team2Label}
+          active={active}
+          onActivate={(id) => onActivate?.(id === null ? null : row.id)}
           onSaved={() => router.refresh()}
         />
       </div>

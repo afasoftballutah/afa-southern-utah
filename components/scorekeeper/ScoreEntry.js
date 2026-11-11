@@ -25,10 +25,24 @@ function bump(value, delta) {
   return String(Math.max(0, Math.min(99, next)));
 }
 
+function Caret({ dir }) {
+  const up = dir === "up";
+  return (
+    <svg viewBox="0 0 12 8" width="10" height="6" aria-hidden="true" focusable="false">
+      {up ? (
+        <path d="M6 1.2 L11 6.8 H1 Z" fill="currentColor" />
+      ) : (
+        <path d="M1 1.2 H11 L6 6.8 Z" fill="currentColor" />
+      )}
+    </svg>
+  );
+}
+
 /**
- * Scoreboard tiles: [− 5 +]. The number can be typed. −/+ always sit
- * inside the box. A check in a reserved slot confirms once both sides
- * have a number. A saved row stays locked until it's tapped again.
+ * Compact score boxes until the row is active. Then a standard stepper:
+ * the number on the left, up/down arrows stacked on the right edge of
+ * the same box. A check confirms once both sides have a number. A
+ * saved row stays locked until it's tapped again.
  */
 export default function ScoreEntry({
   game,
@@ -36,6 +50,8 @@ export default function ScoreEntry({
   team1Name,
   team2Name,
   onSaved,
+  active = false,
+  onActivate,
 }) {
   const api = ENDPOINTS[kind] ?? ENDPOINTS.bracket;
   const saved =
@@ -45,14 +61,13 @@ export default function ScoreEntry({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [ask, setAsk] = useState(false);
-  const [editing, setEditing] = useState(!saved);
 
-  const locked = saved && !editing;
+  const locked = saved && !active;
   const dirty =
     String(a) !== String(game.team1_score ?? "") || String(b) !== String(game.team2_score ?? "");
   const ready = a !== "" && b !== "";
-  const showConfirm = !locked && ready && (dirty || !saved);
-  const showDone = saved && editing && !dirty;
+  const showConfirm = active && ready && (dirty || !saved);
+  const showDone = saved && active && !dirty;
 
   async function post(payload) {
     setBusy(true);
@@ -65,7 +80,7 @@ export default function ScoreEntry({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not save score");
-      setEditing(false);
+      onActivate?.(null);
       onSaved?.();
     } catch (err) {
       setError(err.message);
@@ -73,75 +88,79 @@ export default function ScoreEntry({
     }
   }
 
-  function unlock() {
-    if (locked) setEditing(true);
+  function activate() {
+    if (!active) onActivate?.();
   }
 
   function onBox(side, value) {
-    unlock();
+    activate();
     const next = digits(value);
     if (side === "a") setA(next);
     else setB(next);
   }
 
   function onStep(side, delta) {
-    unlock();
+    activate();
     if (side === "a") setA((v) => bump(v, delta));
     else setB((v) => bump(v, delta));
   }
 
   return (
-    <span className={"sk-score" + (locked ? " is-locked" : "")}>
+    <span className={"sk-score" + (active ? " is-active" : "") + (locked ? " is-locked" : "")}>
       <ScoreBox
         name={team1Name}
         value={a}
+        active={active}
         locked={locked}
         busy={busy}
         onChange={(v) => onBox("a", v)}
         onStep={(d) => onStep("a", d)}
-        onFocus={unlock}
+        onActivate={activate}
       />
       <ScoreBox
         name={team2Name}
         value={b}
+        active={active}
         locked={locked}
         busy={busy}
         onChange={(v) => onBox("b", v)}
         onStep={(d) => onStep("b", d)}
-        onFocus={unlock}
+        onActivate={activate}
       />
-      <span className="sk-score__confirm-slot">
-        {showConfirm ? (
-          <button
-            type="button"
-            className="sk-score__confirm"
-            aria-label="Confirm score"
-            disabled={busy}
-            onClick={() => post(api.body(a, b))}
-          >
-            {busy ? "…" : "✓"}
-          </button>
-        ) : showDone ? (
-          <button
-            type="button"
-            className="sk-score__confirm is-done"
-            aria-label="Done editing"
-            onClick={() => setEditing(false)}
-          >
-            ✓
-          </button>
-        ) : null}
-        {saved && editing ? (
-          <button
-            type="button"
-            className="sk-score__clear"
-            disabled={busy}
-            onClick={() => setAsk(true)}
-          >
-            Clear
-          </button>
-        ) : null}
-      </span>
+      {active ? (
+        <span className="sk-score__confirm-slot">
+          {showConfirm ? (
+            <button
+              type="button"
+              className="sk-score__confirm"
+              aria-label="Confirm score"
+              disabled={busy}
+              onClick={() => post(api.body(a, b))}
+            >
+              {busy ? "…" : "✓"}
+            </button>
+          ) : showDone ? (
+            <button
+              type="button"
+              className="sk-score__confirm is-done"
+              aria-label="Done editing"
+              onClick={() => onActivate?.(null)}
+            >
+              ✓
+            </button>
+          ) : null}
+          {saved ? (
+            <button
+              type="button"
+              className="sk-score__clear"
+              disabled={busy}
+              onClick={() => setAsk(true)}
+            >
+              Clear
+            </button>
+          ) : null}
+        </span>
+      ) : null}
       {error ? <span className="sk-score__error">{error}</span> : null}
       {ask && (
         <ConfirmDialog
@@ -160,19 +179,12 @@ export default function ScoreEntry({
   );
 }
 
-function ScoreBox({ name, value, locked, busy, onChange, onStep, onFocus }) {
+function ScoreBox({ name, value, active, locked, busy, onChange, onStep, onActivate }) {
   return (
-    <span className={"sk-score__tile" + (locked ? " is-locked" : "")}>
-      <button
-        type="button"
-        className="sk-score__step"
-        aria-label={`Decrease ${name} score`}
-        disabled={busy}
-        tabIndex={locked ? -1 : 0}
-        onClick={() => onStep(-1)}
-      >
-        −
-      </button>
+    <span
+      className={"sk-score__tile" + (active ? " is-active" : "") + (locked ? " is-locked" : "")}
+      onClick={onActivate}
+    >
       <input
         type="text"
         inputMode="numeric"
@@ -181,21 +193,41 @@ function ScoreBox({ name, value, locked, busy, onChange, onStep, onFocus }) {
         className="sk-score__input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onFocus={onFocus}
+        onFocus={onActivate}
         readOnly={locked}
         disabled={busy}
         maxLength={2}
       />
-      <button
-        type="button"
-        className="sk-score__step"
-        aria-label={`Increase ${name} score`}
-        disabled={busy}
-        tabIndex={locked ? -1 : 0}
-        onClick={() => onStep(1)}
-      >
-        +
-      </button>
+      {active ? (
+        <span className="sk-score__spin">
+          <button
+            type="button"
+            className="sk-score__step sk-score__step--up"
+            aria-label={`Increase ${name} score`}
+            disabled={busy}
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onStep(1);
+            }}
+          >
+            <Caret dir="up" />
+          </button>
+          <button
+            type="button"
+            className="sk-score__step sk-score__step--down"
+            aria-label={`Decrease ${name} score`}
+            disabled={busy}
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onStep(-1);
+            }}
+          >
+            <Caret dir="down" />
+          </button>
+        </span>
+      ) : null}
     </span>
   );
 }
