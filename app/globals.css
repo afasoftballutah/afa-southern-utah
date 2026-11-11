@@ -453,6 +453,273 @@ body:has(.scorekeeper-scope) {
   opacity: 1;
 }
 
+/* Scorekeeper game list — compact field/day chips + one time-ordered sheet. */
+.sk-board {
+  --sk-toolbar-h: 7.25rem;
+}
+.sk-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--afa-cream);
+  padding: 0.15rem 0.25rem 0.55rem;
+  margin: 0 -0.25rem 0.6rem;
+  box-shadow: 0 10px 10px -8px var(--afa-cream), 0 1px 0 color-mix(in srgb, var(--afa-navy) 8%, transparent);
+}
+.sk-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.2rem 0;
+}
+.sk-chips + .sk-chips {
+  padding-top: 0;
+}
+.sk-chips::-webkit-scrollbar {
+  display: none;
+}
+.sk-chip {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding: 0 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--afa-navy) 22%, transparent);
+  border-radius: 999px;
+  background: var(--afa-white);
+  color: var(--afa-navy);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+.sk-chip.is-on {
+  background: var(--afa-navy);
+  border-color: var(--afa-navy);
+  color: var(--afa-white);
+}
+.sk-scored {
+  margin-bottom: 0.5rem;
+}
+.sk-scored__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--afa-muted);
+}
+.sk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.sk-head {
+  display: none;
+}
+.sk-game {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.6rem;
+  row-gap: 0.15rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--afa-navy) 10%, transparent);
+  border-left: 4px solid var(--tone-solid, #64748b);
+  background: var(--afa-white);
+  scroll-margin-top: var(--sk-toolbar-h);
+}
+.sk-game.is-next {
+  background: var(--tone-bg, var(--afa-white));
+}
+.sk-game.is-scored {
+  opacity: 0.72;
+}
+.sk-game__meta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  min-width: 0;
+}
+.sk-game__num {
+  font-weight: 800;
+  color: var(--afa-navy);
+  font-variant-numeric: tabular-nums;
+}
+.sk-game__div {
+  color: var(--tone-ink, var(--afa-muted));
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 0;
+}
+.sk-game__when,
+.sk-game__field {
+  font-size: 0.8125rem;
+  color: var(--afa-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sk-game__team {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  color: var(--afa-ink);
+}
+.sk-game__team.is-won {
+  font-weight: 700;
+  color: var(--afa-navy);
+}
+.sk-game__team1 {
+  grid-column: 1;
+  grid-row: 2;
+}
+.sk-game__team2 {
+  grid-column: 1;
+  grid-row: 3;
+}
+.sk-game__score {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: center;
+  justify-self: end;
+}
+.sk-score {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+.sk-score__input {
+  width: 3.15rem;
+  height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--afa-navy) 28%, transparent);
+  border-radius: 0.5rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  background: var(--afa-white);
+}
+.sk-score__input:focus {
+  outline: 2px solid var(--afa-navy);
+  outline-offset: 1px;
+}
+.sk-score__dash {
+  color: color-mix(in srgb, var(--afa-ink) 40%, transparent);
+  font-weight: 650;
+}
+.sk-score__save {
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  background: var(--afa-action);
+  color: var(--afa-white);
+  font-size: 0.875rem;
+  font-weight: 750;
+}
+.sk-score__save:disabled {
+  opacity: 0.6;
+}
+.sk-score__clear {
+  min-height: 2.5rem;
+  padding: 0 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--afa-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@media (min-width: 768px) {
+  .sk-list {
+    gap: 0;
+    border: 1px solid color-mix(in srgb, var(--afa-navy) 10%, transparent);
+    border-radius: 0.7rem;
+    overflow: hidden;
+    background: var(--afa-white);
+  }
+  .sk-head {
+    display: grid;
+    grid-template-columns: 2.4rem 8.25rem 8.25rem minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.45rem 0.85rem 0.45rem 1rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--afa-muted);
+    background: var(--afa-soft-gray);
+    border-bottom: 1px solid color-mix(in srgb, var(--afa-navy) 8%, transparent);
+  }
+  .sk-head span:nth-child(4) {
+    text-align: right;
+  }
+  .sk-game {
+    grid-template-columns: 2.4rem 8.25rem 8.25rem minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--afa-navy) 8%, transparent);
+    border-left: 4px solid var(--tone-solid, #64748b);
+    padding: 0.45rem 0.85rem 0.45rem 0.85rem;
+  }
+  .sk-game:last-child {
+    border-bottom: 0;
+  }
+  .sk-game__meta {
+    display: contents;
+  }
+  .sk-game__num {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .sk-game__div {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .sk-game {
+    grid-template-rows: auto auto;
+  }
+  .sk-game__when {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+  .sk-game__field {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+  .sk-game__team1 {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    text-align: right;
+  }
+  .sk-game__score {
+    grid-column: 5;
+    grid-row: 1 / 3;
+    justify-self: center;
+  }
+  .sk-game__team2 {
+    grid-column: 6;
+    grid-row: 1 / 3;
+  }
+}
+
 /* —— Work focus: active create/edit room lifts off a dimmed desk —— */
 .work-focus {
   position: relative;

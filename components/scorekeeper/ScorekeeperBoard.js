@@ -1,398 +1,201 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import ScoreTable from "./ScoreTable";
-import { isPlayableGame, isStillToPlay } from "@/lib/tournament-state";
-import { mootIfRounds } from "@/lib/bracket/if-game";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTimeZone } from "@/components/TimeZoneContext";
+import ScoreEntry from "./ScoreEntry";
+import {
+  buildScorekeeperCatalog,
+  scorekeeperFieldOptions,
+  scorekeeperDayOptions,
+  filterScorekeeperCatalog,
+  defaultDayKey,
+  fieldStorageKey,
+} from "@/lib/scorekeeper-list";
 
-/**
- * Scorekeeper control board for one tournament.
- *
- * Top selectors are the whole point: status / division / stage / field,
- * then one filtered sheet. Defaults to "need a score" — field day.
- */
-
-function ChipGroup({ label, children }) {
+function Chip({ on, children, onClick }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
-      <span className="t-label text-[10px] w-14 shrink-0 text-afa-muted/70 leading-tight">
-        {label}
-      </span>
-      {/* Chips sit side-by-side at a shared compact size — not stretched full-row. */}
-      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Chip({ on, children, count, onClick, tone = "neutral" }) {
-  const onCls =
-    tone === "action"
-      ? "border-afa-red bg-afa-red text-white"
-      : tone === "quiet"
-        ? "border-emerald-700 bg-emerald-700 text-white"
-        : "border-afa-navy bg-afa-navy text-white";
-  const offCls =
-    "border-afa-navy/20 bg-white text-afa-navy/80 hover:border-afa-navy/40";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        // Shared compact size within the set — not stretched across the row.
-        "inline-flex h-8 min-w-[6.25rem] items-center justify-center gap-1 rounded-full border px-2.5 text-[12px] font-semibold leading-none " +
-        (on ? onCls : offCls)
-      }
-    >
-      <span className="truncate max-w-[5.5rem]">{children}</span>
-      {count != null && count !== "" && (
-        <span className="tabular-nums opacity-80 shrink-0">{count}</span>
-      )}
+    <button type="button" className={"sk-chip" + (on ? " is-on" : "")} onClick={onClick}>
+      {children}
     </button>
   );
 }
 
-function fieldKey(field) {
-  const raw = String(field ?? "").trim();
-  if (!raw) return null;
-  const n = raw.match(/(\d+)\s*$/);
-  return n ? `F${n[1]}` : raw;
-}
-
 export default function ScorekeeperBoard({
-  tournamentName,
+  tournamentId,
   divisions = [],
-  leftCount = 0,
-}) {
-  const [status, setStatus] = useState("need"); // need | scored | all
-  const [divisionId, setDivisionId] = useState("all");
-  const [stage, setStage] = useState("all"); // all | pool | bracket
+} = {}) {
+  const timeZone = useTimeZone();
+  const catalog = useMemo(
+    () => buildScorekeeperCatalog(divisions, timeZone),
+    [divisions, timeZone]
+  );
+
+  const fields = useMemo(() => scorekeeperFieldOptions(catalog), [catalog]);
+  const storageKey = fieldStorageKey(tournamentId);
   const [field, setField] = useState("all");
-  const [query, setQuery] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [fieldReady, setFieldReady] = useState(false);
+  const [day, setDay] = useState(null);
+  const [showScored, setShowScored] = useState(false);
 
-  // Flatten only games that can actually need a score: no byes, no cancelled,
-  // no if-games the undefeated side made unnecessary. Those never belong on
-  // a scorekeeper sheet (or in All / Scored counts).
-  const catalog = useMemo(() => {
-    const out = [];
-    for (const d of divisions) {
-      const divLabel = d.display_name ?? d.name ?? "Division";
-      const pool = d.pool_games ?? [];
-      const bracket = d.games ?? [];
-      const moot = mootIfRounds(bracket);
-      for (const g of pool) {
-        if (!isPlayableGame(g, null)) continue;
-        out.push({
-          game: g,
-          kind: "pool",
-          divisionId: d.id,
-          divisionLabel: divLabel,
-          fieldKey: fieldKey(g.field),
-          open: isStillToPlay(g, null),
-          scored: g.status === "final",
-        });
-      }
-      for (const g of bracket) {
-        if (!isPlayableGame(g, moot)) continue;
-        out.push({
-          game: g,
-          kind: "bracket",
-          divisionId: d.id,
-          divisionLabel: divLabel,
-          fieldKey: fieldKey(g.field),
-          open: isStillToPlay(g, moot),
-          scored: g.status === "final",
-        });
-      }
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) setField(saved);
+    } catch {
+      /* private mode */
     }
-    return out;
-  }, [divisions]);
+    setFieldReady(true);
+  }, [storageKey]);
 
-  const divisionOptions = useMemo(() => {
-    const map = new Map();
-    for (const row of catalog) {
-      if (!map.has(row.divisionId)) {
-        map.set(row.divisionId, {
-          id: row.divisionId,
-          label: row.divisionLabel,
-          open: 0,
-        });
-      }
-      if (row.open) map.get(row.divisionId).open += 1;
+  useEffect(() => {
+    if (!fieldReady) return;
+    if (field !== "all" && !fields.some((f) => f.key === field)) setField("all");
+  }, [fieldReady, field, fields]);
+
+  useEffect(() => {
+    if (!fieldReady) return;
+    try {
+      localStorage.setItem(storageKey, field);
+    } catch {
+      /* private mode */
     }
-    return [...map.values()];
-  }, [catalog]);
+  }, [field, storageKey, fieldReady]);
 
-  const fieldOptions = useMemo(() => {
-    const map = new Map();
-    for (const row of catalog) {
-      if (!row.fieldKey) continue;
-      if (!map.has(row.fieldKey)) {
-        map.set(row.fieldKey, { key: row.fieldKey, open: 0 });
-      }
-      if (row.open) map.get(row.fieldKey).open += 1;
-    }
-    return [...map.values()].sort((a, b) =>
-      a.key.localeCompare(b.key, undefined, { numeric: true })
-    );
-  }, [catalog]);
+  const forField = useMemo(
+    () => filterScorekeeperCatalog(catalog, { field, day: "all" }),
+    [catalog, field]
+  );
+  const days = useMemo(() => scorekeeperDayOptions(forField), [forField]);
+  useEffect(() => {
+    if (day && day !== "all" && !days.some((d) => d.key === day)) setDay(null);
+  }, [day, days]);
+  const dayFilter = day ?? defaultDayKey(forField);
+  const rows = useMemo(
+    () => filterScorekeeperCatalog(forField, { field: "all", day: dayFilter }),
+    [forField, dayFilter]
+  );
+  const scored = rows.filter((r) => r.scored);
+  const open = rows.filter((r) => r.open);
+  const list = open.length ? open : scored;
 
-  const counts = useMemo(() => {
-    let need = 0;
-    let scored = 0;
-    let pool = 0;
-    let bracket = 0;
-    for (const row of catalog) {
-      if (row.open) need += 1;
-      if (row.scored) scored += 1;
-      if (row.kind === "pool") pool += 1;
-      if (row.kind === "bracket") bracket += 1;
-    }
-    return { need, scored, all: catalog.length, pool, bracket };
-  }, [catalog]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return catalog.filter((row) => {
-      if (status === "need" && !row.open) return false;
-      if (status === "scored" && !row.scored) return false;
-      if (divisionId !== "all" && row.divisionId !== divisionId) return false;
-      if (stage !== "all" && row.kind !== stage) return false;
-      if (field !== "all" && row.fieldKey !== field) return false;
-      if (q) {
-        const hay = `${row.game.team1_name ?? ""} ${row.game.team2_name ?? ""} ${row.divisionLabel}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [catalog, status, divisionId, stage, field, query]);
-
-  // Group by division for readable sections (order preserved from catalog).
-  const sections = useMemo(() => {
-    const order = [];
-    const byDiv = new Map();
-    for (const row of filtered) {
-      if (!byDiv.has(row.divisionId)) {
-        byDiv.set(row.divisionId, {
-          id: row.divisionId,
-          label: row.divisionLabel,
-          pool: [],
-          bracket: [],
-        });
-        order.push(row.divisionId);
-      }
-      const sec = byDiv.get(row.divisionId);
-      if (row.kind === "pool") sec.pool.push(row.game);
-      else sec.bracket.push(row.game);
-    }
-    return order.map((id) => byDiv.get(id));
-  }, [filtered]);
-
-  const divisionLabel =
-    divisionId === "all"
-      ? null
-      : divisionOptions.find((d) => d.id === divisionId)?.label;
-  const filterBits = [
-    status === "need" ? "Need score" : status === "scored" ? "Scored" : "All",
-    divisionLabel,
-    stage === "pool" ? "Pool" : stage === "bracket" ? "Bracket" : null,
-    field !== "all" ? field : null,
-    query.trim() || null,
-  ].filter(Boolean);
+  const nextRef = useRef(null);
+  useEffect(() => {
+    if (!fieldReady) return;
+    nextRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [field, dayFilter, fieldReady]);
 
   return (
-    <div className="space-y-4">
-      {/* Sticky control strip — the scorekeeper’s whole decision surface */}
-      <div className="card sticky top-0 z-20 px-3 py-3 space-y-2.5 shadow-sm border-afa-navy/15">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="t-strong text-sm min-w-0 truncate">{tournamentName}</p>
-          <p className="t-meta text-[12px] tabular-nums shrink-0">
-            {status === "need"
-              ? `${filtered.length} need a score`
-              : status === "scored"
-                ? `${filtered.length} scored`
-                : `${filtered.length} games`}
-            {leftCount > 0 && status !== "need"
-              ? ` · ${leftCount} still open overall`
-              : null}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((v) => !v)}
-          className="flex w-full items-center gap-2 text-left min-h-9"
-          aria-expanded={filtersOpen}
-        >
-          <span className="text-afa-navy/40 w-2 shrink-0">{filtersOpen ? "▾" : "▸"}</span>
-          <span className="t-label text-[11px] shrink-0">Filters</span>
-          {!filtersOpen ? (
-            <span className="t-meta truncate min-w-0">{filterBits.join(" · ")}</span>
-          ) : null}
-        </button>
-
-        {filtersOpen ? (
-        <>
-        <ChipGroup label="Show">
-          <Chip
-            on={status === "need"}
-            tone="action"
-            count={counts.need}
-            onClick={() => setStatus("need")}
-          >
-            Need score
-          </Chip>
-          <Chip
-            on={status === "scored"}
-            tone="quiet"
-            count={counts.scored}
-            onClick={() => setStatus("scored")}
-          >
-            Scored
-          </Chip>
-          <Chip
-            on={status === "all"}
-            count={counts.all}
-            onClick={() => setStatus("all")}
-          >
-            All
-          </Chip>
-        </ChipGroup>
-
-        {divisionOptions.length > 1 && (
-          <ChipGroup label="Division">
-            <Chip
-              on={divisionId === "all"}
-              onClick={() => setDivisionId("all")}
-            >
-              All
+    <div className="sk-board">
+      <div className="sk-toolbar">
+        {days.length > 1 && (
+          <div className="sk-chips" role="listbox" aria-label="Day">
+            <Chip on={dayFilter === "all"} onClick={() => setDay("all")}>
+              All days
             </Chip>
-            {divisionOptions.map((d) => (
-              <Chip
-                key={d.id}
-                on={divisionId === d.id}
-                count={d.open > 0 ? d.open : null}
-                onClick={() => setDivisionId(d.id)}
-              >
+            {days.map((d) => (
+              <Chip key={d.key} on={dayFilter === d.key} onClick={() => setDay(d.key)}>
                 {d.label}
               </Chip>
             ))}
-          </ChipGroup>
+          </div>
         )}
-
-        <ChipGroup label="Stage">
-          <Chip on={stage === "all"} onClick={() => setStage("all")}>
-            All
-          </Chip>
-          {counts.pool > 0 && (
-            <Chip
-              on={stage === "pool"}
-              count={counts.pool}
-              onClick={() => setStage("pool")}
-            >
-              Pool
-            </Chip>
-          )}
-          {counts.bracket > 0 && (
-            <Chip
-              on={stage === "bracket"}
-              count={counts.bracket}
-              onClick={() => setStage("bracket")}
-            >
-              Bracket
-            </Chip>
-          )}
-        </ChipGroup>
-
-        {fieldOptions.length > 0 && (
-          <ChipGroup label="Field">
+        {fields.length > 0 && (
+          <div className="sk-chips" role="listbox" aria-label="Field">
             <Chip on={field === "all"} onClick={() => setField("all")}>
-              All
+              All fields
             </Chip>
-            {fieldOptions.map((f) => (
-              <Chip
-                key={f.key}
-                on={field === f.key}
-                count={f.open > 0 ? f.open : null}
-                onClick={() => setField(f.key)}
-              >
+            {fields.map((f) => (
+              <Chip key={f.key} on={field === f.key} onClick={() => setField(f.key)}>
                 {f.key}
               </Chip>
             ))}
-          </ChipGroup>
+          </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-2 pt-0.5">
-          <span className="t-label text-[10px] w-14 shrink-0 text-afa-muted/70">
-            Team
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a team…"
-            className="flex-1 min-w-[10rem] max-w-sm border border-afa-navy/25 rounded-lg px-2.5 py-1.5 text-[13px]"
-          />
-          {(status !== "need" ||
-            divisionId !== "all" ||
-            stage !== "all" ||
-            field !== "all" ||
-            query) && (
-            <button
-              type="button"
-              className="t-label text-[12px] underline text-afa-muted"
-              onClick={() => {
-                setStatus("need");
-                setDivisionId("all");
-                setStage("all");
-                setField("all");
-                setQuery("");
-              }}
-            >
-              Reset to need score
-            </button>
-          )}
-        </div>
-        </>
-        ) : null}
       </div>
 
-      {sections.length === 0 ? (
-        <div className="card p-5 text-center space-y-1">
-          <p className="t-strong text-sm">Nothing matches</p>
-          <p className="t-meta text-[12px]">
-            {status === "need"
-              ? "No open games for these filters. Try All or Scored, or clear Field / Division."
-              : "Try a different filter combination."}
-          </p>
+      {scored.length > 0 && open.length > 0 && (
+        <div className="sk-scored">
+          <button
+            type="button"
+            className="sk-scored__toggle"
+            aria-expanded={showScored}
+            onClick={() => setShowScored((v) => !v)}
+          >
+            <span aria-hidden="true">{showScored ? "▾" : "▸"}</span> Scored
+          </button>
+          {showScored
+            ? scored.map((row) => <GameRow key={row.id} row={row} />)
+            : null}
         </div>
-      ) : (
-        <div className="space-y-5">
-          {sections.map((sec) => (
-            <section key={sec.id} className="space-y-2">
-              {sec.pool.length > 0 && (stage === "all" || stage === "pool") && (
-                <ScoreTable
-                  games={sec.pool}
-                  kind="pool"
-                  title={`${sec.label} · pool`}
-                  hideFilters
-                />
-              )}
-              {sec.bracket.length > 0 &&
-                (stage === "all" || stage === "bracket") && (
-                  <ScoreTable
-                    games={sec.bracket}
-                    kind="bracket"
-                    title={`${sec.label} · bracket`}
-                    hideFilters
-                  />
-                )}
-            </section>
+      )}
+
+      {list.length === 0 ? null : (
+        <div className="sk-list">
+          <div className="sk-head">
+            <span>#</span>
+            <span>When</span>
+            <span>Field</span>
+            <span>Team</span>
+            <span>Score</span>
+            <span>Team</span>
+          </div>
+          {list.map((row, i) => (
+            <GameRow
+              key={row.id}
+              row={row}
+              rowRef={open.length && i === 0 ? nextRef : undefined}
+              isNext={Boolean(open.length && i === 0)}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function GameRow({ row, rowRef, isNext = false }) {
+  const router = useRouter();
+  const won1 =
+    row.scored &&
+    row.game.team1_score != null &&
+    row.game.team1_score > row.game.team2_score;
+  const won2 =
+    row.scored &&
+    row.game.team2_score != null &&
+    row.game.team2_score > row.game.team1_score;
+
+  return (
+    <div
+      ref={rowRef}
+      id={isNext ? "sk-next" : undefined}
+      className={
+        `sk-game tl-tone-${row.tone}` +
+        (row.scored ? " is-scored" : "") +
+        (isNext ? " is-next" : "")
+      }
+    >
+      <div className="sk-game__meta">
+        <span className="sk-game__num">{row.number}</span>
+        <span className="sk-game__div">{row.divisionLabel}</span>
+        <span className="sk-game__when">{row.whenLabel}</span>
+        <span className="sk-game__field">{row.fieldName ?? "—"}</span>
+      </div>
+      <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
+        {row.team1Label}
+      </span>
+      <div className="sk-game__score">
+        <ScoreEntry
+          game={row.game}
+          kind={row.kind}
+          team1Name={row.team1Label}
+          team2Name={row.team2Label}
+          onSaved={() => router.refresh()}
+        />
+      </div>
+      <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
+        {row.team2Label}
+      </span>
     </div>
   );
 }

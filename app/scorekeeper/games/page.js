@@ -84,20 +84,11 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
   );
 
   return (
-    <DirectorShell
-      title="Scores"
-      count={
-        selected.left > 0
-          ? `${selected.left} need a score`
-          : "All scored"
-      }
-      back="/scorekeeper"
-    >
+    <DirectorShell title={selected.name} back="/scorekeeper">
       <TimeZoneProvider timeZone={tournamentTimeZone(selected)}>
         <ScorekeeperBoard
-          tournamentName={selected.name}
+          tournamentId={selected.id}
           divisions={divisions}
-          leftCount={selected.left}
         />
       </TimeZoneProvider>
     </DirectorShell>
