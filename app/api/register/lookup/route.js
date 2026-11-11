@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { seatFromDivision } from "@/lib/division-layout";
+import { ownedTeamIds, withLinkedEntries } from "@/lib/register-lookup";
 
 // Manager recovery WITHOUT a password: look up registrations by the
 // manager_email they used when they registered. Returns manage + roster
@@ -9,6 +10,9 @@ import { seatFromDivision } from "@/lib/division-layout";
 // Rate-limited per IP so this cannot be used as a bulk scrape of teams.
 
 export const runtime = "nodejs";
+
+const REG_SELECT =
+  "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, team_id, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)";
 
 /** @type {Map<string, { count: number, windowStart: number }>} */
 const hits = new Map();
@@ -86,7 +90,7 @@ export async function POST(request) {
     const { data, error } = await supabase
       .from("registrations")
       .select(
-        "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
+        REG_SELECT
       )
       .ilike("manager_email", email)
       .order("submitted_at", { ascending: false })
@@ -99,6 +103,34 @@ export async function POST(request) {
     rows = (data || []).filter(
       (r) => String(r.manager_email || "").trim().toLowerCase() === email
     );
+
+    // The same club's other entries: a director-loaded tournament (Worlds)
+    // has no manager email on its registration, but sits on the same team
+    // row. Only that row links them (lib/register-lookup.js).
+    const teamIds = [...new Set(rows.map((r) => r.team_id).filter(Boolean))];
+    if (teamIds.length) {
+      const { data: teams } = await supabase
+        .from("teams")
+        .select("id, merged_into_id, manager_name")
+        .in("id", teamIds);
+      const owned = ownedTeamIds(rows, teams);
+      if (owned.length) {
+        // Rows merged into an owned team count as that team.
+        const { data: merged } = await supabase
+          .from("teams")
+          .select("id")
+          .in("merged_into_id", owned);
+        const ids = [...new Set([...owned, ...(merged || []).map((t) => t.id)])];
+        const { data: linked, error: linkErr } = await supabase
+          .from("registrations")
+          .select(REG_SELECT)
+          .in("team_id", ids)
+          .order("submitted_at", { ascending: false })
+          .limit(50);
+        if (linkErr) console.error("register lookup (linked) failed", linkErr);
+        else rows = withLinkedEntries(rows, linked);
+      }
+    }
   } else {
     const { data: tour } = await supabase
       .from("tournaments")
@@ -111,7 +143,7 @@ export async function POST(request) {
     const { data, error } = await supabase
       .from("registrations")
       .select(
-        "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)"
+        REG_SELECT
       )
       .eq("tournament_id", tour.id)
       .neq("status", "withdrawn")
