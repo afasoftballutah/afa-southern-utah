@@ -644,3 +644,36 @@ test("Path lines: a win then a loss — traveled win bold green, traveled loss b
     assert.equal(x.opacity, 0.55, `${k} stays light`);
   }
 });
+
+function pillNamed(out, label) {
+  return out.all((n) => n.tagName === "button" && n.classList.contains("pill") && n.childNodes[0]?.textContent === label)[0];
+}
+
+test("Path view: a picked team's scored box gets won-box or lost-box, unplayed boxes do not", () => {
+  const win = drawTeam(recGames(), "One Hit Wonders");
+  const g1 = pillNamed(win.out, "G1");
+  assert.ok(g1.classList.contains("won-box"), "G1 is a win for One Hit Wonders");
+  assert.ok(g1.classList.contains("done"));
+  assert.match(g1.textContent, /12/, "score is shown");
+  assert.ok(!g1.classList.contains("lost-box"));
+  const g3 = pillNamed(win.out, "G3");
+  assert.ok(g3 && !g3.classList.contains("won-box") && !g3.classList.contains("lost-box") && !g3.classList.contains("done"), "unplayed G3 keeps its current styling");
+
+  const games = recGames({
+    g2: { status: "pending", team1_score: null, team2_score: null, winner_slot: null },
+    g3: { status: "final", team1_score: 4, team2_score: 10, winner_slot: "team2", team1_name: "One Hit Wonders", team2_name: "Only Bangers" },
+    g5: { team2_name: "One Hit Wonders" },
+  });
+  const both = drawTeam(games, "One Hit Wonders");
+  assert.ok(pillNamed(both.out, "G1").classList.contains("won-box"));
+  const lost = pillNamed(both.out, "G3");
+  assert.ok(lost.classList.contains("lost-box"), "G3 is a loss");
+  assert.ok(!lost.classList.contains("won-box"));
+  assert.match(lost.textContent, /10/, "score is shown on a loss");
+  const next = pillNamed(both.out, "G5");
+  assert.ok(next && !next.classList.contains("won-box") && !next.classList.contains("lost-box"), "unplayed next game is unchanged");
+
+  assert.match(GRID_CSS, /button\.pill\.done\.won-box, button\.pill\.won-box \{[^}]*background: var\(--win\);[^}]*color: #fff;/);
+  assert.match(GRID_CSS, /button\.pill\.done\.lost-box, button\.pill\.lost-box \{[^}]*background: var\(--lose\);[^}]*color: #fff;/);
+});
+
