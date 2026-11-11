@@ -132,14 +132,6 @@ export default function ScorekeeperBoard({
 
       {list.length === 0 ? null : (
         <div className="sk-list">
-          <div className="sk-head">
-            <span>#</span>
-            <span>When</span>
-            <span>Field</span>
-            <span>Team</span>
-            <span>Score</span>
-            <span>Team</span>
-          </div>
           {list.map((row, i) => (
             <GameRow
               key={row.id}
@@ -169,33 +161,33 @@ function GameRow({ row, rowRef, isNext = false }) {
     <div
       ref={rowRef}
       id={isNext ? "sk-next" : undefined}
-      className={
-        `sk-game tl-tone-${row.tone}` +
-        (row.scored ? " is-scored" : "") +
-        (isNext ? " is-next" : "")
-      }
+      className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "")}
     >
-      <div className="sk-game__meta">
-        <span className="sk-game__num">{row.number}</span>
-        <span className="sk-game__div">{row.divisionLabel}</span>
-        <span className="sk-game__when">{row.whenLabel}</span>
-        <span className="sk-game__field">{row.fieldName ?? "—"}</span>
+      <span className="sk-game__num">{row.number}</span>
+      <div className="sk-game__body">
+        <div className="sk-game__pills">
+          <span className={`sk-pill sk-pill--div tl-tone-${row.tone}`}>{row.divisionLabel}</span>
+          <span className="sk-pill sk-pill--when">{row.whenPill}</span>
+          <span className="sk-pill sk-pill--field">{row.fieldName ?? "—"}</span>
+        </div>
+        <div className="sk-game__match">
+          <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
+            {row.team1Label}
+          </span>
+          <div className="sk-game__score">
+            <ScoreEntry
+              game={row.game}
+              kind={row.kind}
+              team1Name={row.team1Label}
+              team2Name={row.team2Label}
+              onSaved={() => router.refresh()}
+            />
+          </div>
+          <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
+            {row.team2Label}
+          </span>
+        </div>
       </div>
-      <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
-        {row.team1Label}
-      </span>
-      <div className="sk-game__score">
-        <ScoreEntry
-          game={row.game}
-          kind={row.kind}
-          team1Name={row.team1Label}
-          team2Name={row.team2Label}
-          onSaved={() => router.refresh()}
-        />
-      </div>
-      <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
-        {row.team2Label}
-      </span>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   scorekeeperFieldName,
   gameNumber,
   scorekeeperWhen,
+  scorekeeperWhenPill,
   buildScorekeeperCatalog,
   scorekeeperFieldOptions,
   scorekeeperDayOptions,
@@ -108,6 +109,12 @@ test("scorekeeperWhen drops :00 and labels Worlds times PST", () => {
   assert.equal(scorekeeperWhen(null, TZ), "");
 });
 
+test("scorekeeperWhenPill drops :00 and leaves the zone off the pill", () => {
+  assert.equal(scorekeeperWhenPill(thu2, TZ), "Thu 2 PM");
+  assert.equal(scorekeeperWhenPill(fri930, TZ), "Fri 9:30 AM");
+  assert.equal(scorekeeperWhenPill(null, TZ), "");
+});
+
 test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1", () => {
   const catalog = buildScorekeeperCatalog(divisions, TZ);
   assert.deepEqual(
@@ -168,6 +175,8 @@ test("ScorekeeperBoard is one list with full field names and division tones, not
   assert.match(board, /buildScorekeeperCatalog/);
   assert.match(board, /scorekeeperFieldOptions/);
   assert.match(board, /tl-tone-\$\{/);
+  assert.match(board, /sk-pill--div/);
+  assert.match(board, /sk-game__num/);
   assert.match(board, /All fields/);
   assert.doesNotMatch(board, /ScoreTable/);
   assert.doesNotMatch(board, /Need score/);

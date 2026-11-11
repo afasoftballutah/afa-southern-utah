@@ -6,7 +6,7 @@ import DirectorShell from "@/components/scorekeeper/DirectorShell";
 import ScorekeeperBoard from "@/components/scorekeeper/ScorekeeperBoard";
 import TournamentPickList from "@/components/scorekeeper/TournamentPickList";
 import { TimeZoneProvider } from "@/components/TimeZoneContext";
-import { tournamentTimeZone } from "@/lib/zone";
+import { tournamentTimeZone, tournamentZoneLabel } from "@/lib/zone";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scores — Scorekeeper" };
@@ -83,8 +83,13 @@ export default async function ScorekeeperGamesPage({ searchParams }) {
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
+  const zone = tournamentZoneLabel(selected);
   return (
-    <DirectorShell title={selected.name} back="/scorekeeper">
+    <DirectorShell
+      title={selected.name}
+      back="/scorekeeper"
+      inline={zone ? <span className="sk-zone">{zone}</span> : null}
+    >
       <TimeZoneProvider timeZone={tournamentTimeZone(selected)}>
         <ScorekeeperBoard
           tournamentId={selected.id}
