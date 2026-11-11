@@ -430,3 +430,9 @@ test("site Path view: the MCP team grid's own code and track; a Schedule tab nex
   const view = readFileSync(new URL("../components/PathView.js", import.meta.url), "utf8");
   assert.ok(!/setInterval|setTimeout\(\s*\w+,\s*\d{4,}/.test(view), "no polling");
 });
+
+test("grid finishes read just the place, not bold; no legend text for them (JD 2026-11-10)", () => {
+  assert.ok(!/their finish/.test(GRID_JS), "no 'their finish if they lose there' legend");
+  assert.ok(!/"Out "/.test(GRID_JS), "finish labels read '9th', not 'Out 9th'");
+  assert.match(GRID_CSS, /\.fg-under \.out \{ font-weight: 400;/);
+});
