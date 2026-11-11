@@ -27,6 +27,18 @@ Same display rules as the site: an undecided slot reads `Winner G9` / `Loser G3`
 zone named away from Mountain league time (`Sun 4 PM PST` at Worlds), whole
 hours never show `:00`, and `H`/`P` fields read Hunter/Pioneer.
 
+## Game card (MCP Apps)
+
+In an assistant that supports MCP Apps (Claude, ChatGPT, VS Code and others),
+`get_game` also shows the site's game card inside the chat: division tag in
+the division's color, W / L / ★ Final, the matchup with `Winner G26` /
+`Loser G26` for undecided slots, where the loser (red) and winner (green) go
+next with day, time and field, the game's time and field, and **View on site**
+(the division page opened on that game). The card is `ui://afa/game`, one
+self-contained HTML file (no outside scripts, fonts or requests), and draws
+only from the tool's `structuredContent`, so it shows exactly what the text
+says. Every other assistant reads the same text answer as before.
+
 ## Connect
 
 - **Grok / Grok Bot:** add a custom (remote) MCP connector with the URL above,
@@ -43,6 +55,6 @@ hours never show `:00`, and `H`/`P` fields read Hunter/Pioneer.
 
 `app/api/mcp/route.js` (transport, rate limit), `lib/mcp/tools.js` (tools and
 server instructions), `lib/mcp/game-view.js` (one game, using the site's own
-helpers), `lib/mcp/data.js` (the same anon reads as the pages). Tests:
+helpers), `lib/mcp/game-card.js` (the MCP Apps card for `get_game`), `lib/mcp/data.js` (the same anon reads as the pages). Tests:
 `test/mcp.test.mjs` (fixture, in-memory client) and `test/mcp-live.test.mjs`
 (over HTTP; `AFA_MCP_URL=http://localhost:3000/api/mcp npm test`).
