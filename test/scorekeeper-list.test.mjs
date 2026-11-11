@@ -229,7 +229,8 @@ test("ScorekeeperBoard is one list with a 4-part mark and no pills or per-divisi
 test("ScoreEntry confirms both scores and locks a saved row", () => {
   const src = readFileSync(new URL("../components/scorekeeper/ScoreEntry.js", import.meta.url), "utf8");
   assert.match(src, /sk-score__confirm/);
-  assert.match(src, /sk-score--locked/);
+  assert.match(src, /sk-score__tile/);
+  assert.match(src, /is-locked/);
   assert.match(src, /sk-score__step/);
   assert.match(src, /inputMode="numeric"/);
   assert.doesNotMatch(src, />Save</);

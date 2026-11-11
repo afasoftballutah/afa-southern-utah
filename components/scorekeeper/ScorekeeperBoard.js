@@ -165,8 +165,8 @@ function GameRow({ row, rowRef, isNext = false }) {
         <span className={"sk-mark__when" + (mark?.hasMinutes ? " is-split" : "")}>
           {mark?.hasMinutes ? (
             <>
-              <span>{mark.day}</span>
-              <span>{mark.clock}</span>
+              <span className="sk-mark__day">{mark.day}</span>
+              <span className="sk-mark__clock">{mark.clock}</span>
             </>
           ) : (
             mark?.label ?? "—"
