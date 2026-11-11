@@ -254,7 +254,7 @@ test("legend groups by gender so Men's / Women's is written once", () => {
   assert.equal(groups[1].items[2].name, "Women's Rec");
 });
 
-test("timeline header: M/W/C chips on one line, explainers behind a help button", () => {
+test("timeline header: two-row Men/Women/Coed key, explainers behind a help button", () => {
   const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(src, /g\.short \?\? g\.group/, "chips show Men, Women, Coed");
@@ -270,13 +270,20 @@ test("timeline header: M/W/C chips on one line, explainers behind a help button"
   assert.ok(!src.includes("Corners:"), "no Corners explainer on the header");
   assert.ok(!/tl-key/.test(css), "old key styles are gone");
   const nameRule = /\.tl-legend__group-name \{([^}]*)\}/.exec(css)?.[1] ?? "";
-  assert.match(nameRule, /font-size: 0\.625rem/, "labels smaller than the chips");
+  assert.match(css, /--tl-legend-label-h: 0\.625rem/, "labels smaller than the chips");
+  assert.match(nameRule, /font-size: var\(--tl-legend-label-h\)/);
   assert.match(nameRule, /font-weight: 500/, "labels lighter than the chips");
   assert.match(nameRule, /color: var\(--tl-label\)/, "labels are gray, not chip-colored");
-  assert.match(nameRule, /margin-right: 6px/, "visible space after Men, Women, Coed");
-  assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "a group never splits across lines");
-  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: nowrap/, "one line at 390 / 375");
-  assert.match(css, /@media \(max-width: 359\.98px\) \{\s*\.tl-legend \{ flex-wrap: wrap; \}/, "wraps by group only under 360px");
+  assert.match(nameRule, /text-align: center/, "label centered over its chips");
+  assert.match(css, /\.tl-legend__group \{[^}]*flex-direction: column/, "a column per group: label over chips");
+  assert.match(css, /\.tl-legend__group \{[^}]*align-items: center/, "label and chips centered in the column");
+  assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "groups are content-width, not equal columns");
+  assert.match(css, /\.tl-legend__gap \{[^}]*flex: 1 1 0/, "equal flex gaps put each ball at the midpoint");
+  assert.match(css, /\.tl-legend \{[^}]*justify-content: space-between/, "spread with equal gaps across the row");
+  assert.match(css, /\.tl-head \{[^}]*justify-content: space-between/, "? at the end of the row");
+  assert.match(css, /\.tl-head \{[^}]*align-items: center/, "? vertically centered on the two-row block");
+  assert.match(css, /\.tl-head \{[^}]*width: 100%/, "spreads across the row, not clumped left");
+  assert.match(src, /document\.querySelector\("\.sched-seg"\)/, "key width matches the tabs bar");
   const groups = divisionLegendGroups([
     { divisionName: "Men's D" }, { divisionName: "Women's D" }, { divisionName: "Coed D" },
   ]);
@@ -285,7 +292,7 @@ test("timeline header: M/W/C chips on one line, explainers behind a help button"
   assert.match(css, /\.tl-help \{[^}]*position: fixed/);
   assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*width: 1\.5rem; height: 1\.5rem; min-height: 0/, "help button is a 24px circle");
   assert.match(src, /function SoftballMark/);
-  assert.match(src, /gi > 0 \? <SoftballMark \/> : null/, "a ball between groups, not at the ends");
+  assert.match(src, /className="tl-legend__gutter"[^>]*>\s*<SoftballMark \/>/, "a ball in the gutter between groups, not at the ends");
   assert.match(src, /className="tl-legend__ball"[^>]*aria-hidden="true"/);
   assert.match(css, /\.tl-legend__ball \{[^}]*width: 9px/);
 
