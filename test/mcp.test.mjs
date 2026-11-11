@@ -644,7 +644,7 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
     // Place is a corner label; the game number stays first / centered.
     const withPlace = pills.find((p) => p.all((n) => /\bfin\b/.test(n.className)).length);
     if (width < 640 && withPlace) {
-      const first = withPlace.childNodes[0];
+      const first = withPlace.childNodes.find((n) => !/\bbgstar\b/.test(n.className)) || withPlace.childNodes[0];
       const fin = withPlace.all((n) => /\bfin\b/.test(n.className))[0];
       assert.ok(/\bgno\b/.test(first.className), "game number stays centered; place is not inline beside it");
       assert.ok(fin && /\bfin\b/.test(fin.className), "place is still inside the box");
@@ -691,7 +691,7 @@ function drawTeam(games, team, width = 390) {
 function edgeStyles(out) {
   const box = {};
   for (const p of out.all((n) => n.tagName === "button" && n.classList.contains("pill"))) {
-    const label = p.childNodes[0].textContent;
+    const label = p.all((n) => n.className === "gno")[0]?.textContent ?? p.childNodes[0].textContent;
     const s = p.style.cssText;
     const num = (k) => Number((s.match(new RegExp(k + ":(-?[\\d.]+)px")) || [])[1]);
     box[label] = { x: num("left"), y: num("top"), w: num("width"), h: num("height") };
@@ -836,6 +836,14 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
     assert.ok(!p.classList.contains("won-box") && !p.classList.contains("lost-box"));
   }
   assert.ok(pillNamed(none.out, "G12").classList.contains("final"), "the championship stays a final, now in the green family");
+  const starOf = (label) => (pillNamed(none.out, label)?.all((n) => n.tagName === "svg" && /\bbgstar\b/.test(n.className)) || [])[0];
+  const g12star = starOf("G12");
+  const g13star = starOf("G13");
+  assert.ok(g12star, "the championship box (G12) gets the faint gold star watermark");
+  assert.ok(g13star, "the if-necessary box (G13) gets the same star, as on the Timeline");
+  assert.equal(g12star.getAttribute("viewBox"), "0 0 20 20");
+  assert.equal(g12star.childNodes[0]?.getAttribute("d"), "M10 1.2l2.7 5.5 6 .9-4.35 4.25 1.03 6L10 15l-5.38 2.85 1.03-6L1.3 7.6l6-.9z");
+  assert.ok(!starOf("G1") && !starOf("G3") && !starOf("G5"), "non-championship boxes do not get the star");
   const first = pillNamed(none.out, "G1");
   assert.ok(first.classList.contains("next") && first.classList.contains("route"), "the current next game is the highlighted route box");
   assert.ok(!pillNamed(none.out, "G3").classList.contains("next") && !pillNamed(none.out, "G12").classList.contains("next"), "later win-path boxes, including the championship, are not the current game");
@@ -848,6 +856,9 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   assert.match(GRID_CSS, /button\.pill\.route \{[^}]*border: 1px solid var\(--win\);[^}]*font-weight: 450/);
   assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*background: transparent;[^}]*color: var\(--win\);[^}]*border-color: var\(--win\)/);
   assert.match(GRID_CSS, /button\.pill\.route\.next \{[^}]*background: color-mix\(in srgb, var\(--win\) 18%, #fff\)/);
+  assert.match(GRID_CSS, /button\.pill \.bgstar \{[^}]*color: #d4a72c;[^}]*opacity: 0\.2/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.bgstar \{ width: 1\.75rem; height: 1\.75rem; \}/);
+  assert.match(GRID_JS, /M10 1\.2l2\.7 5\.5 6 \.9-4\.35 4\.25 1\.03 6L10 15l-5\.38 2\.85 1\.03-6L1\.3 7\.6l6-\.9z/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*2\.5px/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*font-weight: 800/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route\.final \{[^}]*#c99a1e/);
