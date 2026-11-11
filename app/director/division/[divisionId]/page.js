@@ -14,11 +14,12 @@ import { canRemovePoolPlay } from "@/lib/pool-removal";
 import HandGames from "@/components/scorekeeper/HandGames";
 import StageView from "@/components/scorekeeper/StageView";
 import GameUmpireAssign from "@/components/scorekeeper/GameUmpireAssign";
-import ScoreTable from "@/components/scorekeeper/ScoreTable";
+import ScorekeeperBoard from "@/components/scorekeeper/ScorekeeperBoard";
 import { feedSlotLabeler } from "@/lib/bracket/for-drawn-bracket";
 import { slotLabel } from "@/lib/slot-label";
 import { knownPlayDay } from "@/lib/league-time";
-import { tournamentTimeZone } from "@/lib/zone";
+import { tournamentTimeZone, tournamentZoneLabel } from "@/lib/zone";
+import { buildScorekeeperCatalog } from "@/lib/scorekeeper-list";
 import { TimeZoneProvider } from "@/components/TimeZoneContext";
 
 export const dynamic = "force-dynamic";
@@ -202,13 +203,27 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
   const playDay = knownPlayDay(data.division);
   // Times read and typed in the tournament's zone (Mesquite: Pacific).
   const timeZone = tournamentTimeZone(data.division.tournaments);
+  const zoneLabel = tournamentZoneLabel(data.division.tournaments);
+  const scoreDivision = {
+    id: data.division.id,
+    name: data.division.name,
+    display_name: data.division.display_name || data.division.name,
+    sort_order: data.division.sort_order,
+    parent_division_id: data.division.parent_division_id,
+    games: data.games,
+    pool_games: data.poolGames,
+  };
+  const scoreable = buildScorekeeperCatalog([scoreDivision], timeZone).length > 0;
 
   return (
     <TimeZoneProvider timeZone={timeZone}>
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="text-sm text-afa-ink/60">{data.division.tournaments?.name}</p>
+          <p className="text-sm text-afa-ink/60">
+            {data.division.tournaments?.name}
+            {view === "scores" && zoneLabel ? <span className="sk-zone"> {zoneLabel}</span> : null}
+          </p>
           <h1 className="t-title">{data.division.name}</h1>
         </div>
         <Link href="/director/tournaments" className="btn-transient text-sm">
@@ -218,15 +233,15 @@ export default async function DirectorDivisionPage({ params, searchParams }) {
       <ViewDoors divisionId={divisionId} view={view} />
       {view === "scores" ? (
         <div className="space-y-4">
-          {data.poolGames.length > 0 ? (
-            <ScoreTable games={data.poolGames} kind="pool" title="Pool play" />
-          ) : null}
-          {data.games.length > 0 ? (
-            <ScoreTable games={data.games} kind="bracket" title="Bracket" />
-          ) : null}
-          {data.poolGames.length === 0 && data.games.length === 0 ? (
+          {scoreable ? (
+            <ScorekeeperBoard
+              tournamentId={data.division.tournament_id}
+              storageScope={`division:${divisionId}`}
+              divisions={[scoreDivision]}
+            />
+          ) : (
             <p className="t-meta">No games to score yet.</p>
-          ) : null}
+          )}
         </div>
       ) : (
       <>
