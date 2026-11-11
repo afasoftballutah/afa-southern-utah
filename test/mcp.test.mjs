@@ -440,6 +440,10 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
 test("Path view compact pills: shorter boxes, inline place, one-line score (JD iPhone height)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
   assert.match(GRID_JS, /hour: show \? 62 : 86/);
+  assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
+  assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
+  assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
+  assert.match(GRID_JS, /day\.start - pad - 1/);
   assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: row/);
   assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: static;[^}]*font-size: 0\.6875rem/);
   assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.75rem/);
