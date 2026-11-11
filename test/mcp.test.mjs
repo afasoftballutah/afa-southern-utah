@@ -689,7 +689,10 @@ test("Path view: a picked team's scored box gets won-box or lost-box, unplayed b
   assert.match(GRID_CSS, /button\.pill\.done\.won-box, button\.pill\.won-box \{[^}]*background: var\(--win\);[^}]*color: #fff;/);
   assert.match(GRID_CSS, /button\.pill\.done\.lost-box, button\.pill\.lost-box \{[^}]*background: var\(--lose\);[^}]*color: #fff;/);
   assert.match(GRID_CSS, /button\.pill\.route \{[^}]*background: color-mix\(in srgb, var\(--win\) 18%, #fff\);[^}]*color: var\(--win\)/);
-  assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*border-color: var\(--win\)/);
+  assert.match(GRID_CSS, /button\.pill\.route \{[^}]*border: 1px solid color-mix\(in srgb, var\(--win\) 45%, #fff\);[^}]*font-weight: 450/);
+  assert.match(GRID_CSS, /button\.pill\.route\.final \{[^}]*border-color: color-mix\(in srgb, var\(--win\) 45%, #fff\)/);
+  assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*2\.5px/);
+  assert.doesNotMatch(GRID_CSS, /button\.pill\.route \{[^}]*font-weight: 800/);
   assert.doesNotMatch(GRID_CSS, /button\.pill\.route\.final \{[^}]*#c99a1e/);
 });
 
