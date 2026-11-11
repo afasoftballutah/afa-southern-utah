@@ -215,10 +215,10 @@ test("get_game view: ui://afa/game resource, self-contained, block-all CSP", asy
   const { tools } = await c.listTools();
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
   assert.equal(byName.get_game._meta.ui.resourceUri, "ui://afa/game");
-  const VIEWS = { get_game: "ui://afa/game", get_team_path: "ui://afa/team" };
+  const VIEWS = { get_game: "ui://afa/game", get_team_path: "ui://afa/team", get_schedule: "ui://afa/games", get_now_next: "ui://afa/games" };
   for (const t of tools) assert.equal(t._meta?.ui?.resourceUri, VIEWS[t.name], `${t.name} view`);
   const { resources } = await c.listResources();
-  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]).sort(), Object.values(VIEWS).sort().map((u) => [u, "text/html;profile=mcp-app"]));
+  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]).sort(), [...new Set(Object.values(VIEWS))].sort().map((u) => [u, "text/html;profile=mcp-app"]));
   const { contents } = await c.readResource({ uri: "ui://afa/game" });
   assert.equal(contents.length, 1);
   const [html] = contents;
@@ -321,4 +321,34 @@ test("get_team_path view: undefeated route and the route after a loss follow the
   assert.equal(fa.record, "0-1");
   assert.equal(fa.routes[0].title, "Win out", "already has a loss: no undefeated route");
   assert.equal(route(fa.routes[0]).at(-1), "G13 *Fallen Angels (Winner G12) v Loser G12");
+});
+
+test("get_schedule / get_now_next view: ui://afa/games cards by day or now/next; text unchanged", async () => {
+  const { c } = await client();
+  const html = (await c.readResource({ uri: "ui://afa/games" })).contents[0];
+  assert.equal(html.mimeType, "text/html;profile=mcp-app");
+  assert.doesNotMatch(html.text, /<script[^>]+src=|<link[^>]+href=|@import|url\(|fetch\(|XMLHttpRequest|innerHTML/i);
+
+  const r = await c.callTool({ name: "get_schedule", arguments: { slug: TOURNAMENT.slug, team: "Fallen Angels" } });
+  const { view, ...answer } = r.structuredContent;
+  assert.equal(r.content[0].text, JSON.stringify(answer), "text clients read exactly what they read before");
+  assert.equal(view.title, "Fallen Angels \u00b7 AFA World Series");
+  assert.deepEqual(view.groups.map((g) => [g.label, g.cards.map((x) => `${x.division} ${x.title} ${x.time} ${x.field}`)]), [
+    ["Fri, Nov 13", ["Men's D Game 1 Fri 9 AM PST Hunter F1"]],
+    ["Sat, Nov 14", ["Coed Rec Game 1 Sat 6 PM PST Pioneer F3"]],
+    ["Sun, Nov 15", ["Coed Rec Game 6 Sun 11 AM PST Hunter F2"]],
+  ], "a name in two divisions: a card per division game, in its own color");
+  assert.deepEqual(view.groups[0].cards[0].tone, { bg: "#fde3e3", ink: "#a51c1c", solid: "#dc2626" }, "Men's D red");
+  assert.deepEqual(view.groups[2].cards[0].board.map((b) => [b.team ?? `${b.from} ${b.game}`, Boolean(b.us)]), [["Fallen Angels", true], ["Loser G4", false]]);
+  assert.deepEqual(view.groups[2].cards[0].loser, { next: "Game 7", where: "Sun 12 PM \u00b7 Hunter F2" });
+  assert.equal(view.url, "https://afa-southern-utah.vercel.app/tournaments/2026-afa-world-series/schedule");
+
+  const nn = await c.callTool({ name: "get_now_next", arguments: { slug: TOURNAMENT.slug, at: "2026-11-15T19:30:00Z", limit: 3 } });
+  const { view: nv, ...nanswer } = nn.structuredContent;
+  assert.equal(nn.content[0].text, JSON.stringify(nanswer));
+  assert.equal(nv.subtitle, "As of Sun 11:30 AM PST");
+  assert.deepEqual(nv.groups.map((g) => [g.label, g.cards.map((x) => x.title)]), [["Now playing", ["Game 6", "Game 5"]], ["Up next", ["Game 7", "Game 8", "Game 10"]]]);
+  assert.deepEqual(nanswer.nowPlaying.map((g) => g.game), ["G6", "G5"], "same order as the text");
+  assert.deepEqual(nanswer.upNext.map((g) => g.game), ["G7", "G8", "G10"], "same games, same order as the text");
+  for (const secret of ["director@example.com", "435-555-0100", "Director Person"]) assert.ok(!JSON.stringify([r.structuredContent, nn.structuredContent]).includes(secret), secret);
 });
