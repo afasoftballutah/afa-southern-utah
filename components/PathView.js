@@ -33,8 +33,8 @@ function gridRunner() {
 
 // The MCP view's CSS, scoped to the shadow root; the site has no dark mode.
 const SHADOW_CSS = `${CARD_CSS.replace(/:root\.dark[^{]*\{[^}]*\}/g, "").replace(/:root/g, ":host")}${GRID_CSS.replace(/:root\.dark[^{]*\{[^}]*\}/g, "")}
-:host { display: block; font-family: inherit; color: var(--ink); --font: inherit; }
-.pv { display: grid; gap: 0.625rem; }`;
+:host { display: block; min-width: 0; max-width: 100%; font-family: inherit; color: var(--ink); --font: inherit; }
+.pv { display: grid; gap: 0.625rem; min-width: 0; width: 100%; }`;
 
 
 export default function PathView({ rows, timeZone, zoneShort = "", slug, team = null, divisions = [] }) {
