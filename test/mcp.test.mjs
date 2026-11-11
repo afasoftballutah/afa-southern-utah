@@ -442,9 +442,10 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_JS, /hour: show \? 54 : 86/);
   assert.match(GRID_JS, /skip: show \? 8 : 14/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
-  assert.match(GRID_JS, /G\.pad = show \? 3 : 4/);
-  assert.match(GRID_JS, /G\.pw = show \? Math\.min\(48, G\.lane - 2 \* G\.pad\)/);
-  assert.match(GRID_JS, /show \? 54 : 999/);
+  assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
+  assert.match(GRID_JS, /G\.pw = show \? 48 : G\.lane - 8/);
+  assert.match(GRID_JS, /G\.pad = Math\.max\(0, Math\.floor\(\(G\.lane - G\.pw\) \/ 2\)\)/);
+  assert.match(GRID_JS, /if \(vertical && G\.across < width\) G\.across = width/);
   assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
   assert.match(GRID_CSS, /\.fg-head\.v \.fg-fname \{ font-size: 0\.6875rem/);
   assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
@@ -499,7 +500,20 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       const ph = pills.map((p) => dim(p.style.cssText, "height")).filter(Boolean);
       const pw = pills.map((p) => dim(p.style.cssText, "width")).filter(Boolean);
       assert.ok(ph.length && ph.every((x) => x === 32), "phone team pills are 32px tall");
-      assert.ok(pw.length && pw.every((x) => x >= 44 && x <= 48), "phone team pills are 44-48px wide");
+      assert.ok(pw.length && pw.every((x) => x === 48), "phone team pills stay 48px wide");
+      const gridBox = out.all((n) => n.className === "fg")[0];
+      const gridW = Number.parseFloat(gridBox?.style.width) || dim(gridBox?.style.cssText || "", "width");
+      assert.ok(gridW >= width - 1, "grid fills the card width: " + gridW + " vs " + width);
+      const px = (n) => Number.parseFloat(n.style.width) || dim(n.style.cssText, "width");
+      const lanes = out.all((n) => /\bfg-fname\b/.test(n.className)).map(px);
+      assert.ok(lanes.length && lanes.every((w) => w === lanes[0]), "field columns share a width");
+      const lane = lanes[0];
+      assert.ok(40 + lanes.length * lane <= gridW + 1, "columns span the card");
+      const pad = Math.floor((lane - 48) / 2);
+      for (const p of pills) {
+        const x = dim(p.style.cssText, "left");
+        assert.equal((x - 40) % lane, pad, "box is centered in its column");
+      }
     }
     const route = pills.filter((p) => p.classList.contains("route")).map(gno);
     assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
