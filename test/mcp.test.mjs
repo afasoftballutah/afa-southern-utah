@@ -458,6 +458,9 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_JS, /day\.start - pad - 1/);
   assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: column/);
   assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: absolute;[^}]*font-size: 0\.5rem/);
+  assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*padding-right: 2px;[^}]*overflow: visible/);
+  assert.match(GRID_CSS, /button\.pill \.fin \{[^}]*padding-right: 2px;[^}]*overflow: visible/);
+  assert.match(GRID_CSS, /button\.pill \{[^}]*overflow: visible/);
   assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.6875rem/);
   assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*font-size: 0\.5625rem;[^}]*margin-top: 0/);
 });
