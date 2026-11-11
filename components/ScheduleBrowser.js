@@ -6,6 +6,7 @@ import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
+import PathView from "@/components/PathView";
 
 // By field | By time toggle (dispatch-brief-16) — same localStorage-via-
 // useSyncExternalStore pattern as the Tournaments page toggle
@@ -220,12 +221,13 @@ export default function ScheduleBrowser({
   zoneShort = "",
   slug = null,
   teamPageHrefs = null,
+  divisions = null,
 }) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
   const view =
     explicitView ??
-    (storedView === "time" || (storedView === "timeline" && timeZone) ? storedView : "field");
+    (storedView === "time" || ((storedView === "timeline" || storedView === "paths") && timeZone) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
   // The picked team — { name, divisionId }, never a bare name — shared with
   // the timeline so it lights that one team's games.
@@ -253,7 +255,7 @@ export default function ScheduleBrowser({
           games={finderGames}
           storageKey={storageKey}
           onPickChange={setTeam}
-          showGames={view !== "timeline"}
+          showGames={view !== "timeline" && view !== "paths"}
           compact
           teamPageHrefs={teamPageHrefs}
         />
@@ -276,9 +278,23 @@ export default function ScheduleBrowser({
             Timeline
           </button>
         ) : null}
+        {/* Path view (JD 2026-11-10): the MCP team grid, every game by field
+            and time with the picked team's paths lit. */}
+        {timeZone ? (
+          <button
+            type="button"
+            onClick={() => choose("paths")}
+            aria-pressed={view === "paths"}
+            className={view === "paths" ? "is-on" : undefined}
+          >
+            Path view
+          </button>
+        ) : null}
       </div>
 
-      {view === "timeline" ? (
+      {view === "paths" ? (
+        <PathView rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} team={team} divisions={divisions ?? []} />
+      ) : view === "timeline" ? (
         <ScheduleTimeline rows={rows} timeZone={timeZone} zoneShort={zoneShort} slug={slug} team={team} />
       ) : view === "field" ? (
         <ByFieldView rows={rows} expandedFields={expandedFields} onToggleField={toggleField} />
