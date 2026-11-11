@@ -479,6 +479,24 @@ test("Path view with a team picked: only its games, the win-out route strongest,
     assert.equal(out.all((n) => /\bstub\b/.test(n.className)).length, 0, "every edge drawn as a line, no W→G labels");
     const thick = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none" && n.getAttribute("stroke-width") === "4");
     assert.equal(thick.length, 2, "G3→G9 and G9→G12 drawn thick");
+    // Orthogonal lines, one clean head each, the line stopping at the head's base (JD on his iPhone).
+    const pts = (d) => d.replace(/^M/, "").split(" L").map((x) => x.trim().split(/\s+/).map(Number));
+    const lines = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none");
+    const heads = out.all((n) => n.tagName === "path" && n.getAttribute("class") === "head");
+    assert.equal(heads.length, lines.length, "one head per line");
+    for (const [li, line] of lines.entries()) {
+      const p = pts(line.getAttribute("d"));
+      for (let k = 1; k < p.length; k++) {
+        const dx = Math.abs(p[k][0] - p[k - 1][0]), dy = Math.abs(p[k][1] - p[k - 1][1]);
+        assert.ok(dx < 0.11 || dy < 0.11, `segment ${k} of line ${li} is not diagonal`);
+      }
+      const h = pts(heads[li].getAttribute("d").replace(" Z", ""));
+      const base = [(h[1][0] + h[2][0]) / 2, (h[1][1] + h[2][1]) / 2];
+      const end = p[p.length - 1];
+      assert.ok(Math.hypot(end[0] - base[0], end[1] - base[1]) < 1, "line ends at the head's base");
+      const w = Number(line.getAttribute("stroke-width")), hl = Math.hypot(h[0][0] - base[0], h[0][1] - base[1]);
+      assert.ok(Math.abs(hl - Math.max(6.5, w * 2.6)) < 0.2, "head sized to the stroke");
+    }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
     const head = out.all((n) => /\bfg-head\b/.test(n.className))[0];
