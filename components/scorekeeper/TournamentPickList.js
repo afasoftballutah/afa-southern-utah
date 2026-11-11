@@ -7,7 +7,11 @@ import Link from "next/link";
  * Compact tournament picker. Default: only events that still need scores.
  * Huge filter cards were drowning the actual work (pick tournament → type scores).
  */
-export default function TournamentPickList({ tournaments = [] }) {
+export default function TournamentPickList({
+  tournaments = [],
+  defaultView,
+  showTabs = true,
+}) {
   const needScores = useMemo(
     () => tournaments.filter((t) => t.left > 0),
     [tournaments]
@@ -18,13 +22,13 @@ export default function TournamentPickList({ tournaments = [] }) {
   );
 
   const [view, setView] = useState(() =>
-    needScores.length > 0 ? "need" : "all"
+    defaultView ?? (needScores.length > 0 ? "need" : "all")
   );
 
   const list =
     view === "need" ? needScores : view === "done" ? done : tournaments;
 
-  const tabs = [
+  const tabItems = [
     { key: "need", label: "Need scores", count: needScores.length },
     { key: "all", label: "All", count: tournaments.length },
     { key: "done", label: "Done", count: done.length },
@@ -32,35 +36,37 @@ export default function TournamentPickList({ tournaments = [] }) {
 
   return (
     <div className="space-y-3">
-      <div
-        className="flex flex-wrap items-center gap-1.5"
-        role="tablist"
-        aria-label="Which tournaments to show"
-      >
-        {tabs.map((tab) => {
-          const on = view === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => setView(tab.key)}
-              className={
-                "rounded-full border px-2.5 py-1 text-[12px] font-semibold tabular-nums " +
-                (on
-                  ? tab.key === "need"
-                    ? "border-afa-red bg-afa-red text-white"
-                    : "border-afa-navy bg-afa-navy text-white"
-                  : "border-afa-navy/20 bg-white text-afa-navy/70 hover:border-afa-navy/40")
-              }
-            >
-              {tab.label}
-              <span className="ml-1 opacity-80">{tab.count}</span>
-            </button>
-          );
-        })}
-      </div>
+      {showTabs ? (
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          role="tablist"
+          aria-label="Which tournaments to show"
+        >
+          {tabItems.map((tab) => {
+            const on = view === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setView(tab.key)}
+                className={
+                  "rounded-full border px-2.5 py-1 text-[12px] font-semibold tabular-nums " +
+                  (on
+                    ? tab.key === "need"
+                      ? "border-afa-red bg-afa-red text-white"
+                      : "border-afa-navy bg-afa-navy text-white"
+                    : "border-afa-navy/20 bg-white text-afa-navy/70 hover:border-afa-navy/40")
+                }
+              >
+                {tab.label}
+                <span className="ml-1 opacity-80">{tab.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="card divide-y divide-afa-navy/10 overflow-hidden">
         {list.length === 0 ? (

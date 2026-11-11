@@ -1,6 +1,6 @@
 import { requireDirectorPage } from "@/lib/staff-gate";
 import { getServiceClient } from "@/lib/supabase";
-import { isRegistrationOpen, stillToPlayIn, playableIn, GAME_STATE_FIELDS } from "@/lib/tournament-state";
+import { isRegistrationOpen, stillToPlayIn, playableIn, GAME_STATE_FIELDS, splitCurrentAndArchive } from "@/lib/tournament-state";
 import { genderLabel, venueParts } from "@/lib/director";
 import PinPad from "@/components/scorekeeper/PinPad";
 import DirectorShell from "@/components/scorekeeper/DirectorShell";
@@ -9,6 +9,7 @@ import NewTournament from "@/components/scorekeeper/NewTournament";
 import TournamentSetup from "@/components/scorekeeper/TournamentSetup";
 import DivisionWorkbench from "@/components/scorekeeper/DivisionWorkbench";
 import TournamentDesk from "@/components/scorekeeper/TournamentDesk";
+import TournamentArchiveTabs from "@/components/TournamentArchiveTabs";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tournaments — Director" };
@@ -183,7 +184,7 @@ function planFrom(divisions, classes) {
   });
 }
 
-export default async function TournamentsPage() {
+export default async function TournamentsPage({ searchParams }) {
   const gate = await requireDirectorPage();
   if (gate.needPin) {
     return (
@@ -206,7 +207,12 @@ export default async function TournamentsPage() {
   const plain = (v) => JSON.parse(JSON.stringify(v));
   const plainRoster = plain(umpireRoster);
 
-  const rows = tournaments.map((t) => {
+  const sp = await searchParams;
+  const showArchive = String(sp?.archive ?? "") === "1";
+  const { current, archive } = splitCurrentAndArchive(tournaments);
+  const visible = showArchive ? archive : current;
+
+  const rows = visible.map((t) => {
     const mine = divisions
       .filter((d) => d.tournament_id === t.id)
       .sort((a, b) => a.sort_order - b.sort_order);
@@ -357,14 +363,23 @@ export default async function TournamentsPage() {
     };
   });
 
+  const tabs =
+    archive.length > 0 || showArchive ? (
+      <TournamentArchiveTabs
+        archive={showArchive}
+        currentHref="/director/tournaments"
+        archiveHref="/director/tournaments?archive=1"
+      />
+    ) : null;
+
   return (
-    <DirectorShell title="Tournaments" count={`${rows.length} on file`}>
+    <DirectorShell title="Tournaments" count={`${rows.length} on file`} inline={tabs}>
       <NewTournament venues={venues} />
       <DirectorTable
         columns={COLUMNS}
         rows={rows}
         filters={FILTERS}
-        defaultSort={{ key: "date", dir: "asc" }}
+        defaultSort={{ key: "date", dir: showArchive ? "desc" : "asc" }}
         empty="No tournament matches that."
         searchPlaceholder="Tournament or venue…"
       />
