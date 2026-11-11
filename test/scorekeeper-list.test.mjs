@@ -246,6 +246,9 @@ test("ScorekeeperBoard is one list with a colored mark pill and a when/field lin
   assert.match(board, /sk-mark__pill/);
   assert.match(board, /divisionAbbrev/);
   assert.match(board, /sk-mark__meta/);
+  assert.match(board, /sk-mark__day/);
+  assert.match(board, /sk-mark__clock/);
+  assert.match(board, /sk-mark__field/);
   assert.match(board, /markLine/);
   assert.match(board, /SegmentBar/);
   assert.match(board, /scorekeeperFieldAbbrev/);

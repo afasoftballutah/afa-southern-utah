@@ -621,12 +621,22 @@ body:has(.scorekeeper-scope) {
   min-width: 0;
 }
 .sk-mark__meta {
-  font-size: 0.625rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 0.6875rem; /* 11px */
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   white-space: nowrap;
   line-height: 1;
   color: var(--afa-navy);
+  font-variant-numeric: proportional-nums;
+}
+.sk-mark__meta.is-tight {
+  /* Half hours ("Th 10:30A P2") stay on one line; keep the same 4px gaps. */
+  font-size: 0.578125rem; /* 9.25px, only this longer case */
 }
 .sk-game__team {
   min-width: 0;

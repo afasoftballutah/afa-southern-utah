@@ -169,7 +169,17 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
           <span className="sk-mark__num">{row.number}</span>
           {row.divisionAbbrev ? <span className="sk-mark__div"> {row.divisionAbbrev}</span> : null}
         </span>
-        <span className="sk-mark__meta">{row.markLine ?? "—"}</span>
+        <span className={"sk-mark__meta" + (row.whenMark?.hasMinutes ? " is-tight" : "")}>
+          {row.whenMark ? (
+            <>
+              <span className="sk-mark__day">{row.whenMark.day}</span>
+              <span className="sk-mark__clock">{row.whenMark.clock}</span>
+              {row.fieldAbbrev ? <span className="sk-mark__field">{row.fieldAbbrev}</span> : null}
+            </>
+          ) : (
+            row.fieldAbbrev ?? "—"
+          )}
+        </span>
       </span>
       <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
         {row.team1Label}
