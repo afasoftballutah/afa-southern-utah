@@ -10,7 +10,7 @@ import { buildAfaMcpServer, INSTRUCTIONS } from "@/lib/mcp/tools";
 import { scheduleRowsFromTournament } from "@/lib/data";
 import { isPublicTournament } from "@/lib/mcp/data";
 import { gameState, fieldGrid, gridTrack } from "@/lib/mcp/field-grid";
-import { GRID_CSS, GRID_JS, siteGridRunner } from "@/lib/mcp/grid-view";
+import { GRID_CSS, GRID_JS, SITE_SHIM, siteGridRunner } from "@/lib/mcp/grid-view";
 import { TEAM_VIEW_HTML } from "@/lib/mcp/team-view";
 import { CARD_JS } from "@/lib/mcp/views";
 import { readFileSync } from "node:fs";
@@ -434,5 +434,60 @@ test("site Path view: the MCP team grid's own code and track; a Schedule tab nex
 test("grid finishes read just the place, not bold; no legend text for them (JD 2026-11-10)", () => {
   assert.ok(!/their finish/.test(GRID_JS), "no 'their finish if they lose there' legend");
   assert.ok(!/"Out "/.test(GRID_JS), "finish labels read '9th', not 'Out 9th'");
-  assert.match(GRID_CSS, /\.fg-under \.out \{ font-weight: 400;/);
+  assert.match(GRID_CSS, /button\.pill \.fin \{[^}]*font-weight: 400;/);
+});
+
+// A just-enough DOM to run the grid's own drawing code in node.
+function fakeDom() {
+  class Node {
+    constructor(tag) { this.tagName = tag; this.childNodes = []; this.attrs = {}; this.className = ""; this.parent = null; this._text = "";
+      const self = this;
+      this.style = { cssText: "", setProperty() {} };
+      this.classList = { add: (c) => { if (!self.cls().includes(c)) self.className = (self.className + " " + c).trim(); }, remove: (c) => { self.className = self.cls().filter((x) => x !== c).join(" "); }, contains: (c) => self.cls().includes(c) };
+    }
+    cls() { return this.className.split(/\s+/).filter(Boolean); }
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === "class") this.className = String(v); }
+    getAttribute(k) { return this.attrs[k] ?? null; }
+    appendChild(c) { c.parent = this; this.childNodes.push(c); return c; }
+    get lastChild() { return this.childNodes[this.childNodes.length - 1] ?? null; }
+    remove() { if (this.parent) this.parent.childNodes = this.parent.childNodes.filter((x) => x !== this); }
+    replaceWith(n) { const p = this.parent; if (p) { p.childNodes[p.childNodes.indexOf(this)] = n; n.parent = p; } }
+    addEventListener() {}
+    set textContent(v) { this._text = String(v); this.childNodes = []; }
+    get textContent() { return this._text + this.childNodes.map((c) => c.textContent).join(""); }
+    all(pred, out = []) { for (const c of this.childNodes) { if (pred(c)) out.push(c); c.all?.(pred, out); } return out; }
+  }
+  class Text extends Node { constructor(t) { super("#text"); this._text = t; } }
+  return { document: { createElement: (t) => new Node(t), createElementNS: (ns, t) => new Node(t), createTextNode: (t) => new Text(t) } };
+}
+
+test("Path view with a team picked: only its games, the win-out route strongest, every edge a line, sticky head", async () => {
+  const { c } = await client();
+  const sc = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent;
+  const t = sc.view.teams[0];
+  const me = t.picker.find((p) => p.name === "One Hit Wonders");
+  const dom = fakeDom();
+  const run = new Function("document", "window", "setTimeout", `${CARD_JS}\n${SITE_SHIM}\n${GRID_JS}\nreturn { gridEl: gridEl, keyEl: keyEl };`)(dom.document, { innerWidth: 390 }, () => {});
+  for (const width of [390, 1280]) {
+    const out = run.gridEl(t, "One Hit Wonders", { clientWidth: width });
+    const pills = out.all((n) => n.tagName === "button" && n.classList.contains("pill"));
+    const shown = pills.map((p) => p.childNodes[0].textContent).filter((n) => /^G\d+$/.test(n)).sort();
+    assert.deepEqual(shown, at(t.grid) && [...new Set([...me.played, ...me.reach])].map((i) => at(t.grid).get(i).n).sort(), "only the team's games are drawn");
+    assert.ok(pills.every((p) => !p.classList.contains("dim")), "nothing faded: the rest are hidden");
+    const route = pills.filter((p) => p.classList.contains("route")).map((p) => p.childNodes[0].textContent);
+    assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
+    assert.equal(out.all((n) => /\bstub\b/.test(n.className)).length, 0, "every edge drawn as a line, no W→G labels");
+    const thick = out.all((n) => n.tagName === "path" && n.getAttribute("fill") === "none" && n.getAttribute("stroke-width") === "4");
+    assert.equal(thick.length, 2, "G3→G9 and G9→G12 drawn thick");
+    const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
+    assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
+    const head = out.all((n) => /\bfg-head\b/.test(n.className))[0];
+    assert.ok(head && /One Hit Wonders/.test(head.textContent) && /Coed Rec/.test(head.textContent), "team and division in the sticky head");
+    if (width < 640) assert.match(head.textContent, /Pioneer/, "phone: field names pinned in the head");
+    assert.ok(!/still possible|their finish|Played/.test(out.textContent));
+  }
+  assert.match(GRID_CSS, /\.fg-head \{ position: sticky; top: 0;/);
+  assert.ok(!/Played/.test(GRID_JS.slice(GRID_JS.indexOf("function keyEl"))), "key: Win, Loss, Times only");
+  const view = readFileSync(new URL("../components/PathView.js", import.meta.url), "utf8");
+  assert.ok(!/still possible|Pick your team/.test(view), "no count or hint text above the grid");
 });

@@ -36,7 +36,6 @@ const SHADOW_CSS = `${CARD_CSS.replace(/:root\.dark[^{]*\{[^}]*\}/g, "").replace
 :host { display: block; font-family: inherit; color: var(--ink); --font: inherit; }
 .pv { display: grid; gap: 0.625rem; }`;
 
-const norm = (s) => String(s ?? "").trim().toLowerCase();
 
 export default function PathView({ rows, timeZone, zoneShort = "", slug, team = null, divisions = [] }) {
   const hostRef = useRef(null);
@@ -45,14 +44,6 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
     () => (team?.name ? divisionFamily(divisions, team.divisionId) ?? new Set([team.divisionId]) : null),
     [team, divisions]
   );
-  // The summary line: record and games still possible do not depend on
-  // the clock, so they render on the server too.
-  const track = useMemo(() => {
-    if (!family) return null;
-    const { index } = fieldGrid(rows, timeZone, new Date(0), { siteUrl: "", slug });
-    return gridTrack(rows, team.name, family, null, index);
-  }, [rows, timeZone, slug, team, family]);
-
   // The grid: drawn as of the moment the view mounts (or the rows or team
   // change), never polled.
   useEffect(() => {
@@ -99,21 +90,6 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
     return () => ro.disconnect();
   }, [rows, timeZone, zoneShort, slug, team, family]);
 
-  const division = team?.divisionName ?? rows.find((r) => r.divisionId === team?.divisionId)?.divisionName ?? null;
-  return (
-    <section className="path-view space-y-2" aria-label="Path view">
-      <p className="text-sm text-afa-ink/70">
-        {team?.name ? (
-          <>
-            <span className="font-semibold text-afa-ink">{team.name}</span>
-            {division ? ` · ${division}` : ""}
-            {track ? ` · ${track.record} · ${track.reach.length ? `${track.reach.length} games still possible` : "no games left"}` : ""}
-          </>
-        ) : (
-          "Pick your team above to light every game it could still play."
-        )}
-      </p>
-      <div ref={hostRef} data-team={team?.name ? norm(team.name) : undefined} />
-    </section>
-  );
+  // The team line rides in the grid's sticky head; nothing else above it.
+  return <section className="path-view" aria-label="Path view" ref={hostRef} />;
 }
