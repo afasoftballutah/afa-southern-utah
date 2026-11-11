@@ -439,13 +439,18 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
 
 test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
-  assert.match(GRID_JS, /hour: show \? 54 : 86/);
-  assert.match(GRID_JS, /skip: show \? 8 : 14/);
+  assert.match(GRID_JS, /hour: show \? 40 : 86/);
+  assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : G\.hour/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
   assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
+  assert.match(GRID_JS, /var rail = show \? 16 : 0/);
   assert.match(GRID_JS, /G\.pw = show \? 48 : G\.lane - 8/);
   assert.match(GRID_JS, /G\.pad = Math\.max\(0, Math\.floor\(\(G\.lane - G\.pw\) \/ 2\)\)/);
   assert.match(GRID_JS, /if \(vertical && G\.across < width\) G\.across = width/);
+  assert.match(GRID_JS, /y: t \+ Math\.floor\(\(G\.hour - G\.ph\) \/ 2\)/);
+  assert.match(GRID_JS, /u \+ Math\.floor\(\(G\.hour - 11\) \/ 2\)/);
+  assert.match(GRID_CSS, /\.fg-top \{ display: flex; align-items: center/);
+  assert.match(GRID_CSS, /text-overflow: ellipsis/);
   assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
   assert.match(GRID_CSS, /\.fg-head\.v \.fg-fname \{ font-size: 0\.6875rem/);
   assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
@@ -514,6 +519,22 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
         const x = dim(p.style.cssText, "left");
         assert.equal((x - 40) % lane, pad, "box is centered in its column");
       }
+      const hours = out.all((n) => /\bfg-lab\b/.test(n.className) && /\bhour\b/.test(n.className));
+      const hourLabs = hours.map((n) => Number.parseFloat(n.style.top) || dim(n.style.cssText, "top")).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      const labOff = Math.floor((40 - 11) / 2);
+      const rowStarts = hourLabs.map((top) => top - labOff);
+      const dayGaps = [];
+      for (let i = 1; i < rowStarts.length; i++) {
+        const dlt = rowStarts[i] - rowStarts[i - 1];
+        if (dlt < 50) dayGaps.push(dlt);
+      }
+      assert.ok(dayGaps.length && dayGaps.every((d) => d === 40), "every hour row in a day is 40px, no skipped hours: " + dayGaps.join(","));
+      const mid = Math.floor((40 - 32) / 2);
+      for (const p of pills) {
+        const y = dim(p.style.cssText, "top");
+        const row = rowStarts.find((u) => y >= u && y < u + 40);
+        if (row != null) assert.equal(y, row + mid, "card is vertically centered in its hour row");
+      }
     }
     const route = pills.filter((p) => p.classList.contains("route")).map(gno);
     assert.deepEqual(route, ["G3", "G9", "G12"], "win-out route: G3, win G9, win the final G12");
@@ -538,7 +559,7 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       const end = p[p.length - 1];
       assert.ok(Math.hypot(end[0] - base[0], end[1] - base[1]) < 1, "line ends at the head's base");
       const w = Number(line.getAttribute("stroke-width")), hl = Math.hypot(h[0][0] - base[0], h[0][1] - base[1]);
-      assert.ok(Math.abs(hl - Math.max(6.5, w * 2.6)) < 0.2, "head sized to the stroke");
+      assert.ok(hl <= Math.max(6.5, w * 2.6) + 0.2 && hl >= 4, "head sized to the stroke, or shortened to fit a tight row");
     }
     const fins = out.all((n) => /\bfin\b/.test(n.className)).map((n) => n.textContent).sort();
     assert.deepEqual(fins, ["2nd", "3rd", "4th", "5th", "5th"], "finishes just the place, inside the boxes");
@@ -552,6 +573,8 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
     }
     const head = out.all((n) => /\bfg-head\b/.test(n.className))[0];
     assert.ok(head && /One Hit Wonders/.test(head.textContent) && /Coed Rec/.test(head.textContent), "team and division in the sticky head");
+    assert.match(head.textContent, /Win/, "Win / Loss key sits on the team row");
+    assert.ok(head.all((n) => /\bfg-key\b/.test(n.className) && /\bfg-top\b/.test((n.parent && n.parent.className) || "")).length || head.all((n) => /\bfg-top\b/.test(n.className)).length, "team and key share the top row");
     if (width < 640) assert.match(head.textContent, /Pioneer/, "phone: field names pinned in the head");
     assert.ok(!/still possible|their finish|Played/.test(out.textContent));
   }
