@@ -4252,18 +4252,27 @@ button.tl-pop__close {
   .score-ticker__list[aria-hidden="true"] { display: none; }
 }
 
-/* Schedule page top (JD, 2026-11-09: "the top has a lot of wasted space").
-   Unlayered on purpose: button:not(.pill) { min-height: 44px } is
-   unlayered too and would otherwise win over .seg inside @layer. */
-.sched-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+/* Schedule page top: back link and title on ONE compact line (JD,
+   2026-11-11: those two were taking up way too much space). Unlayered
+   on purpose: button:not(.pill) { min-height: 44px } is unlayered too
+   and would otherwise win over .seg inside @layer. */
+.site-main:has(.sched-head) { padding-top: 0.75rem; padding-bottom: 1rem; }
+.sched-head {
+  display: flex; flex-direction: row; align-items: center; gap: 0.5rem;
+  min-width: 0; margin: 0;
+}
 .sched-head__back {
-  display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.5rem;
-  font-size: 0.8125rem; font-weight: 500; color: var(--afa-navy);
+  display: flex; align-items: center; gap: 0.25rem; min-width: 0;
+  flex: 0 1 auto; max-width: calc(100% - 5.75rem);
+  min-height: 1.25rem; font-size: 0.8125rem; font-weight: 500; color: var(--afa-navy);
+  overflow: hidden;
 }
 .sched-head__back:hover { text-decoration: underline; }
+.sched-head__tourney { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sched-head__title {
+  flex: 0 0 auto; margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", var(--font-body-face), system-ui, sans-serif;
-  font-size: 1.5rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; color: #1d1d1f;
+  font-size: 1.25rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; color: #1d1d1f;
 }
 .team-finder--compact { padding: 0; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06); border-radius: 0.75rem; }
 .sched-seg { display: flex; width: 100%; }

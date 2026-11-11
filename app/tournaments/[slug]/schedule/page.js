@@ -94,14 +94,16 @@ export default async function SchedulePage({ params }) {
   const divisionTree = (tournament.divisions ?? []).map((d) => ({ id: d.id, parent_division_id: d.parent_division_id ?? null }));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <RefreshOnReturn />
       <TournamentTicker divisionIds={divisionIds} />
-      {/* One compact header (JD, 2026-11-09: "the top has a lot of wasted
-          space"): the tournament is the back link, the page name sits under it. */}
+      {/* One compact line (JD, 2026-11-11): the tournament is the back
+          link on the left, Schedule sits on the same row. Long names
+          ellipsize so the row still fits at 375px. */}
       <header className="sched-head">
         <Link href={`/tournaments/${slug}`} className="sched-head__back">
-          <span aria-hidden="true">‹</span> {tournament.name}
+          <span aria-hidden="true">‹</span>
+          <span className="sched-head__tourney">{tournament.name}</span>
         </Link>
         <h1 className="sched-head__title">Schedule</h1>
       </header>

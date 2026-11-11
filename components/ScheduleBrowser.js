@@ -222,12 +222,14 @@ export default function ScheduleBrowser({
   slug = null,
   teamPageHrefs = null,
   divisions = null,
+  initialView = null,
 }) {
   const [explicitView, setExplicitView] = useState(null);
   const storedView = useSyncExternalStore(subscribeStorage, getStoredView, getStoredViewServer);
+  const allowed = (v) => v === "time" || v === "field" || ((v === "timeline" || v === "paths") && timeZone);
   const view =
     explicitView ??
-    (storedView === "time" || ((storedView === "timeline" || storedView === "paths") && timeZone) ? storedView : "field");
+    (allowed(initialView) ? initialView : allowed(storedView) ? storedView : "field");
   const [expandedFields, setExpandedFields] = useState(() => new Set());
   // The picked team — { name, divisionId }, never a bare name — shared with
   // the timeline so it lights that one team's games.

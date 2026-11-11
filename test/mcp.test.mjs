@@ -439,7 +439,7 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
 
 test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
-  assert.match(GRID_JS, /hour: show \? 40 : 86/);
+  assert.match(GRID_JS, /hour: show \? 48 : 86/);
   assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : G\.hour/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
   assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
@@ -460,6 +460,19 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_CSS, /button\.pill\.compact \.fin \{[^}]*position: absolute;[^}]*font-size: 0\.5rem/);
   assert.match(GRID_CSS, /button\.pill\.compact \.gno \{[^}]*font-size: 0\.6875rem/);
   assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*font-size: 0\.5625rem;[^}]*margin-top: 0/);
+});
+
+test("Schedule page header is one compact line (JD 2026-11-11)", () => {
+  const page = readFileSync(new URL("../app/tournaments/[slug]/schedule/page.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(page, /className="sched-head"/);
+  assert.match(page, /sched-head__tourney/);
+  assert.match(page, /className="space-y-2"/);
+  assert.match(css, /\.sched-head \{\s*display: flex; flex-direction: row;/);
+  assert.match(css, /\.sched-head__tourney \{[^}]*text-overflow: ellipsis/);
+  assert.match(css, /\.sched-head__title \{[^}]*font-size: 1\.25rem/);
+  assert.match(css, /\.site-main:has\(\.sched-head\) \{ padding-top: 0\.75rem/);
+  assert.doesNotMatch(css, /\.sched-head \{ display: flex; flex-direction: column/);
 });
 
 // A just-enough DOM to run the grid's own drawing code in node.
@@ -522,18 +535,18 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       }
       const hours = out.all((n) => /\bfg-lab\b/.test(n.className) && /\bhour\b/.test(n.className));
       const hourLabs = hours.map((n) => Number.parseFloat(n.style.top) || dim(n.style.cssText, "top")).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
-      const labOff = Math.floor((40 - 11) / 2);
+      const labOff = Math.floor((48 - 11) / 2);
       const rowStarts = hourLabs.map((top) => top - labOff);
       const dayGaps = [];
       for (let i = 1; i < rowStarts.length; i++) {
         const dlt = rowStarts[i] - rowStarts[i - 1];
-        if (dlt < 50) dayGaps.push(dlt);
+        if (dlt < 60) dayGaps.push(dlt);
       }
-      assert.ok(dayGaps.length && dayGaps.every((d) => d === 40), "every hour row in a day is 40px, no skipped hours: " + dayGaps.join(","));
-      const mid = Math.floor((40 - 32) / 2);
+      assert.ok(dayGaps.length && dayGaps.every((d) => d === 48), "every hour row in a day is 48px, no skipped hours: " + dayGaps.join(","));
+      const mid = Math.floor((48 - 32) / 2);
       for (const p of pills) {
         const y = dim(p.style.cssText, "top");
-        const row = rowStarts.find((u) => y >= u && y < u + 40);
+        const row = rowStarts.find((u) => y >= u && y < u + 48);
         if (row != null) assert.equal(y, row + mid, "card is vertically centered in its hour row");
       }
     }
