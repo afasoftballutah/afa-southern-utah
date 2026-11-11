@@ -51,6 +51,7 @@ export default function ScoreEntry({ game, kind = "bracket", team1Name, team2Nam
 
   return (
     <span className="sk-score">
+      <span className="sk-score__boxes">
       <input
         type="number"
         inputMode="numeric"
@@ -74,6 +75,7 @@ export default function ScoreEntry({ game, kind = "bracket", team1Name, team2Nam
         onChange={(e) => setB(e.target.value)}
         disabled={busy}
       />
+      </span>
       {dirty && ready && (
         <button type="button" className="sk-score__save" disabled={busy} onClick={() => post(api.body(a, b))}>
           {busy ? "…" : "Save"}

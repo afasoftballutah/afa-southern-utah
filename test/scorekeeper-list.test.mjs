@@ -174,6 +174,9 @@ test("ScorekeeperBoard is one list with full field names and division tones, not
   assert.doesNotMatch(board, /Find a team/);
   // Must not strip a park name down to F1 / F2.
   assert.doesNotMatch(board, /return n \? `F\$\{n\[1\]\}`/);
+  // Team 1, then its score, then team 2 — left/right, not stacked names.
+  const row = board.slice(board.indexOf("function GameRow"));
+  assert.match(row, /sk-game__team1[\s\S]+sk-game__score[\s\S]+sk-game__team2/);
 });
 
 test("games page does not advertise how many still need a score", () => {

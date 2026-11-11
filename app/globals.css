@@ -524,11 +524,11 @@ body:has(.scorekeeper-scope) {
 }
 .sk-game {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 0.6rem;
-  row-gap: 0.15rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 0.4rem;
+  row-gap: 0.35rem;
   align-items: center;
-  padding: 0.55rem 0.7rem 0.6rem 0.75rem;
+  padding: 0.55rem 0.65rem 0.6rem 0.7rem;
   border-radius: 0.6rem;
   border: 1px solid color-mix(in srgb, var(--afa-navy) 10%, transparent);
   border-left: 4px solid var(--tone-solid, #64748b);
@@ -569,11 +569,16 @@ body:has(.scorekeeper-scope) {
 }
 .sk-game__team {
   min-width: 0;
+  max-height: 2.4em;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.9375rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.875rem;
+  line-height: 1.2;
   color: var(--afa-ink);
+  overflow-wrap: anywhere;
 }
 .sk-game__team.is-won {
   font-weight: 700;
@@ -582,27 +587,35 @@ body:has(.scorekeeper-scope) {
 .sk-game__team1 {
   grid-column: 1;
   grid-row: 2;
+  text-align: right;
 }
 .sk-game__team2 {
-  grid-column: 1;
-  grid-row: 3;
+  grid-column: 3;
+  grid-row: 2;
+  text-align: left;
 }
 .sk-game__score {
   grid-column: 2;
-  grid-row: 2 / 4;
+  grid-row: 2;
   align-self: center;
-  justify-self: end;
+  justify-self: center;
 }
 .sk-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+.sk-score__boxes {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  justify-content: flex-end;
+  gap: 0.25rem;
 }
 .sk-score__input {
-  width: 3.15rem;
-  height: 2.75rem;
+  width: 3rem;
+  min-width: 3rem;
+  height: 3rem;
+  padding: 0;
   border: 1px solid color-mix(in srgb, var(--afa-navy) 28%, transparent);
   border-radius: 0.5rem;
   text-align: center;
@@ -610,6 +623,13 @@ body:has(.scorekeeper-scope) {
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   background: var(--afa-white);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.sk-score__input::-webkit-outer-spin-button,
+.sk-score__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .sk-score__input:focus {
   outline: 2px solid var(--afa-navy);
