@@ -4,9 +4,11 @@ import { readFileSync } from "node:fs";
 import {
   bothTeamsReady,
   scorekeeperFieldName,
+  scorekeeperFieldAbbrev,
   gameNumber,
   scorekeeperWhen,
   scorekeeperWhenPill,
+  scorekeeperWhenMark,
   buildScorekeeperCatalog,
   scorekeeperFieldOptions,
   scorekeeperDayOptions,
@@ -103,6 +105,18 @@ test("scorekeeperFieldName uses Timeline spelling and does not guess a park", ()
   assert.equal(scorekeeperFieldName("H2"), fieldDisplayName("H2"));
 });
 
+test("scorekeeperFieldAbbrev is the park's first letter plus the number", () => {
+  assert.equal(scorekeeperFieldAbbrev("Hunter F1"), "H1");
+  assert.equal(scorekeeperFieldAbbrev("Pioneer F2"), "P2");
+  assert.equal(scorekeeperFieldAbbrev("H3"), "H3");
+  assert.equal(scorekeeperFieldAbbrev("P 1"), "P1");
+  assert.equal(scorekeeperFieldAbbrev("Hunter Field 2"), "H2");
+  // No park in the data — do not invent H or P.
+  assert.equal(scorekeeperFieldAbbrev("F2"), "F2");
+  assert.equal(scorekeeperFieldAbbrev("Field 4"), "Field 4");
+  assert.equal(scorekeeperFieldAbbrev(""), null);
+});
+
 test("scorekeeperWhen drops :00 and labels Worlds times PST", () => {
   assert.equal(scorekeeperWhen(thu2, TZ), "Thu 2 PM PST");
   assert.equal(scorekeeperWhen(fri930, TZ), "Fri 9:30 AM PST");
@@ -113,6 +127,24 @@ test("scorekeeperWhenPill drops :00 and leaves the zone off the pill", () => {
   assert.equal(scorekeeperWhenPill(thu2, TZ), "Thu 2 PM");
   assert.equal(scorekeeperWhenPill(fri930, TZ), "Fri 9:30 AM");
   assert.equal(scorekeeperWhenPill(null, TZ), "");
+});
+
+test("scorekeeperWhenMark is 2-letter day plus the 12-hour clock, no am/pm", () => {
+  assert.deepEqual(scorekeeperWhenMark(thu2, TZ), {
+    label: "Th2",
+    day: "Th",
+    clock: "2",
+    hasMinutes: false,
+  });
+  assert.deepEqual(scorekeeperWhenMark(fri930, TZ), {
+    label: "Fr9:30",
+    day: "Fr",
+    clock: "9:30",
+    hasMinutes: true,
+  });
+  const thu1030 = "2026-11-12T18:30:00.000Z";
+  assert.equal(scorekeeperWhenMark(thu1030, TZ).label, "Th10:30");
+  assert.equal(scorekeeperWhenMark(null, TZ), null);
 });
 
 test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1", () => {
@@ -127,6 +159,8 @@ test("catalog is one time-sorted list, hides waiting/byes, keeps both parks' F1"
     [...catalog.map((r) => r.sortKey)].sort()
   );
   assert.equal(catalog[0].fieldName, "Hunter F1");
+  assert.equal(catalog[0].fieldAbbrev, "H1");
+  assert.equal(catalog[0].whenMark.label, "Th2");
   assert.equal(catalog[1].fieldName, "Pioneer F1");
   assert.equal(catalog.find((r) => r.id === "wr55").fieldName, "Pioneer F2");
   assert.equal(catalog.find((r) => r.id === "wr49").tone, "womens-rec");
@@ -170,14 +204,18 @@ test("field storage key is per tournament", () => {
   assert.equal(fieldStorageKey(), "afa-scorekeeper-field:default");
 });
 
-test("ScorekeeperBoard is one list with full field names and division tones, not per-division tables", () => {
+test("ScorekeeperBoard is one list with a 4-part mark and no pills or per-division tables", () => {
   const board = readFileSync(new URL("../components/scorekeeper/ScorekeeperBoard.js", import.meta.url), "utf8");
   assert.match(board, /buildScorekeeperCatalog/);
   assert.match(board, /scorekeeperFieldOptions/);
   assert.match(board, /tl-tone-\$\{/);
-  assert.match(board, /sk-pill--div/);
-  assert.match(board, /sk-game__num/);
-  assert.match(board, /All fields/);
+  assert.match(board, /sk-mark__tone/);
+  assert.match(board, /sk-mark__when/);
+  assert.match(board, /fieldAbbrev/);
+  assert.match(board, /SegmentBar/);
+  assert.match(board, /scorekeeperFieldAbbrev/);
+  assert.doesNotMatch(board, /sk-pill/);
+  assert.doesNotMatch(board, /All fields/);
   assert.doesNotMatch(board, /ScoreTable/);
   assert.doesNotMatch(board, /Need score/);
   assert.doesNotMatch(board, /Find a team/);
@@ -188,8 +226,19 @@ test("ScorekeeperBoard is one list with full field names and division tones, not
   assert.match(row, /sk-game__team1[\s\S]+sk-game__score[\s\S]+sk-game__team2/);
 });
 
+test("ScoreEntry confirms both scores and locks a saved row", () => {
+  const src = readFileSync(new URL("../components/scorekeeper/ScoreEntry.js", import.meta.url), "utf8");
+  assert.match(src, /sk-score__confirm/);
+  assert.match(src, /sk-score__tile/);
+  assert.match(src, /is-locked/);
+  assert.match(src, /sk-score__step/);
+  assert.match(src, /inputMode="numeric"/);
+  assert.doesNotMatch(src, />Save</);
+});
+
 test("games page does not advertise how many still need a score", () => {
   const page = readFileSync(new URL("../app/scorekeeper/games/page.js", import.meta.url), "utf8");
   assert.doesNotMatch(page, /need a score/);
   assert.doesNotMatch(page, /leftCount/);
+  assert.match(page, /compact/);
 });

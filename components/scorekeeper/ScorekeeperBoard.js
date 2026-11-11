@@ -4,22 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTimeZone } from "@/components/TimeZoneContext";
 import ScoreEntry from "./ScoreEntry";
+import SegmentBar from "./SegmentBar";
 import {
   buildScorekeeperCatalog,
   scorekeeperFieldOptions,
   scorekeeperDayOptions,
+  scorekeeperFieldAbbrev,
   filterScorekeeperCatalog,
   defaultDayKey,
   fieldStorageKey,
 } from "@/lib/scorekeeper-list";
-
-function Chip({ on, children, onClick }) {
-  return (
-    <button type="button" className={"sk-chip" + (on ? " is-on" : "")} onClick={onClick}>
-      {children}
-    </button>
-  );
-}
 
 export default function ScorekeeperBoard({
   tournamentId,
@@ -37,6 +31,7 @@ export default function ScorekeeperBoard({
   const [fieldReady, setFieldReady] = useState(false);
   const [day, setDay] = useState(null);
   const [showScored, setShowScored] = useState(false);
+  const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
     try {
@@ -66,7 +61,7 @@ export default function ScorekeeperBoard({
     () => filterScorekeeperCatalog(catalog, { field, day: "all" }),
     [catalog, field]
   );
-  const days = useMemo(() => scorekeeperDayOptions(forField), [forField]);
+  const days = useMemo(() => scorekeeperDayOptions(catalog), [catalog]);
   useEffect(() => {
     if (day && day !== "all" && !days.some((d) => d.key === day)) setDay(null);
   }, [day, days]);
@@ -89,28 +84,29 @@ export default function ScorekeeperBoard({
     <div className="sk-board">
       <div className="sk-toolbar">
         {days.length > 1 && (
-          <div className="sk-chips" role="listbox" aria-label="Day">
-            <Chip on={dayFilter === "all"} onClick={() => setDay("all")}>
-              All days
-            </Chip>
-            {days.map((d) => (
-              <Chip key={d.key} on={dayFilter === d.key} onClick={() => setDay(d.key)}>
-                {d.label}
-              </Chip>
-            ))}
-          </div>
+          <SegmentBar
+            aria-label="Day"
+            value={dayFilter}
+            onChange={setDay}
+            options={[
+              { key: "all", label: "All" },
+              ...days.map((d) => ({ key: d.key, label: d.label })),
+            ]}
+          />
         )}
         {fields.length > 0 && (
-          <div className="sk-chips" role="listbox" aria-label="Field">
-            <Chip on={field === "all"} onClick={() => setField("all")}>
-              All fields
-            </Chip>
-            {fields.map((f) => (
-              <Chip key={f.key} on={field === f.key} onClick={() => setField(f.key)}>
-                {f.key}
-              </Chip>
-            ))}
-          </div>
+          <SegmentBar
+            aria-label="Field"
+            value={field}
+            onChange={setField}
+            options={[
+              { key: "all", label: "All" },
+              ...fields.map((f) => ({
+                key: f.key,
+                label: scorekeeperFieldAbbrev(f.key) ?? f.key,
+              })),
+            ]}
+          />
         )}
       </div>
 
@@ -125,7 +121,9 @@ export default function ScorekeeperBoard({
             <span aria-hidden="true">{showScored ? "▾" : "▸"}</span> Scored
           </button>
           {showScored
-            ? scored.map((row) => <GameRow key={row.id} row={row} />)
+            ? scored.map((row) => (
+              <GameRow key={row.id} row={row} active={activeId === row.id} onActivate={setActiveId} />
+            ))
             : null}
         </div>
       )}
@@ -138,6 +136,8 @@ export default function ScorekeeperBoard({
               row={row}
               rowRef={open.length && i === 0 ? nextRef : undefined}
               isNext={Boolean(open.length && i === 0)}
+              active={activeId === row.id}
+              onActivate={setActiveId}
             />
           ))}
         </div>
@@ -146,7 +146,7 @@ export default function ScorekeeperBoard({
   );
 }
 
-function GameRow({ row, rowRef, isNext = false }) {
+function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
   const router = useRouter();
   const won1 =
     row.scored &&
@@ -157,37 +157,55 @@ function GameRow({ row, rowRef, isNext = false }) {
     row.game.team2_score != null &&
     row.game.team2_score > row.game.team1_score;
 
+  const mark = row.whenMark;
   return (
     <div
       ref={rowRef}
       id={isNext ? "sk-next" : undefined}
-      className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "")}
+      className={"sk-game" + (row.scored ? " is-scored" : "") + (isNext ? " is-next" : "") + (active ? " is-active" : "")}
     >
-      <span className="sk-game__num">{row.number}</span>
-      <div className="sk-game__body">
-        <div className="sk-game__pills">
-          <span className={`sk-pill sk-pill--div tl-tone-${row.tone}`}>{row.divisionLabel}</span>
-          <span className="sk-pill sk-pill--when">{row.whenPill}</span>
-          <span className="sk-pill sk-pill--field">{row.fieldName ?? "—"}</span>
-        </div>
-        <div className="sk-game__match">
-          <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
-            {row.team1Label}
-          </span>
-          <div className="sk-game__score">
-            <ScoreEntry
-              game={row.game}
-              kind={row.kind}
-              team1Name={row.team1Label}
-              team2Name={row.team2Label}
-              onSaved={() => router.refresh()}
-            />
-          </div>
-          <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
-            {row.team2Label}
-          </span>
-        </div>
+      <span className={`sk-mark tl-tone-${row.tone}`} title={row.divisionLabel} aria-label={gameLabel(row)}>
+        <span className="sk-mark__num">{row.number}</span>
+        <span className="sk-mark__tone" aria-hidden="true" />
+        <span className={"sk-mark__when" + (mark?.hasMinutes ? " is-split" : "")}>
+          {mark?.hasMinutes ? (
+            <>
+              <span className="sk-mark__day">{mark.day}</span>
+              <span className="sk-mark__clock">{mark.clock}</span>
+            </>
+          ) : (
+            mark?.label ?? "—"
+          )}
+        </span>
+        <span className="sk-mark__field">{row.fieldAbbrev ?? "—"}</span>
+      </span>
+      <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
+        {row.team1Label}
+      </span>
+      <div className="sk-game__score">
+        <ScoreEntry
+          game={row.game}
+          kind={row.kind}
+          team1Name={row.team1Label}
+          team2Name={row.team2Label}
+          active={active}
+          onActivate={(id) => onActivate?.(id === null ? null : row.id)}
+          onSaved={() => router.refresh()}
+        />
       </div>
+      <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
+        {row.team2Label}
+      </span>
     </div>
   );
+}
+
+function gameLabel(row) {
+  const bits = [
+    row.number != null ? `Game ${row.number}` : null,
+    row.divisionLabel,
+    row.whenMark?.label,
+    row.fieldAbbrev ?? row.fieldName,
+  ].filter(Boolean);
+  return bits.join(", ");
 }
