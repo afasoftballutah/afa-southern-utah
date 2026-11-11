@@ -225,6 +225,10 @@ test("filter by field and day; default day is the first game that still needs a 
 test("field storage key is per tournament", () => {
   assert.equal(fieldStorageKey("abc"), "afa-scorekeeper-field:abc");
   assert.equal(fieldStorageKey(), "afa-scorekeeper-field:default");
+  assert.equal(
+    fieldStorageKey("abc", "division:div-1"),
+    "afa-scorekeeper-field:abc:division:div-1"
+  );
 });
 
 test("ScorekeeperBoard is one list with a 4-part mark and no pills or per-division tables", () => {
@@ -265,4 +269,36 @@ test("games page does not advertise how many still need a score", () => {
   assert.doesNotMatch(page, /need a score/);
   assert.doesNotMatch(page, /leftCount/);
   assert.match(page, /compact/);
+});
+
+test("director division Scores view reuses the scorekeeper board, still director-gated", () => {
+  const page = readFileSync(
+    new URL("../app/director/division/[divisionId]/page.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(page, /requireDirectorPage/);
+  assert.match(page, /ScorekeeperBoard/);
+  assert.match(page, /storageScope/);
+  assert.match(page, /tournamentZoneLabel/);
+  assert.match(page, /sk-zone/);
+  assert.match(page, /buildScorekeeperCatalog/);
+  assert.match(page, /pool_games: data\.poolGames/);
+  assert.doesNotMatch(page, /ScoreTable/);
+  // Matchups view and director-only tools stay on this page.
+  assert.match(page, /ViewDoors/);
+  assert.match(page, /BracketManager/);
+  assert.match(page, /GameUmpireAssign/);
+  assert.match(page, /CreatePoolRoundRobin/);
+  assert.match(page, /RemovePoolPlay/);
+  assert.match(page, /HandGames/);
+});
+
+test("a one-division catalog stays scoped to that division", () => {
+  const onlyMens = buildScorekeeperCatalog(
+    divisions.filter((d) => d.id === "mens-d"),
+    TZ
+  );
+  assert.ok(onlyMens.length > 0);
+  assert.ok(onlyMens.every((r) => r.divisionId === "mens-d"));
+  assert.ok(!onlyMens.some((r) => r.id.startsWith("wr") || r.id.startsWith("ce")));
 });

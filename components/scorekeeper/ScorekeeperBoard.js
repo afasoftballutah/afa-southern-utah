@@ -17,6 +17,7 @@ import {
 
 export default function ScorekeeperBoard({
   tournamentId,
+  storageScope,
   divisions = [],
 } = {}) {
   const timeZone = useTimeZone();
@@ -26,7 +27,7 @@ export default function ScorekeeperBoard({
   );
 
   const fields = useMemo(() => scorekeeperFieldOptions(catalog), [catalog]);
-  const storageKey = fieldStorageKey(tournamentId);
+  const storageKey = fieldStorageKey(tournamentId, storageScope);
   const [field, setField] = useState("all");
   const [fieldReady, setFieldReady] = useState(false);
   const [day, setDay] = useState(null);
