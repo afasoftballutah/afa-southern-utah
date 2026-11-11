@@ -605,6 +605,129 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
   );
 }
 
+
+// Compact header help (JD, 2026-11-10): the W/L shading, final, championship,
+// if-necessary, dashed "could still play" ring, and corner letters all live
+// behind a "?" — the visible row is just the M/W/C chips and this button.
+function TimelineHelp({ sheet }) {
+  const btn = useRef(null);
+  const pop = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const close = useCallback((refocus) => {
+    setOpen(false);
+    if (refocus) btn.current?.focus();
+  }, []);
+
+  const place = useCallback(() => {
+    if (sheet || !btn.current || !pop.current) return;
+    const a = btn.current.getBoundingClientRect();
+    const w = pop.current.offsetWidth;
+    const h = pop.current.offsetHeight;
+    const margin = 12;
+    const gap = 8;
+    const left = Math.min(Math.max(margin, a.right - w), Math.max(margin, window.innerWidth - w - margin));
+    let top = a.bottom + gap;
+    if (top + h > window.innerHeight - margin && a.top - gap - h >= margin) top = a.top - gap - h;
+    else top = Math.min(top, Math.max(margin, window.innerHeight - h - margin));
+    setPos({ left, top });
+  }, [sheet]);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    place();
+    if (sheet) return undefined;
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place, sheet]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") close(true);
+    };
+    const onDown = (e) => {
+      if (pop.current?.contains(e.target) || btn.current?.contains(e.target)) return;
+      close(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open, close]);
+
+  const panel = open
+    ? createPortal(
+        <div
+          ref={pop}
+          id="tl-help"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tl-help-title"
+          className={`tl-help${sheet ? " is-sheet" : ""}`}
+          style={sheet ? undefined : pos ? { left: pos.left, top: pos.top } : { visibility: "hidden" }}
+        >
+          <header className="tl-help__head">
+            <h2 id="tl-help-title" className="tl-help__title">How to read a game</h2>
+            <button type="button" className="tl-pop__close" aria-label="Close" onClick={() => close(true)}>
+              <CloseIcon />
+            </button>
+          </header>
+          <figure className="tl-help__demo">
+            <figcaption className="tl-help__callout">
+              <strong>Came from</strong>
+              W5 = winner of game 5
+            </figcaption>
+            <div className="tl-help__pill tl-tone-mens-d" aria-hidden="true">
+              <span className="tl-corner tl-corner--tl">W5</span>
+              <span className="tl-corner tl-corner--tr">L8</span>
+              <span className="tl-help__pill-num">12</span>
+              <span className="tl-corner tl-corner--bl">→19</span>
+              <span className="tl-corner tl-corner--br">→22</span>
+            </div>
+            <div className="tl-help__ends">
+              <p className="tl-help__callout"><strong>Loser goes here</strong></p>
+              <p className="tl-help__callout tl-help__callout--right"><strong>Winner goes here</strong></p>
+            </div>
+          </figure>
+          <ul className="tl-help__marks">
+            <li><span className="tl-help__swatch tl-help__swatch--winners" aria-hidden="true" />Shaded: winners&apos; bracket</li>
+            <li><span className="tl-help__swatch tl-help__swatch--losers" aria-hidden="true" />White: losers&apos; bracket</li>
+            <li><span className="tl-help__swatch tl-help__swatch--done" aria-hidden="true" />Dark: final, the score is in</li>
+            <li><span className="tl-help__swatch tl-help__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Gold star: championship</li>
+            <li><span className="tl-help__swatch tl-help__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>Dashed star: if necessary, only if needed</li>
+            <li><span className="tl-help__swatch tl-help__swatch--could" aria-hidden="true" />Dashed outline: games your team could still play</li>
+          </ul>
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <>
+      <button
+        ref={btn}
+        type="button"
+        className="tl-help__btn"
+        aria-label="How to read the timeline"
+        aria-expanded={open}
+        aria-controls="tl-help"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ?
+      </button>
+      {panel}
+    </>
+  );
+}
+
 // Phones get the bottom sheet: narrow screens, plus touch phones held sideways.
 export const PHONE_SHEET_QUERY = "(max-width: 639px), (pointer: coarse) and (max-height: 500px)";
 
@@ -746,41 +869,25 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
 
   return (
     <div className="tl">
-      <div className="tl-legend" role="list" aria-label="Divisions">
-        {legend.map((g, gi) => (
-          <div key={g.group ?? `other-${gi}`} className="tl-legend__group" role="listitem">
-            {g.group ? <span className="tl-legend__group-name">{g.group}</span> : null}
-            <ul className="tl-legend__items">
-              {g.items.map((d) => (
-                <li key={d.name} className={`tl-legend__chip tl-tone-${d.tone}`} aria-label={d.name}>
-                  {d.short}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div className="tl-head">
+        <div className="tl-legend" role="list" aria-label="Divisions">
+          {legend.map((g, gi) => (
+            <div key={g.group ?? `other-${gi}`} className="tl-legend__group" role="listitem" aria-label={g.group ?? undefined}>
+              {g.short || g.group ? (
+                <span className="tl-legend__group-name" aria-hidden={Boolean(g.short)}>{g.short ?? g.group}</span>
+              ) : null}
+              <ul className="tl-legend__items">
+                {g.items.map((d) => (
+                  <li key={d.name} className={`tl-legend__chip tl-tone-${d.tone}`} aria-label={d.name}>
+                    {d.short}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <TimelineHelp sheet={sheet} />
       </div>
-      <ul className="tl-key" aria-label="Pill styles">
-        <li className="tl-key__winners"><span className="tl-key__swatch tl-key__swatch--winners" aria-hidden="true" />Winners</li>
-        <li className="tl-key__losers"><span className="tl-key__swatch tl-key__swatch--losers" aria-hidden="true" />Losers</li>
-        <li className="tl-key__done">
-          <span className="tl-key__swatch tl-key__swatch--done" aria-hidden="true" />
-          <span className="tl-key__swatch tl-key__swatch--done-losers" aria-hidden="true" />Final
-        </li>
-        <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--final" aria-hidden="true"><Star className="tl-bgstar" /></span>Championship
-        </li>
-        <li className="tl-key__final">
-          <span className="tl-key__swatch tl-key__swatch--if" aria-hidden="true"><Star className="tl-bgstar" /></span>If necessary
-        </li>
-        {team && could.size > mine.size ? (
-          <li className="tl-key__could">
-            <span className="tl-key__swatch tl-key__swatch--could" aria-hidden="true" />
-            Games {team.name} could still play
-          </li>
-        ) : null}
-        <li className="tl-key__corners">Corners: ↖↗ from (W5 = winner of game 5) · ↙ loser to · ↘ winner to</li>
-      </ul>
 
       {days.map((day) => (
         <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>

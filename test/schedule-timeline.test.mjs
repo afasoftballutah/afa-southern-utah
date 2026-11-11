@@ -241,15 +241,38 @@ test("details spell out the game a side waits on", () => {
 test("legend groups by gender so Men's / Women's is written once", () => {
   const groups = divisionLegendGroups([
     { divisionName: "Women's Rec" }, { divisionName: "Men's E" }, { divisionName: "Women's D" },
-    { divisionName: "Men's D" }, { divisionName: "Women's E" }, { divisionName: "Gold" },
+    { divisionName: "Men's D" }, { divisionName: "Women's E" }, { divisionName: "Coed Rec" },
+    { divisionName: "Coed D" }, { divisionName: "Gold" },
   ]);
-  assert.deepEqual(groups.map((g) => [g.group, g.items.map((d) => d.short)]), [
-    ["Men's", ["D", "E"]],
-    ["Women's", ["D", "E", "Rec"]],
-    [null, ["Gold"]],
+  assert.deepEqual(groups.map((g) => [g.group, g.short, g.items.map((d) => d.short)]), [
+    ["Men's", "M", ["D", "E"]],
+    ["Women's", "W", ["D", "E", "Rec"]],
+    ["Coed", "C", ["D", "Rec"]],
+    [null, null, ["Gold"]],
   ]);
   assert.equal(groups[1].items[2].tone, "womens-rec");
   assert.equal(groups[1].items[2].name, "Women's Rec");
+});
+
+test("timeline header: M/W/C chips on one line, explainers behind a help button", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(src, /g\.short \?\? g\.group/, "chips show M, W, C");
+  assert.match(src, /function TimelineHelp/);
+  assert.match(src, /aria-label="How to read the timeline"/);
+  assert.match(src, /e\.key === "Escape"/);
+  assert.match(src, /pointerdown/);
+  assert.match(src, /id="tl-help"/);
+  assert.match(src, /createPortal\(/);
+  assert.match(src, /W5 = winner of game 5/);
+  assert.ok(!src.includes("tl-key__winners"), "no Winners/Losers legend row");
+  assert.ok(!src.includes("Games {team.name} could still play"), "no could-still-play annotation");
+  assert.ok(!src.includes("Corners:"), "no Corners explainer on the header");
+  assert.ok(!/tl-key/.test(css), "old key styles are gone");
+  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: nowrap/, "chips stay on one line");
+  assert.match(css, /\.tl-help\.is-sheet \{[^}]*safe-area-inset-bottom/);
+  assert.match(css, /\.tl-help \{[^}]*position: fixed/);
+  assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*min-height: 0/, "help button stays a small circle");
 });
 
 test("finishing places in the corners are bold italic text, not boxed; next games stay plain", () => {
