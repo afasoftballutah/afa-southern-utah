@@ -241,15 +241,55 @@ test("details spell out the game a side waits on", () => {
 test("legend groups by gender so Men's / Women's is written once", () => {
   const groups = divisionLegendGroups([
     { divisionName: "Women's Rec" }, { divisionName: "Men's E" }, { divisionName: "Women's D" },
-    { divisionName: "Men's D" }, { divisionName: "Women's E" }, { divisionName: "Gold" },
+    { divisionName: "Men's D" }, { divisionName: "Women's E" }, { divisionName: "Coed Rec" },
+    { divisionName: "Coed D" }, { divisionName: "Gold" },
   ]);
-  assert.deepEqual(groups.map((g) => [g.group, g.items.map((d) => d.short)]), [
-    ["Men's", ["D", "E"]],
-    ["Women's", ["D", "E", "Rec"]],
-    [null, ["Gold"]],
+  assert.deepEqual(groups.map((g) => [g.group, g.short, g.items.map((d) => d.short)]), [
+    ["Men's", "Men", ["D", "E"]],
+    ["Women's", "Women", ["D", "E", "Rec"]],
+    ["Coed", "Coed", ["D", "Rec"]],
+    [null, null, ["Gold"]],
   ]);
   assert.equal(groups[1].items[2].tone, "womens-rec");
   assert.equal(groups[1].items[2].name, "Women's Rec");
+});
+
+test("timeline header: M/W/C chips on one line, explainers behind a help button", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(src, /g\.short \?\? g\.group/, "chips show Men, Women, Coed");
+  assert.match(src, /function TimelineHelp/);
+  assert.match(src, /aria-label="How to read the timeline"/);
+  assert.match(src, /e\.key === "Escape"/);
+  assert.match(src, /pointerdown/);
+  assert.match(src, /id="tl-help"/);
+  assert.match(src, /createPortal\(/);
+  assert.match(src, /W5 = winner of game 5/);
+  assert.ok(!src.includes("tl-key__winners"), "no Winners/Losers legend row");
+  assert.ok(!src.includes("Games {team.name} could still play"), "no could-still-play annotation");
+  assert.ok(!src.includes("Corners:"), "no Corners explainer on the header");
+  assert.ok(!/tl-key/.test(css), "old key styles are gone");
+  const nameRule = /\.tl-legend__group-name \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(nameRule, /font-size: 0\.625rem/, "labels smaller than the chips");
+  assert.match(nameRule, /font-weight: 500/, "labels lighter than the chips");
+  assert.match(nameRule, /color: var\(--tl-label\)/, "labels are gray, not chip-colored");
+  assert.match(nameRule, /margin-right: 6px/, "visible space after Men, Women, Coed");
+  assert.match(css, /\.tl-legend__group \{[^}]*flex: 0 0 auto/, "a group never splits across lines");
+  assert.match(css, /\.tl-legend \{[^}]*flex-wrap: nowrap/, "one line at 390 / 375");
+  assert.match(css, /@media \(max-width: 359\.98px\) \{\s*\.tl-legend \{ flex-wrap: wrap; \}/, "wraps by group only under 360px");
+  const groups = divisionLegendGroups([
+    { divisionName: "Men's D" }, { divisionName: "Women's D" }, { divisionName: "Coed D" },
+  ]);
+  assert.deepEqual(groups.map((g) => g.short), ["Men", "Women", "Coed"]);
+  assert.match(css, /\.tl-help\.is-sheet \{[^}]*safe-area-inset-bottom/);
+  assert.match(css, /\.tl-help \{[^}]*position: fixed/);
+  assert.match(css, /button\.tl-help__btn:not\(\.pill\) \{[^}]*width: 1\.5rem; height: 1\.5rem; min-height: 0/, "help button is a 24px circle");
+  assert.match(src, /function SoftballMark/);
+  assert.match(src, /gi > 0 \? <SoftballMark \/> : null/, "a ball between groups, not at the ends");
+  assert.match(src, /className="tl-legend__ball"[^>]*aria-hidden="true"/);
+  assert.match(css, /\.tl-legend__ball \{[^}]*width: 9px/);
+
+  assert.match(css, /\.tl-legend__chip \{[^}]*font-size: 0\.6875rem/, "chip text stays 11px");
 });
 
 test("finishing places in the corners are bold italic text, not boxed; next games stay plain", () => {

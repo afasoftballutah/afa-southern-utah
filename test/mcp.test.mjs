@@ -505,7 +505,12 @@ test("Path view with a team picked: only its games, the win-out route strongest,
     assert.ok(!/still possible|their finish|Played/.test(out.textContent));
   }
   assert.match(GRID_CSS, /\.fg-head \{ position: sticky; top: 0;/);
+  // The wide hour grid must scroll inside .fg-scroll, not stretch the page.
+  assert.match(GRID_CSS, /\.fg-outer \{ min-width: 0; max-width: 100%; \}/);
+  assert.match(GRID_CSS, /\.fg-scroll \{[^}]*min-width: 0; max-width: 100%/);
   assert.ok(!/Played/.test(GRID_JS.slice(GRID_JS.indexOf("function keyEl"))), "key: Win, Loss, Times only");
   const view = readFileSync(new URL("../components/PathView.js", import.meta.url), "utf8");
   assert.ok(!/still possible|Pick your team/.test(view), "no count or hint text above the grid");
+  assert.match(view, /:host \{ display: block; min-width: 0; max-width: 100%;/);
+  assert.match(view, /\.pv \{ display: grid; gap: 0\.625rem; min-width: 0; width: 100%; \}/);
 });
