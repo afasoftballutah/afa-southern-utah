@@ -462,17 +462,33 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_CSS, /button\.pill\.compact \.scr \{[^}]*font-size: 0\.5625rem;[^}]*margin-top: 0/);
 });
 
-test("Schedule page header is one compact line (JD 2026-11-11)", () => {
+test("site header: tournament name in the bar, phone menu, compact Schedule title (JD 2026-11-11)", () => {
+  const layout = readFileSync(new URL("../app/layout.js", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../components/SiteHeader.js", import.meta.url), "utf8");
+  const nav = readFileSync(new URL("../components/SiteNav.js", import.meta.url), "utf8");
   const page = readFileSync(new URL("../app/tournaments/[slug]/schedule/page.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const mw = readFileSync(new URL("../middleware.js", import.meta.url), "utf8");
+  assert.match(layout, /<SiteHeader \/>/);
+  assert.match(mw, /x-pathname/);
+  assert.match(header, /getTournamentBasicsBySlug/);
+  assert.match(header, /AFA SlowPitch/);
+  assert.match(header, /aria-label="AFA SlowPitch home"/);
+  assert.match(header, /href=\{\`\/tournaments\/\$\{slug\}\`\}/);
+  assert.match(nav, /aria-label="Menu"/);
+  assert.match(nav, /site-nav__bars/);
+  assert.match(nav, /site-nav__dropdown/);
+  assert.match(nav, /Tournaments/);
+  assert.match(nav, /News/);
+  assert.match(nav, /Rules/);
+  assert.match(css, /@media \(min-width: 640px\) \{\s*\.site-nav__links \{ display: flex; \}/);
+  assert.match(css, /\.site-nav__links \{ display: none;/);
+  assert.match(css, /\.site-wordmark \{[^}]*text-overflow: ellipsis/);
   assert.match(page, /className="sched-head"/);
-  assert.match(page, /sched-head__tourney/);
   assert.match(page, /className="space-y-2"/);
-  assert.match(css, /\.sched-head \{\s*display: flex; flex-direction: row;/);
-  assert.match(css, /\.sched-head__tourney \{[^}]*text-overflow: ellipsis/);
-  assert.match(css, /\.sched-head__title \{[^}]*font-size: 1\.25rem/);
-  assert.match(css, /\.site-main:has\(\.sched-head\) \{ padding-top: 0\.75rem/);
-  assert.doesNotMatch(css, /\.sched-head \{ display: flex; flex-direction: column/);
+  assert.doesNotMatch(page, /sched-head__back|sched-head__tourney|‹/);
+  assert.match(css, /\.sched-head__title \{[^}]*font-size: 1\.125rem/);
+  assert.match(css, /\.site-main:has\(\.sched-head\) \{ padding-top: 0\.5rem/);
 });
 
 // A just-enough DOM to run the grid's own drawing code in node.

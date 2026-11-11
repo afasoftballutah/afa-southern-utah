@@ -1,7 +1,7 @@
 import { Anton, Outfit } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import RegionPrefBadge from "@/components/RegionPrefBadge";
+import SiteHeader from "@/components/SiteHeader";
 
 // Display — Anton for wordmark + titles. Self-hosted via next/font.
 const displayFace = Anton({
@@ -46,39 +46,10 @@ export default function RootLayout({ children }) {
             Review copy, test data
           </div>
         ) : null}
-        {/* Site shell — look lives in globals.css (.site-*). */}
-        <header className="site-header print:hidden">
-          <div className="site-header__inner">
-            <Link href="/" className="site-brand" aria-label="AFA SlowPitch home">
-              <img
-                className="site-brand__logo"
-                src="/afa-logo.png"
-                alt=""
-                width={90}
-                height={72}
-              />
-            </Link>
-            {/* Wordmark centers in the gap between logo right edge and nav (Tournaments). */}
-            <div className="site-wordmark-slot">
-              <Link href="/" className="site-wordmark">
-                AFA SlowPitch
-              </Link>
-            </div>
-            <nav className="site-nav">
-              {/* Top bar: white links on flag-blue. Color-law buttons live in page content. */}
-              <RegionPrefBadge />
-              <Link href="/tournaments" className="site-nav__link">
-                Tournaments
-              </Link>
-              <Link href="/#news" className="site-nav__link">
-                News
-              </Link>
-              <Link href="/rules" className="site-nav__link">
-                Rules
-              </Link>
-            </nav>
-          </div>
-        </header>
+        {/* Site shell — look lives in globals.css (.site-*). On a
+            tournament page the wordmark is that tournament's name (JD,
+            2026-11-11); the logo still goes home. */}
+        <SiteHeader />
 
         {/* The public site is read on a phone at a ballpark, so it stays narrow.
             The control center is a desk tool with eight-column tables and

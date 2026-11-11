@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getTournamentBySlug, getTournamentSchedule } from "@/lib/data";
 import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { formatFieldTime } from "@/lib/bracket/tree";
@@ -97,14 +96,9 @@ export default async function SchedulePage({ params }) {
     <div className="space-y-2">
       <RefreshOnReturn />
       <TournamentTicker divisionIds={divisionIds} />
-      {/* One compact line (JD, 2026-11-11): the tournament is the back
-          link on the left, Schedule sits on the same row. Long names
-          ellipsize so the row still fits at 375px. */}
+      {/* The tournament name now lives in the site header, so this is
+          just the page title — smaller, with tight margins (JD, 2026-11-11). */}
       <header className="sched-head">
-        <Link href={`/tournaments/${slug}`} className="sched-head__back">
-          <span aria-hidden="true">‹</span>
-          <span className="sched-head__tourney">{tournament.name}</span>
-        </Link>
         <h1 className="sched-head__title">Schedule</h1>
       </header>
 
