@@ -215,9 +215,10 @@ test("get_game view: ui://afa/game resource, self-contained, block-all CSP", asy
   const { tools } = await c.listTools();
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
   assert.equal(byName.get_game._meta.ui.resourceUri, "ui://afa/game");
-  for (const t of tools) if (t.name !== "get_game") assert.equal(t._meta?.ui, undefined, `${t.name} has no view yet`);
+  const VIEWS = { get_game: "ui://afa/game", get_team_path: "ui://afa/team" };
+  for (const t of tools) assert.equal(t._meta?.ui?.resourceUri, VIEWS[t.name], `${t.name} view`);
   const { resources } = await c.listResources();
-  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]), [["ui://afa/game", "text/html;profile=mcp-app"]]);
+  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]).sort(), Object.values(VIEWS).sort().map((u) => [u, "text/html;profile=mcp-app"]));
   const { contents } = await c.readResource({ uri: "ui://afa/game" });
   assert.equal(contents.length, 1);
   const [html] = contents;
@@ -264,4 +265,60 @@ test("get_game view: text unchanged; card = division color, Winner/Loser G#, red
   const missing = await call({ game: 99 });
   assert.equal(missing.isError, true);
   assert.equal(missing.structuredContent, undefined, "an error has no card; the view shows the error text");
+});
+
+// Piece 2 (JD 2026-11-10: "i dont want to have to ask so specifically"):
+// get_team_path draws the team's next game card and its paths to the title.
+test("get_team_path view: ui://afa/team is self-contained; text unchanged", async () => {
+  const { c } = await client();
+  const { contents } = await c.readResource({ uri: "ui://afa/team" });
+  assert.equal(contents[0].mimeType, "text/html;profile=mcp-app");
+  assert.equal(contents[0]._meta.ui.csp, undefined);
+  assert.doesNotMatch(contents[0].text, /<script[^>]+src=|<link[^>]+href=|@import|url\(|fetch\(|XMLHttpRequest|innerHTML/i);
+  assert.match(contents[0].text, /Paths to the title/);
+  const r = await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } });
+  const { view, ...answer } = r.structuredContent;
+  assert.equal(r.content[0].text, JSON.stringify(answer), "text clients read exactly what they read before");
+  assert.equal(view.paths, false);
+  const withPaths = await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec", paths: true } });
+  assert.equal(withPaths.content[0].text, r.content[0].text, "paths only opens the card");
+  assert.equal(withPaths.structuredContent.view.paths, true);
+  for (const secret of ["director@example.com", "435-555-0100", "Director Person"]) assert.ok(!JSON.stringify(r.structuredContent).includes(secret), secret);
+});
+
+const route = (rt) => rt.steps.map((s) => `${s.title.replace("Game ", "G")} ${s.board.map((x) => (x.us ? "*" : "") + (x.team ?? `${x.from} ${x.game}`) + (x.via ? ` (${x.via})` : "")).join(" v ")}`);
+
+test("get_team_path view: undefeated route and the route after a loss follow the bracket, Winner/Loser linked", async () => {
+  const { c } = await client();
+  const t = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent.view.teams[0];
+  assert.deepEqual([t.team, t.division, t.record], ["One Hit Wonders", "Coed Rec", "1-0"]);
+  assert.deepEqual(t.tone, { bg: "#eadbd0", ink: "#5a2e14", solid: "#6b3a1f" });
+  assert.equal(t.next.title, "Game 3");
+  assert.equal(t.next.time, "Sat 7 PM PST");
+  assert.deepEqual(t.next.board.map((b) => [b.team, Boolean(b.us)]), [["One Hit Wonders", true], ["Only Bangers", false]]);
+  assert.deepEqual(t.played, [{ result: "Won", score: "12–8", opponent: "Fallen Angels", title: "Game 1" }]);
+  const [win, loss] = t.routes;
+  assert.equal(win.title, "Undefeated route");
+  assert.deepEqual(route(win), ["G3 *One Hit Wonders v Only Bangers", "G9 *One Hit Wonders (Winner G3) v Winner G4", "G12 *One Hit Wonders (Winner G9) v Winner G11"]);
+  assert.deepEqual(win.steps[0].loser, { next: "Game 5", where: "Sun 11 AM \u00b7 Pioneer F2" }, "red line: where a loss goes, day time field");
+  assert.deepEqual(win.steps[2].loser, { next: "Game 13", where: "Sun 5 PM \u00b7 Pioneer F2" }, "undefeated: losing the final forces the if-necessary game");
+  assert.deepEqual(win.steps[2].winner, { champion: true });
+  assert.deepEqual(win.span, ["Sat 7 PM PST", "Sun 4 PM PST"]);
+  assert.equal(loss.title, "After losing Game 3");
+  assert.deepEqual(route(loss), [
+    "G5 FHT v *One Hit Wonders (Loser G3)",
+    "G7 *One Hit Wonders (Winner G5) v Loser G6",
+    "G10 *One Hit Wonders (Winner G7) v Winner G8",
+    "G11 Loser G9 v *One Hit Wonders (Winner G10)",
+    "G12 Winner G9 v *One Hit Wonders (Winner G11)",
+    "G13 *One Hit Wonders (Winner G12) v Loser G12",
+  ]);
+  assert.deepEqual(loss.steps[4].winner, { next: "Game 13", where: "Sun 5 PM \u00b7 Pioneer F2" }, "from the losers side a final win forces Game 13");
+  assert.match(loss.steps[5].flag, /Only played if One Hit Wonders wins Game 12/);
+  for (const s of [...win.steps, ...loss.steps]) assert.doesNotMatch(`${s.time} ${s.loser?.where ?? ""} ${s.winner?.where ?? ""}`, /:00/);
+
+  const fa = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Coed Rec" } })).structuredContent.view.teams[0];
+  assert.equal(fa.record, "0-1");
+  assert.equal(fa.routes[0].title, "Win out", "already has a loss: no undefeated route");
+  assert.equal(route(fa.routes[0]).at(-1), "G13 *Fallen Angels (Winner G12) v Loser G12");
 });
