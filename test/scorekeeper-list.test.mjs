@@ -268,6 +268,17 @@ test("ScorekeeperBoard is one list with a colored mark pill and a when/field lin
   assert.match(row, /sk-game__team1[\s\S]+sk-game__score[\s\S]+sk-game__team2/);
 });
 
+test("score cells reserve the stepper width so team names do not shift", () => {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const score = css.slice(css.indexOf(".sk-game__score {"), css.indexOf(".sk-score {"));
+  assert.match(score, /width:\s*8\.7rem/);
+  assert.doesNotMatch(score, /max-content/);
+  const active = css.slice(css.indexOf(".sk-game.is-active {"), css.indexOf(".sk-mark {"));
+  assert.doesNotMatch(active, /padding-bottom/);
+  assert.match(active, /margin-bottom/);
+  assert.match(css, /\.sk-score__tile\.is-active \{[\s\S]*?width:\s*4\.25rem/);
+});
+
 test("ScoreEntry confirms both scores and locks a saved row", () => {
   const src = readFileSync(new URL("../components/scorekeeper/ScoreEntry.js", import.meta.url), "utf8");
   assert.match(src, /sk-score__confirm/);

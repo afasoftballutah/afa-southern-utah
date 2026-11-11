@@ -580,7 +580,9 @@ body:has(.scorekeeper-scope) {
   opacity: 0.82;
 }
 .sk-game.is-active {
-  padding-bottom: 2.15rem;
+  /* Confirm hangs under the tiles; margin, not padding, so the
+     names stay in the same place as the idle row. */
+  margin-bottom: 1.6rem;
 }
 .sk-mark {
   grid-column: 1;
@@ -688,8 +690,14 @@ body:has(.scorekeeper-scope) {
   grid-column: 3;
   grid-row: 1;
   position: relative;
-  width: max-content;
+  /* Always the active width (two 4.25rem tiles + gap) so the
+     team-name columns do not shrink when the steppers appear. */
+  box-sizing: border-box;
+  width: 8.7rem;
+  min-width: 8.7rem;
   align-self: center;
+  display: flex;
+  justify-content: center;
 }
 .sk-score {
   display: flex;
