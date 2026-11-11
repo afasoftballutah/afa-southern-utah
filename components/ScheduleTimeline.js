@@ -21,19 +21,25 @@ import {
   gameIdByTitle,
   compactTime,
   whereWhen,
+  fieldNameParts,
 } from "@/lib/schedule-timeline";
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { teamReachIds } from "@/lib/team-reach";
 import { placeClear, unionRect } from "@/lib/popover-place";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
-// day's hours across the top, one panel per day. Each game is a small pill
-// that says only its number in its division's colour; tapping it opens the
-// details beside it (a sheet at the bottom on a phone). One open at a time;
-// Esc or a tap anywhere else closes it. A data refresh keeps it open —
-// the open game is remembered by id, not by position.
+// day's hours across the top, one panel per day. On phones (width < 640,
+// same breakpoint as the Path view) it turns vertical (JD, 2026-11-11:
+// "Can we do this vertical as well?" / "Phone vertical of course."):
+// field columns across the top (two-line "Hunter / F1" headers, sticky),
+// hour rows down the side, a day header row per day. Desktop stays
+// horizontal. Each game is a small pill in its division's colour; tapping
+// it opens the details beside it (a sheet at the bottom on a phone). One
+// open at a time; Esc or a tap anywhere else closes it. A data refresh
+// keeps it open — the open game is remembered by id, not by position.
 
-const HOUR_PX = 92;
+const HOUR_PX = 92; // desktop hour-column width, unchanged
+const ROW_PX = 52; // phone hour-row height (Path's 32px is too tight for corners + score)
 
 // Championship mark (JD, 2026-11-09: "star can be faint in the background
 // behind all the numbers"). One large, faint gold star behind the pill's
@@ -77,12 +83,13 @@ function Corner({ pos, x, gold }) {
   );
 }
 
-const PILL_GAP = 4;
+const PILL_GAP_H = 4;
+const PILL_GAP_V = 3;
 
 
 
 
-function Pill({ game, open, onToggle, pillRef, mark }) {
+function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
   const tone = divisionTone(game.divisionName);
   const final = game.isFinal || game.status === "final";
   const place = game.team1Place || game.team2Place;
@@ -103,10 +110,19 @@ function Pill({ game, open, onToggle, pillRef, mark }) {
       ref={pillRef}
       data-game-id={game.id}
       className={`tl-pill tl-tone-${tone}${side ? ` tl-side-${side}` : ""}${final ? " is-final" : ""}${open ? " is-open" : ""}${mark ? ` ${mark}` : ""}`}
-      style={{
-        left: (game.offset / 60) * HOUR_PX + PILL_GAP,
-        width: (game.length / 60) * HOUR_PX - PILL_GAP * 2,
-      }}
+      style={
+        vertical
+          ? {
+              top: (game.offset / 60) * ROW_PX + PILL_GAP_V,
+              height: Math.max((game.length / 60) * ROW_PX - PILL_GAP_V * 2, 28),
+              left: PILL_GAP_V,
+              width: `calc(100% - ${PILL_GAP_V * 2}px)`,
+            }
+          : {
+              left: (game.offset / 60) * HOUR_PX + PILL_GAP_H,
+              width: (game.length / 60) * HOUR_PX - PILL_GAP_H * 2,
+            }
+      }
       aria-expanded={open}
       aria-controls={open ? `tl-pop-${game.id}` : undefined}
       aria-label={`${game.divisionName} ${game.label ?? ""}${side ? `, ${SIDE_LABELS[side]}` : ""}, ${game.timeLabel ?? ""}, ${game.fieldName}${
@@ -387,60 +403,55 @@ function exitPoint(a, b, box) {
   return { x: a.x + dx * Math.max(0, t), y: a.y + dy * Math.max(0, t) };
 }
 
-// On open, bring the game and where it leads into view: slide the lane so a
-// next game on the same day fits beside it, and on a phone lift the page so
-// the pill sits clear of the sheet.
+// On open, bring the game and where it leads into view: if the board
+// overflows sideways, slide it so a next game on the same day fits
+// beside it; always lift the page so the pill sits clear of the sticky
+// field header and, on a phone, the sheet.
 function reveal(el, dest, feeders = []) {
   requestAnimationFrame(() => {
     const scroller = el.closest(".tl-scroll");
-    if (scroller) {
+    if (scroller && scroller.scrollWidth > scroller.clientWidth + 1) {
       const sr = scroller.getBoundingClientRect();
-      const fieldW = scroller.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0;
+      const timeW = scroller.querySelector(".tl-vcorner, .tl-vtimes, .tl-field")?.getBoundingClientRect().width ?? 0;
       const fr = el.getBoundingClientRect();
       let right = fr.right;
       for (const id of [dest?.winner, dest?.loser]) {
         const d = id ? scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
         if (d) right = Math.max(right, d.getBoundingClientRect().right);
       }
-      // Where the teams came from (earlier, so to the left): in view too
-      // when everything fits; otherwise the game and where it leads win.
       let left = fr.left;
       for (const f of feeders) {
         const d = scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(f.id))}"]`);
         if (d) left = Math.min(left, d.getBoundingClientRect().left);
       }
-      const minLeft = sr.left + fieldW + 8;
+      const minLeft = sr.left + timeW + 8;
       let dx = 0;
       if (right > sr.right - 8) dx = right - (sr.right - 8);
       if (left - dx < minLeft && right - (left - minLeft) <= sr.right - 8) dx = left - minLeft;
-      // Feeders that don't fit still need room for their short stubs on
-      // the open game's left.
       const stubRoom = feeders.length && left - dx < minLeft ? 64 : 0;
       if (fr.left - dx < minLeft + stubRoom) dx = fr.left - minLeft - stubRoom;
       if (dx) scroller.scrollBy({ left: dx, behavior: "smooth" });
     }
-    // On a phone: lift the page so the game AND its same-day destinations
-    // sit above the sheet, arrows and rings in view. If they cannot all fit,
-    // the game sits a little under halfway and an arrow to a destination
-    // under the sheet becomes the short labelled one.
     const sheet = document.querySelector(".tl-pop.is-sheet");
-    if (sheet) {
-      const top = sheet.getBoundingClientRect().top;
+    const head = document.querySelector(".tl-vhead");
+    if (sheet || head) {
+      const topMin = Math.max(16, head ? head.getBoundingClientRect().bottom + 8 : 16);
+      const floor = sheet ? sheet.getBoundingClientRect().top : window.innerHeight;
       const fr = el.getBoundingClientRect();
-      const scroller = el.closest(".tl-scroll");
+      const root = el.closest(".tl-vboard") || el.closest(".tl-scroll") || document;
       const group = [fr];
       for (const id of [dest?.winner, dest?.loser]) {
-        const d = id && scroller ? scroller.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
+        const d = id ? root.querySelector(`.tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null;
         if (d) group.push(d.getBoundingClientRect());
       }
       const u = unionRect(group, 24);
-      const room = top - 16;
+      const room = floor - 16;
       let dy = 0;
-      if (u.bottom - u.top <= room - 16) {
-        if (u.top < 16 || u.bottom > room) dy = u.top - Math.max(16, (room - (u.bottom - u.top)) / 2);
+      if (u.bottom - u.top <= room - topMin) {
+        if (u.top < topMin || u.bottom > room) dy = u.top - Math.max(topMin, (room - (u.bottom - u.top) + topMin) / 2);
       } else {
-        const want = Math.max(16, top * 0.45 - fr.height / 2);
-        if (fr.top < 16 || fr.bottom > top - 16) dy = fr.top - want;
+        const want = Math.max(topMin, (sheet ? floor : window.innerHeight) * 0.45 - fr.height / 2);
+        if (fr.top < topMin || fr.bottom > floor - 16) dy = fr.top - want;
       }
       if (dy) window.scrollBy({ top: dy, behavior: "smooth" });
     }
@@ -454,10 +465,10 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
     let frame = 0;
     const draw = () => {
       frame = 0;
-      const scroller = fromEl.closest(".tl-scroll");
+      const scroller = fromEl.closest(".tl-vboard") || fromEl.closest(".tl-scroll");
       if (!scroller) return setPaths([]);
       const sr = scroller.getBoundingClientRect();
-      const fieldW = scroller.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0;
+      const fieldW = scroller.querySelector(".tl-vcorner, .tl-vtimes, .tl-field")?.getBoundingClientRect().width ?? 0;
       const sheet = document.querySelector(".tl-pop.is-sheet");
       const floor = sheet ? sheet.getBoundingClientRect().top : window.innerHeight;
       const box = {
@@ -485,7 +496,7 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
         const r = rect(el);
         // At least partly in view on this panel: the real curve, to the part
         // that shows.
-        const seen = el.closest(".tl-scroll") === scroller ? visiblePart(r, box) : null;
+        const seen = (el.closest(".tl-vboard") || el.closest(".tl-scroll")) === scroller ? visiblePart(r, box) : null;
         if (seen) {
           wanted.push({ role, dir, key, to: seen });
           continue;
@@ -496,7 +507,7 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
           role,
           dir,
           key,
-          toward: el.closest(".tl-scroll") === scroller ? aimAt(r, box) : { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
+          toward: (el.closest(".tl-vboard") || el.closest(".tl-scroll")) === scroller ? aimAt(r, box) : { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 },
           alt: dir === "in" ? null : { x: box.right + 400, y: (fr.top + fr.bottom) / 2 },
           reach: (start, u) => {
             const far = exitPoint(start, { x: start.x + u.x * 400, y: start.y + u.y * 400 }, box);
@@ -515,7 +526,7 @@ function FlowArrows({ fromEl, winnerId, loserId, feeders = [], labels }) {
       // Each arrow gets its own anchors, chosen so the two never cross.
       const planned = planArrows({ from: rect(fromEl), arrows: wanted, obstacles, box });
       // The hour labels along the top: a stub's name must not print over one.
-      const hourText = [...scroller.querySelectorAll(".tl-hour")].map((h) => {
+      const hourText = [...scroller.querySelectorAll(".tl-vtime, .tl-hour")].map((h) => {
         const rg = document.createRange();
         rg.selectNodeContents(h);
         return rect(rg);
@@ -742,13 +753,17 @@ function TimelineHelp({ sheet }) {
 
 // Phones get the bottom sheet: narrow screens, plus touch phones held sideways.
 export const PHONE_SHEET_QUERY = "(max-width: 639px), (pointer: coarse) and (max-height: 500px)";
+// Vertical grid on phones only, same 640px split as the Path view (JD:
+// "Phone vertical of course."). Desktop stays the horizontal lanes.
+export const PHONE_VERTICAL_QUERY = "(max-width: 639px)";
 
 export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null }) {
-  const { days, unplaced } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
+  const { days, unplaced, fields } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);
   const [anchor, setAnchor] = useState(null);
   const [sheet, setSheet] = useState(false);
+  const [vertical, setVertical] = useState(true);
   const pills = useRef(new Map());
   const headRef = useRef(null);
   // The followed team (the picker above): their games stay bright, the rest
@@ -820,6 +835,14 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   useEffect(() => {
     const mq = window.matchMedia(PHONE_SHEET_QUERY);
     const sync = () => setSheet(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useLayoutEffect(() => {
+    const mq = window.matchMedia(PHONE_VERTICAL_QUERY);
+    const sync = () => setVertical(mq.matches);
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
@@ -935,63 +958,137 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
         <TimelineHelp sheet={sheet} />
       </div>
 
-      {days.map((day) => (
-        <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
-          <header className="tl-day__head">
-            <h2 className="tl-day__title">{day.title}</h2>
-            <span className="tl-day__meta">
-              {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
-            </span>
-          </header>
-          <div className="tl-scroll">
-            <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour": `${HOUR_PX}px` }}>
-              <div className="tl-row tl-row--axis">
-                <div className="tl-field tl-field--corner">{zoneShort}</div>
-                <div className="tl-track tl-track--axis">
-                  {day.hours.map((h, i) => (
-                    <span key={h} className="tl-hour" style={{ left: i * HOUR_PX, width: HOUR_PX }}>
-                      {hourLabel(h)}
-                    </span>
-                  ))}
+      {vertical && fields.length ? (
+        <div className="tl-vboard" style={{ "--tl-fields": fields.length }}>
+          <header className="tl-vhead">
+            <div className="tl-vcorner">{zoneShort}</div>
+            {fields.map((f, i) => {
+              const parts = fieldNameParts(f);
+              return (
+                <div key={f} className={`tl-vfield${i % 2 === 0 ? " tint" : ""}`}>
+                  <span>{parts.park}</span>
+                  {parts.field ? <span>{parts.field}</span> : null}
                 </div>
-              </div>
-              {day.lanes.map((lane) => (
-                <div key={lane.field} className="tl-row">
-                  <div className="tl-field">{lane.field}</div>
-                  <div className="tl-track">
-                    {lane.games.map((g) => (
-                      <span key={g.id} className="tl-slot">
-                        <Pill
-                          game={g}
-                          mark={markOf(g.id)}
-                          open={openId === g.id}
-                          onToggle={toggle}
-                          pillRef={(el) => {
-                            if (el) pills.current.set(g.id, el);
-                            else pills.current.delete(g.id);
-                          }}
-                        />
-                        {openId === g.id ? (
-                          <Details
-                            game={g}
-                            slug={slug}
-                            sheet={sheet}
-                            anchor={anchor}
-                            avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
-                            onClose={() => close(true)}
-                            go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
-                            where={whereNext(g)}
-                          />
-                        ) : null}
+              );
+            })}
+          </header>
+          <div className="tl-vbody">
+            {fields.map((_, i) =>
+              i % 2 === 0 ? <div key={`tint-${i}`} className="tl-coltint" style={{ "--i": i }} /> : null
+            )}
+            {days.map((day) => (
+              <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
+                <div className="tl-vday">
+                  {day.title} {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
+                </div>
+                <div
+                  className="tl-vgrid"
+                  style={{ "--tl-hours": day.hours.length, "--tl-hour": `${ROW_PX}px` }}
+                >
+                  <div className="tl-vtimes" aria-hidden="true">
+                    {day.hours.map((h) => (
+                      <span key={h} className="tl-vtime">
+                        {hourLabel(h)}
                       </span>
                     ))}
                   </div>
+                  {day.lanes.map((lane) => (
+                    <div key={lane.field} className="tl-vcol">
+                      {lane.games.map((g) => (
+                        <span key={g.id} className="tl-slot">
+                          <Pill
+                            game={g}
+                            vertical
+                            mark={markOf(g.id)}
+                            open={openId === g.id}
+                            onToggle={toggle}
+                            pillRef={(el) => {
+                              if (el) pills.current.set(g.id, el);
+                              else pills.current.delete(g.id);
+                            }}
+                          />
+                          {openId === g.id ? (
+                            <Details
+                              game={g}
+                              slug={slug}
+                              sheet={sheet}
+                              anchor={anchor}
+                              avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
+                              onClose={() => close(true)}
+                              go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
+                              where={whereNext(g)}
+                            />
+                          ) : null}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </section>
+            ))}
           </div>
-        </section>
-      ))}
+        </div>
+      ) : null}
+
+      {!vertical
+        ? days.map((day) => (
+            <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
+              <header className="tl-day__head">
+                <h2 className="tl-day__title">{day.title}</h2>
+                <span className="tl-day__meta">
+                  {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
+                </span>
+              </header>
+              <div className="tl-scroll">
+                <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour": `${HOUR_PX}px` }}>
+                  <div className="tl-row tl-row--axis">
+                    <div className="tl-field tl-field--corner">{zoneShort}</div>
+                    <div className="tl-track tl-track--axis">
+                      {day.hours.map((h, i) => (
+                        <span key={h} className="tl-hour" style={{ left: i * HOUR_PX, width: HOUR_PX }}>
+                          {hourLabel(h)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {day.lanes.map((lane) => (
+                    <div key={lane.field} className="tl-row">
+                      <div className="tl-field">{lane.field}</div>
+                      <div className="tl-track">
+                        {lane.games.map((g) => (
+                          <span key={g.id} className="tl-slot">
+                            <Pill
+                              game={g}
+                              mark={markOf(g.id)}
+                              open={openId === g.id}
+                              onToggle={toggle}
+                              pillRef={(el) => {
+                                if (el) pills.current.set(g.id, el);
+                                else pills.current.delete(g.id);
+                              }}
+                            />
+                            {openId === g.id ? (
+                              <Details
+                                game={g}
+                                slug={slug}
+                                sheet={sheet}
+                                anchor={anchor}
+                                avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
+                                onClose={() => close(true)}
+                                go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
+                                where={whereNext(g)}
+                              />
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ))
+        : null}
 
       {openId && anchor ? (
         <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} feeders={feeders} labels={arrowLabels} />

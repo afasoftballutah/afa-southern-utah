@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
-  buildTimeline, fieldDisplayName, compareFields, hourLabel, clockLabel,
+  buildTimeline, fieldDisplayName, fieldNameParts, compareFields, hourLabel, clockLabel,
   divisionTone, divisionLegend, divisionLegendGroups, sideLabel, spelledSide, statusLabel, GAME_MINUTES,
 } from "@/lib/schedule-timeline";
 import { gameTitle, bracketPill, matchupSide, nextStep, pillScore, gameNumberIndex, gameIdByTitle, flowTargets, compactTime, whereWhen } from "@/lib/schedule-timeline";
@@ -367,4 +367,51 @@ test("open game: dotted arrows and dotted rings for where the teams came from, g
   // phone: room under the page so a last-day game can be lifted clear of the sheet
   assert.match(src, /classList\.add\("tl-sheet-open"\)/);
   assert.match(css, /body\.tl-sheet-open \{ padding-bottom: 70vh; \}/);
+});
+
+test("field headers split the park and the field number onto two lines", () => {
+  assert.deepEqual(fieldNameParts("Hunter F1"), { park: "Hunter", field: "F1" });
+  assert.deepEqual(fieldNameParts("Pioneer F3"), { park: "Pioneer", field: "F3" });
+  assert.deepEqual(fieldNameParts("Hunter F10"), { park: "Hunter", field: "F10" });
+  assert.deepEqual(fieldNameParts("Field 4"), { park: "Field 4", field: null });
+});
+
+test("timeline is vertical on phones only; desktop keeps the horizontal lanes", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(src, /PHONE_VERTICAL_QUERY = "\(max-width: 639px\)"/);
+  assert.match(src, /matchMedia\(PHONE_VERTICAL_QUERY\)/);
+  assert.match(src, /className="tl-vboard"/);
+  assert.match(src, /className="tl-vhead"/);
+  assert.match(src, /fieldNameParts/);
+  assert.match(src, /tl-vfield\$\{i % 2 === 0 \? " tint" : ""\}/);
+  assert.match(src, /className="tl-coltint"/);
+  assert.match(src, /\{day\.title\} \{day\.date\} · \{day\.count\} game/);
+  assert.match(src, /className="tl-vtime"/);
+  assert.match(src, /top: \(game\.offset \/ 60\) \* ROW_PX/);
+  assert.match(src, /"--tl-hour": `\$\{ROW_PX\}px`/, "phone rows use ROW_PX, not the desktop hour width");
+  assert.match(src, /const HOUR_PX = 92/, "desktop hour columns stay 92px");
+  assert.match(src, /const ROW_PX = 52/);
+  // Desktop layout is unchanged.
+  assert.match(src, /className="tl-row tl-row--axis"/);
+  assert.match(src, /className="tl-grid"/);
+  assert.match(src, /className="tl-field tl-field--corner"/);
+  assert.match(src, /left: \(game\.offset \/ 60\) \* HOUR_PX/);
+  assert.match(css, /\.tl-grid \{/);
+  assert.match(css, /\.tl-row \{ display: flex; height: 3\.25rem/);
+  assert.match(css, /button\.tl-pill \{[^}]*top: 0\.25rem; height: 2\.75rem/);
+  assert.match(css, /\.tl-bgstar \{[^}]*width: 2\.375rem/);
+  assert.match(css, /\.tl-vhead \{[^}]*position: sticky/);
+  assert.match(css, /\.tl-vhead \{[^}]*padding: 0\.3rem 0 0/, "no gap under the field names");
+  assert.match(css, /\.tl-coltint \{[^}]*background: rgba\(0, 0, 0, 0\.025\)/);
+  assert.match(css, /\.tl-vfield\.tint \{[^}]*background: rgba\(0, 0, 0, 0\.025\)/);
+  assert.match(css, /--tl-time-w: 40px/);
+  assert.match(css, /grid-template-columns: var\(--tl-time-w\) repeat\(var\(--tl-fields\), minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.tl-vtimes \{[^}]*position: sticky; left: 0/);
+  // Compact typography is scoped to the phone board, so desktop pills stay as they were.
+  assert.match(css, /\.tl-vboard button\.tl-pill \{/);
+  // The "?" sheet explains a pill, not the grid's orientation, so it stays as it is.
+  const help = src.slice(src.indexOf("function TimelineHelp"));
+  assert.match(help, /How to read a game/);
+  assert.ok(!/hours across/.test(help), "help sample does not depict the old horizontal grid");
 });
