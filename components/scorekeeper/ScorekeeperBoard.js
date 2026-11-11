@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTimeZone } from "@/components/TimeZoneContext";
 import ScoreEntry from "./ScoreEntry";
@@ -190,9 +190,9 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
           )}
         </span>
       </span>
-      <span className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
+      <TeamName className={"sk-game__team sk-game__team1" + (won1 ? " is-won" : "")}>
         {row.team1Label}
-      </span>
+      </TeamName>
       <div className="sk-game__score">
         <ScoreEntry
           game={row.game}
@@ -204,10 +204,53 @@ function GameRow({ row, rowRef, isNext = false, active = false, onActivate }) {
           onSaved={() => router.refresh()}
         />
       </div>
-      <span className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
+      <TeamName className={"sk-game__team sk-game__team2" + (won2 ? " is-won" : "")}>
         {row.team2Label}
-      </span>
+      </TeamName>
     </div>
+  );
+}
+
+const TEAM_FONT_STEPS = ["0.75rem", "0.6875rem", "0.625rem", "0.5625rem"];
+
+function TeamName({ className, children }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function fit() {
+      el.style.fontSize = "";
+      const words = String(children ?? "").trim().split(/\s+/).filter(Boolean);
+      if (!words.length) return;
+      const styles = getComputedStyle(el);
+      const available = el.clientWidth;
+      const widthOf = (word, size) => {
+        ctx.font = `${styles.fontStyle} ${styles.fontWeight} ${size} ${styles.fontFamily}`;
+        return ctx.measureText(word).width;
+      };
+      for (const size of TEAM_FONT_STEPS) {
+        if (words.every((w) => widthOf(w, size) <= available + 0.25)) {
+          el.style.fontSize = size === TEAM_FONT_STEPS[0] ? "" : size;
+          return;
+        }
+      }
+      el.style.fontSize = TEAM_FONT_STEPS[TEAM_FONT_STEPS.length - 1];
+    }
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children]);
+
+  return (
+    <span ref={ref} className={className}>
+      {children}
+    </span>
   );
 }
 

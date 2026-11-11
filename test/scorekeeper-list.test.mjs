@@ -270,13 +270,22 @@ test("ScorekeeperBoard is one list with a colored mark pill and a when/field lin
 
 test("score cells reserve the stepper width so team names do not shift", () => {
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const game = css.slice(css.indexOf(".sk-game {"), css.indexOf(".sk-game.is-scored"));
+  assert.match(game, /--sk-score-width:/);
+  assert.match(game, /--sk-name-gap:\s*0\.375rem/);
   const score = css.slice(css.indexOf(".sk-game__score {"), css.indexOf(".sk-score {"));
-  assert.match(score, /width:\s*8\.7rem/);
+  assert.match(score, /width:\s*var\(--sk-score-width\)/);
   assert.doesNotMatch(score, /max-content/);
   const active = css.slice(css.indexOf(".sk-game.is-active {"), css.indexOf(".sk-mark {"));
   assert.doesNotMatch(active, /padding-bottom/);
   assert.match(active, /margin-bottom/);
-  assert.match(css, /\.sk-score__tile\.is-active \{[\s\S]*?width:\s*4\.25rem/);
+  const team = css.slice(css.indexOf(".sk-game__team {"), css.indexOf(".sk-game__team.is-won"));
+  assert.doesNotMatch(team, /text-overflow:\s*ellipsis/);
+  assert.doesNotMatch(team, /hyphens:\s*auto/);
+  assert.match(team, /hyphens:\s*none/);
+  const board = readFileSync(new URL("../components/scorekeeper/ScorekeeperBoard.js", import.meta.url), "utf8");
+  assert.match(board, /function TeamName/);
+  assert.match(board, /TEAM_FONT_STEPS/);
 });
 
 test("ScoreEntry confirms both scores and locks a saved row", () => {
