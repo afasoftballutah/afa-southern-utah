@@ -132,7 +132,13 @@ test("get_team_path: results, record, next game with if-win / if-lose; a name in
   const raw = await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "Fallen Angels" } });
   const { view, ...answer } = raw.structuredContent;
   assert.equal(raw.content[0].text, JSON.stringify(answer));
-  assert.deepEqual(view.teams.map((t) => t.division), ["Men's D", "Coed Rec"], "one card and grid per division");
+  assert.deepEqual(view.teams.map((t) => t.division), ["Men's D", "Coed Rec"], "one card per division");
+  assert.deepEqual(view.teams.map((t) => [t.grid, t.lazy]), [
+    [undefined, { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Men's D" }],
+    [undefined, { slug: TOURNAMENT.slug, team: "Fallen Angels", division: "Coed Rec" }],
+  ], "each grid on request (get_team_path with the division), so the answer stays small");
+  const one = await c.callTool({ name: "get_team_path", arguments: view.teams[1].lazy });
+  assert.ok(one.structuredContent.view.teams[0].grid, "the follow-up call carries the grid");
   const amb = await call("get_team_path", { slug: TOURNAMENT.slug, team: "o" });
   assert.equal(amb._error, true, "different names that only contain the words still ask");
   assert.match(amb.error, /Give the division/);
