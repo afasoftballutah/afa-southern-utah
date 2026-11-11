@@ -1,8 +1,22 @@
+// Anti-clickjacking (JD, 2026-11-10): no other site may put our pages in a
+// frame. Our own pages may (the director print helpers use same-origin
+// frames). The iOS app loads the site top-level in a WKWebView, which these
+// headers do not affect. X-Frame-Options is the fallback for old browsers;
+// when both are sent, browsers obey frame-ancestors.
+export const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // localhost and 127.0.0.1 are different origins in the browser; allow both in dev
   // so client JS / HMR work whether you open either URL.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
 
   // Old /scorekeeper/* director paths → /director/*; field → /scorekeeper/*
   async redirects() {
