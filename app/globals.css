@@ -613,6 +613,16 @@ body:has(.scorekeeper-scope) {
 }
 .sk-mark__tone {
   background: var(--tone-solid, #64748b);
+  color: #fff;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  padding: 0 1px;
+}
+.sk-mark__tone.is-dark {
+  color: var(--tone-ink, #1a1a1a);
 }
 .sk-mark__when,
 .sk-mark__field,
