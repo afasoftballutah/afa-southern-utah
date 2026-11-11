@@ -454,6 +454,9 @@ test("Path view compact pills: narrower boxes, tiny corner place, score under th
   assert.match(GRID_CSS, /text-overflow: ellipsis/);
   assert.match(GRID_CSS, /\.fg-lab\.day \{[^}]*word-spacing: 0\.2em/);
   assert.match(GRID_CSS, /\.fg-head\.v \.fg-fname \{ font-size: 0\.6875rem/);
+  assert.match(GRID_CSS, /\.fg-coltint \{[^}]*z-index: 0;[^}]*background: rgba\(0, 0, 0, 0\.025\)/);
+  assert.match(GRID_CSS, /\.fg-fname\.tint \{ background: rgba\(0, 0, 0, 0\.025\)/);
+  assert.match(GRID_JS, /fg-coltint/);
   assert.match(GRID_JS, /day\.start - pad - G\.dayHead/);
   assert.match(GRID_JS, /day\.start - pad - 1/);
   assert.match(GRID_CSS, /button\.pill\.compact \{[^}]*flex-direction: column/);
@@ -545,6 +548,18 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       const px = (n) => Number.parseFloat(n.style.width) || dim(n.style.cssText, "width");
       const lanes = out.all((n) => /\bfg-fname\b/.test(n.className)).map(px);
       assert.ok(lanes.length && lanes.every((w) => w === lanes[0]), "field columns share a width");
+      const fnames = out.all((n) => /\bfg-fname\b/.test(n.className));
+      fnames.forEach((n, i) => {
+        assert.equal(n.classList.contains("tint"), i % 2 === 0, `header column ${i} tint is every other`);
+      });
+      const tints = out.all((n) => /\bfg-coltint\b/.test(n.className));
+      assert.equal(tints.length, Math.ceil(fnames.length / 2), "one full-height tint band per even field column");
+      tints.forEach((n) => {
+        const s = n.style.cssText;
+        const left = Number((s.match(/left:(-?[\d.]+)px/) || [])[1]);
+        assert.ok(left >= 40, "tint does not cover the time column");
+        assert.match(s, /top:0/);
+      });
       const lane = lanes[0];
       assert.ok(40 + lanes.length * lane <= gridW + 1, "columns span the card");
       const pad = Math.floor((lane - 48) / 2);
