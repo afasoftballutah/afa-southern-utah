@@ -566,10 +566,10 @@ body:has(.scorekeeper-scope) {
 .sk-game {
   position: relative;
   display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr) auto minmax(0, 1fr);
-  column-gap: 0.3rem;
+  grid-template-columns: 4.25rem minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 0.2rem;
   align-items: center;
-  min-height: 3.75rem;
+  min-height: 62px;
   padding: 0.25rem 0.4rem 0.25rem 0.25rem;
   border-radius: 0.65rem;
   border: 1px solid color-mix(in srgb, var(--afa-navy) 10%, transparent);
@@ -585,63 +585,48 @@ body:has(.scorekeeper-scope) {
 .sk-mark {
   grid-column: 1;
   grid-row: 1;
-  width: 3.25rem;
-  height: 3.25rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  border-radius: 0.4rem;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--afa-navy) 14%, transparent);
-  background: var(--afa-white);
+  box-sizing: border-box;
+  width: 4.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
   color: var(--afa-navy);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.sk-mark__num,
-.sk-mark__when,
-.sk-mark__field,
-.sk-mark__tone {
-  display: flex;
+.sk-mark__pill {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  text-align: center;
-}
-.sk-mark__num {
-  font-size: 0.875rem;
-  font-weight: 800;
-}
-.sk-mark__tone {
+  gap: 0.2em;
+  max-width: 100%;
+  min-height: 1.35rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
   background: var(--tone-solid, #64748b);
   color: #fff;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.01em;
-  line-height: 1;
   text-transform: uppercase;
-  padding: 0 1px;
+  line-height: 1;
 }
-.sk-mark__tone.is-dark {
+.sk-mark__pill.is-dark {
   color: var(--tone-ink, #1a1a1a);
 }
-.sk-mark__when,
-.sk-mark__field,
-.sk-mark__day {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  padding: 0 1px;
+.sk-mark__num,
+.sk-mark__div {
+  min-width: 0;
 }
-.sk-mark__when.is-split {
-  flex-direction: column;
-  gap: 0.02rem;
-  overflow: hidden;
-}
-.sk-mark__clock {
-  font-size: 0.5625rem;
+.sk-mark__meta {
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: -0.04em;
+  white-space: nowrap;
+  line-height: 1;
+  color: var(--afa-navy);
 }
 .sk-game__team {
   min-width: 0;
