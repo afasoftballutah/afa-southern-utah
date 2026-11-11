@@ -672,6 +672,7 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
     assert.ok(!/still possible|their finish|Played/.test(out.textContent));
   }
   assert.match(GRID_CSS, /\.fg-head \{ position: sticky; top: 0;/);
+  assert.match(GRID_CSS, /\.fg-head\.v \{ padding-bottom: 0; \}/);
   // The wide hour grid must scroll inside .fg-scroll, not stretch the page.
   assert.match(GRID_CSS, /\.fg-outer \{ min-width: 0; max-width: 100%; \}/);
   assert.match(GRID_CSS, /\.fg-scroll \{[^}]*min-width: 0; max-width: 100%/);
