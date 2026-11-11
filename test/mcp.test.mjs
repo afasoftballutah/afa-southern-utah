@@ -9,6 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildAfaMcpServer, INSTRUCTIONS } from "@/lib/mcp/tools";
 import { scheduleRowsFromTournament } from "@/lib/data";
 import { isPublicTournament } from "@/lib/mcp/data";
+import { gameState, fieldGrid } from "@/lib/mcp/field-grid";
 
 const PST = (day, h) => new Date(Date.UTC(2026, 10, day, h + 8)).toISOString(); // Nov <day>, h:00 PST
 const g = (id, round, side, field, when, t1, t2, src = {}, extra = {}) => ({
@@ -215,9 +216,10 @@ test("get_game view: ui://afa/game resource, self-contained, block-all CSP", asy
   const { tools } = await c.listTools();
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
   assert.equal(byName.get_game._meta.ui.resourceUri, "ui://afa/game");
-  for (const t of tools) if (t.name !== "get_game") assert.equal(t._meta?.ui, undefined, `${t.name} has no view yet`);
+  const VIEWS = { get_game: "ui://afa/game", get_team_path: "ui://afa/team" };
+  for (const t of tools) assert.equal(t._meta?.ui?.resourceUri, VIEWS[t.name], `${t.name} view`);
   const { resources } = await c.listResources();
-  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]), [["ui://afa/game", "text/html;profile=mcp-app"]]);
+  assert.deepEqual(resources.map((r) => [r.uri, r.mimeType]).sort(), Object.values(VIEWS).sort().map((u) => [u, "text/html;profile=mcp-app"]));
   const { contents } = await c.readResource({ uri: "ui://afa/game" });
   assert.equal(contents.length, 1);
   const [html] = contents;
@@ -264,4 +266,90 @@ test("get_game view: text unchanged; card = division color, Winner/Loser G#, red
   const missing = await call({ game: 99 });
   assert.equal(missing.isError, true);
   assert.equal(missing.structuredContent, undefined, "an error has no card; the view shows the error text");
+});
+
+// Piece 2 (JD 2026-11-10: "i dont want to have to ask so specifically"):
+// get_team_path draws the team's next game card and the field grid with
+// its paths lit.
+test("get_team_path view: ui://afa/team is self-contained; text unchanged; no contacts", async () => {
+  const { c } = await client();
+  const { contents } = await c.readResource({ uri: "ui://afa/team" });
+  assert.equal(contents[0].mimeType, "text/html;profile=mcp-app");
+  assert.equal(contents[0]._meta.ui.csp, undefined);
+  assert.doesNotMatch(contents[0].text, /<script[^>]+src=|<link[^>]+href=|@import|url\(|fetch\(|XMLHttpRequest|innerHTML/i);
+  assert.match(contents[0].text, /Paths to the title/);
+  const r = await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } });
+  const { view, ...answer } = r.structuredContent;
+  assert.equal(r.content[0].text, JSON.stringify(answer), "text clients read exactly what they read before");
+  assert.equal(view.teams.length, 1);
+  for (const secret of ["director@example.com", "435-555-0100", "Director Person"]) assert.ok(!JSON.stringify(r.structuredContent).includes(secret), secret);
+  assert.doesNotMatch(JSON.stringify(view), /\d:00\b/, "whole hours never show :00");
+});
+
+const at = (grid) => new Map(grid.days.flatMap((d) => d.games.map((x) => [x.i, x])));
+const names = (grid, list) => list.map((i) => at(grid).get(i)?.n);
+const arrows = (grid, edges) => edges.map(([a, b, k]) => `${at(grid).get(a).n}${{ w: ">", l: "~>", if: "?>" }[k]}${at(grid).get(b).n}`);
+
+test("get_team_path grid: every game on the team's days by field and time; done only with a final score", async () => {
+  const { c } = await client(); // Sun 11:30 AM PST
+  const t = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent.view.teams[0];
+  const g = t.grid;
+  assert.deepEqual(g.fields, ["Hunter F1", "Hunter F2", "Pioneer F1", "Pioneer F2", "Pioneer F3"], "every field of the tournament, Hunter then Pioneer");
+  assert.equal(g.zone, "PST");
+  assert.equal(g.now, "Sun 11:30 AM");
+  assert.deepEqual(g.days.map((d) => d.title), ["Sat, Nov 14", "Sun, Nov 15"], "only the days this team plays or can play");
+  assert.deepEqual(g.divs.find((d) => d.name === "Coed Rec"), { name: "Coed Rec", bg: "#eadbd0", ink: "#5a2e14", solid: "#6b3a1f", url: "https://afa-southern-utah.vercel.app/tournaments/2026-afa-world-series/division/rec" }, "division colour and page");
+  const by = Object.fromEntries([...at(g).values()].map((x) => [x.n, x]));
+  assert.deepEqual([by.G1.st, by.G1.sc, g.fields[by.G1.f], by.G1.tm], ["final", "12\u20138", "Pioneer F3", "Sat 6 PM"]);
+  assert.equal(by.G3.st, "awaiting", "Sat 7 PM with no score yet: awaiting score, not done");
+  assert.equal(by.G3.s1, undefined, "no score drawn for a game without a final");
+  assert.equal(by.G5.st, "live", "Sun 11 AM at 11:30: in progress");
+  assert.equal(by.G7.st, "upcoming");
+  assert.deepEqual([by.G5.t1, by.G5.t2, by.G7.t1, by.G7.t2], ["FHT", "Loser G3", "Winner G5", "Loser G6"], "Winner/Loser G# slots");
+  assert.deepEqual([by.G5.l, by.G5.w], ["Game 8", "Game 7"]);
+  assert.equal(g.days[1].now, 11 * 60 + 30 - 11 * 60, "now line: minutes into Sunday's first hour");
+  assert.equal(g.days[0].now, undefined);
+  assert.equal(g.days[0].fold, undefined, "Sat 7 PM holds an unscored game: nothing folds");
+});
+
+test("get_team_path grid: the team's paths from its next game (even unscored past its time), played games solid", async () => {
+  const { c } = await client();
+  const sc = (await c.callTool({ name: "get_team_path", arguments: { slug: TOURNAMENT.slug, team: "One Hit Wonders", division: "Coed Rec" } })).structuredContent;
+  const t = sc.view.teams[0];
+  assert.equal(t.selected, "One Hit Wonders");
+  assert.deepEqual(t.picker.map((p) => p.name), ["Band of Randoms", "Fallen Angels", "FHT", "One Hit Wonders", "Only Bangers", "Unity Raving Squirrels"]);
+  const me = t.picker.find((p) => p.name === "One Hit Wonders");
+  assert.equal(me.record, "1-0");
+  assert.deepEqual(names(t.grid, me.played), ["G1"]);
+  assert.deepEqual(arrows(t.grid, me.went), ["G1>G3"], "won G1, on to G3");
+  assert.deepEqual(names(t.grid, me.reach).sort(), ["G10", "G11", "G12", "G13", "G3", "G5", "G7", "G8", "G9"], "G3 has no score yet: every path through it stays open (3GG: losing G5 still leads to G8)");
+  assert.deepEqual(arrows(t.grid, me.edges).sort(), ["G10>G11", "G11>G12", "G12?>G13", "G3>G9", "G3~>G5", "G5>G7", "G5~>G8", "G7>G10", "G8>G10", "G9>G12", "G9~>G11"].sort());
+  const out = Object.fromEntries(Object.entries(me.out).map(([i, p]) => [at(t.grid).get(Number(i)).n, p]));
+  assert.equal(out.G13, "2nd", "the if-necessary game's loser is 2nd");
+  assert.equal(out.G12, undefined, "the final's loser place depends on the side, so it sits on the if-necessary game");
+  assert.deepEqual(out, { G7: "5th", G8: "5th", G10: "4th", G11: "3rd", G13: "2nd" }, "the finish wherever a loss ends the run");
+
+  const fa = t.picker.find((p) => p.name === "Fallen Angels");
+  assert.equal(fa.record, "0-1");
+  assert.deepEqual(arrows(t.grid, fa.went), ["G1~>G6"], "lost G1: the solid loss arrow into G6");
+  assert.ok(!names(t.grid, fa.reach).includes("G3"), "winners-side games are no longer possible after the loss");
+  assert.ok(JSON.stringify(sc).length < 40_000, "small enough to ride in structuredContent");
+});
+
+test("field grid: a game is done only with a final score; only an all-final opening run of hours folds", () => {
+  const now = new Date(PST(15, 12));
+  const row = (h, extra = {}) => ({ id: `r${h}${extra.f ?? ""}`, label: "G1", field: extra.f ?? "H1", divisionId: "d", divisionName: "Coed Rec", scheduledTime: PST(15, h), team1: "A", team2: "B", score1: null, score2: null, status: "pending", ...extra });
+  assert.equal(gameState(row(8, { status: "final", isFinal: true, score1: 3, score2: 1 }), now), "final");
+  assert.equal(gameState(row(8, { status: "final", isFinal: true }), now), "awaiting", "marked final but no score: not done");
+  assert.equal(gameState(row(10), now), "awaiting", "two hours past its start, no score");
+  assert.equal(gameState(row(11, { scheduledTime: new Date(Date.UTC(2026, 10, 15, 19, 10)).toISOString() }), now), "live", "50 minutes in");
+  assert.equal(gameState(row(13), now), "upcoming");
+  const fin = { status: "final", isFinal: true, score1: 5, score2: 2 };
+  const rows = [row(8, fin), row(9, fin), row(10, { ...fin, f: "H2" }), row(10), row(11, fin), row(13)];
+  const { grid } = fieldGrid(rows, "America/Los_Angeles", now, { siteUrl: "https://x", slug: "s" });
+  assert.equal(grid.days[0].fold, 2, "8 and 9 AM are all final; 10 AM holds a game with no score");
+  assert.equal(grid.days[0].foldLabel, "8 AM\u201310 AM \u00b7 all final");
+  assert.equal(grid.days[0].now, 4 * 60);
+  const done = fieldGrid([row(8, fin), row(9, fin)], "America/Los_Angeles", now, { siteUrl: "https://x", slug: "s" }).grid;
+  assert.equal(done.days[0].foldLabel, "Sun \u00b7 all final", "a day all scored folds whole");
 });
