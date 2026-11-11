@@ -6,8 +6,8 @@
 // time down; desktop: time across), each box the site's timeline pill in
 // its division colour. The team picked in Find your team lights every game
 // it can still play: green win arrows, red dashed loss arrows, its finish
-// under each game where a loss ends its run, its games so far joined solid,
-// everything else faded. With no team picked the grid is unlit.
+// under each game where a loss ends its run, a leg gone bold only once the
+// game it leaves has a score (the route actually taken), everything else faded. With no team picked the grid is unlit.
 //
 // Time-aware without polling: the grid is drawn from the page's rows at the
 // moment it mounts (RefreshOnReturn brings fresh rows back). A game is done
