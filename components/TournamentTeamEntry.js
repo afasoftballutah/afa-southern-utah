@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import FindTournamentTeam from "@/components/FindTournamentTeam";
 import TournamentDivisionNav from "@/components/TournamentDivisionNav";
 
@@ -52,16 +51,6 @@ export default function TournamentTeamEntry({
             hideTeamPicker
             mode={registering ? "register" : "schedule"}
           />
-          {!registering ? (
-            <p className="text-center">
-              <Link
-                href={`/tournaments/${slug}/schedule`}
-                className="t-meta underline"
-              >
-                All games
-              </Link>
-            </p>
-          ) : null}
         </div>
       ) : null}
     </div>

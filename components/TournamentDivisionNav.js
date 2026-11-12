@@ -127,14 +127,15 @@ export default function TournamentDivisionNav({
           </select>
         </label>
       )}
-      <div
-        className={
-          "register-division-cols" + (!registering && hasMine ? " has-mine" : "")
-        }
-        role="navigation"
-        aria-label={registering ? "Register for a division" : "Divisions"}
-      >
-        {columns.map((col) => {
+      <div className="register-division-block">
+        <div
+          className={
+            "register-division-cols" + (!registering && hasMine ? " has-mine" : "")
+          }
+          role="navigation"
+          aria-label={registering ? "Register for a division" : "Divisions"}
+        >
+          {columns.map((col) => {
           const colMine = !registering && col.items.some((d) => mine.has(d.id));
           return (
             <div
@@ -189,7 +190,16 @@ export default function TournamentDivisionNav({
               )}
             </div>
           );
-        })}
+          })}
+        </div>
+        {!registering ? (
+          <Link
+            href={`/tournaments/${slug}/schedule`}
+            className="register-division-all"
+          >
+            All Games and Brackets
+          </Link>
+        ) : null}
       </div>
     </div>
   );
