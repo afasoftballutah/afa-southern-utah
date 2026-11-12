@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Card from "@/components/ui/Card";
 import Chip from "@/components/ui/Chip";
 import Matchup from "@/components/ui/Matchup";
 import TeamFinder from "@/components/TeamFinder";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 import PathView from "@/components/PathView";
+import PathStats from "@/components/PathStats";
+import { PHONE_VERTICAL_QUERY } from "@/components/ScheduleTimeline";
 
 // By field | By time toggle (dispatch-brief-16) — same localStorage-via-
 // useSyncExternalStore pattern as the Tournaments page toggle
@@ -234,6 +236,17 @@ export default function ScheduleBrowser({
   // The picked team — { name, divisionId }, never a bare name — shared with
   // the timeline so it lights that one team's games.
   const [team, setTeam] = useState(null);
+  // Stats sit on the tab row, desktop Path only (JD: "the empty space to
+  // the right of the Path view tab"). Phones start true so the stats never
+  // flash on a narrow screen.
+  const [phone, setPhone] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE_VERTICAL_QUERY);
+    const sync = () => setPhone(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   function choose(next) {
     setExplicitView(next);
@@ -263,7 +276,8 @@ export default function ScheduleBrowser({
         />
       )}
 
-      <div className="sched-seg seg" role="group" aria-label="Schedule view">
+      <div className="sched-toolbar">
+        <div className="sched-seg seg" role="group" aria-label="Schedule view">
         <button type="button" onClick={() => choose("field")} aria-pressed={view === "field"} className={view === "field" ? "is-on" : undefined}>
           By field
         </button>
@@ -291,6 +305,10 @@ export default function ScheduleBrowser({
           >
             Path view
           </button>
+        ) : null}
+        </div>
+        {!phone && view === "paths" && team?.name ? (
+          <PathStats rows={rows} team={team} divisions={divisions ?? []} />
         ) : null}
       </div>
 
