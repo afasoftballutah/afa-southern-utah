@@ -1453,6 +1453,60 @@ a.register-division-col__card--header {
   opacity: 0.38;
 }
 
+/* "All Games and Brackets" sits under the three columns and is only as
+   wide as that grid — left edge with Women's, right edge with Coed —
+   not the full page (JD, 2026-11-12). Win green is Path --win / the
+   site action token; height and radius match the gender headers. */
+.register-division-block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  gap: 0.5rem;
+}
+.register-division-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--afa-action);
+  border-radius: 0.375rem;
+  background: var(--afa-action);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(22, 35, 61, 0.05),
+    0 10px 26px -18px rgba(22, 35, 61, 0.5);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.1s ease;
+  user-select: none;
+}
+.register-division-all:hover,
+.register-division-all:focus-visible {
+  background: var(--afa-action-hover);
+  border-color: var(--afa-action-hover);
+  color: #fff;
+}
+.register-division-all:focus-visible {
+  outline: 2px solid var(--afa-action);
+  outline-offset: 2px;
+}
+.register-division-all:active {
+  transform: translateY(2px);
+}
+
 /* Remembered team / manage header: same gender colors as the columns */
 .div-seat-mark {
   display: inline-flex;
