@@ -24,13 +24,13 @@ test("desktop Timeline hour columns fill the width and labels are centered", () 
   assert.match(tlSrc, /100% \* \(\$\{game\.offset\} \/ 60\) \/ var\(--tl-hours\)/);
 });
 
-test("desktop Path fills hour slots and fits the route; phone geometry is unchanged", () => {
-  assert.match(gridSrc, /G\.ph = 48/);
-  assert.match(gridSrc, /G\.lane = Math\.round\(G\.ph \* 1\.2\)/);
-  assert.match(gridSrc, /G\.pw = Math\.max\(48, G\.hour - gap\)/);
-  assert.match(gridSrc, /var gap = 10/);
+test("desktop Path is a 2x2 of compact vertical day panels; phone geometry is unchanged", () => {
+  assert.match(gridSrc, /width >= 1024 && grid\.days\.length/);
+  assert.match(gridSrc, /function panelGridEl/);
+  assert.match(gridSrc, /fg-days/);
+  assert.match(gridSrc, /function jumpLabel/);
   assert.match(gridSrc, /if \(show && G\.vertical\) p\.classList\.add\("compact"\)/);
-  assert.match(gridSrc, /p\.classList\.add\("desk"\)/);
+  assert.doesNotMatch(gridSrc, /G\.pw = Math\.max\(48, G\.hour - gap\)/);
   assert.match(gridSrc, /lab\("hour", label, u, G\.head - 18, G\.hour, "center"\)/);
   assert.match(gridSrc, /if \(G\.vertical\) \{ lab\("hour", label, 2, u \+ Math\.floor\(\(G\.hour - 11\) \/ 2\), G\.side - 6, "right"\)/);
   assert.match(gridSrc, /G\.lane = 84; G\.pw = 64; G\.ph = 40; G\.pad = 5;/);
@@ -158,14 +158,21 @@ async function pickFirstTeam(page) {
   });
 }
 
-async function pathPills(page) {
+async function pathLayout(page) {
   return page.evaluate(() => {
     const host = document.querySelector(".path-view");
     const root = host?.shadowRoot;
     if (!root) return null;
-    const hours = [...root.querySelectorAll(".fg-lab.hour")];
-    const pitch = hours.length >= 2 ? hours[1].getBoundingClientRect().x - hours[0].getBoundingClientRect().x : 0;
-    const vp = window.innerWidth;
+    const days = [...root.querySelectorAll(".fg-day")].map((el) => {
+      const b = el.getBoundingClientRect();
+      const title = (el.querySelector(".fg-day-title")?.textContent || "").trim();
+      return { title, x: b.x, y: b.y, w: b.width, h: b.height, right: b.right, bottom: b.bottom };
+    });
+    const hours = [...root.querySelectorAll(".fg-lab.hour")].map((el) => {
+      const b = el.getBoundingClientRect();
+      return { text: el.textContent.trim(), x: b.x, y: b.y };
+    });
+    const vp = { w: window.innerWidth, h: window.innerHeight };
     const pills = [...root.querySelectorAll("button.pill")].map((el) => {
       const b = el.getBoundingClientRect();
       return {
@@ -173,17 +180,20 @@ async function pathPills(page) {
         w: b.width,
         h: b.height,
         x: b.x,
-        right: b.x + b.width,
+        y: b.y,
+        right: b.right,
+        bottom: b.bottom,
         compact: el.classList.contains("compact"),
         desk: el.classList.contains("desk"),
-        inView: b.x >= 0 && b.right <= vp + 0.5,
+        inView: b.x >= 0 && b.right <= vp.w + 1 && b.y >= 0 && b.bottom <= vp.h + 1,
       };
     });
-    return { pitch, pills, vp };
+    const jumps = [...root.querySelectorAll(".fg-jump")].map((el) => el.textContent.trim());
+    return { days, hours, pills, jumps, vp, panels: !!root.querySelector(".fg-days") };
   });
 }
 
-test("desktop Path boxes fill the hour slots and the championship stays on screen at 1440", { skip }, async () => {
+test("desktop Path is a 2x2 of compact vertical day panels at 1440", { skip }, async () => {
   const browser = await webkit.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   try {
@@ -193,17 +203,28 @@ test("desktop Path boxes fill the hour slots and the championship stays on scree
     await page.getByRole("button", { name: "Path view", exact: true }).click();
     await page.locator(".path-view").waitFor({ timeout: 20000 });
     await page.waitForTimeout(400);
-    const m = await pathPills(page);
-    assert.ok(m && m.pills.length, "path pills rendered");
-    assert.ok(m.pills.every((p) => p.desk && !p.compact), "desktop team pills use the desk size, not compact");
-    assert.ok(m.pills.every((p) => Math.abs(p.h - 48) < 1), "boxes are 48px tall");
-    for (const p of m.pills) {
-      const gap = m.pitch - p.w;
-      assert.ok(gap >= 8 && gap <= 12, `${p.text}: gap ${gap} in hour ${m.pitch} (box ${p.w})`);
+    const m = await pathLayout(page);
+    assert.ok(m && m.panels && m.days.length, "day panels rendered");
+    assert.ok(m.days.length <= 4, "at most four day panels");
+    assert.ok(m.pills.length, "path pills rendered");
+    assert.ok(m.pills.every((p) => p.compact && !p.desk), "desktop panel pills stay compact, not wider");
+    assert.ok(m.pills.every((p) => Math.abs(p.w - 48) < 1), "boxes stay 48px wide");
+    assert.ok(m.pills.every((p) => p.h <= 32 + 0.5), "boxes are not taller than the compact 32px card");
+    // Hours run down the side of a panel, not across the page.
+    const firstPanelHours = m.hours.filter((h) => Math.abs(h.x - m.hours[0].x) < 8);
+    assert.ok(firstPanelHours.length >= 2, "a panel has more than one hour down the side");
+    const ys = firstPanelHours.map((h) => h.y);
+    for (let i = 1; i < ys.length; i++) assert.ok(ys[i] > ys[i - 1], "hour labels go down the page");
+    if (m.days.length >= 2) {
+      const top = m.days.filter((d) => Math.abs(d.y - m.days[0].y) < 8);
+      assert.ok(top.length === 2, "two days sit side by side on the top row");
     }
-    const g35 = m.pills.find((p) => p.text === "G35");
-    assert.ok(g35, "G35 is drawn");
-    assert.ok(g35.inView, `G35 stays on screen (x=${g35.x} right=${g35.right} vp=${m.vp})`);
+    for (const d of m.days) {
+      assert.ok(d.right <= m.vp.w + 1 && d.bottom <= m.vp.h + 8, `${d.title} stays on screen`);
+    }
+    for (const p of m.pills) {
+      assert.ok(p.right <= m.vp.w + 1, `${p.text} is not clipped horizontally`);
+    }
   } finally {
     await page.close();
     await browser.close();
