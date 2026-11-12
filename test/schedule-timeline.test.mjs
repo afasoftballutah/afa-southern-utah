@@ -390,13 +390,15 @@ test("timeline is vertical on phones only; desktop keeps the horizontal lanes", 
   assert.match(src, /className="tl-vtime"/);
   assert.match(src, /top: \(game\.offset \/ 60\) \* ROW_PX/);
   assert.match(src, /"--tl-hour": `\$\{ROW_PX\}px`/, "phone rows use ROW_PX, not the desktop hour width");
-  assert.match(src, /const HOUR_PX = 92/, "desktop hour columns stay 92px");
   assert.match(src, /const ROW_PX = 52/);
-  // Desktop layout is unchanged.
+  // Desktop stays horizontal; equal hour columns are sized so 23 fit across.
   assert.match(src, /className="tl-row tl-row--axis"/);
   assert.match(src, /className="tl-grid"/);
   assert.match(src, /className="tl-field tl-field--corner"/);
-  assert.match(src, /left: \(game\.offset \/ 60\) \* HOUR_PX/);
+  assert.doesNotMatch(src, /HOUR_PX/);
+  assert.match(src, /100% \* \(\$\{game\.offset\} \/ 60\) \/ var\(--tl-hours\)/);
+  assert.match(css, /--tl-fit: 23/);
+  assert.match(css, /grid-template-columns: repeat\(var\(--tl-hours\), var\(--tl-hour\)\)/);
   assert.match(css, /\.tl-grid \{/);
   assert.match(css, /\.tl-row \{ display: flex; height: 3\.25rem/);
   assert.match(css, /button\.tl-pill \{[^}]*top: 0\.25rem; height: 2\.75rem/);

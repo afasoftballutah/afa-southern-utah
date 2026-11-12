@@ -440,7 +440,7 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
 test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
   assert.match(GRID_JS, /hour: show \? 48 : 86/);
-  assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : G\.hour/);
+  assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : hourW/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
   assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
   assert.doesNotMatch(GRID_JS, /var rail = show \? 16 : 0/);

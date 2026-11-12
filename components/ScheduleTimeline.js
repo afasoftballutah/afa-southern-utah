@@ -26,6 +26,8 @@ import {
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { teamReachIds } from "@/lib/team-reach";
 import { placeClear, unionRect } from "@/lib/popover-place";
+import { fieldGrid, gridTrack } from "@/lib/mcp/field-grid";
+import { divisionFamily } from "@/lib/team-feed";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
 // day's hours across the top, one panel per day. On phones (width < 640,
@@ -38,7 +40,6 @@ import { placeClear, unionRect } from "@/lib/popover-place";
 // open at a time; Esc or a tap anywhere else closes it. A data refresh
 // keeps it open — the open game is remembered by id, not by position.
 
-const HOUR_PX = 92; // desktop hour-column width, unchanged
 const ROW_PX = 52; // phone hour-row height (Path's 32px is too tight for corners + score)
 
 // Championship mark (JD, 2026-11-09: "star can be faint in the background
@@ -65,13 +66,23 @@ function SoftballMark() {
 }
 
 // A bottom corner: a finishing place is bold italic so it reads as final
-// ("5th", "2nd", 🏆); a next game is plain "→22".
-function Corner({ pos, x, gold }) {
+// ("5th", "2nd", 🏆); a next game is plain "→22" on phones. Desktop drops
+// the arrow and colours the number (green = winner goes, red = loser goes).
+function Corner({ pos, x, gold, numbered = false }) {
   if (!x) return null;
   const chip = x.place ? (
     <span className={`tl-corner-place${gold ? " is-gold" : ""}${x.place === "🏆" ? " is-cup" : ""}`}>{x.place}</span>
   ) : null;
-  const next = x.next ? (x.place ? `/${x.next}` : `→${x.next}`) : null;
+  const kind = numbered ? (pos === "br" ? "to-win" : pos === "bl" ? "to-lose" : null) : null;
+  const next = x.next ? (
+    numbered ? (
+      <span className={kind ? `tl-corner--${kind}` : undefined}>{x.next}</span>
+    ) : x.place ? (
+      `/${x.next}`
+    ) : (
+      `→${x.next}`
+    )
+  ) : null;
   const plain = !x.place && !x.next ? x.short : null;
   if (!chip && !next && !plain) return null;
   return (
@@ -97,8 +108,8 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
   const flow = game.flow ?? null;
   const number = /^G\d+$/.test(game.label ?? "") ? game.label.slice(1) : (game.label ?? "Game");
   const top = [
-    ["tl", flow?.from?.[0]?.short ?? null],
-    ["tr", flow?.from?.[1]?.short ?? null],
+    ["tl", flow?.from?.[0] ?? null],
+    ["tr", flow?.from?.[1] ?? null],
   ];
   const champ = side === "final" || side === "if";
   const words = flowWords(flow);
@@ -119,8 +130,8 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
               width: `calc(100% - ${PILL_GAP_V * 2}px)`,
             }
           : {
-              left: (game.offset / 60) * HOUR_PX + PILL_GAP_H,
-              width: (game.length / 60) * HOUR_PX - PILL_GAP_H * 2,
+              left: `calc(100% * (${game.offset} / 60) / var(--tl-hours) + ${PILL_GAP_H}px)`,
+              width: `calc(100% * (${game.length} / 60) / var(--tl-hours) - ${PILL_GAP_H * 2}px)`,
             }
       }
       aria-expanded={open}
@@ -139,15 +150,19 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
       ) : (
         <span className="tl-pill__num">{number}</span>
       )}
-      {top.map(([pos, text]) =>
-        text ? (
-          <span key={pos} className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
+      {top.map(([pos, slot]) => {
+        if (!slot?.short) return null;
+        const feeder = !vertical ? /^([WL])(\d+)$/.exec(slot.short) : null;
+        const text = feeder ? feeder[2] : slot.short;
+        const kind = feeder ? (feeder[1] === "W" ? "from-win" : "from-lose") : null;
+        return (
+          <span key={pos} className={`tl-corner tl-corner--${pos}${kind ? ` tl-corner--${kind}` : ""}`} aria-hidden="true">
             {text}
           </span>
-        ) : null
-      )}
-      <Corner pos="bl" x={flow?.loser} gold={champ} />
-      <Corner pos="br" x={flow?.winner} gold={champ} />
+        );
+      })}
+      <Corner pos="bl" x={flow?.loser} gold={champ} numbered={!vertical} />
+      <Corner pos="br" x={flow?.winner} gold={champ} numbered={!vertical} />
     </button>
   );
 }
@@ -751,13 +766,89 @@ function TimelineHelp({ sheet }) {
   );
 }
 
+
+// Desktop Path view: the Timeline grid with only the followed team's
+// played + reachable games shown (same set as the phone Path), and the
+// win / loss / if route drawn over the top. Hidden games leave empty
+// spots; days, fields, hours and card positions stay as in Timeline.
+function PathRoutes({ edges }) {
+  const [paths, setPaths] = useState([]);
+  useLayoutEffect(() => {
+    if (!edges?.length) return undefined;
+    let frame = 0;
+    const mid = (r) => ({ x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 });
+    const draw = () => {
+      frame = 0;
+      const pill = (id) => (id ? document.querySelector(`.path-view .tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null);
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      };
+      const out = [];
+      for (const e of edges) {
+        const aEl = pill(e.from);
+        const bEl = pill(e.to);
+        if (!aEl || !bEl) continue;
+        const a = rect(aEl);
+        const b = rect(bEl);
+        const ac = mid(a);
+        const bc = mid(b);
+        let d;
+        const sameRow = Math.abs(ac.y - bc.y) < 16;
+        const sideways = Math.abs(ac.x - bc.x) > 24;
+        if (sameRow) {
+          // Same field row: a straight line, so Thursday runs into Friday.
+          const rightward = ac.x <= bc.x;
+          const s = { x: rightward ? a.right : a.left, y: ac.y };
+          const t = { x: rightward ? b.left : b.right, y: bc.y };
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        } else if (sideways) {
+          // Cross-day, different field: go out the side, then along the row, then in.
+          const rightward = ac.x <= bc.x;
+          const s = { x: rightward ? a.right : a.left, y: ac.y };
+          const t = { x: rightward ? b.left : b.right, y: bc.y };
+          const midX = (s.x + t.x) / 2;
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${midX.toFixed(1)},${s.y.toFixed(1)} L${midX.toFixed(1)},${t.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        } else {
+          const down = ac.y < bc.y;
+          const s = { x: ac.x, y: down ? a.bottom : a.top };
+          const t = { x: bc.x, y: down ? b.top : b.bottom };
+          const midY = (s.y + t.y) / 2;
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${s.x.toFixed(1)},${midY.toFixed(1)} L${t.x.toFixed(1)},${midY.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        }
+        out.push({ key: `${e.from}>${e.to}:${e.kind}`, kind: e.kind, actual: e.actual, d });
+      }
+      setPaths(out);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [edges]);
+  if (!paths.length) return null;
+  return (
+    <svg className="tl-path-arrows" aria-hidden="true" focusable="false">
+      {paths.map((p) => (
+        <path key={p.key} d={p.d} className={`tl-path-line tl-path-line--${p.kind}${p.actual ? " is-actual" : ""}`} />
+      ))}
+    </svg>
+  );
+}
+
 // Phones get the bottom sheet: narrow screens, plus touch phones held sideways.
 export const PHONE_SHEET_QUERY = "(max-width: 639px), (pointer: coarse) and (max-height: 500px)";
 // Vertical grid on phones only, same 640px split as the Path view (JD:
 // "Phone vertical of course."). Desktop stays the horizontal lanes.
 export const PHONE_VERTICAL_QUERY = "(max-width: 639px)";
 
-export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null }) {
+export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null, pathMode = false, divisions = [] }) {
   const { days, unplaced, fields } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);
@@ -775,6 +866,34 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   // Every game they could still play from there (win or lose their way in):
   // lit with a dashed ring until their name is on it.
   const could = useMemo(() => teamReachIds(rows, team, nextId), [rows, team, nextId]);
+  // Path mode hides every game the followed team is not in and cannot
+  // reach — the same played + reach set the phone Path already shows.
+  const pathTrack = useMemo(() => {
+    if (!pathMode || !team?.name) return null;
+    const family = divisionFamily(divisions, team.divisionId) ?? new Set([team.divisionId]);
+    const { index } = fieldGrid(rows, timeZone, new Date(), { siteUrl: "", slug: slug ?? "" });
+    const tr = gridTrack(rows, team.name, family, null, index);
+    const idOf = new Map([...index.entries()].map(([id, i]) => [i, id]));
+    const showIds = new Set();
+    for (const i of [...tr.played, ...tr.reach]) {
+      const id = idOf.get(i);
+      if (id != null) showIds.add(id);
+    }
+    const seen = {};
+    const edges = [];
+    const push = (e, actual) => {
+      const from = idOf.get(e[0]);
+      const to = idOf.get(e[1]);
+      const k = `${from}>${to}:${e[2]}`;
+      if (from == null || to == null || seen[k]) return;
+      seen[k] = true;
+      edges.push({ from, to, kind: e[2], actual });
+    };
+    for (const e of tr.went) push(e, true);
+    for (const e of tr.edges) push(e, false);
+    return { showIds, edges };
+  }, [pathMode, team, divisions, rows, timeZone, slug]);
+  const pathVisible = (id) => !pathMode || !pathTrack || pathTrack.showIds.has(id);
   const targets = useMemo(() => flowTargets(rows), [rows]);
   const dest = openId ? targets.get(openId) ?? null : null;
   // Where the open game's teams came from: every game whose winner or loser
@@ -930,8 +1049,20 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     reveal(el, targets.get(id), feedersOf(id));
   };
 
+  // Desktop Path only (JD): if the followed team's played + reachable
+  // games span two days or fewer, show just those days side by side on
+  // one row so win/loss lines can run left to right (e.g. Fri+Sat).
+  // More than two days, or Timeline, keep the full Thu+Fri / Sat+Sun grid.
+  // The phone vertical board still uses `days` below and is unchanged.
+  const pathDays = pathMode && pathTrack
+    ? days.filter((day) => day.lanes.some((lane) => lane.games.some((g) => pathTrack.showIds.has(g.id))))
+    : days;
+  const pairSource = pathMode && pathDays.length > 0 && pathDays.length <= 2 ? pathDays : days;
+  const dayPairs = [];
+  for (let i = 0; i < pairSource.length; i += 2) dayPairs.push(pairSource.slice(i, i + 2));
+
   return (
-    <div className="tl">
+    <div className={pathMode ? "tl tl--path" : "tl"}>
       <div className="tl-head" ref={headRef}>
         <div className="tl-legend" role="list" aria-label="Divisions">
           {legend.map((g, gi) => (
@@ -1037,64 +1168,96 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       ) : null}
 
       {!vertical
-        ? days.map((day) => (
-            <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
-              <header className="tl-day__head">
-                <h2 className="tl-day__title">{day.title}</h2>
-                <span className="tl-day__meta">
-                  {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
-                </span>
-              </header>
-              <div className="tl-scroll">
-                <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour": `${HOUR_PX}px` }}>
-                  <div className="tl-row tl-row--axis">
-                    <div className="tl-field tl-field--corner">{zoneShort}</div>
-                    <div className="tl-track tl-track--axis">
-                      {day.hours.map((h, i) => (
-                        <span key={h} className="tl-hour" style={{ left: i * HOUR_PX, width: HOUR_PX }}>
-                          {hourLabel(h)}
+        ? dayPairs.map((pair) => {
+            const totalHours = pair.reduce((n, d) => n + d.hours.length, 0);
+            const split = pair.length > 1;
+            return (
+              <section
+                key={pair.map((d) => d.key).join("+")}
+                className="tl-day tl-day--pair"
+                style={{ "--tl-hours": totalHours, ...(split ? {} : { "--tl-split": "0px" }) }}
+                aria-label={pair.map((d) => `${d.title}, ${d.date}`).join("; ")}
+              >
+                <header className="tl-day__head tl-day__head--pair">
+                  <div className="tl-day__head-gutter" />
+                  {pair.map((day, i) => (
+                    <Fragment key={day.key}>
+                      {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                      <div className="tl-day__span" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                        <h2 className="tl-day__title">{day.title}</h2>
+                        <span className="tl-day__meta">
+                          {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
                         </span>
+                      </div>
+                    </Fragment>
+                  ))}
+                </header>
+                <div className="tl-scroll">
+                  <div className="tl-grid">
+                    <div className="tl-row tl-row--axis">
+                      <div className="tl-field tl-field--corner">{zoneShort}</div>
+                      {pair.map((day, i) => (
+                        <Fragment key={day.key}>
+                          {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                          <div className="tl-track tl-track--axis" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                            {day.hours.map((h) => (
+                              <span key={h} className="tl-hour">
+                                {hourLabel(h)}
+                              </span>
+                            ))}
+                          </div>
+                        </Fragment>
                       ))}
                     </div>
-                  </div>
-                  {day.lanes.map((lane) => (
-                    <div key={lane.field} className="tl-row">
-                      <div className="tl-field">{lane.field}</div>
-                      <div className="tl-track">
-                        {lane.games.map((g) => (
-                          <span key={g.id} className="tl-slot">
-                            <Pill
-                              game={g}
-                              mark={markOf(g.id)}
-                              open={openId === g.id}
-                              onToggle={toggle}
-                              pillRef={(el) => {
-                                if (el) pills.current.set(g.id, el);
-                                else pills.current.delete(g.id);
-                              }}
-                            />
-                            {openId === g.id ? (
-                              <Details
-                                game={g}
-                                slug={slug}
-                                sheet={sheet}
-                                anchor={anchor}
-                                avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
-                                onClose={() => close(true)}
-                                go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
-                                where={whereNext(g)}
-                              />
-                            ) : null}
-                          </span>
-                        ))}
+                    {fields.map((field) => (
+                      <div key={field} className="tl-row">
+                        <div className="tl-field">{field}</div>
+                        {pair.map((day, i) => {
+                          const lane = day.lanes.find((l) => l.field === field) ?? { field, games: [] };
+                          return (
+                            <Fragment key={day.key}>
+                              {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                              <div className="tl-track" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                                {lane.games.filter((g) => pathVisible(g.id)).map((g) => (
+                                  <span key={g.id} className="tl-slot">
+                                    <Pill
+                                      game={g}
+                                      mark={markOf(g.id)}
+                                      open={openId === g.id}
+                                      onToggle={toggle}
+                                      pillRef={(el) => {
+                                        if (el) pills.current.set(g.id, el);
+                                        else pills.current.delete(g.id);
+                                      }}
+                                    />
+                                    {openId === g.id ? (
+                                      <Details
+                                        game={g}
+                                        slug={slug}
+                                        sheet={sheet}
+                                        anchor={anchor}
+                                        avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
+                                        onClose={() => close(true)}
+                                        go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
+                                        where={whereNext(g)}
+                                      />
+                                    ) : null}
+                                  </span>
+                                ))}
+                              </div>
+                            </Fragment>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </section>
-          ))
+              </section>
+            );
+          })
         : null}
+
+      {pathMode && pathTrack?.edges?.length ? <PathRoutes edges={pathTrack.edges} /> : null}
 
       {openId && anchor ? (
         <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} feeders={feeders} labels={arrowLabels} />
