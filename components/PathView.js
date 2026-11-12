@@ -3,7 +3,7 @@
 // Path view (JD 2026-11-10: "a different view like the claude view"): the
 // MCP team view's field grid (ui://afa/team) as a Schedule tab. Every game
 // of the tournament on one grid of fields × time (phone: fields across,
-// time down; mid-width desktop: time across; at 1024px and up: a 2x2 of horizontal day panels with time left to right), each box the site's timeline pill in
+// time down; mid-width desktop: time across; at 1024px and up: a 2x2 of horizontal day panels, same layout with or without a team), each box the site's timeline pill in
 // its division colour. The team picked in Find your team lights every game
 // it can still play: green win arrows, red dashed loss arrows, its finish
 // under each game where a loss ends its run, a leg gone bold only once the
@@ -55,9 +55,10 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
     let picked = null;
     if (family) {
       const tr = gridTrack(rows, team.name, family, null, index);
-      const mine = new Set([...tr.played, ...tr.reach]);
-      const days = grid.days.filter((d) => d.games.some((g) => mine.has(g.i)));
-      t = { grid: { ...grid, days: days.length ? days : grid.days }, picker: [{ name: team.name, ...tr }] };
+      // Wide desktop keeps every day, field and hour so the team view
+      // matches the unlit 2x2; phone / mid-width still drop unused days
+      // in gridEl (JD: "just none of the irrelevant games").
+      t = { grid, picker: [{ name: team.name, ...tr }] };
       picked = team.name;
     }
     if (!rootRef.current) {
