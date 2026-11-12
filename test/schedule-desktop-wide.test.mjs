@@ -24,8 +24,13 @@ test("desktop Timeline hour columns fill the width and labels are centered", () 
   assert.match(tlSrc, /100% \* \(\$\{game\.offset\} \/ 60\) \/ var\(--tl-hours\)/);
 });
 
-test("desktop Path stretches hour columns and centers time labels; phone geometry is unchanged", () => {
-  assert.match(gridSrc, /G\.hour \+= Math\.floor\(extra \/ slots\)/);
+test("desktop Path fills hour slots and fits the route; phone geometry is unchanged", () => {
+  assert.match(gridSrc, /G\.ph = 48/);
+  assert.match(gridSrc, /G\.lane = Math\.round\(G\.ph \* 1\.2\)/);
+  assert.match(gridSrc, /G\.pw = Math\.max\(48, G\.hour - gap\)/);
+  assert.match(gridSrc, /var gap = 10/);
+  assert.match(gridSrc, /if \(show && G\.vertical\) p\.classList\.add\("compact"\)/);
+  assert.match(gridSrc, /p\.classList\.add\("desk"\)/);
   assert.match(gridSrc, /lab\("hour", label, u, G\.head - 18, G\.hour, "center"\)/);
   assert.match(gridSrc, /if \(G\.vertical\) \{ lab\("hour", label, 2, u \+ Math\.floor\(\(G\.hour - 11\) \/ 2\), G\.side - 6, "right"\)/);
   assert.match(gridSrc, /G\.lane = 84; G\.pw = 64; G\.ph = 40; G\.pad = 5;/);
@@ -135,6 +140,70 @@ test("phone Path and schedule gutters are unchanged at 390px", { skip }, async (
     assert.equal(m.padR, "16px");
     assert.equal(m.headPadL, "10.4px"); // 0.65rem
     assert.equal(m.maxW, "896px");
+  } finally {
+    await page.close();
+    await browser.close();
+  }
+});
+
+async function pickFirstTeam(page) {
+  const sel = page.locator("select").first();
+  if (!(await sel.count())) return null;
+  return sel.evaluate((el) => {
+    const opt = [...el.options].find((o) => o.value && !/^find/i.test(o.textContent || ""));
+    if (!opt) return null;
+    el.value = opt.value;
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    return opt.textContent.trim();
+  });
+}
+
+async function pathPills(page) {
+  return page.evaluate(() => {
+    const host = document.querySelector(".path-view");
+    const root = host?.shadowRoot;
+    if (!root) return null;
+    const hours = [...root.querySelectorAll(".fg-lab.hour")];
+    const pitch = hours.length >= 2 ? hours[1].getBoundingClientRect().x - hours[0].getBoundingClientRect().x : 0;
+    const vp = window.innerWidth;
+    const pills = [...root.querySelectorAll("button.pill")].map((el) => {
+      const b = el.getBoundingClientRect();
+      return {
+        text: (el.querySelector(".gno")?.textContent || "").trim(),
+        w: b.width,
+        h: b.height,
+        x: b.x,
+        right: b.x + b.width,
+        compact: el.classList.contains("compact"),
+        desk: el.classList.contains("desk"),
+        inView: b.x >= 0 && b.right <= vp + 0.5,
+      };
+    });
+    return { pitch, pills, vp };
+  });
+}
+
+test("desktop Path boxes fill the hour slots and the championship stays on screen at 1440", { skip }, async () => {
+  const browser = await webkit.launch();
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  try {
+    await page.goto(SCHEDULE, { waitUntil: "networkidle", timeout: 90000 });
+    await hide(page);
+    await pickFirstTeam(page);
+    await page.getByRole("button", { name: "Path view", exact: true }).click();
+    await page.locator(".path-view").waitFor({ timeout: 20000 });
+    await page.waitForTimeout(400);
+    const m = await pathPills(page);
+    assert.ok(m && m.pills.length, "path pills rendered");
+    assert.ok(m.pills.every((p) => p.desk && !p.compact), "desktop team pills use the desk size, not compact");
+    assert.ok(m.pills.every((p) => Math.abs(p.h - 48) < 1), "boxes are 48px tall");
+    for (const p of m.pills) {
+      const gap = m.pitch - p.w;
+      assert.ok(gap >= 8 && gap <= 12, `${p.text}: gap ${gap} in hour ${m.pitch} (box ${p.w})`);
+    }
+    const g35 = m.pills.find((p) => p.text === "G35");
+    assert.ok(g35, "G35 is drawn");
+    assert.ok(g35.inView, `G35 stays on screen (x=${g35.x} right=${g35.right} vp=${m.vp})`);
   } finally {
     await page.close();
     await browser.close();
