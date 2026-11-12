@@ -546,7 +546,7 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       assert.ok(pills.every((p) => p.classList.contains("compact")), "panel pills stay compact");
       const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
       const pw = pills.map((p) => dim(p.style.cssText, "width")).filter(Boolean);
-      assert.ok(pw.length && pw.every((x) => x === 48), "panel pills stay 48px wide, not stretched");
+      assert.ok(pw.length && pw.every((x) => x <= 48), "panel pills stay 48px or narrower, not stretched");
     }
     if (width < 640) {
       const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);

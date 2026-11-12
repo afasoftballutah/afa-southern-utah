@@ -3,7 +3,7 @@
 // Path view (JD 2026-11-10: "a different view like the claude view"): the
 // MCP team view's field grid (ui://afa/team) as a Schedule tab. Every game
 // of the tournament on one grid of fields × time (phone: fields across,
-// time down; mid-width desktop: time across; at 1024px and up: a 2x2 of day panels with time down), each box the site's timeline pill in
+// time down; mid-width desktop: time across; at 1024px and up: a 2x2 of horizontal day panels with time left to right), each box the site's timeline pill in
 // its division colour. The team picked in Find your team lights every game
 // it can still play: green win arrows, red dashed loss arrows, its finish
 // under each game where a loss ends its run, a leg gone bold only once the
