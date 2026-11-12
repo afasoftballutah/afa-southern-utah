@@ -4111,12 +4111,19 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
   padding-right: 0.75rem;
 }
 @media (min-width: 640px) {
+  /* Equal hour columns, narrow enough that ~22 fit across 1440–1920
+     (JD: "20-25 columns across"). 100vw is used because a % inside a
+     custom property will not resolve against .tl-scroll's width.
+     Days with fewer hours leave space at the right. */
+  body:has(.sched-head) {
+    --tl-fit: 22;
+    --tl-hour: clamp(56px, calc((100vw - 2 * clamp(24px, 3vw, 56px) - 7rem - 0.75rem) / var(--tl-fit)), 80px);
+  }
   .tl-grid {
     --tl-label-w: 7rem;
-    /* Stretch hour columns across the widened page; never shrink below 92px. */
-    width: 100%;
+    width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour) + 0.75rem);
     box-sizing: border-box;
-    min-width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour-min, 92px) + 0.75rem);
+    min-width: 0;
   }
 }
 .tl-row { display: flex; height: 3.25rem; }
@@ -4143,14 +4150,13 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
 }
 @media (min-width: 640px) {
   .tl-track {
-    flex: 1 1 auto;
-    min-width: calc(var(--tl-hours) * var(--tl-hour-min, 92px));
-    /* 100% here is the track, not the whole grid (which includes the field labels). */
-    background-size: calc(100% / var(--tl-hours)) 100%;
+    flex: 0 0 calc(var(--tl-hours) * var(--tl-hour));
+    min-width: calc(var(--tl-hours) * var(--tl-hour));
+    background-size: var(--tl-hour) 100%;
   }
   .tl-track--axis {
     display: grid;
-    grid-template-columns: repeat(var(--tl-hours), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--tl-hours), var(--tl-hour));
   }
   .tl-track--axis .tl-hour {
     position: relative;
@@ -4365,6 +4371,13 @@ body.tl-sheet-open { padding-bottom: 70vh; }
 .tl-pill.tl-side-losers.is-final.is-dest-win { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), 0 0 0 2px #fff, 0 0 0 4px #86efac; }
 .tl-pill.tl-side-losers.is-final.is-dest-lose { box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.75), 0 0 0 2px #fff, 0 0 0 4px #fca5a5; }
 .tl-arrows { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 55; pointer-events: none; overflow: visible; }
+.tl-path-arrows { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 20; pointer-events: none; overflow: visible; }
+.tl-path-line { fill: none; stroke-linejoin: miter; stroke-linecap: butt; }
+.tl-path-line--w { stroke: var(--win, #22c55e); }
+.tl-path-line--l { stroke: var(--lose, #ef4444); stroke-dasharray: 5 3; }
+.tl-path-line--if { stroke: #c99a1e; stroke-dasharray: 2 3; }
+.tl-path-line.is-actual { stroke-width: 3.5; opacity: 1; }
+.tl-path-line:not(.is-actual) { stroke-width: 1.5; opacity: 0.55; }
 .tl-arrow { fill: none; stroke-width: 2.25; stroke-linecap: round; }
 .tl-arrow--winner { stroke: #4ade80; }
 .tl-arrow--loser { stroke: #f87171; }

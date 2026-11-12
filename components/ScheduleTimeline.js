@@ -26,6 +26,8 @@ import {
 import { fromScheduleRows, teamGameIds, teamNextGame } from "@/lib/team-games";
 import { teamReachIds } from "@/lib/team-reach";
 import { placeClear, unionRect } from "@/lib/popover-place";
+import { fieldGrid, gridTrack } from "@/lib/mcp/field-grid";
+import { divisionFamily } from "@/lib/team-feed";
 
 // Timeline view of the schedule (JD, 2026-11-09): one lane per field, the
 // day's hours across the top, one panel per day. On phones (width < 640,
@@ -38,7 +40,6 @@ import { placeClear, unionRect } from "@/lib/popover-place";
 // open at a time; Esc or a tap anywhere else closes it. A data refresh
 // keeps it open — the open game is remembered by id, not by position.
 
-const HOUR_PX = 92; // desktop hour-column minimum; columns stretch to fill the page
 const ROW_PX = 52; // phone hour-row height (Path's 32px is too tight for corners + score)
 
 // Championship mark (JD, 2026-11-09: "star can be faint in the background
@@ -751,13 +752,79 @@ function TimelineHelp({ sheet }) {
   );
 }
 
+
+// Desktop Path view: the Timeline grid with only the followed team's
+// played + reachable games shown (same set as the phone Path), and the
+// win / loss / if route drawn over the top. Hidden games leave empty
+// spots; days, fields, hours and card positions stay as in Timeline.
+function PathRoutes({ edges }) {
+  const [paths, setPaths] = useState([]);
+  useLayoutEffect(() => {
+    if (!edges?.length) return undefined;
+    let frame = 0;
+    const mid = (r) => ({ x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 });
+    const draw = () => {
+      frame = 0;
+      const pill = (id) => (id ? document.querySelector(`.path-view .tl-pill[data-game-id="${CSS.escape(String(id))}"]`) : null);
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      };
+      const out = [];
+      for (const e of edges) {
+        const aEl = pill(e.from);
+        const bEl = pill(e.to);
+        if (!aEl || !bEl) continue;
+        const a = rect(aEl);
+        const b = rect(bEl);
+        const ac = mid(a);
+        const bc = mid(b);
+        let d;
+        if (Math.abs(ac.y - bc.y) < 10) {
+          const rightward = ac.x <= bc.x;
+          const s = { x: rightward ? a.right : a.left, y: ac.y };
+          const t = { x: rightward ? b.left : b.right, y: bc.y };
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        } else {
+          const down = ac.y < bc.y;
+          const s = { x: ac.x, y: down ? a.bottom : a.top };
+          const t = { x: bc.x, y: down ? b.top : b.bottom };
+          const midY = (s.y + t.y) / 2;
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${s.x.toFixed(1)},${midY.toFixed(1)} L${t.x.toFixed(1)},${midY.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        }
+        out.push({ key: `${e.from}>${e.to}:${e.kind}`, kind: e.kind, actual: e.actual, d });
+      }
+      setPaths(out);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [edges]);
+  if (!paths.length) return null;
+  return (
+    <svg className="tl-path-arrows" aria-hidden="true" focusable="false">
+      {paths.map((p) => (
+        <path key={p.key} d={p.d} className={`tl-path-line tl-path-line--${p.kind}${p.actual ? " is-actual" : ""}`} />
+      ))}
+    </svg>
+  );
+}
+
 // Phones get the bottom sheet: narrow screens, plus touch phones held sideways.
 export const PHONE_SHEET_QUERY = "(max-width: 639px), (pointer: coarse) and (max-height: 500px)";
 // Vertical grid on phones only, same 640px split as the Path view (JD:
 // "Phone vertical of course."). Desktop stays the horizontal lanes.
 export const PHONE_VERTICAL_QUERY = "(max-width: 639px)";
 
-export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null }) {
+export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug, team = null, pathMode = false, divisions = [] }) {
   const { days, unplaced, fields } = useMemo(() => buildTimeline(rows, timeZone), [rows, timeZone]);
   const legend = useMemo(() => divisionLegendGroups(rows), [rows]);
   const [openId, setOpenId] = useState(null);
@@ -775,6 +842,34 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   // Every game they could still play from there (win or lose their way in):
   // lit with a dashed ring until their name is on it.
   const could = useMemo(() => teamReachIds(rows, team, nextId), [rows, team, nextId]);
+  // Path mode hides every game the followed team is not in and cannot
+  // reach — the same played + reach set the phone Path already shows.
+  const pathTrack = useMemo(() => {
+    if (!pathMode || !team?.name) return null;
+    const family = divisionFamily(divisions, team.divisionId) ?? new Set([team.divisionId]);
+    const { index } = fieldGrid(rows, timeZone, new Date(), { siteUrl: "", slug: slug ?? "" });
+    const tr = gridTrack(rows, team.name, family, null, index);
+    const idOf = new Map([...index.entries()].map(([id, i]) => [i, id]));
+    const showIds = new Set();
+    for (const i of [...tr.played, ...tr.reach]) {
+      const id = idOf.get(i);
+      if (id != null) showIds.add(id);
+    }
+    const seen = {};
+    const edges = [];
+    const push = (e, actual) => {
+      const from = idOf.get(e[0]);
+      const to = idOf.get(e[1]);
+      const k = `${from}>${to}:${e[2]}`;
+      if (from == null || to == null || seen[k]) return;
+      seen[k] = true;
+      edges.push({ from, to, kind: e[2], actual });
+    };
+    for (const e of tr.went) push(e, true);
+    for (const e of tr.edges) push(e, false);
+    return { showIds, edges };
+  }, [pathMode, team, divisions, rows, timeZone, slug]);
+  const pathVisible = (id) => !pathMode || !pathTrack || pathTrack.showIds.has(id);
   const targets = useMemo(() => flowTargets(rows), [rows]);
   const dest = openId ? targets.get(openId) ?? null : null;
   // Where the open game's teams came from: every game whose winner or loser
@@ -931,7 +1026,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   };
 
   return (
-    <div className="tl">
+    <div className={pathMode ? "tl tl--path" : "tl"}>
       <div className="tl-head" ref={headRef}>
         <div className="tl-legend" role="list" aria-label="Divisions">
           {legend.map((g, gi) => (
@@ -1046,7 +1141,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                 </span>
               </header>
               <div className="tl-scroll">
-                <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour-min": `${HOUR_PX}px` }}>
+                <div className="tl-grid" style={{ "--tl-hours": day.hours.length }}>
                   <div className="tl-row tl-row--axis">
                     <div className="tl-field tl-field--corner">{zoneShort}</div>
                     <div className="tl-track tl-track--axis">
@@ -1061,7 +1156,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                     <div key={lane.field} className="tl-row">
                       <div className="tl-field">{lane.field}</div>
                       <div className="tl-track">
-                        {lane.games.map((g) => (
+                        {lane.games.filter((g) => pathVisible(g.id)).map((g) => (
                           <span key={g.id} className="tl-slot">
                             <Pill
                               game={g}
@@ -1095,6 +1190,8 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
             </section>
           ))
         : null}
+
+      {pathMode && pathTrack?.edges?.length ? <PathRoutes edges={pathTrack.edges} /> : null}
 
       {openId && anchor ? (
         <FlowArrows fromEl={anchor} winnerId={dest?.winner ?? null} loserId={dest?.loser ?? null} feeders={feeders} labels={arrowLabels} />
