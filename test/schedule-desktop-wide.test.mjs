@@ -17,8 +17,11 @@ test("desktop schedule loosens the page cap and keeps comfortable side padding",
   assert.match(css, /\.site-main \{[^}]*padding: 1\.5rem 1rem;/s);
 });
 
-test("desktop Timeline hour columns are equal and sized so ~22 fit across", () => {
-  assert.match(css, /--tl-fit: 22/);
+test("desktop Timeline hour columns are equal and sized so 23 fit across", () => {
+  assert.match(css, /--tl-fit: 23/);
+  assert.match(css, /--tl-label-w: 4\.75rem/);
+  assert.match(tlSrc, /dayPairs/);
+  assert.match(css, /\.tl-day-split/);
   assert.match(css, /background-size: var\(--tl-hour\) 100%/);
   assert.match(css, /\.tl-track--axis \{[^}]*grid-template-columns: repeat\(var\(--tl-hours\), var\(--tl-hour\)\)/s);
   assert.match(css, /\.tl-hour \{[^}]*justify-content: center/s);
@@ -173,16 +176,43 @@ async function pickTeam(page, name) {
 
 async function boardLayout(page) {
   return page.evaluate(() => {
-    const days = [...document.querySelectorAll(".tl-day")].map((day) => {
-      const title = (day.querySelector(".tl-day__title")?.textContent || "").trim();
-      const scroll = day.querySelector(".tl-scroll");
-      const field = day.querySelector(".tl-field");
-      const hours = [...day.querySelectorAll(".tl-hour")].map((el) => {
+    const rows = [...document.querySelectorAll(".tl-day--pair, .tl-day")].filter((el, i, all) => {
+      return el.classList.contains("tl-day--pair") || !el.closest(".tl-vboard");
+    });
+    // Unique pair sections (class tl-day tl-day--pair).
+    const seen = new Set();
+    const sections = [];
+    for (const el of document.querySelectorAll(".tl-day")) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      sections.push(el);
+    }
+    const fieldSets = sections.map((sec) => {
+      const fields = [...sec.querySelectorAll(".tl-row:not(.tl-row--axis) > .tl-field")].map((el) => el.textContent.trim());
+      const b = sec.querySelector(".tl-scroll");
+      return {
+        fields,
+        fieldW: sec.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0,
+        overflowX: b ? Math.max(0, b.scrollWidth - b.clientWidth) : 0,
+        y: Math.round(sec.getBoundingClientRect().y),
+        titles: [...sec.querySelectorAll(".tl-day__title")].map((t) => t.textContent.trim()),
+      };
+    });
+    const days = [...document.querySelectorAll(".tl-day__span[data-day], .tl-day:not(.tl-day--pair)")].map((span) => {
+      const sec = span.closest(".tl-day");
+      const key = span.getAttribute("data-day");
+      const title = (span.querySelector(".tl-day__title")?.textContent || span.querySelector(".tl-day__title")?.textContent || span.textContent || "").trim();
+      const hourEls = key
+        ? [...sec.querySelectorAll(`.tl-track--axis[data-day="${CSS.escape(key)}"] .tl-hour`)]
+        : [...sec.querySelectorAll(".tl-hour")];
+      const hours = hourEls.map((el) => {
         const b = el.getBoundingClientRect();
         return { text: el.textContent.trim(), x: b.x, y: b.y, w: b.width };
       });
-      const fields = [...day.querySelectorAll(".tl-field:not(.tl-field--corner)")].map((el) => el.textContent.trim());
-      const pills = [...day.querySelectorAll("button.tl-pill")].map((el) => {
+      const pills = (key
+        ? [...sec.querySelectorAll(`.tl-track[data-day="${CSS.escape(key)}"] button.tl-pill`)]
+        : [...sec.querySelectorAll("button.tl-pill")]
+      ).map((el) => {
         const b = el.getBoundingClientRect();
         return {
           id: el.getAttribute("data-game-id"),
@@ -194,19 +224,33 @@ async function boardLayout(page) {
         };
       });
       const hourW = hours[0]?.w ?? 0;
-      const avail = (scroll?.clientWidth ?? 0) - (field?.getBoundingClientRect().width ?? 0);
       return {
-        title, fields, hours, pills, hourW,
-        fit: hourW > 0 ? Math.floor((avail + 0.5) / hourW) : 0,
-        nHours: hours.length,
+        title: (span.querySelector(".tl-day__title")?.textContent || title).trim(),
+        key,
+        x: Math.round(span.getBoundingClientRect().x),
+        y: Math.round(span.getBoundingClientRect().y),
+        hours, pills, hourW, nHours: hours.length,
       };
     });
-    const lines = document.querySelectorAll(".tl-path-line").length;
-    return { days, lines };
+    const scroll = document.querySelector(".tl-scroll");
+    const field = document.querySelector(".tl-field");
+    const hourW = days[0]?.hourW ?? 0;
+    const avail = (scroll?.clientWidth ?? 0) - (field?.getBoundingClientRect().width ?? 0);
+    const lines = [...document.querySelectorAll(".tl-path-line")].map((el) => el.getAttribute("d") || "");
+    return {
+      days,
+      fieldSets,
+      fieldW: fieldSets[0]?.fieldW ?? 0,
+      overflowX: Math.max(0, ...fieldSets.map((f) => f.overflowX)),
+      hourW,
+      fit: hourW > 0 ? Math.floor((avail + 0.5) / hourW) : 0,
+      lines: lines.length,
+      linePaths: lines,
+    };
   });
 }
 
-test("desktop Timeline and Path share equal hour columns and card positions at 1440", { skip }, async () => {
+test("desktop Timeline and Path share a 23-column two-day row grid at 1440", { skip }, async () => {
   const browser = await webkit.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   try {
@@ -216,13 +260,29 @@ test("desktop Timeline and Path share equal hour columns and card positions at 1
     await page.locator(".tl-grid").first().waitFor({ timeout: 20000 });
     await page.waitForTimeout(300);
     const tl = await boardLayout(page);
-    assert.ok(tl.days.length >= 1, "Timeline days rendered");
-    const hourW = tl.days[0].hourW;
-    assert.ok(hourW >= 54 && hourW <= 80, "hour width in the 20-25-column range: " + hourW);
-    for (const d of tl.days) {
-      assert.ok(d.hours.length && d.hours.every((h) => Math.abs(h.w - hourW) <= 1), d.title + " uses the same hour width");
+    assert.ok(tl.days.length >= 2, "Timeline days rendered");
+    const hourW = tl.hourW;
+    assert.ok(hourW >= 48 && hourW <= 80, "hour width: " + hourW);
+    assert.ok(tl.days.every((d) => d.hours.every((h) => Math.abs(h.w - hourW) <= 1)), "every day uses the same hour width");
+    assert.ok(tl.fit >= 22 && tl.fit <= 24, "23 hour columns fit across: " + tl.fit);
+    assert.ok(tl.fieldW > 0 && tl.fieldW < 112, "field column is tighter than 7rem: " + tl.fieldW);
+    assert.ok(tl.overflowX <= 1, "nothing scrolls sideways at 1440: overflow " + tl.overflowX);
+    const names = tl.days.map((d) => d.title);
+    const thu = tl.days.find((d) => /Thu/i.test(d.title));
+    const fri = tl.days.find((d) => /Fri/i.test(d.title));
+    const sat = tl.days.find((d) => /Sat/i.test(d.title));
+    const sun = tl.days.find((d) => /Sun/i.test(d.title));
+    assert.ok(thu && fri && Math.abs(thu.y - fri.y) < 8, "Thursday and Friday share a row");
+    assert.ok(sat && sun && Math.abs(sat.y - sun.y) < 8, "Saturday and Sunday share a row");
+    assert.ok(fri.x > thu.x && sun.x > sat.x, "second day in each row sits to the right");
+    assert.ok(sat.y > thu.y + 40, "Saturday/Sunday sit on the second row");
+    const thuFri = (thu?.nHours ?? 0) + (fri?.nHours ?? 0);
+    const satSun = (sat?.nHours ?? 0) + (sun?.nHours ?? 0);
+    assert.ok(thuFri <= 23 && satSun <= 23, "row hour counts: TH+FR=" + thuFri + " SA+SU=" + satSun);
+    for (const set of tl.fieldSets) {
+      const uniq = new Set(set.fields);
+      assert.equal(set.fields.length, uniq.size, "field labels appear once per row, not per day: " + set.fields.join(","));
     }
-    assert.ok(tl.days[0].fit >= 20 && tl.days[0].fit <= 25, "20-25 hour columns fit across: " + tl.days[0].fit);
 
     await pickTeam(page, "208 Mafia") || await pickFirstTeam(page);
     await page.waitForTimeout(200);
@@ -234,25 +294,29 @@ test("desktop Timeline and Path share equal hour columns and card positions at 1
     const path = await boardLayout(page);
     assert.ok(path.days.length === tlTeam.days.length, "Path has the same days as Timeline");
     assert.ok(path.lines > 0, "Path overlays win/loss lines");
-    const pathHour = path.days[0].hourW;
-    assert.ok(Math.abs(pathHour - hourW) <= 1, "Path uses the Timeline hour width");
-    for (let i = 0; i < path.days.length; i++) {
-      const a = tlTeam.days[i];
-      const b = path.days[i];
-      assert.equal(b.title, a.title);
-      assert.deepEqual(b.fields, a.fields);
-      assert.equal(b.nHours, a.nHours);
-      assert.ok(b.hours.every((h) => Math.abs(h.w - pathHour) <= 1), b.title + " Path hours are equal");
-      const tlById = new Map(a.pills.map((p) => [p.id, p]));
-      assert.ok(b.pills.length <= a.pills.length, b.title + " never adds games");
-      if (a.pills.length) assert.ok(b.pills.length < a.pills.length, b.title + " hides games the team cannot reach");
-      for (const p of b.pills) {
-        const q = tlById.get(p.id);
-        assert.ok(q, "Path game " + p.id + " exists on Timeline");
-        assert.ok(Math.abs(p.x - q.x) <= 1 && Math.abs(p.y - q.y) <= 1, "Path card position matches Timeline for " + p.text);
-        assert.ok(Math.abs(p.w - q.w) <= 1 && Math.abs(p.h - q.h) <= 1, "Path card size matches Timeline for " + p.text);
-      }
+    assert.ok(Math.abs(path.hourW - hourW) <= 1, "Path uses the Timeline hour width");
+    assert.ok(path.overflowX <= 1, "Path does not scroll sideways at 1440");
+    const tlById = new Map(tlTeam.days.flatMap((d) => d.pills).map((p) => [p.id, p]));
+    const pathPills = path.days.flatMap((d) => d.pills);
+    const tlPills = tlTeam.days.flatMap((d) => d.pills);
+    assert.ok(pathPills.length && pathPills.length < tlPills.length, "Path hides games the team cannot reach");
+    for (const p of pathPills) {
+      const q = tlById.get(p.id);
+      assert.ok(q, "Path game " + p.id + " exists on Timeline");
+      assert.ok(Math.abs(p.x - q.x) <= 1 && Math.abs(p.y - q.y) <= 1, "Path card position matches Timeline for " + p.text);
+      assert.ok(Math.abs(p.w - q.w) <= 1 && Math.abs(p.h - q.h) <= 1, "Path card size matches Timeline for " + p.text);
     }
+    const pathThu = path.days.find((d) => /Thu/i.test(d.title));
+    const pathFri = path.days.find((d) => /Fri/i.test(d.title));
+    assert.ok(pathThu && pathFri && Math.abs(pathThu.y - pathFri.y) < 8, "Path Thursday and Friday share a row");
+    const across = path.linePaths.filter((d) => {
+      const nums = [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => ({ x: +m[1], y: +m[2] }));
+      if (nums.length < 2) return false;
+      const dx = Math.abs(nums[nums.length - 1].x - nums[0].x);
+      const dy = Math.abs(nums[nums.length - 1].y - nums[0].y);
+      return dx > 80 && dx > dy;
+    });
+    assert.ok(across.length > 0, "Path arrows run left-to-right from Thursday into Friday");
   } finally {
     await page.close();
     await browser.close();

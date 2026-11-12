@@ -780,11 +780,21 @@ function PathRoutes({ edges }) {
         const ac = mid(a);
         const bc = mid(b);
         let d;
-        if (Math.abs(ac.y - bc.y) < 10) {
+        const sameRow = Math.abs(ac.y - bc.y) < 16;
+        const sideways = Math.abs(ac.x - bc.x) > 24;
+        if (sameRow) {
+          // Same field row: a straight line, so Thursday runs into Friday.
           const rightward = ac.x <= bc.x;
           const s = { x: rightward ? a.right : a.left, y: ac.y };
           const t = { x: rightward ? b.left : b.right, y: bc.y };
           d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+        } else if (sideways) {
+          // Cross-day, different field: go out the side, then along the row, then in.
+          const rightward = ac.x <= bc.x;
+          const s = { x: rightward ? a.right : a.left, y: ac.y };
+          const t = { x: rightward ? b.left : b.right, y: bc.y };
+          const midX = (s.x + t.x) / 2;
+          d = `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${midX.toFixed(1)},${s.y.toFixed(1)} L${midX.toFixed(1)},${t.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
         } else {
           const down = ac.y < bc.y;
           const s = { x: ac.x, y: down ? a.bottom : a.top };
@@ -1025,6 +1035,9 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     reveal(el, targets.get(id), feedersOf(id));
   };
 
+  const dayPairs = [];
+  for (let i = 0; i < days.length; i += 2) dayPairs.push(days.slice(i, i + 2));
+
   return (
     <div className={pathMode ? "tl tl--path" : "tl"}>
       <div className="tl-head" ref={headRef}>
@@ -1132,63 +1145,93 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
       ) : null}
 
       {!vertical
-        ? days.map((day) => (
-            <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
-              <header className="tl-day__head">
-                <h2 className="tl-day__title">{day.title}</h2>
-                <span className="tl-day__meta">
-                  {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
-                </span>
-              </header>
-              <div className="tl-scroll">
-                <div className="tl-grid" style={{ "--tl-hours": day.hours.length }}>
-                  <div className="tl-row tl-row--axis">
-                    <div className="tl-field tl-field--corner">{zoneShort}</div>
-                    <div className="tl-track tl-track--axis">
-                      {day.hours.map((h, i) => (
-                        <span key={h} className="tl-hour">
-                          {hourLabel(h)}
+        ? dayPairs.map((pair) => {
+            const totalHours = pair.reduce((n, d) => n + d.hours.length, 0);
+            const split = pair.length > 1;
+            return (
+              <section
+                key={pair.map((d) => d.key).join("+")}
+                className="tl-day tl-day--pair"
+                style={{ "--tl-hours": totalHours, ...(split ? {} : { "--tl-split": "0px" }) }}
+                aria-label={pair.map((d) => `${d.title}, ${d.date}`).join("; ")}
+              >
+                <header className="tl-day__head tl-day__head--pair">
+                  <div className="tl-day__head-gutter" />
+                  {pair.map((day, i) => (
+                    <Fragment key={day.key}>
+                      {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                      <div className="tl-day__span" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                        <h2 className="tl-day__title">{day.title}</h2>
+                        <span className="tl-day__meta">
+                          {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
                         </span>
+                      </div>
+                    </Fragment>
+                  ))}
+                </header>
+                <div className="tl-scroll">
+                  <div className="tl-grid">
+                    <div className="tl-row tl-row--axis">
+                      <div className="tl-field tl-field--corner">{zoneShort}</div>
+                      {pair.map((day, i) => (
+                        <Fragment key={day.key}>
+                          {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                          <div className="tl-track tl-track--axis" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                            {day.hours.map((h) => (
+                              <span key={h} className="tl-hour">
+                                {hourLabel(h)}
+                              </span>
+                            ))}
+                          </div>
+                        </Fragment>
                       ))}
                     </div>
-                  </div>
-                  {day.lanes.map((lane) => (
-                    <div key={lane.field} className="tl-row">
-                      <div className="tl-field">{lane.field}</div>
-                      <div className="tl-track">
-                        {lane.games.filter((g) => pathVisible(g.id)).map((g) => (
-                          <span key={g.id} className="tl-slot">
-                            <Pill
-                              game={g}
-                              mark={markOf(g.id)}
-                              open={openId === g.id}
-                              onToggle={toggle}
-                              pillRef={(el) => {
-                                if (el) pills.current.set(g.id, el);
-                                else pills.current.delete(g.id);
-                              }}
-                            />
-                            {openId === g.id ? (
-                              <Details
-                                game={g}
-                                slug={slug}
-                                sheet={sheet}
-                                anchor={anchor}
-                                avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
-                                onClose={() => close(true)}
-                                go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
-                                where={whereNext(g)}
-                              />
-                            ) : null}
-                          </span>
-                        ))}
+                    {fields.map((field) => (
+                      <div key={field} className="tl-row">
+                        <div className="tl-field">{field}</div>
+                        {pair.map((day, i) => {
+                          const lane = day.lanes.find((l) => l.field === field) ?? { field, games: [] };
+                          return (
+                            <Fragment key={day.key}>
+                              {i > 0 ? <div className="tl-day-split" aria-hidden="true" /> : null}
+                              <div className="tl-track" data-day={day.key} style={{ "--tl-hours": day.hours.length }}>
+                                {lane.games.filter((g) => pathVisible(g.id)).map((g) => (
+                                  <span key={g.id} className="tl-slot">
+                                    <Pill
+                                      game={g}
+                                      mark={markOf(g.id)}
+                                      open={openId === g.id}
+                                      onToggle={toggle}
+                                      pillRef={(el) => {
+                                        if (el) pills.current.set(g.id, el);
+                                        else pills.current.delete(g.id);
+                                      }}
+                                    />
+                                    {openId === g.id ? (
+                                      <Details
+                                        game={g}
+                                        slug={slug}
+                                        sheet={sheet}
+                                        anchor={anchor}
+                                        avoid={[dest?.winner, dest?.loser, ...feeders.map((f) => f.id)].filter(Boolean).join(" ")}
+                                        onClose={() => close(true)}
+                                        go={{ idOf: (title) => gameIdByTitle(byNumber, g.divisionId, title), open: openGame }}
+                                        where={whereNext(g)}
+                                      />
+                                    ) : null}
+                                  </span>
+                                ))}
+                              </div>
+                            </Fragment>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </section>
-          ))
+              </section>
+            );
+          })
         : null}
 
       {pathMode && pathTrack?.edges?.length ? <PathRoutes edges={pathTrack.edges} /> : null}

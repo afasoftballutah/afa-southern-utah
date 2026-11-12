@@ -4111,20 +4111,46 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
   padding-right: 0.75rem;
 }
 @media (min-width: 640px) {
-  /* Equal hour columns, narrow enough that ~22 fit across 1440–1920
-     (JD: "20-25 columns across"). 100vw is used because a % inside a
-     custom property will not resolve against .tl-scroll's width.
-     Days with fewer hours leave space at the right. */
+  /* Equal hour columns, 23 across 1440–1920, with a tighter field-label
+     column (JD: TH+FR on one line, SA+SU on the second). 100vw is used
+     because a % inside a custom property will not resolve against the
+     scroll pane. A 2px day divider is included in the budget. */
   body:has(.sched-head) {
-    --tl-fit: 22;
-    --tl-hour: clamp(56px, calc((100vw - 2 * clamp(24px, 3vw, 56px) - 7rem - 0.75rem) / var(--tl-fit)), 80px);
+    --tl-fit: 23;
+    --tl-label-w: 4.75rem;
+    --tl-split: 2px;
+    --tl-hour: clamp(48px, calc((100vw - 2 * clamp(24px, 3vw, 56px) - var(--tl-label-w) - var(--tl-split) - 0.75rem) / var(--tl-fit)), 80px);
   }
   .tl-grid {
-    --tl-label-w: 7rem;
-    width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour) + 0.75rem);
+    --tl-label-w: 4.75rem;
+    width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour) + var(--tl-split, 0px) + 0.75rem);
     box-sizing: border-box;
     min-width: 0;
   }
+  .tl-day__head--pair {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    padding: 0 0.75rem 0.5rem 0;
+  }
+  .tl-day__head-gutter { flex: 0 0 var(--tl-label-w); }
+  .tl-day__span {
+    flex: 0 0 calc(var(--tl-hours) * var(--tl-hour));
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+    padding-left: 0.15rem;
+    box-sizing: border-box;
+  }
+  .tl-day-split {
+    flex: 0 0 var(--tl-split);
+    width: var(--tl-split);
+    align-self: stretch;
+    background: var(--tl-ink);
+    opacity: 0.22;
+  }
+  .tl-day__head--pair .tl-day-split { align-self: stretch; min-height: 1.25rem; }
 }
 .tl-row { display: flex; height: 3.25rem; }
 .tl-row--axis { height: 1.75rem; }
@@ -4149,6 +4175,10 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
   font-size: 0.6875rem; font-weight: 500; color: var(--tl-label); white-space: nowrap;
 }
 @media (min-width: 640px) {
+  .tl-field {
+    padding: 0 0.35rem 0 0.5rem;
+    font-size: 0.75rem;
+  }
   .tl-track {
     flex: 0 0 calc(var(--tl-hours) * var(--tl-hour));
     min-width: calc(var(--tl-hours) * var(--tl-hour));

@@ -391,13 +391,13 @@ test("timeline is vertical on phones only; desktop keeps the horizontal lanes", 
   assert.match(src, /top: \(game\.offset \/ 60\) \* ROW_PX/);
   assert.match(src, /"--tl-hour": `\$\{ROW_PX\}px`/, "phone rows use ROW_PX, not the desktop hour width");
   assert.match(src, /const ROW_PX = 52/);
-  // Desktop stays horizontal; equal hour columns are sized so ~22 fit across.
+  // Desktop stays horizontal; equal hour columns are sized so 23 fit across.
   assert.match(src, /className="tl-row tl-row--axis"/);
   assert.match(src, /className="tl-grid"/);
   assert.match(src, /className="tl-field tl-field--corner"/);
   assert.doesNotMatch(src, /HOUR_PX/);
   assert.match(src, /100% \* \(\$\{game\.offset\} \/ 60\) \/ var\(--tl-hours\)/);
-  assert.match(css, /--tl-fit: 22/);
+  assert.match(css, /--tl-fit: 23/);
   assert.match(css, /grid-template-columns: repeat\(var\(--tl-hours\), var\(--tl-hour\)\)/);
   assert.match(css, /\.tl-grid \{/);
   assert.match(css, /\.tl-row \{ display: flex; height: 3\.25rem/);
