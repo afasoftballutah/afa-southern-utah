@@ -38,7 +38,7 @@ import { placeClear, unionRect } from "@/lib/popover-place";
 // open at a time; Esc or a tap anywhere else closes it. A data refresh
 // keeps it open — the open game is remembered by id, not by position.
 
-const HOUR_PX = 92; // desktop hour-column width, unchanged
+const HOUR_PX = 92; // desktop hour-column minimum; columns stretch to fill the page
 const ROW_PX = 52; // phone hour-row height (Path's 32px is too tight for corners + score)
 
 // Championship mark (JD, 2026-11-09: "star can be faint in the background
@@ -119,8 +119,8 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
               width: `calc(100% - ${PILL_GAP_V * 2}px)`,
             }
           : {
-              left: (game.offset / 60) * HOUR_PX + PILL_GAP_H,
-              width: (game.length / 60) * HOUR_PX - PILL_GAP_H * 2,
+              left: `calc(100% * (${game.offset} / 60) / var(--tl-hours) + ${PILL_GAP_H}px)`,
+              width: `calc(100% * (${game.length} / 60) / var(--tl-hours) - ${PILL_GAP_H * 2}px)`,
             }
       }
       aria-expanded={open}
@@ -1046,12 +1046,12 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
                 </span>
               </header>
               <div className="tl-scroll">
-                <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour": `${HOUR_PX}px` }}>
+                <div className="tl-grid" style={{ "--tl-hours": day.hours.length, "--tl-hour-min": `${HOUR_PX}px` }}>
                   <div className="tl-row tl-row--axis">
                     <div className="tl-field tl-field--corner">{zoneShort}</div>
                     <div className="tl-track tl-track--axis">
                       {day.hours.map((h, i) => (
-                        <span key={h} className="tl-hour" style={{ left: i * HOUR_PX, width: HOUR_PX }}>
+                        <span key={h} className="tl-hour">
                           {hourLabel(h)}
                         </span>
                       ))}

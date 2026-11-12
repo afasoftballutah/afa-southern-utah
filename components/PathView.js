@@ -69,8 +69,11 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
     const shadow = rootRef.current;
     const { gridEl } = gridRunner();
     let vertical = null;
+    let lastW = 0;
     function draw() {
-      vertical = (host.clientWidth || window.innerWidth) < 640;
+      const w = host.clientWidth || window.innerWidth;
+      vertical = w < 640;
+      lastW = w;
       shadow.querySelector(".pv")?.remove();
       const wrap = document.createElement("div");
       wrap.className = "pv";
@@ -80,9 +83,11 @@ export default function PathView({ rows, timeZone, zoneShort = "", slug, team = 
       shadow.appendChild(wrap);
     }
     draw();
-    // Phone ↔ desktop orientation when the width crosses the breakpoint.
+    // Phone ↔ desktop orientation, and desktop width changes so hour
+    // columns can stretch to the new size.
     const ro = new ResizeObserver(() => {
-      if ((host.clientWidth || window.innerWidth) < 640 !== vertical) draw();
+      const w = host.clientWidth || window.innerWidth;
+      if (w < 640 !== vertical || w !== lastW) draw();
     });
     ro.observe(host);
     return () => ro.disconnect();

@@ -4110,7 +4110,15 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
   width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour) + 0.75rem);
   padding-right: 0.75rem;
 }
-@media (min-width: 640px) { .tl-grid { --tl-label-w: 7rem; } }
+@media (min-width: 640px) {
+  .tl-grid {
+    --tl-label-w: 7rem;
+    /* Stretch hour columns across the widened page; never shrink below 92px. */
+    width: 100%;
+    box-sizing: border-box;
+    min-width: calc(var(--tl-label-w) + var(--tl-hours) * var(--tl-hour-min, 92px) + 0.75rem);
+  }
+}
 .tl-row { display: flex; height: 3.25rem; }
 .tl-row--axis { height: 1.75rem; }
 .tl-field {
@@ -4128,8 +4136,29 @@ button.tl-help__btn:not(.pill):focus-visible { outline: 2px solid var(--afa-blue
 }
 .tl-track--axis { border-top: 0; background-image: none; }
 .tl-hour {
-  position: absolute; bottom: 0.35rem; text-align: center; /* centred over its hour, like the G# in the pills */
+  position: absolute; bottom: 0.35rem; left: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  box-sizing: border-box; text-align: center; /* centred over its hour, like the G# in the pills */
   font-size: 0.6875rem; font-weight: 500; color: var(--tl-label); white-space: nowrap;
+}
+@media (min-width: 640px) {
+  .tl-track {
+    flex: 1 1 auto;
+    min-width: calc(var(--tl-hours) * var(--tl-hour-min, 92px));
+    /* 100% here is the track, not the whole grid (which includes the field labels). */
+    background-size: calc(100% / var(--tl-hours)) 100%;
+  }
+  .tl-track--axis {
+    display: grid;
+    grid-template-columns: repeat(var(--tl-hours), minmax(0, 1fr));
+  }
+  .tl-track--axis .tl-hour {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    height: 100%;
+  }
 }
 
 /* Phone-only vertical board (JD 2026-11-11: "Phone vertical of course."):
@@ -4457,6 +4486,19 @@ button.tl-pop__close {
    Unlayered on purpose: button:not(.pill) { min-height: 44px } is
    unlayered too and would otherwise win over .seg inside @layer. */
 .site-main:has(.sched-head) { padding-top: 0.5rem; padding-bottom: 1rem; }
+/* Desktop schedule: drop the 56rem centered column and use the screen
+   width, with comfortable side padding (JD, 2026-11-12). Phones stay
+   on the existing 1rem gutters and 56rem cap (which does not bind). */
+@media (min-width: 640px) {
+  body:has(.sched-head) { --page-width: none; }
+  body:has(.sched-head) .site-header__inner,
+  body:has(.sched-head) .site-footer__inner,
+  .site-main:has(.sched-head) {
+    max-width: none;
+    width: 100%;
+    padding-inline: clamp(24px, 3vw, 56px);
+  }
+}
 .sched-head { margin: 0; }
 .sched-head__title {
   margin: 0;
