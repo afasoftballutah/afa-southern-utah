@@ -1049,8 +1049,17 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     reveal(el, targets.get(id), feedersOf(id));
   };
 
+  // Desktop Path only (JD): if the followed team's played + reachable
+  // games span two days or fewer, show just those days side by side on
+  // one row so win/loss lines can run left to right (e.g. Fri+Sat).
+  // More than two days, or Timeline, keep the full Thu+Fri / Sat+Sun grid.
+  // The phone vertical board still uses `days` below and is unchanged.
+  const pathDays = pathMode && pathTrack
+    ? days.filter((day) => day.lanes.some((lane) => lane.games.some((g) => pathTrack.showIds.has(g.id))))
+    : days;
+  const pairSource = pathMode && pathDays.length > 0 && pathDays.length <= 2 ? pathDays : days;
   const dayPairs = [];
-  for (let i = 0; i < days.length; i += 2) dayPairs.push(days.slice(i, i + 2));
+  for (let i = 0; i < pairSource.length; i += 2) dayPairs.push(pairSource.slice(i, i + 2));
 
   return (
     <div className={pathMode ? "tl tl--path" : "tl"}>

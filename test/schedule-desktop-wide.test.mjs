@@ -52,6 +52,11 @@ test("desktop card feeder and next-game numbers drop W/L and arrows; phones keep
   assert.match(tlSrc, /`→\$\{x\.next\}`/);
 });
 
+test("desktop Path shows only the team's days when they span two or fewer", () => {
+  assert.match(tlSrc, /pathDays.length > 0 && pathDays.length <= 2 \? pathDays : days/);
+  assert.match(tlSrc, /The phone vertical board still uses `days`/);
+});
+
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
 const up = await fetch(BASE, { signal: AbortSignal.timeout(2500) }).then((r) => r.ok, () => false);
@@ -306,10 +311,13 @@ test("desktop Timeline and Path share a 23-column two-day row grid at 1440", { s
     await page.locator(".path-view .tl-grid").first().waitFor({ timeout: 20000 });
     await page.waitForTimeout(400);
     const path = await boardLayout(page);
-    assert.ok(path.days.length === tlTeam.days.length, "Path has the same days as Timeline");
     assert.ok(path.lines > 0, "Path overlays win/loss lines");
     assert.ok(Math.abs(path.hourW - hourW) <= 1, "Path uses the Timeline hour width");
     assert.ok(path.overflowX <= 1, "Path does not scroll sideways at 1440");
+    // 208 Mafia's reachable games are Thu+Fri only: Path drops the empty
+    // Sat+Sun row and keeps those two days on one row. Timeline is unchanged.
+    assert.equal(path.days.length, 2, "Path shows only the team's two days: " + path.days.map((d) => d.title).join(","));
+    assert.ok(tlTeam.days.length >= 4, "Timeline still shows every day");
     const tlById = new Map(tlTeam.days.flatMap((d) => d.pills).map((p) => [p.id, p]));
     const pathPills = path.days.flatMap((d) => d.pills);
     const tlPills = tlTeam.days.flatMap((d) => d.pills);
@@ -331,6 +339,30 @@ test("desktop Timeline and Path share a 23-column two-day row grid at 1440", { s
       return dx > 80 && dx > dy;
     });
     assert.ok(across.length > 0, "Path arrows run left-to-right from Thursday into Friday");
+    assert.ok(!path.days.some((d) => /Sat|Sun/i.test(d.title)), "208 Mafia Path hides unused Saturday/Sunday");
+
+    // A Women's team spans Fri+Sat: those two days sit on one Path row so
+    // the lines run left to right across the divider. Timeline stays as it is.
+    await page.getByRole("button", { name: "Timeline", exact: true }).click();
+    await page.locator(".tl-grid").first().waitFor({ timeout: 20000 });
+    await pickTeam(page, "Gloveworkz");
+    await page.waitForTimeout(200);
+    await page.getByRole("button", { name: "Path view", exact: true }).click();
+    await page.locator(".path-view .tl-grid").first().waitFor({ timeout: 20000 });
+    await page.waitForTimeout(500);
+    const women = await boardLayout(page);
+    const wFri = women.days.find((d) => /Fri/i.test(d.title));
+    const wSat = women.days.find((d) => /Sat/i.test(d.title));
+    assert.equal(women.days.length, 2, "Women's Path shows only Fri+Sat: " + women.days.map((d) => d.title).join(","));
+    assert.ok(wFri && wSat && Math.abs(wFri.y - wSat.y) < 8, "Friday and Saturday share a Path row");
+    assert.ok(wSat.x > wFri.x, "Saturday sits to the right of Friday");
+    const wAcross = women.linePaths.filter((d) => {
+      const nums = [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => ({ x: +m[1], y: +m[2] }));
+      if (nums.length < 2) return false;
+      const a = nums[0], b = nums[nums.length - 1];
+      return a.x < wSat.x && b.x > wSat.x && Math.abs(b.y - a.y) < 16;
+    });
+    assert.ok(wAcross.length > 0, "Fri-to-Sat Path arrows run left-to-right across the divider");
   } finally {
     await page.close();
     await browser.close();
