@@ -4370,6 +4370,16 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-corner-place.is-gold { color: #8a6a10; }
 .tl-corner-place.is-cup { font-style: normal; } /* "dont italicize the cup" */
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
+/* Desktop only: feeder / next-game numbers, no W/L or arrows; win green / lose red. */
+@media (min-width: 640px) {
+  .tl-corner--from-win, .tl-corner--to-win { color: var(--win, #22c55e); }
+  .tl-corner--from-lose, .tl-corner--to-lose { color: var(--lose, #ef4444); }
+  .tl-pill.is-final .tl-corner--from-win,
+  .tl-pill.is-final .tl-corner--to-win { color: var(--win, #22c55e); }
+  .tl-pill.is-final .tl-corner--from-lose,
+  .tl-pill.is-final .tl-corner--to-lose { color: var(--lose, #ef4444); }
+}
+
 /* Gold place on a solid (finished) pill: light gold so it reads. */
 .tl-pill.is-final .tl-corner-place.is-gold { color: #fde68a; }
 /* Winners bold, losers regular (JD, 2026-11-09); finals stay bold. */

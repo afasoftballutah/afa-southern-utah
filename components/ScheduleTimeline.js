@@ -66,13 +66,23 @@ function SoftballMark() {
 }
 
 // A bottom corner: a finishing place is bold italic so it reads as final
-// ("5th", "2nd", 🏆); a next game is plain "→22".
-function Corner({ pos, x, gold }) {
+// ("5th", "2nd", 🏆); a next game is plain "→22" on phones. Desktop drops
+// the arrow and colours the number (green = winner goes, red = loser goes).
+function Corner({ pos, x, gold, numbered = false }) {
   if (!x) return null;
   const chip = x.place ? (
     <span className={`tl-corner-place${gold ? " is-gold" : ""}${x.place === "🏆" ? " is-cup" : ""}`}>{x.place}</span>
   ) : null;
-  const next = x.next ? (x.place ? `/${x.next}` : `→${x.next}`) : null;
+  const kind = numbered ? (pos === "br" ? "to-win" : pos === "bl" ? "to-lose" : null) : null;
+  const next = x.next ? (
+    numbered ? (
+      <span className={kind ? `tl-corner--${kind}` : undefined}>{x.next}</span>
+    ) : x.place ? (
+      `/${x.next}`
+    ) : (
+      `→${x.next}`
+    )
+  ) : null;
   const plain = !x.place && !x.next ? x.short : null;
   if (!chip && !next && !plain) return null;
   return (
@@ -98,8 +108,8 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
   const flow = game.flow ?? null;
   const number = /^G\d+$/.test(game.label ?? "") ? game.label.slice(1) : (game.label ?? "Game");
   const top = [
-    ["tl", flow?.from?.[0]?.short ?? null],
-    ["tr", flow?.from?.[1]?.short ?? null],
+    ["tl", flow?.from?.[0] ?? null],
+    ["tr", flow?.from?.[1] ?? null],
   ];
   const champ = side === "final" || side === "if";
   const words = flowWords(flow);
@@ -140,15 +150,19 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
       ) : (
         <span className="tl-pill__num">{number}</span>
       )}
-      {top.map(([pos, text]) =>
-        text ? (
-          <span key={pos} className={`tl-corner tl-corner--${pos}`} aria-hidden="true">
+      {top.map(([pos, slot]) => {
+        if (!slot?.short) return null;
+        const feeder = !vertical ? /^([WL])(\d+)$/.exec(slot.short) : null;
+        const text = feeder ? feeder[2] : slot.short;
+        const kind = feeder ? (feeder[1] === "W" ? "from-win" : "from-lose") : null;
+        return (
+          <span key={pos} className={`tl-corner tl-corner--${pos}${kind ? ` tl-corner--${kind}` : ""}`} aria-hidden="true">
             {text}
           </span>
-        ) : null
-      )}
-      <Corner pos="bl" x={flow?.loser} gold={champ} />
-      <Corner pos="br" x={flow?.winner} gold={champ} />
+        );
+      })}
+      <Corner pos="bl" x={flow?.loser} gold={champ} numbered={!vertical} />
+      <Corner pos="br" x={flow?.winner} gold={champ} numbered={!vertical} />
     </button>
   );
 }

@@ -39,6 +39,20 @@ test("desktop Path is the Timeline grid; phone Path geometry is unchanged", () =
   assert.match(gridSrc, /vertical\s*\n\s*\? \{ vertical: true, side: 40, head: 4, hour: show \? 48 : 86/);
 });
 
+test("desktop card feeder and next-game numbers drop W/L and arrows; phones keep them", () => {
+  assert.match(tlSrc, /numbered=\{!vertical\}/);
+  assert.match(tlSrc, /feeder \? feeder\[2\] : slot\.short/);
+  assert.match(tlSrc, /"from-win"/);
+  assert.match(tlSrc, /"from-lose"/);
+  assert.match(tlSrc, /"to-win"/);
+  assert.match(tlSrc, /"to-lose"/);
+  assert.match(css, /\.tl-corner--from-win, \.tl-corner--to-win \{ color: var\(--win, #22c55e\)/);
+  assert.match(css, /\.tl-corner--from-lose, \.tl-corner--to-lose \{ color: var\(--lose, #ef4444\)/);
+  assert.match(tlSrc, /!vertical \? \/\^\(\[WL\]\)/);
+  assert.match(tlSrc, /`→\$\{x\.next\}`/);
+});
+
+
 const BASE = process.env.BASE ?? "http://localhost:3210";
 const up = await fetch(BASE, { signal: AbortSignal.timeout(2500) }).then((r) => r.ok, () => false);
 const skip = up ? false : "no server at " + BASE;
