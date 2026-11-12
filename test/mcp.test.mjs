@@ -543,12 +543,11 @@ test("Path view with a team picked: only its games, every edge a line, sticky he
       const panels = out.all((n) => /\bfg-day\b/.test(n.className) && !/\bfg-days\b/.test(n.className) && !/\bfg-day-/.test(n.className));
       assert.ok(days.length === 1, "wide desktop Path uses the day-panel grid");
       assert.ok(panels.length >= 1 && panels.length <= 4, "days fill a 2x2 in order");
-      assert.ok(pills.every((p) => !p.classList.contains("compact")), "panel pills are not compacted or resized");
       const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);
       const pw = pills.map((p) => dim(p.style.cssText, "width")).filter(Boolean);
       const ph = pills.map((p) => dim(p.style.cssText, "height")).filter(Boolean);
-      assert.ok(pw.length && pw.every((x) => x <= 56), "panel pills stay at the unlit width or narrower");
-      assert.ok(ph.length && ph.every((x) => x === 36), "panel pills use the unlit 36px height");
+      assert.ok(pw.length && pw.every((x) => x === 64), "panel pills keep the original 64px width");
+      assert.ok(ph.length && ph.every((x) => x === 40), "panel pills keep the original 40px height");
     }
     if (width < 640) {
       const dim = (css, k) => Number((css.match(new RegExp(k + ":([\\d.]+)px")) || [])[1]);

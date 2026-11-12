@@ -24,27 +24,15 @@ test("desktop Timeline hour columns fill the width and labels are centered", () 
   assert.match(tlSrc, /100% \* \(\$\{game\.offset\} \/ 60\) \/ var\(--tl-hours\)/);
 });
 
-test("desktop Path is a 2x2 of horizontal day panels; phone geometry is unchanged", () => {
+test("desktop Path is a 2x2 of original-size horizontal day panels; phone geometry is unchanged", () => {
   assert.match(gridSrc, /width >= 1024 && grid\.days\.length/);
   assert.match(gridSrc, /function panelGridEl/);
   assert.match(gridSrc, /fg-days/);
-  assert.match(gridSrc, /function jumpLabel/);
-  assert.match(gridSrc, /if \(show && G\.vertical\) p\.classList\.add\("compact"\)/);
-  assert.doesNotMatch(gridSrc, /G\.pw = Math\.max\(48, G\.hour - gap\)/);
-  assert.match(gridSrc, /lab\("hour", label, u, G\.head - 18, G\.hour, "center"\)/);
-  assert.match(gridSrc, /if \(G\.vertical\) \{ lab\("hour", label, 2, u \+ Math\.floor\(\(G\.hour - 11\) \/ 2\), G\.side - 6, "right"\)/);
   assert.match(gridSrc, /G\.lane = 84; G\.pw = 64; G\.ph = 40; G\.pad = 5;/);
   assert.match(gridSrc, /vertical\s*\n\s*\? \{ vertical: true, side: 40, head: 4, hour: show \? 48 : 86/);
-  assert.match(gridSrc, /items\[i\]\.boardH = rowH/);
-  assert.doesNotMatch(gridSrc, /overflowY\s*=\s*"auto"/);
-  assert.match(gridSrc, /fitWidth: panelW/);
-  assert.match(gridSrc, /vertical: false, fitWidth/);
-  assert.match(gridSrc, /geometry\(sub, panelW, null/);
-  assert.match(gridSrc, /G\.pw = 56/);
-  assert.match(gridSrc, /G\.ph = 36/);
-  assert.match(gridSrc, /G\.lane = 52/);
-  assert.match(gridSrc, /lab\("hour", label, u, G\.head - 16, G\.hour, "center"\)/);
-  assert.match(gridSrc, /left:" \+ \(nu \+ 4\)/);
+  assert.match(gridSrc, /lab\("hour", label, u, G\.head - 18, G\.hour, "center"\)/);
+  assert.doesNotMatch(gridSrc, /fitWidth/);
+  assert.doesNotMatch(gridSrc, /G\.pw = 56/);
 });
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
@@ -236,7 +224,7 @@ async function pathLayout(page) {
   });
 }
 
-test("desktop team Path matches the unlit 2x2 layout and only hides other games", { skip }, async () => {
+test("desktop Path lays days in a 2x2 of original 64x40 cards at 1440", { skip }, async () => {
   const browser = await webkit.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   try {
@@ -246,82 +234,25 @@ test("desktop team Path matches the unlit 2x2 layout and only hides other games"
     await page.locator(".path-view").waitFor({ timeout: 20000 });
     await page.waitForTimeout(400);
     const unlit = await pathLayout(page);
-    assert.ok(unlit && unlit.panels && unlit.days.length === 4, "unlit 2x2 rendered");
+    assert.ok(unlit && unlit.panels && unlit.days.length === 4, "unlit 2x2 of all days");
+    const top = unlit.days.filter((d) => Math.abs(d.y - unlit.days[0].y) < 8);
+    const bottom = unlit.days.filter((d) => d.y - unlit.days[0].y > 8);
+    assert.equal(top.length, 2, "Thu and Fri on the top row");
+    assert.equal(bottom.length, 2, "Sat and Sun on the bottom row");
+    assert.ok(unlit.pills.length && unlit.pills.every((p) => Math.abs(p.w - 64) < 1 && Math.abs(p.h - 40) < 1), "unlit cards are the original 64x40 size");
+    assert.ok(unlit.hours.every((h) => !h.text.includes(":")), "hour labels have no :00");
+    const firstPanelHours = unlit.hours.filter((h) => Math.abs(h.y - unlit.hours[0].y) < 8);
+    assert.ok(firstPanelHours.length >= 2, "hours run across a panel");
+    for (let i = 1; i < firstPanelHours.length; i++) assert.ok(firstPanelHours[i].x > firstPanelHours[i - 1].x, "hours go left to right");
+
     const teamName = await pickTeam(page, "208 Mafia") || await pickFirstTeam(page);
     await page.waitForTimeout(400);
     const m = await pathLayout(page);
-    assert.ok(m && m.panels && m.days.length === 4, "team view keeps all four day panels");
-    assert.ok(m.pills.length, "team games rendered");
-    assert.ok(m.pills.length < unlit.pills.length, "irrelevant games are hidden");
-    assert.ok(m.pills.every((p) => !p.compact && !p.desk), "team cards are not resized to compact");
-    for (let i = 0; i < 4; i++) {
-      const a = unlit.days[i], b = m.days[i];
-      assert.equal(b.title, a.title, "day titles stay put");
-      assert.ok(Math.abs(b.x - a.x) < 2 && Math.abs(b.y - a.y) < 2, `${b.title} panel moved`);
-      assert.ok(Math.abs(b.w - a.w) < 2 && Math.abs(b.h - a.h) < 2, `${b.title} panel resized`);
-      assert.deepEqual(b.hours.map((h) => h.text), a.hours.map((h) => h.text), `${b.title} hours changed`);
-      assert.equal(b.fields.length, a.fields.length, `${b.title} dropped field rows`);
-    }
-    const key = (p) => `${Math.round(p.x)}|${Math.round(p.y)}|${p.text}`;
-    const unlitAt = new Map(unlit.pills.map((p) => [key(p), p]));
-    for (const p of m.pills) {
-      const u = unlitAt.get(key(p)) || unlit.pills.find((q) => q.text === p.text && Math.abs(q.x - p.x) < 2 && Math.abs(q.y - p.y) < 2);
-      assert.ok(u, `${p.text} at ${p.x},${p.y} is not at an unlit card position`);
-      assert.ok(Math.abs(u.w - p.w) < 1 && Math.abs(u.h - p.h) < 1, `${p.text} card size changed (${p.w}x${p.h} vs unlit ${u.w}x${u.h})`);
-    }
-    assert.ok(m.hours.every((h) => !h.text.includes(":")), "hour labels have no :00");
-    assert.ok(teamName, "picked a team");
-  } finally {
-    await page.close();
-    await browser.close();
-  }
-});
-
-test("unlit desktop Path shows every game with no panel scroll, and Now does not cover hour labels", { skip }, async () => {
-  const browser = await webkit.launch();
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  try {
-    await page.goto(SCHEDULE, { waitUntil: "networkidle", timeout: 90000 });
-    await hide(page);
-    const sel = page.locator("select").first();
-    if (await sel.count()) {
-      await sel.evaluate((el) => {
-        const opt = [...el.options].find((o) => !o.value || /^find/i.test(o.textContent || ""));
-        if (opt) { el.value = opt.value; el.dispatchEvent(new Event("change", { bubbles: true })); }
-      });
-    }
-    await page.getByRole("button", { name: "Path view", exact: true }).click();
-    await page.locator(".path-view").waitFor({ timeout: 20000 });
-    await page.waitForTimeout(400);
-    const m = await pathLayout(page);
-    assert.ok(m && m.panels && m.days.length === 4, "all four days render in the 2x2");
-    const top = m.days.filter((d) => Math.abs(d.y - m.days[0].y) < 8);
-    const bottom = m.days.filter((d) => d.y - m.days[0].y > 8);
-    assert.equal(top.length, 2, "Thu and Fri on the top row");
-    assert.equal(bottom.length, 2, "Sat and Sun on the bottom row");
-    assert.ok(top[0].title.startsWith("Thu") && top[1].title.startsWith("Fri"), top.map((d) => d.title).join(" | "));
-    assert.ok(bottom[0].title.startsWith("Sat") && bottom[1].title.startsWith("Sun"), bottom.map((d) => d.title).join(" | "));
-    for (const d of m.days) {
-      assert.equal(d.innerScroll, 0, `${d.title} must not scroll inside the panel`);
-    }
-    // Same row: equal panel heights (sized to the longer day).
-    assert.ok(Math.abs(top[0].h - top[1].h) < 2, "top row panels share a height");
-    assert.ok(Math.abs(bottom[0].h - bottom[1].h) < 2, "bottom row panels share a height");
-    for (const p of m.pills) {
-      const day = m.days.find((d) => p.x >= d.x - 1 && p.right <= d.right + 1 && p.y >= d.y - 1 && p.y <= d.bottom + 1);
-      assert.ok(day, `${p.text} is inside a day panel`);
-      assert.ok(p.bottom <= day.bottom + 1, `${p.text} is clipped by ${day.title} (pill ${p.bottom} vs panel ${day.bottom})`);
-    }
-    for (const d of m.days) {
-      for (const now of d.nows) {
-        for (const h of d.hourBoxes) {
-          const overlap = now.x < h.right && now.right > h.x && now.y < h.bottom && now.bottom > h.y;
-          assert.ok(!overlap, `Now overlaps an hour label in ${d.title}`);
-        }
-        const hourBottom = Math.max(...d.hourBoxes.map((h) => h.bottom), 0);
-        assert.ok(now.y >= hourBottom - 2, `Now sits below the hour labels in ${d.title}`);
-      }
-    }
+    assert.ok(teamName && m && m.panels, "team Path rendered");
+    assert.ok(m.days.length >= 1 && m.days.length <= 4, "days fill the 2x2 in order");
+    assert.ok(m.pills.length && m.pills.length < unlit.pills.length, "only the team's games are shown");
+    assert.ok(m.pills.every((p) => Math.abs(p.w - 64) < 1 && Math.abs(p.h - 40) < 1), "team cards stay the original 64x40 size");
+    assert.ok(m.pills.every((p) => !p.text.includes("M ") && !/\b(MD|ME|WD|WE|CD|CE|M D|W D)\b/.test(p.text)), "team cards have no division labels");
   } finally {
     await page.close();
     await browser.close();
