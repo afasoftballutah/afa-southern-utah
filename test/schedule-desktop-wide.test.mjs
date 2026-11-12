@@ -33,9 +33,8 @@ test("desktop Path is a 2x2 of original-size horizontal day panels; phone geomet
   assert.match(gridSrc, /lab\("hour", label, u, G\.head - 18, G\.hour, "center"\)/);
   assert.doesNotMatch(gridSrc, /fitWidth/);
   assert.doesNotMatch(gridSrc, /G\.pw = 56/);
-  assert.match(gridSrc, /if \(desktop\) \{ G\.lane = 48; G\.gap = 0; G\.lead = 4; G\.tail = 4; \}/);
-  assert.match(gridSrc, /var minHour = G\.pw/);
-  assert.match(gridSrc, /G\.hour = Math\.max\(minHour, fit\)/);
+  assert.match(gridSrc, /if \(desktop\) \{ G\.lane = 48; G\.gap = 0; G\.lead = 4; G\.tail = 4; G\.hour = G\.pw \+ 16; \}/);
+  assert.doesNotMatch(gridSrc, /var minHour = G\.pw/);
 });
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
@@ -254,15 +253,15 @@ test("desktop Path lays days in a 2x2 of original 64x40 cards at 1440", { skip }
     const firstPanelHours = unlit.hours.filter((h) => Math.abs(h.y - unlit.hours[0].y) < 8);
     assert.ok(firstPanelHours.length >= 2, "hours run across a panel");
     for (let i = 1; i < firstPanelHours.length; i++) assert.ok(firstPanelHours[i].x > firstPanelHours[i - 1].x, "hours go left to right");
+    const unlitHour = unlit.days[0].hourBoxes.map((h) => Math.round(h.w))[0];
+    assert.ok(Math.abs(unlitHour - 80) <= 1, "shared unlit hour width is the mobile-matching 80px, got " + unlitHour);
     for (const d of unlit.days) {
       const ws = d.hourBoxes.map((h) => Math.round(h.w));
-      assert.ok(ws.length && ws.every((w) => Math.abs(w - ws[0]) <= 1), d.title + " hours are equal width");
-      assert.ok(ws[0] >= 63 && ws[0] <= 104, d.title + " hour width " + ws[0] + " is between 64 and 104");
+      assert.ok(ws.length && ws.every((w) => Math.abs(w - unlitHour) <= 1), d.title + " uses the same " + unlitHour + "px hour width, got " + ws[0]);
       if (d.lane != null) assert.ok(d.lane >= 44 && d.lane <= 52, d.title + " field rows hug the 40px cards: " + d.lane);
     }
-    // Thursday (7 hours) fits at ~70–104px; busier days stay at the 70px floor so 64px cards do not overlap.
     const thu = unlit.days.find((d) => /^Thu/.test(d.title));
-    assert.ok(thu && thu.overflowX <= 1 && thu.pillsInPanel, "Thursday unlit fits with no horizontal scroll");
+    assert.ok(thu && thu.overflowX <= 1 && thu.pillsInPanel, "Thursday unlit fits at the shared 80px hour width");
 
     const teamName = await pickTeam(page, "208 Mafia") || await pickFirstTeam(page);
     await page.waitForTimeout(400);
@@ -272,11 +271,11 @@ test("desktop Path lays days in a 2x2 of original 64x40 cards at 1440", { skip }
     assert.ok(m.pills.length && m.pills.length < unlit.pills.length, "only the team's games are shown");
     assert.ok(m.pills.every((p) => Math.abs(p.w - 64) < 1 && Math.abs(p.h - 40) < 1), "team cards stay the original 64x40 size");
     assert.ok(m.pills.every((p) => !p.text.includes("M ") && !/\b(MD|ME|WD|WE|CD|CE|M D|W D)\b/.test(p.text)), "team cards have no division labels");
+    const teamHour = m.days[0].hourBoxes.map((h) => Math.round(h.w))[0];
+    assert.ok(Math.abs(teamHour - 80) <= 1, "shared team hour width is the mobile-matching 80px, got " + teamHour);
     for (const d of m.days) {
       const ws = d.hourBoxes.map((h) => Math.round(h.w));
-      assert.ok(ws.length && ws.every((w) => Math.abs(w - ws[0]) <= 1), d.title + " team hours are equal width");
-      assert.ok(ws[0] >= 63 && ws[0] <= 104, d.title + " team hour width " + ws[0] + " is between 64 and 104");
-      assert.ok(d.overflowX <= 1 && d.pillsInPanel, d.title + " team day fits with no horizontal scroll");
+      assert.ok(ws.length && ws.every((w) => Math.abs(w - teamHour) <= 1), d.title + " uses the same " + teamHour + "px hour width, got " + ws[0]);
       if (d.lane != null) assert.ok(d.lane >= 44 && d.lane <= 52, d.title + " team field rows hug the cards: " + d.lane);
     }
   } finally {
