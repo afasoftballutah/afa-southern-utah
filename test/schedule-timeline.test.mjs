@@ -116,6 +116,14 @@ test("nothing in the app polls: no timers or subscriptions in the timeline, tick
   }
 });
 
+test("Timeline and desktop Path scroll once to the current time, not on a timer", () => {
+  const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
+  assert.match(src, /scrolledToNow/);
+  assert.match(src, /window\.scrollTo\(0, Math\.max\(0, y\)\)/);
+  assert.match(src, /scroller\.scrollLeft = Math\.max\(0,/);
+  assert.match(src, /into < 0 \|\| into > day\.hours\.length \* 60/);
+});
+
 test("iPhone: the game card is a sheet fixed to the screen, not inside the scrolling day card", () => {
   const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");

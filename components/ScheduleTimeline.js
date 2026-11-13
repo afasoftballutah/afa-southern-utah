@@ -11,6 +11,7 @@ import {
   divisionTone,
   flowWords,
   hourLabel,
+  localParts,
   gameTitle,
   matchupSide,
   nextStep,
@@ -967,6 +968,52 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  // One-shot: when the tournament is in progress, scroll so the current
+  // time sits near the top (phone) or left (desktop) with one hour of
+  // context. Load / view switch / team change only — no timer, and a
+  // no-op when now is outside the tournament (JD: keep finished hours
+  // at full size and scroll to now).
+  const boardRef = useRef(null);
+  const scrolledToNow = useRef("");
+  useLayoutEffect(() => {
+    const root = boardRef.current;
+    if (!root || !timeZone) return;
+    const isVertical = window.matchMedia(PHONE_VERTICAL_QUERY).matches;
+    if (isVertical !== vertical) return;
+    const nowAt = localParts(new Date().toISOString(), timeZone);
+    if (!nowAt) return;
+    const day = days.find((d) => d.key === nowAt.dayKey);
+    if (!day) return;
+    const into = nowAt.minutes - day.startHour * 60;
+    if (into < 0 || into > day.hours.length * 60) return;
+    const key = `${pathMode ? "path" : "tl"}|${team?.name ?? ""}|${isVertical ? "v" : "h"}|${nowAt.dayKey}`;
+    if (scrolledToNow.current === key) return;
+    if (isVertical) {
+      const section = root.querySelector(`.tl-vboard [data-day="${CSS.escape(nowAt.dayKey)}"]`);
+      const grid = section?.querySelector(".tl-vgrid");
+      if (!grid) return;
+      const head = root.querySelector(".tl-vhead");
+      const headH = head ? head.getBoundingClientRect().height : 0;
+      const y = window.scrollY + grid.getBoundingClientRect().top + (into / 60) * ROW_PX - headH - ROW_PX;
+      window.scrollTo(0, Math.max(0, y));
+    } else {
+      const track = root.querySelector(`.tl-scroll .tl-track[data-day="${CSS.escape(nowAt.dayKey)}"]`);
+      const scroller = track?.closest(".tl-scroll");
+      if (!scroller || !track) return;
+      if (scroller.scrollWidth <= scroller.clientWidth + 1) {
+        scrolledToNow.current = key;
+        return;
+      }
+      const tr = track.getBoundingClientRect();
+      const sr = scroller.getBoundingClientRect();
+      const fieldW = scroller.querySelector(".tl-field")?.getBoundingClientRect().width ?? 0;
+      const hourW = day.hours.length ? tr.width / day.hours.length : 0;
+      const nowX = tr.left + (into / 60) * hourW;
+      scroller.scrollLeft = Math.max(0, scroller.scrollLeft + (nowX - sr.left) - fieldW - hourW);
+    }
+    scrolledToNow.current = key;
+  }, [days, timeZone, vertical, team, pathMode]);
+
   // Same width as the tabs bar above so the key spreads across that
   // row on a phone and stays capped (not stretched) on desktop.
   useLayoutEffect(() => {
@@ -1062,7 +1109,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
   for (let i = 0; i < pairSource.length; i += 2) dayPairs.push(pairSource.slice(i, i + 2));
 
   return (
-    <div className={pathMode ? "tl tl--path" : "tl"}>
+    <div className={pathMode ? "tl tl--path" : "tl"} ref={boardRef}>
       <div className="tl-head" ref={headRef}>
         <div className="tl-legend" role="list" aria-label="Divisions">
           {legend.map((g, gi) => (
@@ -1114,7 +1161,7 @@ export default function ScheduleTimeline({ rows, timeZone, zoneShort = "", slug,
               i % 2 === 0 ? <div key={`tint-${i}`} className="tl-coltint" style={{ "--i": i }} /> : null
             )}
             {days.map((day) => (
-              <section key={day.key} className="tl-day" aria-label={`${day.title}, ${day.date}`}>
+              <section key={day.key} className="tl-day" data-day={day.key} aria-label={`${day.title}, ${day.date}`}>
                 <div className="tl-vday">
                   {day.title} {day.date} · {day.count} game{day.count === 1 ? "" : "s"}
                 </div>

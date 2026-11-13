@@ -328,7 +328,7 @@ test("get_team_path grid: every game on the team's days by field and time; done 
   assert.deepEqual([by.G5.l, by.G5.w], ["Game 8", "Game 7"]);
   assert.equal(g.days[1].now, 11 * 60 + 30 - 11 * 60, "now line: minutes into Sunday's first hour");
   assert.equal(g.days[0].now, undefined);
-  assert.equal(g.days[0].fold, undefined, "Sat 7 PM holds an unscored game: nothing folds");
+  assert.equal(g.days[0].fold, undefined, "finished hours are not folded");
 });
 
 test("get_team_path grid: the team's paths from its next game (even unscored past its time), played games solid", async () => {
@@ -355,7 +355,7 @@ test("get_team_path grid: the team's paths from its next game (even unscored pas
   assert.ok(JSON.stringify(sc).length < 40_000, "small enough to ride in structuredContent");
 });
 
-test("field grid: a game is done only with a final score; only an all-final opening run of hours folds", () => {
+test("field grid: a game is done only with a final score; finished hours stay full size (no fold)", () => {
   const now = new Date(PST(15, 12));
   const row = (h, extra = {}) => ({ id: `r${h}${extra.f ?? ""}`, label: "G1", field: extra.f ?? "H1", divisionId: "d", divisionName: "Coed Rec", scheduledTime: PST(15, h), team1: "A", team2: "B", score1: null, score2: null, status: "pending", ...extra });
   assert.equal(gameState(row(8, { status: "final", isFinal: true, score1: 3, score2: 1 }), now), "final");
@@ -366,11 +366,13 @@ test("field grid: a game is done only with a final score; only an all-final open
   const fin = { status: "final", isFinal: true, score1: 5, score2: 2 };
   const rows = [row(8, fin), row(9, fin), row(10, { ...fin, f: "H2" }), row(10), row(11, fin), row(13)];
   const { grid } = fieldGrid(rows, "America/Los_Angeles", now, { siteUrl: "https://x", slug: "s" });
-  assert.equal(grid.days[0].fold, 2, "8 and 9 AM are all final; 10 AM holds a game with no score");
-  assert.equal(grid.days[0].foldLabel, "8 AM\u201310 AM \u00b7 all final");
+  assert.equal(grid.days[0].fold, undefined, "8 and 9 AM stay full-size hours even when all final");
+  assert.equal(grid.days[0].foldLabel, undefined);
+  assert.equal(grid.days[0].hours, 6, "8 AM through 1 PM remain on the grid");
   assert.equal(grid.days[0].now, 4 * 60);
   const done = fieldGrid([row(8, fin), row(9, fin)], "America/Los_Angeles", now, { siteUrl: "https://x", slug: "s" }).grid;
-  assert.equal(done.days[0].foldLabel, "Sun \u00b7 all final", "a day all scored folds whole");
+  assert.equal(done.days[0].fold, undefined, "a fully scored day is not folded");
+  assert.equal(done.days[0].hours, 2);
 });
 
 test("get_schedule / get_now_next view: ui://afa/games cards by day or now/next; text unchanged", async () => {
@@ -440,7 +442,10 @@ test("grid finishes read just the place, not bold; no legend text for them (JD 2
 test("Path view compact pills: narrower boxes, tiny corner place, score under the number (JD iPhone size)", () => {
   assert.match(GRID_JS, /G\.ph = show \? 32 : 44/);
   assert.match(GRID_JS, /hour: show \? 48 : 86/);
-  assert.match(GRID_JS, /var n = h < x\.fold \|\| h < first \|\| h > last \? 0 : hourW/);
+  assert.match(GRID_JS, /var n = h === nowH \|\| \(h >= first && h <= last\) \? hourW : 0/);
+  assert.doesNotMatch(GRID_JS, /fg-fold|foldLabel|x\.fold/);
+  assert.match(GRID_JS, /box\.querySelector\(\"\.fg-now\"\)/, "Path auto-scrolls to the Now line");
+  assert.doesNotMatch(GRID_JS, /setInterval/);
   assert.match(GRID_JS, /dayPad: show \? 10 : 0/);
   assert.match(GRID_JS, /var minLane = show \? 54 : 46/);
   assert.doesNotMatch(GRID_JS, /var rail = show \? 16 : 0/);
