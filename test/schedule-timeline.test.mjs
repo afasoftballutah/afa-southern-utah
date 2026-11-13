@@ -228,6 +228,13 @@ test("next-game line: day, time without zone, full field name; nothing without b
   assert.match(css, /\.tl-next dd\.tl-next__where--loser \{ color: #dc2626; \}/);
   assert.match(css, /\.tl-next dd\.tl-next__where--winner \{ color: #15803d; \}/);
   assert.match(src, /<dd>\{compactTime\(game\.timeLabel\)\}<\/dd>/, "card Time row drops :00");
+  // JD: current game Time/Field sits under the teams box, above Loser/Winner,
+  // so the two times are not confused (the next-game time is under Winner).
+  const details = src.slice(src.indexOf("function Details("), src.indexOf("function FlowArrows("));
+  const timeAt = details.indexOf('aria-label="Time and field"');
+  const nextAt = details.indexOf('aria-label="Where the teams go"');
+  const matchAt = details.indexOf('aria-label="Matchup"');
+  assert.ok(matchAt >= 0 && timeAt > matchAt && nextAt > timeAt, "Time/Field is directly under the teams box, above Loser/Winner");
 });
 
 test("ticker item: division + game, both sides with scores, winner marked", () => {

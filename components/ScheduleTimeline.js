@@ -335,6 +335,19 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, wh
         </ol>
       </section>
 
+      <section className="tl-sec tl-sec--tight" aria-label="Time and field">
+        <dl className="tl-next">
+          <div>
+            <dt>Time</dt>
+            <dd>{compactTime(game.timeLabel)}</dd>
+          </div>
+          <div className="tl-next__right">
+            <dt>Field</dt>
+            <dd>{game.fieldName}</dd>
+          </div>
+        </dl>
+      </section>
+
       {ifGame || winnerStep || loserStep ? (
         <section className="tl-sec tl-sec--tight" aria-label="Where the teams go">
           <dl className="tl-next">
@@ -357,19 +370,6 @@ function Details({ game, slug, sheet, anchor, avoid = "", onClose, go = null, wh
           ) : null}
         </section>
       ) : null}
-
-      <section className="tl-sec tl-sec--tight" aria-label="Time and field">
-        <dl className="tl-next">
-          <div>
-            <dt>Time</dt>
-            <dd>{compactTime(game.timeLabel)}</dd>
-          </div>
-          <div className="tl-next__right">
-            <dt>Field</dt>
-            <dd>{game.fieldName}</dd>
-          </div>
-        </dl>
-      </section>
 
       {slug && game.divisionId ? (
         <footer className="tl-sec tl-pop__foot">
