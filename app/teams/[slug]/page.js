@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { getTeamPageBySlug } from "@/lib/team-page-data";
+import { getTeamPageBySlug, teamPageParams } from "@/lib/team-page-data";
 import { formatDateRange } from "@/lib/data";
 import { LEAGUE_TZ, gameWhenShort } from "@/lib/bracket/tree";
 import Card from "@/components/ui/Card";
@@ -8,7 +8,10 @@ import MatchupCard from "@/components/ui/MatchupCard";
 import { shortField } from "@/lib/venues";
 import { identityLabel } from "@/lib/teams";
 
-export const revalidate = 30;
+// 24h safety fallback. Score and public-page writes revalidate on demand.
+export const revalidate = 86400;
+
+export const generateStaticParams = teamPageParams;
 
 // In the game's own tournament zone; "2 PM PST" when not league time.
 function whenParts(scheduledTime, timeZone) {

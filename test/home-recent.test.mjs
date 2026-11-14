@@ -254,16 +254,16 @@ test("home page uses result tournaments for Recent Results and completed only fo
 
 test("data.js keeps the finished-only Southern Utah helper for Last Tournament", () => {
   const src = readFileSync(new URL("../lib/data.js", import.meta.url), "utf8");
-  assert.match(src, /export async function getRecentCompletedTournaments/);
-  assert.match(src, /export async function getRecentResultTournaments/);
+  assert.match(src, /function getRecentCompletedTournaments/);
+  assert.match(src, /function getRecentResultTournaments/);
   const completed = src.slice(
-    src.indexOf("export async function getRecentCompletedTournaments"),
-    src.indexOf("export async function getRecentResultTournaments")
+    src.indexOf("function getRecentCompletedTournaments"),
+    src.indexOf("function getRecentResultTournaments")
   );
   assert.match(completed, /\.eq\("region", "southern_utah"\)/);
   assert.match(completed, /isTournamentFinished/);
   const results = src.slice(
-    src.indexOf("export async function getRecentResultTournaments"),
+    src.indexOf("function getRecentResultTournaments"),
     src.indexOf("export async function getLastCompletedTournamentResults")
   );
   assert.doesNotMatch(results, /\.eq\("region"/);
