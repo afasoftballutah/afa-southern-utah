@@ -29,7 +29,7 @@ const CAPTION = {
   Bronze: "#c47a4a",
 };
 
-// 🏆 champion · 🥈 runner-up (finals only)
+// 🏆 champion · 🥈 runner-up (deciding championship game only)
 const MEDAL = { gold: "\u{1F3C6}", silver: "\u{1F948}" };
 
 function Pill({ name, from, seed, score, won, waiting, medal }) {
@@ -94,6 +94,7 @@ export default function MatchupCard({
   score1,
   score2,
   isFinal,
+  championship,
   seeds,
   className = "",
 }) {
@@ -102,21 +103,24 @@ export default function MatchupCard({
   const won2 = isFinal && !tie && score2 > score1;
   const seedOf = (n) => (n && seeds ? seeds[n] ?? null : null);
 
-  // Finals: winner always on top (gold trophy), runner-up below (silver).
-  // Non-finals keep team1/team2 order.
+  // isFinal means the game has a score (status === "final"): show the
+  // score, bold the winner, and put the winner on top.
+  // Trophy / silver medal are only for the deciding championship game
+  // (Home Recent Results, or the one game championshipGameOf picks).
+  const showMedals = Boolean(championship) && (won1 || won2);
   let top = {
     name: team1,
     from: team1From,
     score: score1,
     won: won1,
-    medal: won1 ? "gold" : won2 ? "silver" : null,
+    medal: showMedals ? (won1 ? "gold" : "silver") : null,
   };
   let bot = {
     name: team2,
     from: team2From,
     score: score2,
     won: won2,
-    medal: won2 ? "gold" : won1 ? "silver" : null,
+    medal: showMedals ? (won2 ? "gold" : "silver") : null,
   };
   if (isFinal && won2) {
     [top, bot] = [bot, top];

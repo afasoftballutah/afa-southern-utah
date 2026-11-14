@@ -72,3 +72,42 @@ test("Backwards K history — one tournament, 6–0, Gold champion, six games ne
 test("J.E.T.S. slug", () => {
   assert.equal(teamSlug("J.E.T.S."), "j-e-t-s");
 });
+
+test("only the deciding championship game is flagged for matchup medals", async () => {
+  const gold = await json("games-gold.json");
+  const tournament = {
+    id: "t-heat",
+    slug: "2026-coed-heat-stroker",
+    name: "Coed Heat Stroker",
+    start_date: "2026-07-24",
+    end_date: "2026-07-26",
+    status: "upcoming",
+  };
+  const division = {
+    id: "gold",
+    name: "Gold",
+    display_name: "Gold",
+    gender: "coed",
+    class_id: null,
+    tournaments: tournament,
+  };
+  const bracketGames = gold.map((g) => ({
+    ...g,
+    division_id: "gold",
+    divisions: division,
+  }));
+  const history = buildTeamHistory("Backwards K", [], bracketGames, {
+    "t-heat": { "Backwards K": { state: "champion", placement: "Champion", bracket_name: "Gold" } },
+  });
+  const games = history.identities[0].tournaments[0].games;
+  const flagged = games.filter((g) => g.championship);
+  assert.equal(flagged.length, 1);
+  assert.equal(flagged[0].id, "7460a4f2-29b7-4541-b688-5e83e64c9a09");
+  assert.equal(flagged[0].team1, "Backwards K");
+  assert.equal(flagged[0].team2, "Del Fuegos");
+  assert.ok(
+    games.filter((g) => g.isFinal).length > 1,
+    "other scored games should exist and not get medals"
+  );
+  assert.ok(games.some((g) => g.isFinal && !g.championship));
+});
