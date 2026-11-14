@@ -5,6 +5,9 @@ import {
   hasScoredFinal,
   latestFinalGame,
   recentFinalsByGender,
+  recentGamesByGender,
+  gameNumberLabel,
+  RECENT_GAMES_CAP,
   sortResultEventsByRecency,
 } from "../lib/home-recent.js";
 import { isTournamentFinished, isPastTournament } from "../lib/tournament-state.js";
@@ -235,6 +238,7 @@ test("home page uses result tournaments for Recent Results and completed only fo
   assert.match(src, /getRecentResultTournaments/);
   assert.match(src, /getRecentCompletedTournaments/);
   assert.match(src, /recentFinalsByGender/);
+  assert.match(src, /recentGamesByGender/);
   assert.match(src, /lastResults = recentCompleted\[0\]/);
   assert.match(src, /resultSource =\s*\n?\s*recentResults/s);
 });
@@ -256,4 +260,89 @@ test("data.js keeps the finished-only Southern Utah helper for Last Tournament",
   assert.doesNotMatch(results, /\.eq\("region"/);
   assert.match(results, /hasScoredFinal/);
   assert.doesNotMatch(results, /isTournamentFinished/);
+});
+
+test("gameNumberLabel uses Game N for brackets and Pool X for pool games", () => {
+  assert.equal(gameNumberLabel({ round: 4 }), "Game 4");
+  assert.equal(gameNumberLabel({ pool: "A", round: 1 }), "Pool A");
+  assert.equal(gameNumberLabel({}), null);
+});
+
+test("recentGamesByGender lists newest scored games with division and game number", () => {
+  const worlds = inProgressWorldsLike();
+  const games = recentGamesByGender(worlds);
+  // Men's D champ is later than Men's E champ
+  assert.equal(games.mens[0].caption, "Men's D · Game 5");
+  assert.equal(games.mens[0].championship, true);
+  assert.equal(games.mens[0].team1, "Men D Champ");
+  assert.equal(games.mens[1].caption, "Men's E · Game 5");
+  assert.equal(games.mens[1].championship, true);
+  // Earlier semis follow
+  assert.equal(games.mens[2].caption, "Men's D · Game 4");
+  assert.equal(games.mens[2].championship, false);
+  assert.equal(games.womens[0].caption, "Women's D · Game 1");
+  assert.equal(games.womens[0].championship, false);
+  assert.equal(games.womens[0].team1, "Profit 3.0");
+  assert.equal(games.womens.length, 1);
+});
+
+test("recentGamesByGender caps per gender and keeps later games", () => {
+  const games = [];
+  for (let i = 1; i <= 15; i++) {
+    games.push(
+      game(`w-${i}`, {
+        t1: `T${i}`,
+        t2: "Opp",
+        s1: i,
+        s2: 0,
+        when: `2026-11-13T${String(i).padStart(2, "0")}:00:00Z`,
+        round: i,
+      })
+    );
+  }
+  const t = {
+    name: "Cap check",
+    divisions: [
+      { id: "wd", name: "Women's D", gender: "womens", games },
+    ],
+  };
+  const out = recentGamesByGender(t);
+  assert.equal(out.womens.length, RECENT_GAMES_CAP);
+  assert.equal(out.womens[0].gameNumber, "Game 15");
+  assert.equal(out.womens[11].gameNumber, "Game 4");
+  // Game 1–3 dropped (oldest)
+  assert.ok(!out.womens.some((g) => g.gameNumber === "Game 1"));
+});
+
+test("recentGamesByGender keeps every scored game in a finished division, not just the championship", () => {
+  const heat = finishedHeatStrokerLike();
+  const games = recentGamesByGender(heat);
+  assert.equal(games.coed.length, 2);
+  assert.equal(games.coed[0].caption, "Gold · Game 4");
+  assert.equal(games.coed[0].championship, true);
+  assert.equal(games.coed[1].caption, "Gold · Game 3");
+  assert.equal(games.coed[1].championship, false);
+});
+
+test("By division still shows one headline result per division", () => {
+  const worlds = inProgressWorldsLike();
+  const cards = recentFinalsByGender(worlds);
+  assert.equal(cards.womens.length, 1);
+  assert.equal(cards.mens.length, 2);
+});
+
+test("home Recent Results has a By division / Recent games slider and light captions", () => {
+  const ui = readFileSync(new URL("../components/HomeRecentResults.js", import.meta.url), "utf8");
+  assert.match(ui, /By division/);
+  assert.match(ui, /Recent games/);
+  assert.match(ui, /useState\("division"\)/);
+  assert.match(ui, /recentGames/);
+  assert.match(ui, /isFinal\s+championship/);
+
+  const card = readFileSync(new URL("../components/ui/MatchupCard.js", import.meta.url), "utf8");
+  assert.match(card, /--matchup-caption/);
+
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.home-results__panel[^{]*\{[^}]*--matchup-caption:\s*#f1f5f9/s);
+  assert.match(css, /\.home-results__mode/);
 });

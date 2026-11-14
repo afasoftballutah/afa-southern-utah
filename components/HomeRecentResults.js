@@ -11,15 +11,24 @@ const GENDER_TABS = [
   { key: "coed", short: "Coed", label: "Coed" },
 ];
 
+const MODE_OPTIONS = [
+  { key: "division", label: "By division" },
+  { key: "games", label: "Recent games" },
+];
+
 /**
  * Recent Results on home.
  * Tournament control stays in the original top row (date · name).
  * Gender dropdown lives in the panel header — same place as before.
+ * A client-side slider switches By division (headline result per
+ * division) and Recent games (latest scored games, already in the
+ * ISR payload).
  *
- * @param {{ events: Array<{ id: string, slug: string, name: string, when: string, genderFinals: object }> }} props
+ * @param {{ events: Array<{ id: string, slug: string, name: string, when: string, genderFinals: object, recentGames?: object }> }} props
  */
 export default function HomeRecentResults({ events = [] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? null);
+  const [mode, setMode] = useState("division");
 
   useEffect(() => {
     if (!events.some((e) => e.id === eventId)) {
@@ -33,32 +42,68 @@ export default function HomeRecentResults({ events = [] }) {
   );
 
   const genderFinals = event?.genderFinals ?? null;
+  const recentGames = event?.recentGames ?? null;
 
-  const available = useMemo(
-    () =>
-      GENDER_TABS.filter((t) => (genderFinals?.[t.key] ?? []).length > 0),
-    [genderFinals]
-  );
+  const available = useMemo(() => {
+    return GENDER_TABS.filter((t) => {
+      const finals = (genderFinals?.[t.key] ?? []).length;
+      const games = (recentGames?.[t.key] ?? []).length;
+      return finals > 0 || games > 0;
+    });
+  }, [genderFinals, recentGames]);
 
   const [tab, setTab] = useState(available[0]?.key ?? null);
 
   useEffect(() => {
-    const first = GENDER_TABS.find(
-      (t) => (genderFinals?.[t.key] ?? []).length > 0
-    );
+    const first = GENDER_TABS.find((t) => {
+      const finals = (genderFinals?.[t.key] ?? []).length;
+      const games = (recentGames?.[t.key] ?? []).length;
+      return finals > 0 || games > 0;
+    });
     setTab(first?.key ?? null);
-  }, [event?.id, genderFinals]);
+  }, [event?.id, genderFinals, recentGames]);
 
   const activeKey =
     available.some((t) => t.key === tab) ? tab : available[0]?.key ?? null;
   const multiGender = available.length > 1;
   const multiTournament = events.length > 1;
-  const finals = activeKey ? genderFinals?.[activeKey] ?? [] : [];
+  const divisionCards = activeKey ? genderFinals?.[activeKey] ?? [] : [];
+  const gameCards = activeKey ? recentGames?.[activeKey] ?? [] : [];
+  const cards = mode === "games" ? gameCards : divisionCards;
   const activeMeta = GENDER_TABS.find((t) => t.key === activeKey);
+  const countLabel =
+    mode === "games"
+      ? `${gameCards.length} game${gameCards.length === 1 ? "" : "s"}`
+      : `${divisionCards.length} bracket${divisionCards.length === 1 ? "" : "s"}`;
 
   return (
     <article className="home-dash__card home-dash__card--results">
       <h2>Recent Results</h2>
+
+      {events.length > 0 && (
+        <div className="home-results__mode" role="radiogroup" aria-label="Results view">
+          <span
+            className={
+              "home-results__mode-thumb" + (mode === "games" ? " is-games" : "")
+            }
+            aria-hidden="true"
+          />
+          {MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              role="radio"
+              aria-checked={mode === opt.key}
+              className={
+                "home-results__mode-btn" + (mode === opt.key ? " is-on" : "")
+              }
+              onClick={() => setMode(opt.key)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Original placement: date · name row above the glass panel */}
       {event && (
@@ -105,10 +150,21 @@ export default function HomeRecentResults({ events = [] }) {
                   onChange={(e) => setTab(e.target.value)}
                 >
                   {available.map((t) => {
-                    const count = (genderFinals?.[t.key] ?? []).length;
+                    const count =
+                      mode === "games"
+                        ? (recentGames?.[t.key] ?? []).length
+                        : (genderFinals?.[t.key] ?? []).length;
+                    const unit =
+                      mode === "games"
+                        ? count === 1
+                          ? "game"
+                          : "games"
+                        : count === 1
+                          ? "bracket"
+                          : "brackets";
                     return (
                       <option key={t.key} value={t.key}>
-                        {t.label} · {count} bracket{count === 1 ? "" : "s"}
+                        {t.label} · {count} {unit}
                       </option>
                     );
                   })}
@@ -120,18 +176,16 @@ export default function HomeRecentResults({ events = [] }) {
                   <span className="home-results__solo-label-text">
                     {activeMeta.label}
                   </span>
-                  <span className="home-results__solo-count">
-                    {finals.length} bracket{finals.length === 1 ? "" : "s"}
-                  </span>
+                  <span className="home-results__solo-count">{countLabel}</span>
                 </>
               )
             )}
           </div>
 
           <div className="home-results__body" aria-label={activeMeta?.label}>
-            {finals.length > 0 ? (
+            {cards.length > 0 ? (
               <div className="home-results__stack">
-                {finals.map((final) => (
+                {cards.map((final) => (
                   <MatchupCard
                     key={final.key}
                     caption={final.caption}
@@ -147,7 +201,11 @@ export default function HomeRecentResults({ events = [] }) {
                 ))}
               </div>
             ) : (
-              <p className="home-results__empty">No finals posted yet.</p>
+              <p className="home-results__empty">
+                {mode === "games"
+                  ? "No recent games posted yet."
+                  : "No finals posted yet."}
+              </p>
             )}
           </div>
         </div>
