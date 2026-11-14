@@ -21,7 +21,9 @@ import HomeHeaderScrollLock from "@/components/HomeHeaderScrollLock";
 import RegionMap from "@/components/RegionMap";
 import HomeRegionContent from "@/components/HomeRegionContent";
 
-export const revalidate = 30;
+// 24h safety fallback. Rebuilds when a score is saved (and on the same
+// tournament/registration edits that already revalidate "/").
+export const revalidate = 86400;
 
 // Home — Last Tournament + Upcoming Events | Recent Results.
 // Upcoming / past come from tournamentPhase (lib/tournament-state): dates in

@@ -32,6 +32,17 @@ test("tournament, schedule, and division pages are ISR with generateStaticParams
   }
 });
 
+test("home and team pages use the 24h safety fallback, not a 30s timer", () => {
+  const home = read("app/page.js");
+  assert.match(home, /export const revalidate = 86400/);
+  assert.doesNotMatch(home, /export const revalidate = 30/);
+
+  const team = read("app/teams/[slug]/page.js");
+  assert.match(team, /export const revalidate = 86400/);
+  assert.match(team, /export const generateStaticParams = teamPageParams/);
+  assert.doesNotMatch(team, /export const revalidate = 30/);
+});
+
 test("division server page does not use Date.now for the tab that ships to the client", () => {
   const src = read("app/tournaments/[slug]/division/[divisionId]/page.js");
   // Generate-time initial is allowed; request-time live must not be the prop.
@@ -95,6 +106,8 @@ test("every score, clear, placement, and QuickScores path revalidates tournament
   assert.match(helper, /revalidatePath\("\/tournaments\/\[slug\]\/division\/\[divisionId\]", "page"\)/);
   assert.match(helper, /revalidatePath\("\/tournaments"\)/);
   assert.match(helper, /revalidatePath\("\/"\)/);
+  assert.match(helper, /revalidatePath\("\/teams\/\[slug\]", "page"\)/);
+  assert.match(helper, /revalidateTag\("team-pages"\)/);
 });
 
 const WRITE_PATHS = [
@@ -156,4 +169,22 @@ test("directory actions that change public tournament pages revalidate before th
   }
   // Two poster writes (clear + set); every other listed action once.
   assert.equal(src.split("revalidateTournamentPages(").length - 1, 21);
+});
+
+test("getTournamentBySlug and getDivisionById are wrapped in React cache", () => {
+  const src = read("lib/data.js");
+  assert.match(src, /export const getTournamentBySlug = cache\(async function getTournamentBySlug/);
+  assert.match(src, /export const getDivisionById = cache\(async function getDivisionById/);
+  assert.match(src, /export const getRecentCompletedTournaments = cache\(/);
+  assert.match(src, /export const getRecentResultTournaments = cache\(/);
+  assert.match(src, /export const getSeasonListByRegion = cache\(/);
+});
+
+test("team-page data does not nest tournaments(*) on every game row", () => {
+  const src = read("lib/team-page-data.js");
+  assert.doesNotMatch(src, /tournaments \( \* \)/);
+  assert.match(src, /attachTournamentsToGames/);
+  assert.match(src, /unstable_cache\(loadRaw/);
+  assert.match(src, /tags: \["team-pages"\]/);
+  assert.match(src, /export async function teamPageParams/);
 });
