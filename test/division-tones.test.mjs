@@ -44,11 +44,11 @@ const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - 
 const MIN_APART = 12; // solids at least this far apart (CIEDE2000)
 const CHAMPIONSHIP_GOLD = ["#c99a1e", "#8a6a10"]; // .tl-side-final border, gold place text
 
-test("JD's Worlds colors stay put: Men's D red, Men's E blue, Women's D orange, Women's E green, Women's Rec pink, Coed D purple", () => {
+test("JD's Worlds colors stay put: Men's D red, Men's E blue, Women's D steel, Women's E green, Women's Rec pink, Coed D purple", () => {
   const solid = (k) => DIVISION_TONES[k].solid;
   assert.deepEqual(
     ["mens-d", "mens-e", "womens-d", "womens-e", "womens-rec", "coed-d"].map(solid),
-    ["#dc2626", "#2563eb", "#c2410c", "#15803d", "#db2777", "#7c3aed"]
+    ["#dc2626", "#2563eb", "#334155", "#15803d", "#db2777", "#7c3aed"]
   );
   assert.equal(solid("coed-e"), "#005655"); // teal (darker after the Coed D purple swap)
   assert.equal(solid("coed-rec"), "#6b3a1f"); // brown
