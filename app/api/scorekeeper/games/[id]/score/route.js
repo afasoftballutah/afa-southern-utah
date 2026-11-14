@@ -1,4 +1,5 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import { propagateAfterFinalize } from "@/lib/bracket/propagate";
 import { getServiceClient } from "@/lib/supabase";
 
@@ -73,6 +74,7 @@ export async function POST(request, { params }) {
     // re-saving the score if this ever happens.
   }
 
+  await revalidateTournamentPages({ gameId: id });
   return Response.json({ ok: true, winnerSlot });
 }
 
@@ -138,5 +140,6 @@ async function clearBracketScore(id) {
     .eq("id", id);
   if (clearError) return Response.json({ error: clearError.message }, { status: 500 });
 
+  await revalidateTournamentPages({ gameId: id });
   return Response.json({ ok: true, cleared: true });
 }

@@ -5,6 +5,7 @@ import TeamFinder from "@/components/TeamFinder";
 import { HighlightTeamProvider } from "@/components/bracket/HighlightTeamContext";
 import { DropsProvider } from "@/components/bracket/DropsContext";
 import { FocusRoundProvider } from "@/components/bracket/FocusRoundContext";
+import { isBracketLive, isBracketLiveFromResults } from "@/lib/tournament-state";
 
 // The bracket picker is the same segmented control as Pool play / Bracket
 // — inset track, one filled segment — but each fills in its own metal
@@ -38,11 +39,26 @@ export default function DivisionView({
   bracketPanes, // { [divisionId]: node }
   standingsPanes, // { [divisionId]: node }
   stages,
-  bracketLive,
+  bracketLive: bracketLiveProp,
+  initialBracketLive,
+  bracketSignals,
   bracketByTeam,
   poolByTeam,
   ...finderProps
 }) {
+  const [bracketLive, setBracketLive] = useState(
+    () =>
+      bracketLiveProp ??
+      initialBracketLive ??
+      isBracketLiveFromResults(bracketSignals ?? [])
+  );
+  useEffect(() => {
+    if (bracketLiveProp != null) {
+      setBracketLive(bracketLiveProp);
+      return;
+    }
+    setBracketLive(isBracketLive(bracketSignals ?? [], Date.now()));
+  }, [bracketLiveProp, bracketSignals]);
   const [team, setTeam] = useState("");
   const [stage, setStage] = useState(bracketLive ? "bracket" : "pools");
   const hasPools = Boolean(poolPane);

@@ -16,10 +16,14 @@ import {
 import { tournamentVenues } from "@/lib/venues";
 import { tournamentZoneLabel } from "@/lib/zone";
 import { isRegistrationOpen, isPastTournament } from "@/lib/tournament-state";
+import { tournamentSlugParams } from "@/lib/tournament-isr";
+import {
+  TournamentCompletedBadge,
+  TournamentLaunchState,
+} from "@/components/TournamentTimeStatus";
 import Link from "next/link";
 import Poster from "@/components/ui/Poster";
 import Card from "@/components/ui/Card";
-import Chip from "@/components/ui/Chip";
 import TournamentResults from "@/components/TournamentResults";
 import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import TournamentRules from "@/components/TournamentRules";
@@ -47,7 +51,11 @@ function parsePrize(line) {
   };
 }
 
-export const revalidate = 30;
+// 24h safety fallback for date rollover (Completed / registration / first
+// pitch). Score writes call revalidateTournamentPages immediately.
+export const revalidate = 86400;
+
+export const generateStaticParams = tournamentSlugParams;
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -108,52 +116,26 @@ export default async function TournamentDetailPage({ params }) {
   // No event poster yet → not a public lobby (still in DB / greyed on list).
   // Finished events with results can stay viewable even if poster was a schedule.
   const finishedEarly = isTournamentFinished(tournament);
-  // Over by date (its own zone) or by results — never "coming soon".
-  const isPast = finishedEarly || isPastTournament(tournament);
+  // Generate-time latch only. The client clock may flip upcoming → past
+  // after mount; a past tournament is never shown as future.
+  const initialIsPast = finishedEarly || isPastTournament(tournament);
   if (!isRealPoster(tournament) && !finishedEarly && !hasPublishedBracket(tournament)) {
-    if (isPast) {
-      return (
-        <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
-          <h1 className="t-title">{tournament.name}</h1>
-          <p className="t-meta">
-            {formatDateRange(tournament.start_date, tournament.end_date)}
-            {tournament.venue_name ? ` · ${tournament.venue_name}` : ""}
-          </p>
-          <p className="t-strong">Completed</p>
-          <p className="t-meta">This tournament has been played.</p>
-          <div className="flex flex-wrap gap-2 justify-center pt-2">
-            <Link href="/tournaments" className="btn-transient">
-              All tournaments
-            </Link>
-          </div>
-        </div>
-      );
-    }
     return (
-      <div className="form-surface p-6 text-center space-y-3 max-w-lg mx-auto">
-        <h1 className="t-title">{tournament.name}</h1>
-        <p className="t-meta">
-          {formatDateRange(tournament.start_date, tournament.end_date)}
-          {tournament.venue_name ? ` · ${tournament.venue_name}` : ""}
-        </p>
-        <p className="t-strong">Details coming soon</p>
-        <p className="t-meta">
-          This tournament is on the calendar. The full page and registration
-          open when the flyer is posted.
-        </p>
-        <div className="flex flex-wrap gap-2 justify-center pt-2">
-          <Link href="/tournaments" className="btn-transient">
-            All tournaments
-          </Link>
-          <span
-            className="btn-action opacity-40 pointer-events-none select-none"
-            aria-disabled="true"
-            title="Registration opens when the tournament flyer is posted"
-          >
-            Register
-          </span>
-        </div>
-      </div>
+      <TournamentLaunchState
+        tournament={{
+          name: tournament.name,
+          start_date: tournament.start_date,
+          end_date: tournament.end_date,
+          timezone: tournament.timezone,
+          status: tournament.status,
+          registration_closes: tournament.registration_closes,
+          is_placeholder: tournament.is_placeholder,
+          venue_name: tournament.venue_name,
+        }}
+        dateRange={formatDateRange(tournament.start_date, tournament.end_date)}
+        finished={finishedEarly}
+        initialIsPast={initialIsPast}
+      />
     );
   }
 
@@ -229,7 +211,17 @@ export default async function TournamentDetailPage({ params }) {
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 flex-wrap">
           <h1 className="t-title">{tournament.name}</h1>
-          {isPast && <Chip variant="muted">Completed</Chip>}
+          <TournamentCompletedBadge
+            tournament={{
+              start_date: tournament.start_date,
+              end_date: tournament.end_date,
+              timezone: tournament.timezone,
+              status: tournament.status,
+              finished: finishedEarly,
+            }}
+            finished={finishedEarly}
+            initialIsPast={initialIsPast}
+          />
         </div>
         {/* The calendar link lives on the DATES now (JD, 2026-07-26). It
             used to sit on the right of each group card, in the spot that
@@ -292,6 +284,15 @@ export default async function TournamentDetailPage({ params }) {
         teamSummaries={teamSummaries}
         teams={registeredTeams}
         registrationOpen={registrationOpen}
+        tournamentDates={{
+          start_date: tournament.start_date,
+          end_date: tournament.end_date,
+          timezone: tournament.timezone,
+          status: tournament.status,
+          registration_closes: tournament.registration_closes,
+          is_placeholder: tournament.is_placeholder,
+        }}
+        hasPoster={isRealPoster(tournament)}
         registerHref={`/register?tournament=${encodeURIComponent(tournament.slug)}`}
         externalRegisterUrl={tournament.registration_url || null}
         finished={finished}

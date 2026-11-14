@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRegistrationOpen } from "@/components/TournamentTimeStatus";
 import FindTournamentTeam from "@/components/FindTournamentTeam";
 import TournamentDivisionNav from "@/components/TournamentDivisionNav";
 
@@ -9,11 +10,18 @@ export default function TournamentTeamEntry({
   columns = [],
   teamSummaries = {},
   teams = [],
-  registrationOpen = false,
+  registrationOpen: initialRegistrationOpen = false,
   registerHref = "/register",
   externalRegisterUrl = null,
   finished = false,
+  tournamentDates = null,
+  hasPoster = true,
 }) {
+  const registrationOpen = useRegistrationOpen({
+    tournament: tournamentDates,
+    hasPoster,
+    initialOpen: initialRegistrationOpen,
+  });
   const [team, setTeam] = useState("");
   const [mineDivisionIds, setMineDivisionIds] = useState([]);
   const [panel, setPanel] = useState(null);

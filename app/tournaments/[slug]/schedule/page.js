@@ -7,8 +7,13 @@ import ScheduleBrowser from "@/components/ScheduleBrowser";
 import { scheduleFinderGames } from "@/lib/schedule-finder";
 import TournamentTicker from "@/components/TournamentTicker";
 import RefreshOnReturn from "@/components/RefreshOnReturn";
+import { tournamentSlugParams } from "@/lib/tournament-isr";
 
-export const revalidate = 30;
+// 24h safety fallback for date rollover. Score writes revalidate on demand.
+export const revalidate = 86400;
+
+export const generateStaticParams = tournamentSlugParams;
+
 
 // Bracket slots hold PROVENANCE placeholders, not real team names, until
 // pool play fills them in — "Winner of Game 5" or a seed reference like

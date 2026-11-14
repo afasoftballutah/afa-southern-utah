@@ -28,8 +28,14 @@ import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
 import { teamPageHref } from "@/lib/team-page";
 import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { shortField } from "@/lib/venues";
+import { isBracketLive } from "@/lib/tournament-state";
+import { tournamentDivisionParams } from "@/lib/tournament-isr";
 
-export const revalidate = 30;
+// 24h safety fallback for date rollover (bracket-live default). Score writes
+// call revalidateTournamentPages immediately.
+export const revalidate = 86400;
+
+export const generateStaticParams = tournamentDivisionParams;
 
 // isRealTeamName lives in lib/bracket/standings.js (shared with the archive).
 
@@ -418,13 +424,14 @@ export default async function DivisionPage({ params }) {
   // result is in, or a bracket game's time has come and gone. A drawn but
   // unplayed bracket is not what anyone is at the page for on Friday
   // night, so it does not take the default.
-  const now = Date.now();
-  const bracketLive = Object.values(playableStageGames).some((list) =>
-    list.some(
-      (g) =>
-        g.status === "final" || (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
-    )
-  );
+  // Generate-time only (keeps the page static). DivisionView recomputes
+  // from the wall clock after mount so a cached first-pitch rollover still
+  // opens the bracket tab.
+  const bracketSignals = [
+    ...Object.values(playableStageGames).flat(),
+    ...(bracketGames ?? []),
+  ].map((g) => ({ status: g.status, scheduledTime: g.scheduled_time }));
+  const initialBracketLive = isBracketLive(bracketSignals, Date.now());
 
   // Which bracket is each team in? A slot names its team either by seed
   // ref ("A #1", before Apply seeding) or by the real name (after), so
@@ -605,14 +612,8 @@ export default async function DivisionPage({ params }) {
           teamStatus={teamStatus}
           slug={slug}
           teamPageHrefs={teamPageHrefs}
-          bracketLive={
-            bracketLive ||
-            bracketGames.some(
-              (g) =>
-                g.status === "final" ||
-                (g.scheduled_time && new Date(g.scheduled_time).getTime() <= now)
-            )
-          }
+          initialBracketLive={initialBracketLive}
+          bracketSignals={bracketSignals}
           poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} timeZone={timeZone} teamPageHrefs={teamPageHrefs} /> : null}
           standingsPanes={Object.fromEntries(
             Object.entries(playableStageGames)

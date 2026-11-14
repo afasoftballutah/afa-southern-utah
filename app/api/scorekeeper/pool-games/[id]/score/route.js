@@ -1,4 +1,5 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ export async function POST(request, { params }) {
       .update({ team1_score: null, team2_score: null, status: "scheduled" })
       .eq("id", id);
     if (clearError) return Response.json({ error: clearError.message }, { status: 500 });
+    await revalidateTournamentPages({ poolGameId: id });
     return Response.json({ ok: true, cleared: true });
   }
 
@@ -55,5 +57,6 @@ export async function POST(request, { params }) {
     .eq("id", id);
   if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
 
+  await revalidateTournamentPages({ poolGameId: id });
   return Response.json({ ok: true });
 }
