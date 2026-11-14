@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import nextConfig, { SECURITY_HEADERS } from "../next.config.mjs";
+import nextConfig, { SECURITY_HEADERS, TOKEN_PATH_HEADERS } from "../next.config.mjs";
 
 // Anti-clickjacking: every route (pages, API, /api/mcp) says only our own
 // origin may frame it.
@@ -43,3 +43,32 @@ test("public images get a 30-day cache; versioned names are immutable; /_next is
     assert.equal(cc(r), "public, max-age=2592000, immutable");
   }
 });
+
+test("every path also sends nosniff, a referrer policy, and permissions policy", async () => {
+  const rules = await nextConfig.headers();
+  const all = rules.find((r) => r.source === "/:path*");
+  const byKey = Object.fromEntries(all.headers.map((h) => [h.key, h.value]));
+  assert.equal(byKey["X-Content-Type-Options"], "nosniff");
+  assert.equal(byKey["Referrer-Policy"], "strict-origin-when-cross-origin");
+  assert.equal(byKey["Permissions-Policy"], "camera=(), microphone=(), geolocation=()");
+});
+
+test("manage and roster token paths send Referrer-Policy no-referrer", async () => {
+  const rules = await nextConfig.headers();
+  const sources = [
+    "/register/manage/:path*",
+    "/register/roster/:path*",
+    "/api/register/roster",
+  ];
+  for (const source of sources) {
+    const rule = rules.find((r) => r.source === source);
+    assert.ok(rule, source);
+    assert.deepEqual(rule.headers, TOKEN_PATH_HEADERS);
+    const byKey = Object.fromEntries(rule.headers.map((h) => [h.key, h.value]));
+    assert.equal(byKey["Referrer-Policy"], "no-referrer");
+    assert.equal(byKey["X-Content-Type-Options"], "nosniff");
+    assert.equal(byKey["Content-Security-Policy"], "frame-ancestors 'self'");
+    assert.equal(byKey["X-Frame-Options"], "SAMEORIGIN");
+  }
+});
+

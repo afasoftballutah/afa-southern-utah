@@ -1,10 +1,22 @@
 import { getServiceClient } from "@/lib/supabase";
 import { seatFromDivision } from "@/lib/division-layout";
-import { ownedTeamIds, withLinkedEntries } from "@/lib/register-lookup";
+import {
+  ownedTeamIds,
+  withLinkedEntries,
+  normalizeEmail,
+  emailsMatch,
+  recoveryTeamPayload,
+} from "@/lib/register-lookup";
+import { createIpRateLimiter, tooManyRequests } from "@/lib/ip-rate-limit";
 
 // Manager recovery WITHOUT a password: look up registrations by the
 // manager_email they used when they registered. Returns manage + roster
 // links only for exact email matches (case-insensitive).
+//
+// Name / team search is not a credential — those names are already on
+// the public tournament pages — so this route never looks up by name.
+// The "Find my team" UI on a tournament page searches the public list
+// in the browser and does not call this API.
 //
 // Still no outbound email/SMS — they type the email they already know.
 // Rate-limited per IP so this cannot be used as a bulk scrape of teams.
@@ -14,36 +26,7 @@ export const runtime = "nodejs";
 const REG_SELECT =
   "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, team_id, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)";
 
-/** @type {Map<string, { count: number, windowStart: number }>} */
-const hits = new Map();
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_PER_WINDOW = 12;
-
-function clientIp(request) {
-  const xf = request.headers.get("x-forwarded-for");
-  if (xf) return xf.split(",")[0].trim();
-  return request.headers.get("x-real-ip") || "unknown";
-}
-
-function rateLimited(ip) {
-  const now = Date.now();
-  const cur = hits.get(ip);
-  if (!cur || now - cur.windowStart > WINDOW_MS) {
-    hits.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  cur.count += 1;
-  return cur.count > MAX_PER_WINDOW;
-}
-
-function normalizeEmail(raw) {
-  return String(raw || "")
-    .trim()
-    .toLowerCase()
-    // strip control chars / wildcards that could widen ilike
-    .replace(/[%_]/g, "")
-    .slice(0, 200);
-}
+const limiter = createIpRateLimiter(12, 15 * 60 * 1000);
 
 function isEmailShape(email) {
   // Loose check — managers type real addresses; we only need a key match
@@ -59,132 +42,64 @@ export async function POST(request) {
   }
 
   const email = normalizeEmail(body?.email);
-  const nameQ = String(body?.name || "")
-    .trim()
-    .replace(/[%_]/g, "")
-    .slice(0, 80);
-  const tournamentSlug =
-    typeof body?.tournamentSlug === "string" ? body.tournamentSlug.trim() : "";
-
-  const byEmail = Boolean(email && isEmailShape(email));
-  const byName = Boolean(nameQ.length >= 2 && tournamentSlug);
-  if (!byEmail && !byName) {
+  if (!email || !isEmailShape(email)) {
     return Response.json(
-      { error: "Enter a team name, manager name, or manager email." },
+      { error: "Enter the manager email from registration." },
       { status: 400 }
     );
   }
 
-  const ip = clientIp(request);
-  if (rateLimited(ip)) {
-    return Response.json(
-      { error: "Too many tries. Wait a few minutes and try again." },
-      { status: 429 }
-    );
+  const hit = limiter.limited(request);
+  if (hit.limited) {
+    return tooManyRequests(hit.retryAfterSec);
   }
 
   const supabase = getServiceClient();
-  let rows = [];
+  const { data, error } = await supabase
+    .from("registrations")
+    .select(REG_SELECT)
+    .ilike("manager_email", email)
+    .order("submitted_at", { ascending: false })
+    .limit(25);
 
-  if (byEmail) {
-    const { data, error } = await supabase
-      .from("registrations")
-      .select(
-        REG_SELECT
-      )
-      .ilike("manager_email", email)
-      .order("submitted_at", { ascending: false })
-      .limit(25);
+  if (error) {
+    console.error("register lookup failed", error);
+    return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
+  }
+  let rows = (data || []).filter((r) => emailsMatch(r.manager_email, email));
 
-    if (error) {
-      console.error("register lookup failed", error);
-      return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
-    }
-    rows = (data || []).filter(
-      (r) => String(r.manager_email || "").trim().toLowerCase() === email
-    );
-
-    // The same club's other entries: a director-loaded tournament (Worlds)
-    // has no manager email on its registration, but sits on the same team
-    // row. Only that row links them (lib/register-lookup.js).
-    const teamIds = [...new Set(rows.map((r) => r.team_id).filter(Boolean))];
-    if (teamIds.length) {
-      const { data: teams } = await supabase
+  // The same club's other entries: a director-loaded tournament (Worlds)
+  // has no manager email on its registration, but sits on the same team
+  // row. Only that row links them (lib/register-lookup.js).
+  const teamIds = [...new Set(rows.map((r) => r.team_id).filter(Boolean))];
+  if (teamIds.length) {
+    const { data: teams } = await supabase
+      .from("teams")
+      .select("id, merged_into_id, manager_name")
+      .in("id", teamIds);
+    const owned = ownedTeamIds(rows, teams);
+    if (owned.length) {
+      // Rows merged into an owned team count as that team.
+      const { data: merged } = await supabase
         .from("teams")
-        .select("id, merged_into_id, manager_name")
-        .in("id", teamIds);
-      const owned = ownedTeamIds(rows, teams);
-      if (owned.length) {
-        // Rows merged into an owned team count as that team.
-        const { data: merged } = await supabase
-          .from("teams")
-          .select("id")
-          .in("merged_into_id", owned);
-        const ids = [...new Set([...owned, ...(merged || []).map((t) => t.id)])];
-        const { data: linked, error: linkErr } = await supabase
-          .from("registrations")
-          .select(REG_SELECT)
-          .in("team_id", ids)
-          .order("submitted_at", { ascending: false })
-          .limit(50);
-        if (linkErr) console.error("register lookup (linked) failed", linkErr);
-        else rows = withLinkedEntries(rows, linked);
-      }
+        .select("id")
+        .in("merged_into_id", owned);
+      const ids = [...new Set([...owned, ...(merged || []).map((t) => t.id)])];
+      const { data: linked, error: linkErr } = await supabase
+        .from("registrations")
+        .select(REG_SELECT)
+        .in("team_id", ids)
+        .order("submitted_at", { ascending: false })
+        .limit(50);
+      if (linkErr) console.error("register lookup (linked) failed", linkErr);
+      else rows = withLinkedEntries(rows, linked);
     }
-  } else {
-    const { data: tour } = await supabase
-      .from("tournaments")
-      .select("id")
-      .eq("slug", tournamentSlug)
-      .maybeSingle();
-    if (!tour) {
-      return Response.json({ ok: true, teams: [] });
-    }
-    const { data, error } = await supabase
-      .from("registrations")
-      .select(
-        REG_SELECT
-      )
-      .eq("tournament_id", tour.id)
-      .neq("status", "withdrawn")
-      .order("submitted_at", { ascending: false })
-      .limit(80);
-
-    if (error) {
-      console.error("register name lookup failed", error);
-      return Response.json({ error: "Lookup failed. Try again." }, { status: 500 });
-    }
-    const needle = nameQ.toLowerCase();
-    rows = (data || []).filter((r) => {
-      const team = String(r.team_name || "").trim().toLowerCase();
-      const manager = String(r.manager_name || "").trim().toLowerCase();
-      return team.includes(needle) || manager.includes(needle);
-    });
   }
 
   const origin = new URL(request.url).origin;
-  const teams = rows.map((r) => {
-    const seat = seatFromDivision(r.divisions);
-    return {
-      teamName: r.team_name,
-      status: r.status,
-      tournamentName: r.tournaments?.name || "",
-      tournamentSlug: r.tournaments?.slug || "",
-      submittedAt: r.submitted_at,
-      manageToken: r.manage_token,
-      rosterToken: r.roster_token,
-      divisionId: r.divisions?.id || "",
-      manageLink: `${origin}/register/manage/${r.manage_token}`,
-      rosterLink: r.roster_token
-        ? `${origin}/register/roster/${r.roster_token}`
-        : null,
-      genderKey: seat?.genderKey || "",
-      genderLabel: seat?.genderLabel || "",
-      levelLabel: seat?.levelLabel || "",
-      seatLabel: seat?.seatLabel || "",
-      managerName: r.manager_name || "",
-    };
-  });
+  const teams = rows.map((r) =>
+    recoveryTeamPayload(r, origin, seatFromDivision(r.divisions))
+  );
 
   // Same shape whether 0 or many — no "email exists" oracle beyond list length
   return Response.json({ ok: true, email, teams });

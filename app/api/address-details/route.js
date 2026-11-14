@@ -1,7 +1,10 @@
+import { createIpRateLimiter, tooManyRequests } from "@/lib/ip-rate-limit";
 // Resolve a Google place_id into street / city / state / zip.
 // Server-only key — never call Places from the browser.
 
 export const runtime = "nodejs";
+
+const limiter = createIpRateLimiter(30, 60000);
 
 const GOOGLE_KEY =
   process.env.GOOGLE_MAPS_API_KEY ||
@@ -19,6 +22,11 @@ function shortComponent(components, type) {
 }
 
 export async function GET(request) {
+  const hit = limiter.limited(request);
+  if (hit.limited) {
+    return tooManyRequests(hit.retryAfterSec, "Too many address lookups. Try again shortly.");
+  }
+
   if (!GOOGLE_KEY) {
     return Response.json(
       { error: "Google Places is not configured" },

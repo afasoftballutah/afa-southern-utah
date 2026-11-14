@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ownedTeamIds, withLinkedEntries } from "../lib/register-lookup.js";
+import {
+  ownedTeamIds,
+  withLinkedEntries,
+  emailsMatch,
+  normalizeEmail,
+  recoveryTeamPayload,
+  timingSafeEqualString,
+} from "../lib/register-lookup.js";
 
 // Prod shapes, 2026-11-10 (ids shortened). Brayden Brooks registered Fallen
 // in Coed D and Men's D at Do It for the T-Shirts with his email. The AFA
@@ -38,10 +45,52 @@ test("Fallen: the T-Shirts matches bring back the Worlds entries on the same tea
 
 test("the lookup route follows team rows only after an exact email match", () => {
   const src = readFileSync(new URL("../app/api/register/lookup/route.js", import.meta.url), "utf8");
-  const byEmail = src.slice(src.indexOf("if (byEmail)"), src.indexOf("} else {"));
-  assert.match(byEmail, /\.ilike\("manager_email", email\)/);
-  assert.match(byEmail, /ownedTeamIds\(rows, teams\)/);
-  assert.match(byEmail, /\.in\("team_id", ids\)/);
-  assert.match(byEmail, /withLinkedEntries\(rows, linked\)/);
+  assert.match(src, /\.ilike\("manager_email", email\)/);
+  assert.match(src, /emailsMatch\(r\.manager_email, email\)/);
+  assert.match(src, /ownedTeamIds\(rows, teams\)/);
+  assert.match(src, /\.in\("team_id", ids\)/);
+  assert.match(src, /withLinkedEntries\(rows, linked\)/);
   assert.match(src, /manager_name, submitted_at, team_id/);
+  assert.match(src, /recoveryTeamPayload\(/);
+});
+
+test("the lookup route has no name-search branch", () => {
+  const src = readFileSync(new URL("../app/api/register/lookup/route.js", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /\bbyName\b/);
+  assert.doesNotMatch(src, /body\?\.name/);
+  assert.doesNotMatch(src, /tournamentSlug/);
+  assert.doesNotMatch(src, /register name lookup failed/);
+  assert.match(src, /Enter the manager email from registration/);
+});
+
+test("a name query is not a recovery credential: only recoveryTeamPayload includes tokens", () => {
+  const payload = recoveryTeamPayload(
+    {
+      team_name: "Example Club",
+      status: "submitted",
+      tournaments: { name: "Example Event", slug: "example-event" },
+      submitted_at: "2026-11-01",
+      manage_token: "manage-token-example",
+      roster_token: "roster-token-example",
+      divisions: { id: "div-1" },
+      manager_name: "Example Manager",
+    },
+    "https://example.test"
+  );
+  assert.equal(payload.manageToken, "manage-token-example");
+  assert.equal(payload.rosterToken, "roster-token-example");
+  assert.equal(payload.manageLink, "https://example.test/register/manage/manage-token-example");
+  assert.equal(payload.rosterLink, "https://example.test/register/roster/roster-token-example");
+  // The route only calls recoveryTeamPayload after an email match. A name
+  // query never reaches it (see the source test above) and so never gets tokens.
+});
+
+test("emailsMatch is case-insensitive and timing-safe; wildcards do not widen it", () => {
+  assert.equal(emailsMatch("Pat@Example.com", "pat@example.com"), true);
+  assert.equal(emailsMatch("pat@example.com", "pat@example.com"), true);
+  assert.equal(emailsMatch("pat@example.com", "other@example.com"), false);
+  assert.equal(emailsMatch("pat@example.com", "pat@example.org"), false);
+  assert.equal(normalizeEmail("  Pat@Example.com  "), "pat@example.com");
+  assert.equal(timingSafeEqualString("abc", "abc"), true);
+  assert.equal(timingSafeEqualString("abc", "abd"), false);
 });

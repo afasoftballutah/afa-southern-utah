@@ -1,7 +1,10 @@
+import { createIpRateLimiter, tooManyRequests } from "@/lib/ip-rate-limit";
 // Address typeahead: Google Places when GOOGLE_MAPS_API_KEY is set,
 // otherwise free OpenStreetMap Photon (weaker). Key stays server-side.
 
 export const runtime = "nodejs";
+
+const limiter = createIpRateLimiter(60, 60000);
 
 const GOOGLE_KEY =
   process.env.GOOGLE_MAPS_API_KEY ||
@@ -124,6 +127,11 @@ export async function GET(request) {
       suggestions: [],
       provider: googleEnabled() ? "google" : "osm",
     });
+  }
+
+  const hit = limiter.limited(request);
+  if (hit.limited) {
+    return tooManyRequests(hit.retryAfterSec, "Too many address lookups. Try again shortly.");
   }
 
   try {
