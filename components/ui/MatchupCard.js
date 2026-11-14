@@ -152,7 +152,7 @@ export default function MatchupCard({
       {line && (
         <p
           className="matchup-card__caption mb-1 truncate text-center text-[10.5px] font-semibold uppercase tracking-[.03em]"
-          style={{ color: CAPTION[division] ?? "var(--afa-ink)" }}
+          style={{ color: CAPTION[division] ?? "var(--matchup-caption, var(--afa-ink))" }}
         >
           {line}
         </p>

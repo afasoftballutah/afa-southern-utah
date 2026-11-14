@@ -2836,6 +2836,59 @@ a.register-division-col__card--header {
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
+  /* Light caption on this dark glass — Gold/Silver/Bronze keep their metal. */
+  --matchup-caption: #f1f5f9;
+}
+/* View toggle — iOS-style two-option slider on the dark results card */
+.home-results__mode {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0 0 0.65rem;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+.home-results__mode-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 2);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+.home-results__mode-thumb.is-games {
+  transform: translateX(100%);
+}
+.home-results__mode-btn {
+  position: relative;
+  z-index: 1;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.home-results__mode-btn.is-on {
+  color: #0a1628;
+}
+.home-results__mode-btn:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.85);
+  outline-offset: 1px;
 }
 /* Tournament dropdown — same row as the old date · name link */
 .home-results__tour-select-wrap {
@@ -2958,9 +3011,65 @@ a.register-division-col__card--header {
   flex-direction: column;
   gap: 0.65rem;
 }
+.home-results__standings {
+  min-width: 0;
+}
+.home-results__standings .matchup-card__caption {
+  color: var(--matchup-caption, #f1f5f9);
+}
+.home-results__standings-card {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  border-radius: 11px;
+  padding: 0.25rem 0.4rem;
+  background: #fff;
+}
+.home-results__standings-row {
+  display: grid;
+  grid-template-columns: 1.35rem 2.15rem minmax(0, 1fr) 3.15rem;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.05rem;
+  padding: 0.15rem 0.35rem;
+  border-bottom: 1px solid rgba(10, 22, 40, 0.08);
+  color: #0a1628;
+}
+.home-results__standings-row:last-child {
+  border-bottom: 0;
+}
+.home-results__standings-medal {
+  font-size: 0.95rem;
+  line-height: 1;
+  text-align: center;
+}
+.home-results__standings-place {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgba(10, 22, 40, 0.55);
+}
+.home-results__standings-team {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.home-results__standings-record {
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(10, 22, 40, 0.78);
+}
 .home-results__panel .matchup-card__caption {
   font-size: 0.75rem;
   letter-spacing: 0.06em;
+  /* Color is inline (metal tint or --matchup-caption). Size/tracking only here. */
 }
 .home-results__empty {
   margin: 0;

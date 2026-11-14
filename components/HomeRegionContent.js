@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import PosterCarousel from "@/components/PosterCarousel";
 import HomeRecentResults from "@/components/HomeRecentResults";
+import { sortResultEventsByRecency } from "@/lib/home-recent";
 import {
   getRegionPrefSnapshot,
   getRegionPrefServerSnapshot,
@@ -73,7 +74,9 @@ export default function HomeRegionContent({
         []
       );
     }
-    return Object.values(resultEventsByRegion).flatMap((list) => list ?? []);
+    return sortResultEventsByRecency(
+      Object.values(resultEventsByRegion).flatMap((list) => list ?? [])
+    );
   }, [filtered, pref, resultEventsByRegion, defaultRegion]);
 
   // Lock card geometry to the *widest / tallest* region so switching stars
