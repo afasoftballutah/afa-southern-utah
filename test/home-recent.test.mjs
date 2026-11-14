@@ -6,6 +6,7 @@ import {
   latestFinalGame,
   recentFinalsByGender,
   recentGamesByGender,
+  recentGamesByDivision,
   gameNumberLabel,
   divisionFinalStandings,
   divisionScoredRecords,
@@ -14,6 +15,12 @@ import {
 } from "../lib/home-recent.js";
 import { isTournamentFinished, isPastTournament } from "../lib/tournament-state.js";
 import { championshipGameOf } from "../lib/bracket/if-game.js";
+import {
+  cardsForResultPicker,
+  defaultResultPickerValue,
+  resultDivisionPickerOptions,
+  shouldShowResultPicker,
+} from "../lib/home-result-picker.js";
 
 function game(id, extras = {}) {
   return {
@@ -508,4 +515,125 @@ test("By division UI renders standings for a completed division", () => {
   assert.match(ui, /DivisionStandings/);
   assert.match(ui, /final\.standings/);
   assert.match(ui, /home-results__standings/);
+});
+
+test("resultDivisionPickerOptions groups divisions under All Women's / Men's / Coed", () => {
+  const worlds = inProgressWorldsLike();
+  const genderFinals = recentFinalsByGender(worlds);
+  const recentGames = recentGamesByGender(worlds);
+  const groups = resultDivisionPickerOptions(genderFinals, recentGames);
+  assert.deepEqual(
+    groups.map((g) => [g.key, g.allLabel, g.divisions.map((d) => d.label)]),
+    [
+      ["womens", "All Women's", ["Women's D"]],
+      ["mens", "All Men's", ["Men's D", "Men's E"]],
+    ]
+  );
+  assert.equal(defaultResultPickerValue(groups), "womens");
+  assert.equal(shouldShowResultPicker(groups), true);
+});
+
+test("default picker is All Women's when Women's has results — same as today's default", () => {
+  const worlds = inProgressWorldsLike();
+  const groups = resultDivisionPickerOptions(recentFinalsByGender(worlds));
+  assert.equal(defaultResultPickerValue(groups), "womens");
+});
+
+test("single-gender events with several divisions still get a picker", () => {
+  const heat = finishedHeatStrokerLike();
+  const groups = resultDivisionPickerOptions(recentFinalsByGender(heat));
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].allLabel, "All Coed");
+  // Only one Gold division in the fixture — no picker needed
+  assert.equal(shouldShowResultPicker(groups), false);
+  const multi = {
+    coed: [
+      { key: "g", divisionName: "Gold" },
+      { key: "s", divisionName: "Silver" },
+    ],
+  };
+  const g2 = resultDivisionPickerOptions(multi);
+  assert.equal(shouldShowResultPicker(g2), true);
+  assert.deepEqual(g2[0].divisions.map((d) => d.label), ["Gold", "Silver"]);
+});
+
+test("cardsForResultPicker keeps All Women's and filters to one division in both modes", () => {
+  const worlds = inProgressWorldsLike();
+  const genderFinals = recentFinalsByGender(worlds);
+  const recentGames = recentGamesByGender(worlds);
+  const byDivision = recentGamesByDivision(worlds);
+  const allW = cardsForResultPicker({
+    mode: "division",
+    picker: "womens",
+    genderFinals,
+    recentGames,
+    recentGamesByDivision: byDivision,
+  });
+  assert.equal(allW.length, 1);
+  assert.equal(allW[0].divisionName, "Women's D");
+  const mensAll = cardsForResultPicker({
+    mode: "division",
+    picker: "mens",
+    genderFinals,
+    recentGames,
+    recentGamesByDivision: byDivision,
+  });
+  assert.equal(mensAll.length, 2);
+  const mensDId = mensAll[0].key;
+  const one = cardsForResultPicker({
+    mode: "division",
+    picker: mensDId,
+    genderFinals,
+    recentGames,
+    recentGamesByDivision: byDivision,
+  });
+  assert.equal(one.length, 1);
+  assert.equal(one[0].divisionName, "Men's D");
+
+  const allGames = cardsForResultPicker({
+    mode: "games",
+    picker: "mens",
+    genderFinals,
+    recentGames,
+    recentGamesByDivision: byDivision,
+  });
+  const oneGames = cardsForResultPicker({
+    mode: "games",
+    picker: mensDId,
+    genderFinals,
+    recentGames,
+    recentGamesByDivision: byDivision,
+  });
+  assert.ok(allGames.length >= oneGames.length);
+  assert.ok(oneGames.length > 0);
+  assert.ok(oneGames.every((c) => c.divisionId === mensDId && c.divisionName === "Men's D"));
+});
+
+test("recentGamesByDivision caps per division and is not limited by the gender cap", () => {
+  const games = [];
+  for (let i = 1; i <= 15; i++) {
+    games.push(
+      game(`w-${i}`, {
+        t1: `T${i}`,
+        when: `2026-11-13T${String(i).padStart(2, "0")}:00:00Z`,
+        round: i,
+      })
+    );
+  }
+  const t = {
+    divisions: [{ id: "wd", name: "Women's D", gender: "womens", games }],
+  };
+  const byDiv = recentGamesByDivision(t);
+  assert.equal(byDiv.wd.length, RECENT_GAMES_CAP);
+  assert.equal(byDiv.wd[0].gameNumber, "Game 15");
+  assert.equal(byDiv.wd[0].divisionId, "wd");
+});
+
+test("HomeRecentResults dropdown lists All Women's and individual divisions", () => {
+  const ui = readFileSync(new URL("../components/HomeRecentResults.js", import.meta.url), "utf8");
+  assert.match(ui, /resultDivisionPickerOptions/);
+  assert.match(ui, /<optgroup/);
+  assert.match(ui, /allLabel/);
+  assert.match(ui, /aria-label="Division"/);
+  assert.doesNotMatch(ui, /aria-label="Gender"/);
 });

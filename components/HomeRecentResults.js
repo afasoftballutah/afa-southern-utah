@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import MatchupCard from "@/components/ui/MatchupCard";
-
-/** Gender options — same order as before (W / M / Coed). */
-const GENDER_TABS = [
-  { key: "womens", short: "W", label: "Women's" },
-  { key: "mens", short: "M", label: "Men's" },
-  { key: "coed", short: "Coed", label: "Coed" },
-];
+import {
+  cardsForResultPicker,
+  defaultResultPickerValue,
+  resultDivisionPickerOptions,
+  shouldShowResultPicker,
+} from "@/lib/home-result-picker";
 
 const MODE_OPTIONS = [
   { key: "division", label: "By division" },
@@ -74,12 +73,14 @@ function DivisionStandings({ final }) {
 /**
  * Recent Results on home.
  * Tournament control stays in the original top row (date · name).
- * Gender dropdown lives in the panel header — same place as before.
+ * Division dropdown lives in the panel header (All Women's / Men's / Coed
+ * plus each division, grouped by gender). Default is the same All-gender
+ * view as before.
  * A client-side slider switches By division (headline result per
  * division) and Recent games (latest scored games, already in the
  * ISR payload).
  *
- * @param {{ events: Array<{ id: string, slug: string, name: string, when: string, genderFinals: object, recentGames?: object }> }} props
+ * @param {{ events: Array<{ id: string, slug: string, name: string, when: string, genderFinals: object, recentGames?: object, recentGamesByDivision?: object }> }} props
  */
 export default function HomeRecentResults({ events = [] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? null);
@@ -98,38 +99,51 @@ export default function HomeRecentResults({ events = [] }) {
 
   const genderFinals = event?.genderFinals ?? null;
   const recentGames = event?.recentGames ?? null;
+  const recentGamesByDivision = event?.recentGamesByDivision ?? null;
 
-  const available = useMemo(() => {
-    return GENDER_TABS.filter((t) => {
-      const finals = (genderFinals?.[t.key] ?? []).length;
-      const games = (recentGames?.[t.key] ?? []).length;
-      return finals > 0 || games > 0;
-    });
-  }, [genderFinals, recentGames]);
+  const pickerGroups = useMemo(
+    () => resultDivisionPickerOptions(genderFinals, recentGames),
+    [genderFinals, recentGames]
+  );
+  const showPicker = shouldShowResultPicker(pickerGroups);
+  const defaultPicker = defaultResultPickerValue(pickerGroups);
 
-  const [tab, setTab] = useState(available[0]?.key ?? null);
+  const [picker, setPicker] = useState(defaultPicker);
 
   useEffect(() => {
-    const first = GENDER_TABS.find((t) => {
-      const finals = (genderFinals?.[t.key] ?? []).length;
-      const games = (recentGames?.[t.key] ?? []).length;
-      return finals > 0 || games > 0;
-    });
-    setTab(first?.key ?? null);
-  }, [event?.id, genderFinals, recentGames]);
+    setPicker(defaultResultPickerValue(pickerGroups));
+  }, [event?.id, pickerGroups]);
 
-  const activeKey =
-    available.some((t) => t.key === tab) ? tab : available[0]?.key ?? null;
-  const multiGender = available.length > 1;
+  const pickerValues = useMemo(() => {
+    const values = new Set();
+    for (const g of pickerGroups) {
+      values.add(g.allValue);
+      for (const d of g.divisions) values.add(d.value);
+    }
+    return values;
+  }, [pickerGroups]);
+
+  const activePicker = pickerValues.has(picker) ? picker : defaultPicker;
   const multiTournament = events.length > 1;
-  const divisionCards = activeKey ? genderFinals?.[activeKey] ?? [] : [];
-  const gameCards = activeKey ? recentGames?.[activeKey] ?? [] : [];
-  const cards = mode === "games" ? gameCards : divisionCards;
-  const activeMeta = GENDER_TABS.find((t) => t.key === activeKey);
+  const cards = cardsForResultPicker({
+    mode,
+    picker: activePicker,
+    genderFinals,
+    recentGames,
+    recentGamesByDivision,
+  });
+  const activeGroup = pickerGroups.find(
+    (g) =>
+      g.allValue === activePicker ||
+      g.divisions.some((d) => d.value === activePicker)
+  );
+  const activeDivision = activeGroup?.divisions.find((d) => d.value === activePicker);
+  const bodyLabel = activeDivision?.label ?? activeGroup?.label;
+  const soloLabel = activeDivision?.label ?? activeGroup?.label;
   const countLabel =
     mode === "games"
-      ? `${gameCards.length} game${gameCards.length === 1 ? "" : "s"}`
-      : `${divisionCards.length} bracket${divisionCards.length === 1 ? "" : "s"}`;
+      ? `${cards.length} game${cards.length === 1 ? "" : "s"}`
+      : `${cards.length} bracket${cards.length === 1 ? "" : "s"}`;
 
   return (
     <article className="home-dash__card home-dash__card--results">
@@ -194,42 +208,33 @@ export default function HomeRecentResults({ events = [] }) {
         <p className="home-results__empty">No finals posted yet.</p>
       ) : (
         <div className="home-results__panel">
-          {/* Gender — same panel-header slot as before */}
+          {/* Division picker — same panel-header slot as the old gender select */}
           <div className="home-results__select-row">
-            {multiGender ? (
+            {showPicker ? (
               <div className="home-results__select-wrap">
                 <select
                   className="home-results__select"
-                  aria-label="Gender"
-                  value={activeKey ?? ""}
-                  onChange={(e) => setTab(e.target.value)}
+                  aria-label="Division"
+                  value={activePicker ?? ""}
+                  onChange={(e) => setPicker(e.target.value)}
                 >
-                  {available.map((t) => {
-                    const count =
-                      mode === "games"
-                        ? (recentGames?.[t.key] ?? []).length
-                        : (genderFinals?.[t.key] ?? []).length;
-                    const unit =
-                      mode === "games"
-                        ? count === 1
-                          ? "game"
-                          : "games"
-                        : count === 1
-                          ? "bracket"
-                          : "brackets";
-                    return (
-                      <option key={t.key} value={t.key}>
-                        {t.label} · {count} {unit}
-                      </option>
-                    );
-                  })}
+                  {pickerGroups.map((group) => (
+                    <optgroup key={group.key} label={group.label}>
+                      <option value={group.allValue}>{group.allLabel}</option>
+                      {group.divisions.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
             ) : (
-              activeMeta && (
+              soloLabel && (
                 <>
                   <span className="home-results__solo-label-text">
-                    {activeMeta.label}
+                    {soloLabel}
                   </span>
                   <span className="home-results__solo-count">{countLabel}</span>
                 </>
@@ -237,7 +242,7 @@ export default function HomeRecentResults({ events = [] }) {
             )}
           </div>
 
-          <div className="home-results__body" aria-label={activeMeta?.label}>
+          <div className="home-results__body" aria-label={bodyLabel}>
             {cards.length > 0 ? (
               <div className="home-results__stack">
                 {cards.map((final) =>
