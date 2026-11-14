@@ -1,5 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
-import { createIpRateLimiter, tooManyRequests } from "@/lib/ip-rate-limit";
+import { checkPublicRateLimit, tooManyRequests } from "@/lib/ip-rate-limit";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { getActiveWaiver } from "@/lib/site-docs";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
@@ -27,8 +27,6 @@ import { revalidateTournamentPages } from "@/lib/tournament-isr";
 
 export const runtime = "nodejs"; // pdf-lib needs the Node runtime, not Edge
 
-const limiter = createIpRateLimiter(8, 15 * 60 * 1000);
-
 function bad(message, status = 400) {
   return Response.json({ error: message }, { status });
 }
@@ -41,7 +39,12 @@ export async function POST(request) {
     return bad("Invalid JSON body");
   }
 
-  const hit = limiter.limited(request);
+  const hit = await checkPublicRateLimit({
+    route: "register",
+    request,
+    limit: 8,
+    windowSeconds: 15 * 60,
+  });
   if (hit.limited) {
     return tooManyRequests(hit.retryAfterSec);
   }

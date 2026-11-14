@@ -1,6 +1,5 @@
--- NOT APPLIED. Do not run this against prod (or any) Supabase without
--- J.D.'s explicit OK. The live site uses an in-memory per-IP limiter
--- (lib/ip-rate-limit.js) until this is approved and applied.
+-- Public form rate limits (lookup, registration POST, address typeahead).
+-- Additive: new table + function only. Does not change existing tables.
 --
 -- Why a new table, not scorekeeper_auth_throttle: that table and
 -- check_and_record_scorekeeper_attempt() are fail/success PIN lockouts.
@@ -8,9 +7,8 @@
 -- typeahead or registration POSTs. Reusing it would also mix those
 -- counters with the shared PIN lockout.
 --
--- After apply, switch lib/ip-rate-limit.js (or the route handlers) to
--- call check_and_record_public_rate_limit() with a per-route scope
--- such as 'lookup:ip:1.2.3.4'.
+-- Scopes are per-route + a SHA-256 of the caller IP (never the raw IP),
+-- e.g. 'lookup:' || sha256(ip). RLS on, zero policies, service_role only.
 
 create table if not exists public.public_rate_limit (
   scope text primary key,

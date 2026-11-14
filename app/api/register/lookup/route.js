@@ -7,7 +7,7 @@ import {
   emailsMatch,
   recoveryTeamPayload,
 } from "@/lib/register-lookup";
-import { createIpRateLimiter, tooManyRequests } from "@/lib/ip-rate-limit";
+import { checkPublicRateLimit, tooManyRequests } from "@/lib/ip-rate-limit";
 
 // Manager recovery WITHOUT a password: look up registrations by the
 // manager_email they used when they registered. Returns manage + roster
@@ -25,8 +25,6 @@ export const runtime = "nodejs";
 
 const REG_SELECT =
   "id, team_name, status, manage_token, roster_token, manager_email, manager_name, submitted_at, team_id, tournaments(name, slug, start_date), divisions(id, name, display_name, gender)";
-
-const limiter = createIpRateLimiter(12, 15 * 60 * 1000);
 
 function isEmailShape(email) {
   // Loose check — managers type real addresses; we only need a key match
@@ -49,7 +47,12 @@ export async function POST(request) {
     );
   }
 
-  const hit = limiter.limited(request);
+  const hit = await checkPublicRateLimit({
+    route: "lookup",
+    request,
+    limit: 12,
+    windowSeconds: 15 * 60,
+  });
   if (hit.limited) {
     return tooManyRequests(hit.retryAfterSec);
   }
