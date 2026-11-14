@@ -212,7 +212,7 @@ export default async function Home() {
               className="home-news__poster-link"
             >
               <img
-                src="/afa-we-want-you.png"
+                src="/afa-we-want-you-v2.webp"
                 alt="AFA We Want You — play for AFA. America's recreational sport played as it should be."
                 className="home-news__poster"
                 width={800}
