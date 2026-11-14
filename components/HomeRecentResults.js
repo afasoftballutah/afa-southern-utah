@@ -141,7 +141,7 @@ export default function HomeRecentResults({ events = [] }) {
                     score1={final.score1}
                     score2={final.score2}
                     isFinal
-                    championship
+                    championship={Boolean(final.championship)}
                     className="home-results__matchup"
                   />
                 ))}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   getRecentCompletedTournaments,
+  getRecentResultTournaments,
   getSeasonListByRegion,
   withArchiveSummaries,
   formatFee,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { isPastTournament } from "@/lib/tournament-state";
-import { championshipGameOf } from "@/lib/bracket/if-game";
+import { recentFinalsByGender, RESULT_GENDER_KEYS } from "@/lib/home-recent";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import { venueParts } from "@/lib/director";
 import { listPublishedNews, formatNewsDate, newsImageUrls } from "@/lib/news";
@@ -28,13 +29,14 @@ export const revalidate = 30;
 // Heat Stroker stayed "upcoming" after it finished (spec-signup-flow).
 export default async function Home() {
   const configured = isSupabaseConfigured();
-  const [recentCompleted, rawSeasonGroups, newsPosts] = configured
+  const [recentCompleted, recentResults, rawSeasonGroups, newsPosts] = configured
     ? await Promise.all([
         getRecentCompletedTournaments(8),
+        getRecentResultTournaments(8),
         getSeasonListByRegion(),
         listPublishedNews({ limit: 8 }),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   // Newest finished event (placements gallery + left-column “Last Tournament”)
   const lastResults = recentCompleted[0] ?? null;
@@ -127,17 +129,17 @@ export default async function Home() {
     ? canonicalRegion(globalNext)
     : "southern_utah";
 
-  // Recent Results: southern-focused feed (where we have game data), also
-  // bucketed by region when we know it.
+  // Recent Results: newest tournament with scored finals, including an
+  // in-progress event (Worlds). Bucketed by region for the map filter.
   const resultSource =
-    recentCompleted.length > 0
-      ? recentCompleted
+    recentResults.length > 0
+      ? recentResults
       : lastByRegion.southern_utah
         ? [lastResults].filter(Boolean)
         : [];
   for (const t of resultSource) {
-    const genderFinals = championshipsByGender(t);
-    const hasFinal = GENDER_KEYS.some(
+    const genderFinals = recentFinalsByGender(t);
+    const hasFinal = RESULT_GENDER_KEYS.some(
       (k) => (genderFinals[k] ?? []).length > 0
     );
     if (!hasFinal) continue;
@@ -146,6 +148,7 @@ export default async function Home() {
       slug: t.slug,
       name: t.name,
       when: formatDateRangeNoYear(t.start_date, t.end_date),
+      startDate: t.start_date,
       genderFinals,
     };
     const r = canonicalRegion(t);
@@ -318,95 +321,6 @@ export default async function Home() {
       )}
     </div>
   );
-}
-
-const GENDER_KEYS = ["womens", "mens", "coed"];
-
-/**
- * Every decided championship final, grouped by gender (Women's / Men's / Coed).
- * Gold / Silver / Bronze (and any other finished bracket under that gender)
- * each get their own matchup card — not only the top bracket.
- */
-function championshipsByGender(tournament) {
-  const out = { womens: [], mens: [], coed: [] };
-  if (!tournament) return out;
-
-  const divisions = tournament.divisions ?? [];
-  const byId = new Map(divisions.map((d) => [d.id, d]));
-
-  const genderOf = (d) => {
-    if (d.gender === "womens" || d.gender === "mens" || d.gender === "coed") {
-      return d.gender;
-    }
-    if (d.parent_division_id) {
-      const p = byId.get(d.parent_division_id);
-      if (p?.gender === "womens" || p?.gender === "mens" || p?.gender === "coed") {
-        return p.gender;
-      }
-      const pn = String(p?.display_name ?? p?.name ?? "").toLowerCase();
-      if (pn.includes("women")) return "womens";
-      if (/\bmen/.test(pn) && !pn.includes("women")) return "mens";
-      if (pn.includes("coed") || pn.includes("co-ed")) return "coed";
-    }
-    const n = String(d.display_name ?? d.name ?? "").toLowerCase();
-    if (n.includes("women")) return "womens";
-    if (/\bmen/.test(n) && !n.includes("women")) return "mens";
-    if (n.includes("coed") || n.includes("co-ed")) return "coed";
-    return null;
-  };
-
-  const bracketRank = (name) => {
-    if (/^gold$/i.test(name)) return 0;
-    if (/^silver$/i.test(name)) return 1;
-    if (/^bronze$/i.test(name)) return 2;
-    return 10;
-  };
-
-  const candidates = [];
-  for (const d of divisions) {
-    const game = championshipGameOf(d.games ?? []);
-    if (!game) continue;
-    const gender = genderOf(d);
-    if (!gender) continue;
-    const name = d.display_name ?? d.name ?? "";
-    candidates.push({ d, game, gender, name });
-  }
-
-  for (const key of Object.keys(out)) {
-    const pool = candidates
-      .filter((c) => c.gender === key)
-      .sort((a, b) => {
-        const br = bracketRank(a.name) - bracketRank(b.name);
-        if (br !== 0) return br;
-        const so = (a.d.sort_order ?? 0) - (b.d.sort_order ?? 0);
-        if (so !== 0) return so;
-        return a.name.localeCompare(b.name);
-      });
-
-    out[key] = pool.map((pick) => {
-      const g = pick.game;
-      const tint = /^gold$/i.test(pick.name)
-        ? "Gold"
-        : /^silver$/i.test(pick.name)
-          ? "Silver"
-          : /^bronze$/i.test(pick.name)
-            ? "Bronze"
-            : null;
-      // Always show bracket/division name (Gold, Silver, Coed, Men's D, …)
-      const caption = pick.name || "Championship";
-      return {
-        key: pick.d.id,
-        team1: g.team1_name,
-        team2: g.team2_name,
-        score1: g.team1_score,
-        score2: g.team2_score,
-        caption,
-        divisionTint: tint,
-        divisionName: pick.name,
-      };
-    });
-  }
-  return out;
 }
 
 /** Date range without year — home upcoming list only. */
