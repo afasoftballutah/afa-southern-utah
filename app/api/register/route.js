@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
+import { checkPublicRateLimit, tooManyRequests } from "@/lib/ip-rate-limit";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { getActiveWaiver } from "@/lib/site-docs";
 import { resolvePlayer, resolveTeam } from "@/lib/identity";
@@ -36,6 +37,16 @@ export async function POST(request) {
     body = await request.json();
   } catch {
     return bad("Invalid JSON body");
+  }
+
+  const hit = await checkPublicRateLimit({
+    route: "register",
+    request,
+    limit: 8,
+    windowSeconds: 15 * 60,
+  });
+  if (hit.limited) {
+    return tooManyRequests(hit.retryAfterSec);
   }
 
   const {

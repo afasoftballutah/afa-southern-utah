@@ -6,6 +6,22 @@
 export const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // The site does not use camera, microphone, or geolocation.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
+// Tokens live in the URL on these paths — do not leak them via Referer.
+export const TOKEN_PATH_HEADERS = [
+  ...SECURITY_HEADERS.filter((h) => h.key !== "Referrer-Policy"),
+  { key: "Referrer-Policy", value: "no-referrer" },
+];
+
+const TOKEN_PATHS = [
+  "/register/manage/:path*",
+  "/register/roster/:path*",
+  "/api/register/roster",
 ];
 
 /** @type {import('next').NextConfig} */
@@ -42,7 +58,15 @@ const nextConfig = {
         headers: [...SECURITY_HEADERS, immutableCache],
       },
     ]);
-    return [...imageHeaders, { source: "/:path*", headers: SECURITY_HEADERS }];
+    const tokenHeaders = TOKEN_PATHS.map((source) => ({
+      source,
+      headers: TOKEN_PATH_HEADERS,
+    }));
+    return [
+      ...imageHeaders,
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      ...tokenHeaders,
+    ];
   },
 
   // Old /scorekeeper/* director paths → /director/*; field → /scorekeeper/*

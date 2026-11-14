@@ -1,3 +1,4 @@
+import { checkPublicRateLimit, tooManyRequests } from "@/lib/ip-rate-limit";
 // Resolve a Google place_id into street / city / state / zip.
 // Server-only key — never call Places from the browser.
 
@@ -19,6 +20,16 @@ function shortComponent(components, type) {
 }
 
 export async function GET(request) {
+  const hit = await checkPublicRateLimit({
+    route: "address-details",
+    request,
+    limit: 30,
+    windowSeconds: 60,
+  });
+  if (hit.limited) {
+    return tooManyRequests(hit.retryAfterSec, "Too many address lookups. Try again shortly.");
+  }
+
   if (!GOOGLE_KEY) {
     return Response.json(
       { error: "Google Places is not configured" },
