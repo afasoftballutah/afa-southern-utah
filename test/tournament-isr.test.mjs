@@ -83,7 +83,16 @@ test("every score, clear, placement, and QuickScores path revalidates tournament
     assert.match(src, needle instanceof RegExp ? needle : new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), file);
   }
   const helper = read("lib/tournament-isr.js");
-  assert.match(helper, /revalidatePath\(`\/tournaments\/\$\{s\}`, "layout"\)/);
+  // Literal paths omit type — "layout" on a concrete slug was a no-op
+  // because app/tournaments/[slug] has no layout.js.
+  assert.match(helper, /revalidatePath\(`\/tournaments\/\$\{s\}`\)/);
+  assert.match(helper, /revalidatePath\(`\/tournaments\/\$\{s\}\/schedule`\)/);
+  assert.match(helper, /revalidatePath\(`\/tournaments\/\$\{s\}\/division\/\$\{id\}`\)/);
+  assert.doesNotMatch(helper, /revalidatePath\(`\/tournaments\/\$\{s\}`, "layout"\)/);
+  assert.match(helper, /revalidatePath\("\/tournaments\/\[slug\]", "layout"\)/);
+  assert.match(helper, /revalidatePath\("\/tournaments\/\[slug\]", "page"\)/);
+  assert.match(helper, /revalidatePath\("\/tournaments\/\[slug\]\/schedule", "page"\)/);
+  assert.match(helper, /revalidatePath\("\/tournaments\/\[slug\]\/division\/\[divisionId\]", "page"\)/);
   assert.match(helper, /revalidatePath\("\/tournaments"\)/);
   assert.match(helper, /revalidatePath\("\/"\)/);
 });
