@@ -4333,7 +4333,7 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   line-height: 1; gap: 0.05rem; position: relative; z-index: 1;
 }
-.tl-pill__score { font-size: 0.8rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.tl-pill__score { font-size: 0.8rem; line-height: 0.875rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
 .tl-pill__gno {
   font-size: 0.625rem; line-height: 1; font-weight: 600;
   white-space: nowrap; pointer-events: none;
@@ -4363,7 +4363,7 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
   border-radius: 0.5rem; font-size: 0.75rem;
 }
 .tl-vboard .tl-pill::after { inset: 0; }
-.tl-vboard .tl-pill__score { font-size: 0.6875rem; }
+.tl-vboard .tl-pill__score { font-size: 0.6875rem; line-height: 0.75rem; }
 .tl-vboard .tl-pill__gno { font-size: 0.5rem; }
 .tl-vboard .tl-bgstar { width: 2.125rem; height: 2.125rem; }
 .tl-vboard .tl-corner { font-size: 0.5rem; overflow: visible; }
