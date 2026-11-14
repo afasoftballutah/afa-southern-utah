@@ -220,6 +220,9 @@ function TournamentCard({ card }) {
                 score1={g.score1}
                 score2={g.score2}
                 isFinal={g.isFinal}
+                championship={g.championship}
+                team1Place={g.team1Place}
+                team2Place={g.team2Place}
               />
             );
             return href ? (
