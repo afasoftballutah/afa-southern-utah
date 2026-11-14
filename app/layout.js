@@ -2,6 +2,7 @@ import { Anton, Outfit } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
+import { Analytics } from "@vercel/analytics/next";
 
 // Display — Anton for wordmark + titles. Self-hosted via next/font.
 const displayFace = Anton({
@@ -71,6 +72,7 @@ export default function RootLayout({ children }) {
             </p>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
