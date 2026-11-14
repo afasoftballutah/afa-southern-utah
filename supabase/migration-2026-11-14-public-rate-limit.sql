@@ -68,3 +68,6 @@ end;
 $$;
 
 grant execute on function public.check_and_record_public_rate_limit(text, integer, integer) to service_role;
+
+revoke execute on function public.check_and_record_public_rate_limit(text, integer, integer) from public, anon, authenticated;
+revoke all on public.public_rate_limit from anon, authenticated;
