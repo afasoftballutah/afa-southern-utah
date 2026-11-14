@@ -47,6 +47,10 @@ test("MatchupCard still shows scores and winner-on-top from isFinal", () => {
   assert.match(card, /bronze/);
 });
 
+test("place text uses the site action green", () => {
+  assert.match(src("components/ui/MatchupCard.js"), /color: "var\(--afa-action\)"/);
+});
+
 test("team page passes championship and places; pool rows do not", () => {
   assert.match(src("app/teams/[slug]/page.js"), /championship=\{g\.championship\}/);
   assert.match(src("app/teams/[slug]/page.js"), /team1Place=\{g\.team1Place\}/);

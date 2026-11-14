@@ -50,7 +50,10 @@ function Pill({ name, from, seed, score, won, waiting, medal, place }) {
         </span>
       )}
       {place && (
-        <span className="shrink-0 text-[12px] font-bold italic leading-none">
+        <span
+          className="shrink-0 text-[12px] font-bold italic leading-none"
+          style={{ color: "var(--afa-action)" }}
+        >
           {place}
         </span>
       )}
