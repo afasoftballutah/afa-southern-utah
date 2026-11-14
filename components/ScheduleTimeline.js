@@ -144,10 +144,10 @@ function Pill({ game, open, onToggle, pillRef, mark, vertical = false }) {
     >
       {champ ? <Star className="tl-bgstar" /> : null}
       {result ? (
-        <>
+        <span className="tl-pill__result">
           <span className="tl-pill__gno">{number}</span>
           <span className="tl-pill__num tl-pill__score">{result.text}</span>
-        </>
+        </span>
       ) : (
         <span className="tl-pill__num">{number}</span>
       )}
