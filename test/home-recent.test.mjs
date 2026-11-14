@@ -7,6 +7,8 @@ import {
   recentFinalsByGender,
   recentGamesByGender,
   gameNumberLabel,
+  divisionFinalStandings,
+  divisionScoredRecords,
   RECENT_GAMES_CAP,
   sortResultEventsByRecency,
 } from "../lib/home-recent.js";
@@ -345,4 +347,165 @@ test("home Recent Results has a By division / Recent games slider and light capt
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(css, /\.home-results__panel[^{]*\{[^}]*--matchup-caption:\s*#f1f5f9/s);
   assert.match(css, /\.home-results__mode/);
+});
+
+
+/** 4-team double-elim with an if-necessary final (same shape as placing tests). */
+function buildDe4() {
+  const sheet = [
+    [1, "winners", "Aces", "Bats"],
+    [2, "winners", "Cats", "Dogs"],
+    [3, "winners", null, null, 1, "winner", 2, "winner"],
+    [4, "losers", null, null, 1, "loser", 2, "loser"],
+    [5, "losers", null, null, 4, "winner", 3, "loser"],
+    [6, "final", null, null, 3, "winner", 5, "winner"],
+    [7, "final", null, null, 6, "winner", 6, "loser"],
+  ];
+  return sheet.map(([n, side, t1, t2, s1, r1, s2, r2]) => ({
+    id: `g${n}`,
+    round: n,
+    bracket_side: side,
+    bracket_group: "main",
+    team1_name: t1 ?? null,
+    team2_name: t2 ?? null,
+    team1_source_game_id: s1 ? `g${s1}` : null,
+    team1_source_result: r1 ?? null,
+    team2_source_game_id: s2 ? `g${s2}` : null,
+    team2_source_result: r2 ?? null,
+    team1_score: null,
+    team2_score: null,
+    winner_slot: null,
+    status: "pending",
+    is_bye: false,
+  }));
+}
+
+function play(games, id, team1Wins, scores = [9, 3]) {
+  const g = games.find((x) => x.id === id);
+  const [hi, lo] = scores;
+  Object.assign(g, {
+    team1_score: team1Wins ? hi : lo,
+    team2_score: team1Wins ? lo : hi,
+    winner_slot: team1Wins ? "team1" : "team2",
+    status: "final",
+  });
+  const w = team1Wins ? g.team1_name : g.team2_name;
+  const l = team1Wins ? g.team2_name : g.team1_name;
+  for (const x of games) {
+    for (const s of ["team1", "team2"]) {
+      if (x[`${s}_source_game_id`] !== id) continue;
+      x[`${s}_name`] =
+        String(x[`${s}_source_result`] ?? "winner").toLowerCase() === "loser" ? l : w;
+    }
+  }
+}
+
+function finishedDe4Division({ playIfGame = false, poolGames = [] } = {}) {
+  const games = buildDe4();
+  for (const n of [1, 2, 3, 4, 5]) play(games, `g${n}`, true);
+  if (playIfGame) {
+    play(games, "g6", false);
+    play(games, "g7", true);
+  } else {
+    play(games, "g6", true);
+  }
+  return {
+    id: "gold",
+    name: "Gold",
+    gender: "coed",
+    brackets: [{ id: "b1", bracket_group: "main", format: "double_elim" }],
+    games,
+    pool_games: poolGames,
+  };
+}
+
+test("divisionFinalStandings is null while a division is still open", () => {
+  const worlds = inProgressWorldsLike();
+  assert.equal(divisionFinalStandings(worlds.divisions.find((d) => d.id === "womens-d")), null);
+  const cards = recentFinalsByGender(worlds);
+  assert.equal(cards.womens[0].standings, null);
+  assert.equal(cards.womens[0].team1, "Profit 3.0");
+});
+
+test("divisionFinalStandings lists every team in finishing order with medals and W-L", () => {
+  const d = finishedDe4Division();
+  const rows = divisionFinalStandings(d);
+  assert.deepEqual(
+    rows.map((r) => [r.label, r.team, `${r.w}-${r.l}`, r.medal]),
+    [
+      ["1st", "Aces", "3-0", "\u{1F3C6}"],
+      ["2nd", "Bats", "2-2", "\u{1F948}"],
+      ["3rd", "Cats", "1-2", "\u{1F949}"],
+      ["4th", "Dogs", "0-2", null],
+    ]
+  );
+  // If-game was moot and must not invent a loss or win.
+  const rec = divisionScoredRecords(d);
+  assert.equal(rec.get("Aces").w + rec.get("Aces").l, 3);
+});
+
+test("divisionFinalStandings includes the if-necessary game in W-L when it was played", () => {
+  const d = finishedDe4Division({ playIfGame: true });
+  const rows = divisionFinalStandings(d);
+  // G6: Aces lose to Bats; G7 team1 is Bats, team1 wins — Bats are champions 4-1; Aces 2-2.
+  assert.equal(rows[0].team, "Bats");
+  assert.equal(rows[0].label, "1st");
+  assert.equal(rows[0].w, 4);
+  assert.equal(rows[0].l, 1);
+  assert.equal(rows[1].team, "Aces");
+  assert.equal(rows[1].label, "2nd");
+  assert.equal(rows[1].w, 2);
+  assert.equal(rows[1].l, 2);
+});
+
+test("divisionScoredRecords counts pool finals and ignores unscored games", () => {
+  const poolGames = [
+    {
+      id: "p1",
+      pool: "A",
+      team1_name: "Aces",
+      team2_name: "Cats",
+      team1_score: 12,
+      team2_score: 5,
+      status: "final",
+    },
+    {
+      id: "p2",
+      pool: "A",
+      team1_name: "Bats",
+      team2_name: "Dogs",
+      team1_score: null,
+      team2_score: null,
+      status: "scheduled",
+    },
+  ];
+  const d = finishedDe4Division({ poolGames });
+  const rec = divisionScoredRecords(d);
+  assert.equal(rec.get("Aces").w, 4); // 3 bracket + 1 pool
+  assert.equal(rec.get("Cats").l, 3); // 2 bracket + 1 pool
+  assert.equal(rec.get("Bats").w, 2); // unscored pool ignored
+  const rows = divisionFinalStandings(d);
+  assert.equal(rows[0].w, 4);
+});
+
+test("recentFinalsByGender attaches standings only on completed divisions", () => {
+  const t = {
+    name: "Mixed",
+    divisions: [
+      finishedDe4Division(),
+      inProgressWorldsLike().divisions.find((d) => d.id === "womens-d"),
+    ],
+  };
+  const cards = recentFinalsByGender(t);
+  assert.equal(cards.coed[0].championship, true);
+  assert.ok(cards.coed[0].standings);
+  assert.equal(cards.coed[0].standings[0].label, "1st");
+  assert.equal(cards.womens[0].standings, null);
+});
+
+test("By division UI renders standings for a completed division", () => {
+  const ui = readFileSync(new URL("../components/HomeRecentResults.js", import.meta.url), "utf8");
+  assert.match(ui, /DivisionStandings/);
+  assert.match(ui, /final\.standings/);
+  assert.match(ui, /home-results__standings/);
 });

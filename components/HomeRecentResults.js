@@ -16,6 +16,61 @@ const MODE_OPTIONS = [
   { key: "games", label: "Recent games" },
 ];
 
+const CAPTION_TINT = {
+  Gold: "#c9a227",
+  Silver: "#8b9bb0",
+  Bronze: "#c47a4a",
+};
+const GROUND_TINT = {
+  Gold: "#fbf6e6",
+  Silver: "#f4f6f9",
+  Bronze: "#f9f1eb",
+};
+
+function DivisionStandings({ final }) {
+  const rows = final.standings ?? [];
+  return (
+    <div className="home-results__standings home-results__matchup">
+      {final.caption ? (
+        <p
+          className="matchup-card__caption mb-1 truncate text-center text-[10.5px] font-semibold uppercase tracking-[.03em]"
+          style={{
+            color:
+              CAPTION_TINT[final.divisionTint] ??
+              "var(--matchup-caption, var(--afa-ink))",
+          }}
+        >
+          {final.caption}
+        </p>
+      ) : null}
+      <ol
+        className="home-results__standings-card"
+        style={{ background: GROUND_TINT[final.divisionTint] ?? "#fff" }}
+      >
+        {rows.map((row) => (
+          <li
+            key={`${row.place ?? "x"}-${row.team}`}
+            className="home-results__standings-row"
+          >
+            <span className="home-results__standings-medal" aria-hidden="true">
+              {row.medal ?? ""}
+            </span>
+            <span className="home-results__standings-place">
+              {row.label ?? ""}
+            </span>
+            <span className="home-results__standings-team" title={row.team}>
+              {row.team}
+            </span>
+            <span className="home-results__standings-record">
+              {row.w}&ndash;{row.l}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 /**
  * Recent Results on home.
  * Tournament control stays in the original top row (date · name).
@@ -185,20 +240,24 @@ export default function HomeRecentResults({ events = [] }) {
           <div className="home-results__body" aria-label={activeMeta?.label}>
             {cards.length > 0 ? (
               <div className="home-results__stack">
-                {cards.map((final) => (
-                  <MatchupCard
-                    key={final.key}
-                    caption={final.caption}
-                    division={final.divisionTint}
-                    team1={final.team1}
-                    team2={final.team2}
-                    score1={final.score1}
-                    score2={final.score2}
-                    isFinal
-                    championship={Boolean(final.championship)}
-                    className="home-results__matchup"
-                  />
-                ))}
+                {cards.map((final) =>
+                  mode === "division" && final.standings?.length ? (
+                    <DivisionStandings key={final.key} final={final} />
+                  ) : (
+                    <MatchupCard
+                      key={final.key}
+                      caption={final.caption}
+                      division={final.divisionTint}
+                      team1={final.team1}
+                      team2={final.team2}
+                      score1={final.score1}
+                      score2={final.score2}
+                      isFinal
+                      championship={Boolean(final.championship)}
+                      className="home-results__matchup"
+                    />
+                  )
+                )}
               </div>
             ) : (
               <p className="home-results__empty">
