@@ -1,5 +1,6 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import {
   poolFinishOrder,
   resolveSeeds,
@@ -90,6 +91,7 @@ export async function POST(request) {
       });
     }
 
+    await revalidateTournamentPages({ slug: tournamentSlug });
     return Response.json({ ok: true, action: "remap", changed });
   }
 
@@ -216,5 +218,6 @@ export async function POST(request) {
     );
   }
 
+  await revalidateTournamentPages({ slug: tournamentSlug });
   return Response.json({ ok: true, dryRun: false, applied: true, appliedCount: writes.length, pools, seeds, preview, slots, seedRefOptions, writes, unresolved });
 }

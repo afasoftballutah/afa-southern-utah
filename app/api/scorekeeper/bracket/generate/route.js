@@ -3,6 +3,7 @@ import { generateBracket } from "@/lib/bracket/generate";
 import { seedOrderFromPools } from "@/lib/bracket/seed";
 import { isBracketDraft } from "@/lib/bracket/propagate";
 import { getServiceClient } from "@/lib/supabase";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,7 @@ export async function POST(request) {
       const result = await generateBracket(divisionId, fmt, derived.order, {
         teamNames: derived.order,
       });
+      await revalidateTournamentPages({ divisionId });
       return Response.json({ ok: true, fromPools: true, ...result });
     }
 
@@ -61,6 +63,7 @@ export async function POST(request) {
       fmt,
       Array.isArray(seedOrder) ? seedOrder : null
     );
+    await revalidateTournamentPages({ divisionId });
     return Response.json({ ok: true, ...result });
   } catch (err) {
     return Response.json({ error: err.message || "Could not generate bracket" }, { status: 500 });
@@ -83,5 +86,6 @@ export async function DELETE(request) {
   const supabase = getServiceClient();
   await supabase.from("games").delete().eq("division_id", divisionId);
   await supabase.from("brackets").delete().eq("division_id", divisionId);
+  await revalidateTournamentPages({ divisionId });
   return Response.json({ ok: true });
 }

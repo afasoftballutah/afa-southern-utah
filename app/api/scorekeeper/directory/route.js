@@ -7,6 +7,7 @@ import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
 import { resolvePlayer, resolveTeam, normalizeName } from "@/lib/identity";
 import { getActiveWaiver } from "@/lib/site-docs";
 import { RATINGS } from "@/lib/class";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import {
   composeDisplayName,
   composeLegalName,
@@ -85,6 +86,7 @@ export async function POST(request) {
         console.error("move registration failed", error);
         return bad("Could not move that team — please try again", 500);
       }
+      await revalidateTournamentPages({ tournamentId: registration.tournament_id, divisionId });
       return Response.json({ ok: true });
     }
 
@@ -317,6 +319,7 @@ export async function POST(request) {
         console.error("create tournament failed", error);
         return bad("Could not create that tournament — please try again", 500);
       }
+      await revalidateTournamentPages({ slug: data.slug, tournamentId: data.id });
       return Response.json({ ok: true, tournament: data });
     }
 
@@ -367,6 +370,7 @@ export async function POST(request) {
         console.error("update tournament failed", error);
         return bad("Could not save — please try again", 500);
       }
+      await revalidateTournamentPages({ tournamentId });
       return Response.json({ ok: true });
     }
 
@@ -546,6 +550,7 @@ export async function POST(request) {
         }
       }
 
+      await revalidateTournamentPages({ tournamentId });
       return Response.json({ ok: true, refused });
     }
 
@@ -553,6 +558,12 @@ export async function POST(request) {
     case "deleteTournament": {
       const { tournamentId } = body;
       if (!tournamentId) return bad("Which tournament?");
+
+      const { data: doomed } = await supabase
+        .from("tournaments")
+        .select("slug")
+        .eq("id", tournamentId)
+        .maybeSingle();
 
       // Never with teams in it. A registration is somebody's roster, their
       // waiver and their signature; deleting a tournament is not the place to
@@ -585,6 +596,7 @@ export async function POST(request) {
         console.error("delete tournament failed", error);
         return bad("Could not delete it — please try again", 500);
       }
+      await revalidateTournamentPages({ slug: doomed?.slug });
       return Response.json({ ok: true });
     }
 
@@ -601,6 +613,7 @@ export async function POST(request) {
           .update({ poster_url: null })
           .eq("id", tournamentId);
         if (error) return bad("Could not remove the poster — please try again", 500);
+        await revalidateTournamentPages({ tournamentId });
         return Response.json({ ok: true, posterUrl: null });
       }
 
@@ -628,6 +641,7 @@ export async function POST(request) {
         .update({ poster_url: pub.publicUrl })
         .eq("id", tournamentId);
       if (error) return bad("Uploaded, but could not save the link — please try again", 500);
+      await revalidateTournamentPages({ tournamentId });
       return Response.json({ ok: true, posterUrl: pub.publicUrl });
     }
 
@@ -660,6 +674,7 @@ export async function POST(request) {
         console.error("add division failed", error);
         return bad("Could not add that division — please try again", 500);
       }
+      await revalidateTournamentPages({ tournamentId });
       return Response.json({ ok: true });
     }
 
@@ -812,6 +827,7 @@ export async function POST(request) {
       }
 
       const origin = new URL(request.url).origin;
+      await revalidateTournamentPages({ tournamentId, divisionId });
       return Response.json({
         ok: true,
         registrationId: registration.id,
@@ -901,6 +917,7 @@ export async function POST(request) {
         console.error("team identity resolution failed on bulk add", err);
       }
 
+      await revalidateTournamentPages({ tournamentId, divisionId });
       return Response.json({
         ok: true,
         added: made?.length ?? 0,
@@ -1183,6 +1200,7 @@ export async function POST(request) {
         console.error("setDivisionPlayDay failed", error);
         return bad("Could not save play day — please try again", 500);
       }
+      await revalidateTournamentPages({ tournamentId: div.tournament_id, divisionId });
       return Response.json({
         ok: true,
         dayDate: day,
@@ -1309,6 +1327,7 @@ export async function POST(request) {
         }
         updated += ids.length;
       }
+      await revalidateTournamentPages({ tournamentId });
       return Response.json({ ok: true, updated });
     }
 
@@ -1333,6 +1352,7 @@ export async function POST(request) {
         console.error("set division minimums failed", error);
         return bad("Could not save — please try again", 500);
       }
+      await revalidateTournamentPages({ divisionId });
       return Response.json({ ok: true });
     }
 
@@ -1481,6 +1501,7 @@ export async function POST(request) {
         }
       }
 
+      await revalidateTournamentPages({ divisionId });
       return Response.json({ ok: true, name: to, seedOrder });
     }
 
@@ -1517,6 +1538,7 @@ export async function POST(request) {
           500
         );
       }
+      await revalidateTournamentPages({ divisionId });
       return Response.json({ ok: true, seedOrder: order });
     }
 
@@ -1574,6 +1596,7 @@ export async function POST(request) {
         console.error("createPoolRoundRobin failed", insErr);
         return bad("Could not create pool games", 500);
       }
+      await revalidateTournamentPages({ divisionId });
       return Response.json({
         ok: true,
         pool: letter,
@@ -1592,6 +1615,9 @@ export async function POST(request) {
       }
       const { removePoolPlay } = await import("@/lib/pool-removal");
       const { status, body: out } = await removePoolPlay(supabase, body.divisionId);
+      if (status === 200 || (typeof out?.error === "string" && /Removed \d+ pool games/.test(out.error))) {
+        await revalidateTournamentPages({ divisionId: body.divisionId });
+      }
       return Response.json(out, { status });
     }
 
@@ -1829,6 +1855,7 @@ export async function POST(request) {
         console.error("addHandGame failed", insErr);
         return bad("Could not add that game", 500);
       }
+      await revalidateTournamentPages({ divisionId: inserted?.division_id ?? body.divisionId });
       return Response.json({ ok: true, game: inserted });
     }
 
@@ -1843,6 +1870,7 @@ export async function POST(request) {
       try {
         const { applySheetDraft } = await import("@/lib/bracket/apply-sheet");
         const result = await applySheetDraft(supabase, { divisionId, games });
+        await revalidateTournamentPages({ divisionId });
         return Response.json({ ok: true, ...result });
       } catch (err) {
         console.error("applySheetDraft failed", err);
@@ -1882,6 +1910,7 @@ export async function POST(request) {
       }
       const { error: delErr } = await supabase.from("games").delete().eq("id", gameId);
       if (delErr) return bad("Could not remove that game", 500);
+      await revalidateTournamentPages({ gameId, divisionId: game.division_id });
       return Response.json({ ok: true });
     }
 
@@ -1937,6 +1966,7 @@ export async function POST(request) {
           await supabase.from("games").update(patch).eq("id", dep.id);
         }
       }
+      await revalidateTournamentPages({ gameId, divisionId: game.division_id });
       return Response.json({ ok: true, round: n });
     }
 

@@ -87,3 +87,64 @@ test("every score, clear, placement, and QuickScores path revalidates tournament
   assert.match(helper, /revalidatePath\("\/tournaments"\)/);
   assert.match(helper, /revalidatePath\("\/"\)/);
 });
+
+const WRITE_PATHS = [
+  ...SCORE_PATHS,
+  ["app/api/scorekeeper/bracket/generate/route.js", "{ divisionId }", 3],
+  ["app/api/scorekeeper/seed/route.js", "{ slug: tournamentSlug }", 2],
+  ["app/api/register/route.js", "{ tournamentId, divisionId }", 1],
+  ["app/api/scorekeeper/registrations/[id]/route.js", "tournamentId: before.tournament_id", 1],
+];
+
+test("every public-page write path besides scores also revalidates", () => {
+  for (const [file, needle, times] of WRITE_PATHS) {
+    const src = read(file);
+    assert.match(src, /revalidateTournamentPages/, file);
+    const count = src.split("revalidateTournamentPages(").length - 1;
+    assert.equal(count, times, `${file} should call revalidateTournamentPages ${times} time(s)`);
+    assert.match(
+      src,
+      needle instanceof RegExp ? needle : new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      file
+    );
+  }
+  const patch = read("app/api/scorekeeper/games/[id]/route.js");
+  assert.match(patch, /revalidateTournamentPages\(\{ gameId: id \}\)/);
+  assert.doesNotMatch(patch, /if \("team1_score" in patch/);
+
+  const helper = read("lib/tournament-isr.js");
+  assert.match(helper, /if \(tournamentId\)/);
+});
+
+const DIRECTORY_PUBLIC_ACTIONS = [
+  "moveRegistration",
+  "createTournament",
+  "updateTournament",
+  "applyDivisionSetup",
+  "deleteTournament",
+  "setPoster",
+  "addDivision",
+  "createRegistration",
+  "addTeams",
+  "setDivisionPlayDay",
+  "setTournamentPlayDays",
+  "setDivisionMinimums",
+  "renameTeam",
+  "setDivisionSeedOrder",
+  "createPoolRoundRobin",
+  "removePoolPlay",
+  "addHandGame",
+  "applySheetDraft",
+  "deleteHandGame",
+  "setHandGameNumber",
+];
+
+test("directory actions that change public tournament pages revalidate before they return ok", () => {
+  const src = read("app/api/scorekeeper/directory/route.js");
+  for (const action of DIRECTORY_PUBLIC_ACTIONS) {
+    const re = new RegExp(String.raw`case "${action}":(?:(?!case ")[\s\S])*revalidateTournamentPages`);
+    assert.match(src, re, `${action} should call revalidateTournamentPages in its case`);
+  }
+  // Two poster writes (clear + set); every other listed action once.
+  assert.equal(src.split("revalidateTournamentPages(").length - 1, 21);
+});
