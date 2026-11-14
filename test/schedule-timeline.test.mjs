@@ -158,6 +158,7 @@ test("finished pill shows its score, winner's runs first; nothing until final wi
   const src = readFileSync(new URL("../components/ScheduleTimeline.js", import.meta.url), "utf8");
   assert.match(src, /tl-pill__score/, "pill renders the score");
   assert.match(src, /tl-pill__gno/, "game number stays on the pill");
+  assert.match(src, /tl-pill__result/, "scored number and score stack together");
   const data = readFileSync(new URL("../lib/data.js", import.meta.url), "utf8");
   assert.match(data, /winnerSlot: g\.winner_slot/, "schedule rows carry winner_slot");
   // Finished reads the same in both brackets: solid fill; losers keep a white inner ring.
@@ -165,6 +166,9 @@ test("finished pill shows its score, winner's runs first; nothing until final wi
   assert.match(css, /\.tl-pill\.tl-side-losers\.is-final,\s*\.tl-pill\.tl-side-if\.is-final \{ background: var\(--tone-solid\); color: #fff; \}/);
   assert.match(css, /\.tl-pill\.tl-side-losers\.is-final \{ box-shadow: inset 0 0 0 2px/);
   assert.ok(!/\.tl-pill\.tl-side-losers\.is-final \{ background: var\(--tone-bg\)/.test(css), "finished losers are not pale");
+  const gnoRule = css.match(/\.tl-pill__gno \{[^}]*\}/)?.[0] ?? "";
+  assert.match(css, /\.tl-pill__result \{[^}]*flex-direction:\s*column/, "game number stacks above the score");
+  assert.ok(!/position:\s*absolute/.test(gnoRule), "game number is not absolutely pinned to the top-corner row");
 });
 
 test("card game links: \"Game 17\" resolves to that game in the same division only", () => {

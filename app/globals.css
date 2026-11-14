@@ -4326,12 +4326,17 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
    faint gold star sits behind everything (JD, 2026-11-09). */
 .tl-pill__num { position: relative; line-height: 1; }
 /* A finished game shows its result in the middle, winner's runs first
-   ("12–8"); the game number moves up to the top centre, between the
-   "from" corners, and the corners stay put. */
-.tl-pill__score { font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; top: 0.125rem; }
+   ("12–8"); the game number sits on its own line immediately above the
+   score — not in the top-corner row — small enough not to overlap the
+   "from" labels. Corners stay put. */
+.tl-pill__result {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1; gap: 0.05rem; position: relative; z-index: 1;
+}
+.tl-pill__score { font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
 .tl-pill__gno {
-  position: absolute; top: 0.1875rem; left: 50%; transform: translateX(-50%);
-  font-size: 0.6875rem; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 1;
+  font-size: 0.625rem; line-height: 1; font-weight: 600;
+  white-space: nowrap; pointer-events: none;
 }
 .tl-bgstar {
   position: absolute; left: 50%; top: 50%; width: 2.375rem; height: 2.375rem;
@@ -4358,8 +4363,8 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
   border-radius: 0.5rem; font-size: 0.75rem;
 }
 .tl-vboard .tl-pill::after { inset: 0; }
-.tl-vboard .tl-pill__score { font-size: 0.75rem; top: 0.1rem; }
-.tl-vboard .tl-pill__gno { top: 0.12rem; font-size: 0.5625rem; }
+.tl-vboard .tl-pill__score { font-size: 0.75rem; }
+.tl-vboard .tl-pill__gno { font-size: 0.5rem; }
 .tl-vboard .tl-bgstar { width: 2.125rem; height: 2.125rem; }
 .tl-vboard .tl-corner { font-size: 0.5rem; overflow: visible; }
 .tl-vboard .tl-corner--tl { top: 0.12rem; left: 0.15rem; }
@@ -4370,7 +4375,9 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
 .tl-corner-place.is-gold { color: #8a6a10; }
 .tl-corner-place.is-cup { font-style: normal; } /* "dont italicize the cup" */
 .tl-pill.is-final .tl-corner { color: rgb(255 255 255 / 0.8); }
-/* Desktop only: feeder / next-game numbers, no W/L or arrows; win green / lose red. */
+/* Desktop only: feeder / next-game numbers, no W/L or arrows; win green / lose red.
+   Hour-wide pills are only ~47px, so the game number is a step smaller and
+   tucked against the score to stay out of the top-corner row. */
 @media (min-width: 640px) {
   .tl-corner--from-win, .tl-corner--to-win { color: var(--win, #22c55e); }
   .tl-corner--from-lose, .tl-corner--to-lose { color: var(--lose, #ef4444); }
@@ -4378,6 +4385,7 @@ button.tl-pill { border: 1px solid var(--tone-solid); }
   .tl-pill.is-final .tl-corner--to-win { color: var(--win, #22c55e); }
   .tl-pill.is-final .tl-corner--from-lose,
   .tl-pill.is-final .tl-corner--to-lose { color: var(--lose, #ef4444); }
+  .tl-pill__gno { font-size: 0.5rem; margin-bottom: -0.2rem; }
 }
 
 /* Gold place on a solid (finished) pill: light gold so it reads. */
