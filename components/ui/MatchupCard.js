@@ -15,6 +15,7 @@
 
 import FeedAwareName from "@/components/ui/FeedAwareName";
 import { isWaitingSlot } from "@/lib/slot-label";
+import { pillHonors } from "@/lib/matchup-honors";
 
 const GROUND = {
   Gold: "#fbf6e6",
@@ -29,10 +30,12 @@ const CAPTION = {
   Bronze: "#c47a4a",
 };
 
-// 🏆 champion · 🥈 runner-up (deciding championship game only)
-const MEDAL = { gold: "\u{1F3C6}", silver: "\u{1F948}" };
+// 🏆 champion · 🥈 runner-up on the deciding championship game.
+// 🥉 plus an italic place ("3rd") on the 3rd-place team's elimination game.
+// Other determined places are italic only ("5th", "7th", "13th").
+const MEDAL = { gold: "\u{1F3C6}", silver: "\u{1F948}", bronze: "\u{1F949}" };
 
-function Pill({ name, from, seed, score, won, waiting, medal }) {
+function Pill({ name, from, seed, score, won, waiting, medal, place }) {
   return (
     <div
       className={[
@@ -44,6 +47,11 @@ function Pill({ name, from, seed, score, won, waiting, medal }) {
       {medal && MEDAL[medal] && (
         <span className="shrink-0 text-[14px] leading-none" aria-hidden="true">
           {MEDAL[medal]}
+        </span>
+      )}
+      {place && (
+        <span className="shrink-0 text-[12px] font-bold italic leading-none">
+          {place}
         </span>
       )}
       <span
@@ -95,32 +103,36 @@ export default function MatchupCard({
   score2,
   isFinal,
   championship,
+  team1Place,
+  team2Place,
   seeds,
   className = "",
 }) {
   const tie = isFinal && score1 === score2;
   const won1 = isFinal && !tie && score1 > score2;
   const won2 = isFinal && !tie && score2 > score1;
+  const decided = Boolean(won1 || won2);
   const seedOf = (n) => (n && seeds ? seeds[n] ?? null : null);
 
   // isFinal means the game has a score (status === "final"): show the
   // score, bold the winner, and put the winner on top.
-  // Trophy / silver medal are only for the deciding championship game
-  // (Home Recent Results, or the one game championshipGameOf picks).
-  const showMedals = Boolean(championship) && (won1 || won2);
+  // Trophy / silver stay on the deciding championship game. An italic
+  // place (and bronze for 3rd) lands on the eliminated team's pill once
+  // that finish is known — the same eliminationPlacings labels Timeline uses.
+  const honors = (won, place) => pillHonors({ championship, decided, won, place });
   let top = {
     name: team1,
     from: team1From,
     score: score1,
     won: won1,
-    medal: showMedals ? (won1 ? "gold" : "silver") : null,
+    ...honors(won1, team1Place),
   };
   let bot = {
     name: team2,
     from: team2From,
     score: score2,
     won: won2,
-    medal: showMedals ? (won2 ? "gold" : "silver") : null,
+    ...honors(won2, team2Place),
   };
   if (isFinal && won2) {
     [top, bot] = [bot, top];
@@ -154,6 +166,7 @@ export default function MatchupCard({
           won={top.won}
           waiting={isWaitingSlot(top.name)}
           medal={top.medal}
+          place={top.place}
         />
         <Pill
           name={bot.name}
@@ -163,6 +176,7 @@ export default function MatchupCard({
           won={bot.won}
           waiting={isWaitingSlot(bot.name)}
           medal={bot.medal}
+          place={bot.place}
         />
       </div>
     </div>
