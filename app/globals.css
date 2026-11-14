@@ -2985,6 +2985,12 @@ a.register-division-col__card--header {
   background: #fff;
   font-weight: 600;
 }
+.home-results__select optgroup {
+  color: #0a1628;
+  background: #fff;
+  font-weight: 800;
+  font-style: normal;
+}
 .home-results__solo-label-text {
   font-size: 0.85rem;
   font-weight: 800;

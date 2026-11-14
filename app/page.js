@@ -11,7 +11,7 @@ import {
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { isPastTournament } from "@/lib/tournament-state";
-import { recentFinalsByGender, recentGamesByGender, RESULT_GENDER_KEYS } from "@/lib/home-recent";
+import { recentFinalsByGender, recentGamesByGender, recentGamesByDivision, RESULT_GENDER_KEYS } from "@/lib/home-recent";
 import { buildPosterDeckSlides, nextTournament } from "@/lib/poster-deck";
 import { venueParts } from "@/lib/director";
 import { listPublishedNews, formatNewsDate, newsImageUrls } from "@/lib/news";
@@ -140,6 +140,7 @@ export default async function Home() {
   for (const t of resultSource) {
     const genderFinals = recentFinalsByGender(t);
     const recentGames = recentGamesByGender(t);
+    const gamesByDivision = recentGamesByDivision(t);
     const hasFinal = RESULT_GENDER_KEYS.some(
       (k) => (genderFinals[k] ?? []).length > 0
     );
@@ -152,6 +153,7 @@ export default async function Home() {
       startDate: t.start_date,
       genderFinals,
       recentGames,
+      recentGamesByDivision: gamesByDivision,
     };
     const r = canonicalRegion(t);
     if (!resultEventsByRegion[r]) resultEventsByRegion[r] = [];
