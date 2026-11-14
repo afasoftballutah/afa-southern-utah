@@ -1,4 +1,5 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -81,6 +82,8 @@ export async function PATCH(request, { params }) {
 
   const { error: updateError } = await supabase.from("games").update(patch).eq("id", id);
   if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
+
+  await revalidateTournamentPages({ gameId: id });
 
   return Response.json({ ok: true });
 }

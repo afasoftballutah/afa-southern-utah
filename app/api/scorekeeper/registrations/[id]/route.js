@@ -2,6 +2,7 @@ import { requireDirectorSession } from "@/lib/scorekeeper-auth";
 import { getServiceClient } from "@/lib/supabase";
 import { releaseMemberToPool } from "@/lib/roster-eligibility";
 import { regenerateAndStoreWaiverPdf } from "@/lib/pdf/regenerate";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 
 export const runtime = "nodejs";
 
@@ -60,7 +61,7 @@ export async function PATCH(request, { params }) {
   // Load before update so we know if this is a fresh withdraw → pool release.
   const { data: before } = await supabase
     .from("registrations")
-    .select("id, status, manager_member_id")
+    .select("id, status, manager_member_id, tournament_id")
     .eq("id", id)
     .maybeSingle();
   if (!before) return Response.json({ error: "Registration not found" }, { status: 404 });
@@ -99,6 +100,10 @@ export async function PATCH(request, { params }) {
     } catch (err) {
       console.error("PDF regeneration after withdraw pool release failed", err);
     }
+  }
+
+  if (status !== undefined && before.tournament_id) {
+    await revalidateTournamentPages({ tournamentId: before.tournament_id });
   }
 
   return Response.json({ ok: true, registration: data, pooled });

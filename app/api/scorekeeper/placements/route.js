@@ -1,4 +1,5 @@
 import { requireScorekeeperSession } from "@/lib/scorekeeper-auth";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -55,6 +56,7 @@ export async function POST(request) {
     ]);
     if (insertError) throw new Error(insertError.message);
 
+    await revalidateTournamentPages({ divisionId });
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: err.message || "Could not save placements" }, { status: 500 });

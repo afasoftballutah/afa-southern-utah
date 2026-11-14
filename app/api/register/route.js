@@ -11,6 +11,7 @@ import {
   updateRosterSign,
 } from "@/lib/sign-audit";
 import { tournamentPersonKey } from "@/lib/tournament-waiver";
+import { revalidateTournamentPages } from "@/lib/tournament-isr";
 
 // NO OUTBOUND COMMS — hard constraint (JD ruling, 2026-07-21). This route
 // saves the registration, creates one roster_members row per player/coach
@@ -343,5 +344,6 @@ export async function POST(request) {
   const rosterLink = `${origin}/register/roster/${inserted.roster_token}`;
   const manageLink = `${origin}/register/manage/${inserted.manage_token}`;
 
+  await revalidateTournamentPages({ tournamentId, divisionId });
   return Response.json({ ok: true, registrationId, rosterLink, manageLink, signers });
 }
