@@ -1,4 +1,5 @@
 import { Anton, Outfit } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
@@ -11,10 +12,22 @@ const displayFace = Anton({
   variable: "--font-display-face",
 });
 
-// Body + teams — Outfit (variable weight covers winner/loser on the bracket).
+// Body — Outfit.
 const bodyFace = Outfit({
   subsets: ["latin"],
   variable: "--font-body-face",
+});
+
+// Team names — Allo 1.0 (SIL OFL, app/fonts/allo/OFL.txt), self-hosted.
+// Variable file trimmed to Latin with pyftsubset: wght/ROND/opsz axes kept,
+// kern + tnum kept, calt dropped (no "->" arrows or raised punctuation),
+// no icons, no obliques.
+const teamFace = localFont({
+  src: "./fonts/allo/AlloVariable-latin.woff2",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+  variable: "--font-team-face",
 });
 
 export const metadata = {
@@ -33,7 +46,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`h-full ${displayFace.variable} ${bodyFace.variable}`}
+      className={`h-full ${displayFace.variable} ${bodyFace.variable} ${teamFace.variable}`}
     >
       <body className="min-h-full flex flex-col antialiased">
         {/* Review copy only (scratch data, never prod): NEXT_PUBLIC_REVIEW_COPY=1

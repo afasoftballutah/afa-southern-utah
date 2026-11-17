@@ -77,8 +77,8 @@
   --font-sans: var(--font-body-face), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-body: var(--font-body-face), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-display-face), Impact, "Arial Narrow", sans-serif;
-  /* Teams use Outfit too — variable weight for winner/loser. */
-  --font-team: var(--font-body-face), system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Teams use Allo (Outfit next in line) — variable weight for winner/loser. */
+  --font-team: var(--font-team-face), var(--font-body-face), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html {
@@ -3840,9 +3840,11 @@ button:not(.pill) {
     font-size: 1.125rem;
     line-height: 1.25;
   }
-  /* Team names — Outfit (same as body); weight 400/700 for loser/winner. */
+  /* Team names — Allo; weight 400/700 for loser/winner. ROND 40 = moderate
+     roundness, so names sit easy next to Anton's hard edges. */
   .team-name {
     font-family: var(--font-team);
+    font-variation-settings: "ROND" 40;
     text-transform: uppercase;
     letter-spacing: 0.02em;
     color: var(--afa-ink);
