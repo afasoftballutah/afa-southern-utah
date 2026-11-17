@@ -6,6 +6,7 @@ import { HighlightTeamProvider } from "@/components/bracket/HighlightTeamContext
 import { DropsProvider } from "@/components/bracket/DropsContext";
 import { FocusRoundProvider } from "@/components/bracket/FocusRoundContext";
 import { isBracketLive, isBracketLiveFromResults } from "@/lib/tournament-state";
+import { STANDINGS_VIEW } from "@/lib/archive";
 
 // The bracket picker is the same segmented control as Pool play / Bracket
 // — inset track, one filled segment — but each fills in its own metal
@@ -108,7 +109,25 @@ export default function DivisionView({
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const game = Number(q.get("game"));
-    if (Number.isFinite(game) && game > 0) {
+    // ?view=standings (the Results card's "Full standings ›") opens this
+    // bracket's standings on load — the same panel pressing the bracket
+    // you are already on opens — and brings it into view.
+    const standingsId =
+      q.get("view") === STANDINGS_VIEW
+        ? [finderProps.currentId, ...Object.keys(standingsPanes ?? {})].find(
+            (id) => id && standingsPanes?.[id]
+          )
+        : null;
+    if (standingsId) {
+      setStage("bracket");
+      setTouched(true);
+      setStandingsFor(standingsId);
+      requestAnimationFrame(() => {
+        document
+          .querySelector("[data-standings-pane]")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } else if (Number.isFinite(game) && game > 0) {
       setArrivedAt(game);
       setStage("bracket");
       setTouched(true);
@@ -138,6 +157,8 @@ export default function DivisionView({
         });
       }
     }
+    // Once, on arrival — the URL is read a single time (see above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const mine = team ? bracketByTeam?.[team] : null;
   const shownBracketId =
@@ -242,7 +263,11 @@ export default function DivisionView({
 
       {stage === "bracket" && hasBracket ? (
         <div className="space-y-3">
-          {standingsFor && standingsPanes?.[standingsFor]}
+          {standingsFor && standingsPanes?.[standingsFor] && (
+            <div data-standings-pane className="scroll-mt-4">
+              {standingsPanes[standingsFor]}
+            </div>
+          )}
           <DropsProvider value={{ showDrops, setShowDrops }}>
             <FocusRoundProvider round={arrivedAt}>
               <HighlightTeamProvider team={team}>
@@ -250,6 +275,15 @@ export default function DivisionView({
               </HighlightTeamProvider>
             </FocusRoundProvider>
           </DropsProvider>
+        </div>
+      ) : !hasBracket && standingsFor && standingsPanes?.[standingsFor] ? (
+        // A bracket drawn outside this toggle (BracketTree) still gets its
+        // standings when the link asked for them.
+        <div className="space-y-3">
+          <div data-standings-pane className="scroll-mt-4">
+            {standingsPanes[standingsFor]}
+          </div>
+          {poolPane}
         </div>
       ) : (
         poolPane
