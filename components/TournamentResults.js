@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { teamPageHref } from "@/lib/team-page";
+import { divisionStandingsHref } from "@/lib/archive";
 
 // The archive face of a finished tournament — one column per bracket, podium
 // first, photos only when a director uploaded them. Lives above the schedule,
@@ -32,7 +33,7 @@ function TeamRow({ row, href }) {
 }
 
 function DivisionColumn({ column, slug, teamPageHrefs = null }) {
-  const standingsHref = `/tournaments/${slug}/division/${column.divisionId}`;
+  const standingsHref = divisionStandingsHref(slug, column.divisionId);
   return (
     <div className="min-w-0 space-y-1">
       <h3 className="t-label">{column.divisionName}</h3>

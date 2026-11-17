@@ -25,6 +25,7 @@ import {
   usesPaperGameNumbers,
 } from "@/lib/bracket/for-drawn-bracket";
 import { bracketStandings, isRealTeamName } from "@/lib/bracket/standings";
+import { divisionPlacings, mainBracketFormat } from "@/lib/bracket/placing";
 import { teamPageHref } from "@/lib/team-page";
 import { getTeamPageHrefMap } from "@/lib/team-page-data";
 import { shortField } from "@/lib/venues";
@@ -420,6 +421,20 @@ export default async function DivisionPage({ params }) {
     ])
   );
 
+  // Standings for each bracket on this page: the children (Gold/Silver/
+  // Bronze) as before, plus this division's own bracket when it has one
+  // and no children (Worlds) — so the Results card's "Full standings ›"
+  // (?view=standings) has something to open. Finish places come from the
+  // bracket itself (divisionPlacings), the same places the podium shows.
+  const standingsGames =
+    bracketGames.length > 0 && !playableStageGames[division.id]
+      ? { ...playableStageGames, [division.id]: bracketGames }
+      : playableStageGames;
+  const formatOf = (id) =>
+    mainBracketFormat(
+      id === division.id ? division.brackets : allDivisions.find((d) => d.id === id)?.brackets
+    );
+
   // "Bracket play is live" means the bracket has actually started — a
   // result is in, or a bracket game's time has come and gone. A drawn but
   // unplayed bracket is not what anyone is at the page for on Friday
@@ -616,14 +631,14 @@ export default async function DivisionPage({ params }) {
           bracketSignals={bracketSignals}
           poolPane={hasPoolGames ? <PoolPlaySection poolGames={stagePoolGames} timeZone={timeZone} teamPageHrefs={teamPageHrefs} /> : null}
           standingsPanes={Object.fromEntries(
-            Object.entries(playableStageGames)
+            Object.entries(standingsGames)
               .filter(([, list]) => list.length > 0)
               .map(([id, list]) => [
                 id,
                 <StandingsPanel
                   key={id}
-                  name={stages.find((st) => st.id === id)?.display_name ?? ""}
-                  rows={bracketStandings(list, teamStatus)}
+                  name={id === division.id ? renderedName : (stages.find((st) => st.id === id)?.display_name ?? "")}
+                  rows={bracketStandings(list, teamStatus, divisionPlacings(list, formatOf(id)))}
                   divisionId={id}
                   teamPageHrefs={teamPageHrefs}
                 />,
