@@ -92,6 +92,6 @@ Collected from J.D.'s stated rules; dates are when each was recorded. **Change o
 ### Graphics
 - No AI-edited player faces, no AI lettering or compositing. Use the untouched real photo plus the reusable overlay template, with lettering in the photo's empty space; no filler strips, nothing covering people (2026-11-17).
 
-## OPEN: conflict awaiting J.D.
+## Merge and prod-write rule (standing)
 
-- The existing line above, "Ship to main with prod migrations when schema changes" (from the project README), conflicts with J.D.'s rule that prod Supabase writes and PR merges need his explicit OK. Until J.D. settles it, follow the stricter rule: no prod migration or merge without his OK.
+- The README line above, "Ship to main with prod migrations when schema changes", is overridden by J.D.'s standing rule: no prod Supabase write, prod migration or PR merge without his explicit OK.
